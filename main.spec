@@ -20,8 +20,6 @@ hiddenimports = ['typing_extensions',
 tmp_ret = collect_all('chromadb')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
-# customtkinter_dir = r'c:/Users/xieli/Desktop/AI_NovelGenerator/.venv/Lib/site-packages/customtkinter'
-# datas.append((customtkinter_dir, 'customtkinter'))
 
 package_dir = get_package_paths('customtkinter')[1]
 customtkinter_data = (package_dir, 'customtkinter')

@@ -13,9 +13,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install compressed tools
+      - name: Install 7zip tools
         run: |
-          choco install -y vcredist-all
           choco install -y 7zip
 
       - name: Set up Python
