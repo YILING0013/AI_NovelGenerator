@@ -76,14 +76,19 @@ def build_ai_config_tab(self):
                 self.base_url_var.set("http://localhost:1234/v1")
             elif new_value == "OpenAI":
                 self.base_url_var.set("https://api.openai.com/v1")
+                self.model_name_var.set("gpt-4o-mini")
             elif new_value == "Azure OpenAI":
                 self.base_url_var.set("https://[az].openai.azure.com/openai/deployments/[model]/chat/completions?api-version=2024-08-01-preview")
             elif new_value == "DeepSeek":
                 self.base_url_var.set("https://api.deepseek.com/v1")
+                self.model_name_var.set("deepseek-chat")
             elif new_value == "Gemini":
                 self.base_url_var.set("")
             elif new_value == "Azure AI":
                 self.base_url_var.set("https://<your-endpoint>.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview")
+            elif new_value == "阿里云百炼":
+                self.base_url_var.set("https://dashscope.aliyuncs.com/compatible-mode/v1")
+                self.model_name_var.set("qwen-plus")
 
     for i in range(7):
         self.ai_config_tab.grid_rowconfigure(i, weight=0)
@@ -103,7 +108,7 @@ def build_ai_config_tab(self):
 
     # 3) 接口格式
     create_label_with_help(self, parent=self.ai_config_tab, label_text="LLM 接口格式:", tooltip_key="interface_format", row=2, column=0, font=("Microsoft YaHei", 12))
-    interface_options = ["DeepSeek", "OpenAI", "Azure OpenAI", "Azure AI", "Ollama", "ML Studio", "Gemini"]
+    interface_options = ["DeepSeek", "阿里云百炼", "OpenAI", "Azure OpenAI", "Azure AI", "Ollama", "ML Studio", "Gemini"]
     interface_dropdown = ctk.CTkOptionMenu(self.ai_config_tab, values=interface_options, variable=self.interface_format_var, command=on_interface_format_changed, font=("Microsoft YaHei", 12))
     interface_dropdown.grid(row=2, column=1, padx=5, pady=5, columnspan=2, sticky="nsew")
 
