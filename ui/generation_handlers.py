@@ -335,6 +335,8 @@ def do_consistency_check(self):
                 return
 
             self.safe_log("开始一致性审校...")
+            plot_arcs_file = os.path.join(filepath, "plot_arcs.txt") # 获取 plot_arcs 文件路径
+            plot_arcs_content = read_file(plot_arcs_file) # 读取 plot_arcs 文件内容
             result = check_consistency(
                 novel_setting="",
                 character_state=read_file(os.path.join(filepath, "character_state.txt")),
@@ -347,7 +349,8 @@ def do_consistency_check(self):
                 interface_format=interface_format,
                 max_tokens=max_tokens,
                 timeout=timeout,
-                plot_arcs=""
+                plot_arcs=plot_arcs_content,
+                filepath=filepath
             )
             self.safe_log("审校结果：")
             self.safe_log(result)

@@ -448,4 +448,6 @@ next_chapter_draft_prompt = """\
 - 不要使用markdown格式。
 
 额外指导(可能未指定)：{user_guidance}
+
+待解决冲突或不一致之处：{plot_arcs}
 """
