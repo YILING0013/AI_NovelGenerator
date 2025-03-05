@@ -1,9 +1,12 @@
 # ui/config_tab.py
 # -*- coding: utf-8 -*-
-import customtkinter as ctk
 from tkinter import messagebox
+
+import customtkinter as ctk
+
 from config_manager import load_config, save_config
 from tooltips import tooltips
+
 
 def create_label_with_help(self, parent, label_text, tooltip_key, row, column,
                            font=None, sticky="e", padx=5, pady=5):
@@ -177,6 +180,9 @@ def build_embeddings_config_tab(self):
             elif new_value == "Gemini":
                 self.embedding_url_var.set("https://generativelanguage.googleapis.com/v1beta/")
                 self.embedding_model_name_var.set("models/text-embedding-004")
+            elif new_value == "SiliconFlow":
+                self.embedding_url_var.set("https://api.siliconflow.cn/v1/embeddings")
+                self.embedding_model_name_var.set("BAAI/bge-m3")
 
     for i in range(5):
         self.embeddings_config_tab.grid_rowconfigure(i, weight=0)
@@ -191,7 +197,7 @@ def build_embeddings_config_tab(self):
 
     # 2) Embedding 接口格式
     create_label_with_help(self, parent=self.embeddings_config_tab, label_text="Embedding 接口格式:", tooltip_key="embedding_interface_format", row=1, column=0, font=("Microsoft YaHei", 12))
-    emb_interface_options = ["DeepSeek", "OpenAI", "Azure OpenAI", "Gemini", "Ollama", "ML Studio"]
+    emb_interface_options = ["DeepSeek", "OpenAI", "Azure OpenAI", "Gemini", "Ollama", "ML Studio","SiliconFlow"]
     emb_interface_dropdown = ctk.CTkOptionMenu(self.embeddings_config_tab, values=emb_interface_options, variable=self.embedding_interface_format_var, command=on_embedding_interface_changed, font=("Microsoft YaHei", 12))
     emb_interface_dropdown.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
 

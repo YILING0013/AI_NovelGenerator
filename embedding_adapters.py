@@ -1,10 +1,12 @@
 # embedding_adapters.py
 # -*- coding: utf-8 -*-
 import logging
-import requests
 import traceback
 from typing import List
-from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
+
+import requests
+from langchain_openai import AzureOpenAIEmbeddings, OpenAIEmbeddings
+
 
 def ensure_openai_base_url_has_v1(url: str) -> str:
     """
@@ -187,6 +189,44 @@ class GeminiEmbeddingAdapter(BaseEmbeddingAdapter):
             logging.error(f"Gemini embed_content parse error: {e}\n{traceback.format_exc()}")
             return []
 
+class SiliconFlowEmbeddingAdapter(BaseEmbeddingAdapter):
+    """
+    基于 SiliconFlow 的 embedding 适配器
+    """
+    def __init__(self, api_key: str, base_url: str, model_name: str):
+        # 自动为 base_url 添加 scheme（如果缺失）
+        if not base_url.startswith("http://") and not base_url.startswith("https://"):
+            base_url = "https://" + base_url
+        self.url = base_url if base_url else "https://api.siliconflow.cn/v1/embeddings"
+
+        self.payload = {
+            "model": model_name,
+            "input": "Silicon flow embedding online: fast, affordable, and high-quality embedding services. come try it out!",
+            "encoding_format": "float"
+        }
+        self.headers = {
+            "Authorization": "Bearer {api_key}".format(api_key=api_key),
+            "Content-Type": "application/json"
+        }
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        embeddings = []
+        for text in texts:
+            self.payload["input"] = text
+            response = requests.post(self.url, json=self.payload, headers=self.headers)
+            result = response.json()
+            # 从返回数据中提取第一个 embedding
+            emb = result.get("data", [{}])[0].get("embedding", [])
+            embeddings.append(emb)
+        return embeddings
+
+    def embed_query(self, query: str) -> List[float]:
+        self.payload["input"] = query
+        # print('SiliconFlowEmbeddingAdapter发送',self.payload)
+        response = requests.post(self.url, json=self.payload, headers=self.headers)
+        result = response.json()
+        return result.get("data", [{}])[0].get("embedding", [])
+
 def create_embedding_adapter(
     interface_format: str,
     api_key: str,
@@ -207,5 +247,7 @@ def create_embedding_adapter(
         return MLStudioEmbeddingAdapter(api_key, base_url, model_name)
     elif fmt == "gemini":
         return GeminiEmbeddingAdapter(api_key, model_name, base_url)
+    elif fmt == "siliconflow":
+        return SiliconFlowEmbeddingAdapter(api_key, base_url, model_name)
     else:
         raise ValueError(f"Unknown embedding interface_format: {interface_format}")
