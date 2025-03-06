@@ -3,6 +3,7 @@
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 from ui.context_menu import TextWidgetContextMenu
+from tooltips import tooltips
 
 def build_novel_params_area(self, start_row=1):
     self.params_frame = ctk.CTkScrollableFrame(self.right_frame, orientation="vertical")
@@ -105,6 +106,6 @@ def create_label_with_help_for_novel_params(self, parent, label_text, tooltip_ke
     label = ctk.CTkLabel(frame, text=label_text, font=font)
     label.pack(side="left")
     btn = ctk.CTkButton(frame, text="?", width=22, height=22, font=("Microsoft YaHei", 10),
-                        command=lambda: messagebox.showinfo("参数说明", "暂无说明"))
+                        command=lambda: messagebox.showinfo("参数说明", tooltips.get(tooltip_key, "暂无说明")))
     btn.pack(side="left", padx=3)
     return frame
