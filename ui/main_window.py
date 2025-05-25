@@ -26,7 +26,8 @@ from ui.generation_handlers import (
     do_consistency_check,
     import_knowledge_handler,
     clear_vectorstore_handler,
-    show_plot_arcs_ui
+    show_plot_arcs_ui,
+    batch_generate_chapters_ui  # 增加此行
 )
 from ui.setting_tab import build_setting_tab, load_novel_architecture, save_novel_architecture
 from ui.directory_tab import build_directory_tab, load_chapter_blueprint, save_chapter_blueprint
@@ -365,3 +366,4 @@ class NovelGeneratorGUI:
     test_llm_config = test_llm_config
     test_embedding_config = test_embedding_config
     browse_folder = browse_folder
+    batch_generate_chapters_ui = batch_generate_chapters_ui
