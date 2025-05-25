@@ -3,7 +3,8 @@
 import logging
 from typing import Optional
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from azure.ai.inference import ChatCompletionsClient
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.inference.models import SystemMessage, UserMessage
@@ -97,25 +98,25 @@ class GeminiAdapter(BaseLLMAdapter):
     """
     适配 Google Gemini (Google Generative AI) 接口
     """
-    def __init__(self, api_key: str, model_name: str, max_tokens: int, temperature: float = 0.7, timeout: Optional[int] = 600):
+    def __init__(self, api_key: str, base_url: str, model_name: str, max_tokens: int, temperature: float = 0.7, timeout: Optional[int] = 600):
         self.api_key = api_key
         self.model_name = model_name
         self.max_tokens = max_tokens
         self.temperature = temperature
-        self.timeout = timeout
+        # gemini超时时间是毫秒
+        self.timeout = timeout * 1000
 
-        self._client = genai.Client(api_key=self.api_key)
+        self._client = genai.Client(api_key=self.api_key,http_options=types.HttpOptions(base_url=base_url,timeout=self.timeout))
 
     def invoke(self, prompt: str) -> str:
         try:
             response = self._client.models.generate_content(
                 model = self.model_name,
                 contents = prompt,
-                config = genai.types.GenerateContentConfig(
+                config = types.GenerateContentConfig(
                     max_output_tokens=self.max_tokens,
                     temperature=self.temperature,
                 ),
-                timeout=self.timeout  # 添加超时参数
             )
             if response and response.text:
                 return response.text
@@ -364,8 +365,7 @@ def create_llm_adapter(
     elif fmt == "ml studio":
         return MLStudioAdapter(api_key, base_url, model_name, max_tokens, temperature, timeout)
     elif fmt == "gemini":
-        # base_url 对 Gemini 暂无用处，可忽略
-        return GeminiAdapter(api_key, model_name, max_tokens, temperature, timeout)
+        return GeminiAdapter(api_key, base_url, model_name, max_tokens, temperature, timeout)
     elif fmt == "阿里云百炼":
         return OpenAIAdapter(api_key, base_url, model_name, max_tokens, temperature, timeout)
     elif fmt == "火山引擎":
