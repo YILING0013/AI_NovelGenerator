@@ -7,7 +7,7 @@ from utils import read_file, save_string_to_txt, clear_file_content
 from ui.context_menu import TextWidgetContextMenu
 
 def build_setting_tab(self):
-    self.setting_tab = self.tabview.add("Novel Architecture")
+    self.setting_tab = self.tabview.add("创新架构")
     self.setting_tab.rowconfigure(0, weight=0)
     self.setting_tab.rowconfigure(1, weight=1)
     self.setting_tab.columnconfigure(0, weight=1)

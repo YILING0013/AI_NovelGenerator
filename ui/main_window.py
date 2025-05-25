@@ -40,7 +40,7 @@ class NovelGeneratorGUI:
     """
     def __init__(self, master):
         self.master = master
-        self.master.title("Novel Generator GUI")
+        self.master.title("小说生成器")
         try:
             if os.path.exists("icon.ico"):
                 self.master.iconbitmap("icon.ico")

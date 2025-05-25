@@ -7,7 +7,7 @@ from ui.context_menu import TextWidgetContextMenu
 from utils import read_file, save_string_to_txt, clear_file_content
 
 def build_chapters_tab(self):
-    self.chapters_view_tab = self.tabview.add("Chapters Manage")
+    self.chapters_view_tab = self.tabview.add("章节管理")
     self.chapters_view_tab.rowconfigure(0, weight=0)
     self.chapters_view_tab.rowconfigure(1, weight=1)
     self.chapters_view_tab.columnconfigure(0, weight=1)
