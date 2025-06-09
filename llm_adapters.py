@@ -3,8 +3,10 @@
 import logging
 from typing import Optional
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
-from google import genai
-from google.genai import types
+# from google import genai
+import google.generativeai as genai
+# from google.genai import types
+from google.generativeai import types
 from azure.ai.inference import ChatCompletionsClient
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.inference.models import SystemMessage, UserMessage
@@ -338,6 +340,45 @@ class SiliconFlowAdapter(BaseLLMAdapter):
         except Exception as e:
             logging.error(f"硅基流动API调用超时或失败: {e}")
             return ""
+# grok實現
+class GrokAdapter(BaseLLMAdapter):
+    """
+    适配 xAI Grok API
+    """
+    def __init__(self, api_key: str, base_url: str, model_name: str, max_tokens: int, temperature: float = 0.7, timeout: Optional[int] = 600):
+        self.base_url = check_base_url(base_url)
+        self.api_key = api_key
+        self.model_name = model_name
+        self.max_tokens = max_tokens
+        self.temperature = temperature
+        self.timeout = timeout
+
+        self._client = OpenAI(
+            base_url=self.base_url,
+            api_key=self.api_key,
+            timeout=self.timeout
+        )
+
+    def invoke(self, prompt: str) -> str:
+        try:
+            response = self._client.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": "You are Grok, created by xAI."},
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+                timeout=self.timeout
+            )
+            if response and response.choices:
+                return response.choices[0].message.content
+            else:
+                logging.warning("No response from GrokAdapter.")
+                return ""
+        except Exception as e:
+            logging.error(f"Grok API 调用失败: {e}")
+            return ""
 
 def create_llm_adapter(
     interface_format: str,
@@ -372,5 +413,7 @@ def create_llm_adapter(
         return VolcanoEngineAIAdapter(api_key, base_url, model_name, max_tokens, temperature, timeout)
     elif fmt == "硅基流动":
         return SiliconFlowAdapter(api_key, base_url, model_name, max_tokens, temperature, timeout)
+    elif fmt == "grok":
+        return GrokAdapter(api_key, base_url, model_name, max_tokens, temperature, timeout)
     else:
         raise ValueError(f"Unknown interface_format: {interface_format}")

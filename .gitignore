@@ -11,3 +11,4 @@ config.json
 config_test.json
 /novel_generator/__pycache__
 /ui/__pycache__
+.idea/

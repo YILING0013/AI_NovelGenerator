@@ -95,6 +95,9 @@ def build_ai_config_tab(self):
             elif new_value == "硅基流动":
                 self.base_url_var.set("https://api.siliconflow.cn/v1")
                 self.model_name_var.set("deepseek-ai/DeepSeek-V3")
+            elif new_value == "Grok":
+                self.base_url_var.set("https://api.x.ai/v1")
+                self.model_name_var.set("grok-3")
 
     for i in range(7):
         self.ai_config_tab.grid_rowconfigure(i, weight=0)
@@ -114,8 +117,8 @@ def build_ai_config_tab(self):
 
     # 3) 接口格式
     create_label_with_help(self, parent=self.ai_config_tab, label_text="LLM 接口格式:", tooltip_key="interface_format", row=2, column=0, font=("Microsoft YaHei", 12))
-    # 在这里的接口选项列表中添加 "硅基流动"
-    interface_options = ["DeepSeek", "阿里云百炼", "OpenAI", "Azure OpenAI", "Azure AI", "Ollama", "ML Studio", "Gemini", "火山引擎", "硅基流动"]
+    # 在接口选项列表中添加 "Grok"
+    interface_options = ["DeepSeek", "阿里云百炼", "OpenAI", "Azure OpenAI", "Azure AI", "Ollama", "ML Studio", "Gemini", "火山引擎", "硅基流动", "Grok"]
     interface_dropdown = ctk.CTkOptionMenu(self.ai_config_tab, values=interface_options, variable=self.interface_format_var, command=on_interface_format_changed, font=("Microsoft YaHei", 12))
     interface_dropdown.grid(row=2, column=1, padx=5, pady=5, columnspan=2, sticky="nsew")
 
