@@ -17,6 +17,11 @@ from novel_generator import (
     enrich_chapter_text
 )
 from consistency_checker import check_consistency
+from prompt_definitions import (
+    DEFAULT_WRITING_STYLE_PROMPT,
+    first_chapter_draft_prompt as default_first_chapter_template, # Import for default prompt
+    next_chapter_draft_prompt as default_next_chapter_template # Import for default prompt
+)
 
 def generate_novel_architecture_ui(self):
     filepath = self.filepath_var.get().strip()
@@ -144,11 +149,35 @@ def generate_chapter_draft_ui(self):
             embedding_model_name = self.embedding_model_name_var.get().strip()
             embedding_k = self.safe_get_int(self.embedding_retrieval_k_var, 4)
 
+            # Get writing style
+            user_style = self.user_defined_writing_style_var.get().strip()
+            actual_writing_style = user_style if user_style else DEFAULT_WRITING_STYLE_PROMPT
+            if not user_style:
+                self.safe_log("用户未定义写作风格，使用默认风格。")
+
             self.safe_log(f"生成第{chap_num}章草稿：准备生成请求提示词...")
 
             # 调用新添加的 build_chapter_prompt 函数构造初始提示词
             from novel_generator.chapter import build_chapter_prompt
-            prompt_text = build_chapter_prompt(
+
+            # Determine the base prompt template
+            if chap_num == 1:
+                base_template_to_use = self.custom_prompts.get("first_chapter_draft", "").strip()
+                if not base_template_to_use:
+                    base_template_to_use = default_first_chapter_template
+                    self.safe_log("使用默认的第一章提示词模板。")
+                else:
+                    self.safe_log("使用自定义的第一章提示词模板。")
+            else:
+                base_template_to_use = self.custom_prompts.get("next_chapter_draft", "").strip()
+                if not base_template_to_use:
+                    base_template_to_use = default_next_chapter_template
+                    self.safe_log("使用默认的后续章节提示词模板。")
+                else:
+                    self.safe_log("使用自定义的后续章节提示词模板。")
+
+            prompt_text = build_chapter_prompt( # This prompt_text is for the dialog
+                base_prompt_template=base_template_to_use, # Pass the selected template
                 api_key=api_key,
                 base_url=base_url,
                 model_name=model_name,
@@ -168,7 +197,8 @@ def generate_chapter_draft_ui(self):
                 embedding_retrieval_k=embedding_k,
                 interface_format=interface_format,
                 max_tokens=max_tokens,
-                timeout=timeout_val
+                timeout=timeout_val,
+                writing_style_prompt=actual_writing_style # Pass to build_chapter_prompt
             )
 
             # 弹出可编辑提示词对话框，等待用户确认或取消
@@ -286,7 +316,8 @@ def generate_chapter_draft_ui(self):
                 interface_format=interface_format,
                 max_tokens=max_tokens,
                 timeout=timeout_val,
-                custom_prompt_text=edited_prompt  # 使用用户编辑后的提示词
+                custom_prompt_text=edited_prompt,  # 使用用户编辑后的提示词
+                writing_style_prompt=actual_writing_style # Pass to generate_chapter_draft
             )
             if draft_text:
                 self.safe_log(f"✅ 第{chap_num}章草稿生成完成。请在左侧查看或编辑。")
