@@ -9,11 +9,10 @@ import logging
 import re  # 添加re模块导入
 from llm_adapters import create_llm_adapter
 from prompt_definitions import (
-    first_chapter_draft_prompt, 
-    next_chapter_draft_prompt, 
-    summarize_recent_chapters_prompt,
-    knowledge_filter_prompt,
-    knowledge_search_prompt
+    summarize_recent_chapters_prompt, # Keep this for summarize_recent_chapters
+    knowledge_filter_prompt,    # Keep this for get_filtered_knowledge_context
+    knowledge_search_prompt     # Keep this for its direct use
+    # first_chapter_draft_prompt and next_chapter_draft_prompt are no longer directly used here
 )
 from chapter_directory_parser import get_chapter_info_from_blueprint
 from novel_generator.common import invoke_with_cleaning
@@ -270,6 +269,7 @@ def get_filtered_knowledge_context(
         return "（内容过滤过程出错）"
 
 def build_chapter_prompt(
+    base_prompt_template: str, # New first argument
     api_key: str,
     base_url: str,
     model_name: str,
@@ -289,7 +289,8 @@ def build_chapter_prompt(
     embedding_retrieval_k: int = 2,
     interface_format: str = "openai",
     max_tokens: int = 2048,
-    timeout: int = 600
+    timeout: int = 600,
+    writing_style_prompt: str = ""
 ) -> str:
     """
     构造当前章节的请求提示词（完整实现版）
@@ -333,9 +334,18 @@ def build_chapter_prompt(
     chapters_dir = os.path.join(filepath, "chapters")
     os.makedirs(chapters_dir, exist_ok=True)
 
-    # 第一章特殊处理
+    # The logic for choosing between first_chapter and next_chapter template
+    # is now handled by the caller, who supplies the correct base_prompt_template.
+
+    # If it's the first chapter, some fields like global_summary, previous_chapter_excerpt might not be needed
+    # or will be empty/default. The base_prompt_template for the first chapter should account for this.
+    # For next chapters, they are essential.
+
     if novel_number == 1:
-        return first_chapter_draft_prompt.format(
+        # For the first chapter, certain context items are not available or relevant
+        # The base_prompt_template for the first chapter should already be structured
+        # not to require: global_summary, previous_chapter_excerpt, character_state (if empty), short_summary, filtered_context
+        return base_prompt_template.format(
             novel_number=novel_number,
             word_number=word_number,
             chapter_title=chapter_title,
@@ -350,7 +360,8 @@ def build_chapter_prompt(
             scene_location=scene_location,
             time_constraint=time_constraint,
             user_guidance=user_guidance,
-            novel_setting=novel_architecture_text
+            novel_setting=novel_architecture_text,
+            writing_style_instructions=writing_style_prompt
         )
 
     # 获取前文内容和摘要
@@ -479,8 +490,8 @@ def build_chapter_prompt(
         logging.error(f"知识处理流程异常：{str(e)}")
         filtered_context = "（知识库处理失败）"
 
-    # 返回最终提示词
-    return next_chapter_draft_prompt.format(
+    # 返回最终提示词 (for novel_number > 1)
+    return base_prompt_template.format(
         user_guidance=user_guidance if user_guidance else "无特殊指导",
         global_summary=global_summary_text,
         previous_chapter_excerpt=previous_excerpt,
@@ -507,7 +518,8 @@ def build_chapter_prompt(
         next_chapter_foreshadowing=next_chapter_foreshadow,
         next_chapter_plot_twist_level=next_chapter_twist,
         next_chapter_summary=next_chapter_summary,
-        filtered_context=filtered_context
+        filtered_context=filtered_context,
+        writing_style_instructions=writing_style_prompt
     )
 
 def generate_chapter_draft(
@@ -531,7 +543,8 @@ def generate_chapter_draft(
     interface_format: str = "openai",
     max_tokens: int = 2048,
     timeout: int = 600,
-    custom_prompt_text: str = None
+    custom_prompt_text: str = None,
+    writing_style_prompt: str = ""
 ) -> str:
     """
     生成章节草稿，支持自定义提示词
@@ -557,10 +570,15 @@ def generate_chapter_draft(
             embedding_retrieval_k=embedding_retrieval_k,
             interface_format=interface_format,
             max_tokens=max_tokens,
-            timeout=timeout
+            timeout=timeout,
+            writing_style_prompt=writing_style_prompt
         )
     else:
         prompt_text = custom_prompt_text
+        # Note: If custom_prompt_text is used, writing_style_prompt from args is ignored
+        # unless the custom_prompt_text itself includes {writing_style_instructions}
+        # and the user manually fills it or it's pre-filled before this function.
+        # For now, we assume custom_prompt_text is fully complete or doesn't use writing_style_instructions.
 
     chapters_dir = os.path.join(filepath, "chapters")
     os.makedirs(chapters_dir, exist_ok=True)

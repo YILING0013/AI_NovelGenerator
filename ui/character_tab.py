@@ -7,7 +7,7 @@ from utils import read_file, save_string_to_txt, clear_file_content
 from ui.context_menu import TextWidgetContextMenu
 
 def build_character_tab(self):
-    self.character_tab = self.tabview.add("Character State")
+    self.character_tab = self.tabview.add("角色状态")
     self.character_tab.rowconfigure(0, weight=0)
     self.character_tab.rowconfigure(1, weight=1)
     self.character_tab.columnconfigure(0, weight=1)

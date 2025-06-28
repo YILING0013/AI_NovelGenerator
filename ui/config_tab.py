@@ -39,8 +39,8 @@ def build_config_tabview(self):
     self.config_tabview = ctk.CTkTabview(self.config_frame)
     self.config_tabview.grid(row=0, column=0, sticky="we", padx=5, pady=5)
 
-    self.ai_config_tab = self.config_tabview.add("LLM Model settings")
-    self.embeddings_config_tab = self.config_tabview.add("Embedding settings")
+    self.ai_config_tab = self.config_tabview.add("语言模型设置")
+    self.embeddings_config_tab = self.config_tabview.add("嵌入模型设置")
 
     build_ai_config_tab(self)
     build_embeddings_config_tab(self)
@@ -263,6 +263,13 @@ def load_config_btn(self):
         self.key_items_var.set(other_params.get("key_items", ""))
         self.scene_location_var.set(other_params.get("scene_location", ""))
         self.time_constraint_var.set(other_params.get("time_constraint", ""))
+        self.user_defined_writing_style_var.set(other_params.get("user_defined_writing_style", "")) # Load writing style
+
+        custom_prompts_config = cfg.get("custom_prompts", {})
+        self.custom_prompts["first_chapter_draft"] = custom_prompts_config.get("first_chapter_draft", "")
+        self.custom_prompts["next_chapter_draft"] = custom_prompts_config.get("next_chapter_draft", "")
+        # Potentially update UI if prompts tab is already built and active
+
         self.log("已加载配置。")
     else:
         messagebox.showwarning("提示", "未找到或无法读取配置文件。")
@@ -295,7 +302,8 @@ def save_config_btn(self):
         "characters_involved": self.characters_involved_var.get(),
         "key_items": self.key_items_var.get(),
         "scene_location": self.scene_location_var.get(),
-        "time_constraint": self.time_constraint_var.get()
+        "time_constraint": self.time_constraint_var.get(),
+        "user_defined_writing_style": self.user_defined_writing_style_var.get() # Save writing style
     }
     existing_config = load_config(self.config_file)
     if not existing_config:
@@ -311,6 +319,7 @@ def save_config_btn(self):
     existing_config["embedding_configs"][current_embedding_interface] = embedding_config
 
     existing_config["other_params"] = other_params
+    existing_config["custom_prompts"] = self.custom_prompts # Save custom prompts
 
     if save_config(existing_config, self.config_file):
         messagebox.showinfo("提示", "配置已保存至 config.json")

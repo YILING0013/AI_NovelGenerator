@@ -7,7 +7,7 @@ from utils import read_file, save_string_to_txt, clear_file_content
 from ui.context_menu import TextWidgetContextMenu
 
 def build_directory_tab(self):
-    self.directory_tab = self.tabview.add("Chapter Blueprint")
+    self.directory_tab = self.tabview.add("章节大纲")
     self.directory_tab.rowconfigure(0, weight=0)
     self.directory_tab.rowconfigure(1, weight=1)
     self.directory_tab.columnconfigure(0, weight=1)

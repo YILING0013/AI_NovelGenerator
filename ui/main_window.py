@@ -33,6 +33,9 @@ from ui.directory_tab import build_directory_tab, load_chapter_blueprint, save_c
 from ui.character_tab import build_character_tab, load_character_state, save_character_state
 from ui.summary_tab import build_summary_tab, load_global_summary, save_global_summary
 from ui.chapters_tab import build_chapters_tab, refresh_chapters_list, on_chapter_selected, load_chapter_content, save_current_chapter, prev_chapter, next_chapter
+from ui.writing_style_tab import build_writing_style_tab
+from ui.prompts_tab import build_prompts_tab
+from ui.knowledge_base_tab import build_knowledge_base_tab # Import knowledge base tab builder
 
 class NovelGeneratorGUI:
     """
@@ -98,31 +101,27 @@ class NovelGeneratorGUI:
         self.embedding_retrieval_k_var = ctk.StringVar(value=str(emb_conf.get("retrieval_k", 4)))
 
         # -- 小说参数相关 --
-        if self.loaded_config and "other_params" in self.loaded_config:
-            op = self.loaded_config["other_params"]
-            self.topic_default = op.get("topic", "")
-            self.genre_var = ctk.StringVar(value=op.get("genre", "玄幻"))
-            self.num_chapters_var = ctk.StringVar(value=str(op.get("num_chapters", 10)))
-            self.word_number_var = ctk.StringVar(value=str(op.get("word_number", 3000)))
-            self.filepath_var = ctk.StringVar(value=op.get("filepath", ""))
-            self.chapter_num_var = ctk.StringVar(value=str(op.get("chapter_num", "1")))
-            self.characters_involved_var = ctk.StringVar(value=op.get("characters_involved", ""))
-            self.key_items_var = ctk.StringVar(value=op.get("key_items", ""))
-            self.scene_location_var = ctk.StringVar(value=op.get("scene_location", ""))
-            self.time_constraint_var = ctk.StringVar(value=op.get("time_constraint", ""))
-            self.user_guidance_default = op.get("user_guidance", "")
-        else:
-            self.topic_default = ""
-            self.genre_var = ctk.StringVar(value="玄幻")
-            self.num_chapters_var = ctk.StringVar(value="10")
-            self.word_number_var = ctk.StringVar(value="3000")
-            self.filepath_var = ctk.StringVar(value="")
-            self.chapter_num_var = ctk.StringVar(value="1")
-            self.characters_involved_var = ctk.StringVar(value="")
-            self.key_items_var = ctk.StringVar(value="")
-            self.scene_location_var = ctk.StringVar(value="")
-            self.time_constraint_var = ctk.StringVar(value="")
-            self.user_guidance_default = ""
+        op = self.loaded_config.get("other_params", {}) # Get other_params or an empty dict
+        self.topic_default = op.get("topic", "")
+        self.genre_var = ctk.StringVar(value=op.get("genre", "玄幻"))
+        self.num_chapters_var = ctk.StringVar(value=str(op.get("num_chapters", 10)))
+        self.word_number_var = ctk.StringVar(value=str(op.get("word_number", 3000)))
+        self.filepath_var = ctk.StringVar(value=op.get("filepath", ""))
+        self.chapter_num_var = ctk.StringVar(value=str(op.get("chapter_num", "1")))
+        self.characters_involved_var = ctk.StringVar(value=op.get("characters_involved", ""))
+        self.key_items_var = ctk.StringVar(value=op.get("key_items", ""))
+        self.scene_location_var = ctk.StringVar(value=op.get("scene_location", ""))
+        self.time_constraint_var = ctk.StringVar(value=op.get("time_constraint", ""))
+        self.user_guidance_default = op.get("user_guidance", "")
+        self.user_defined_writing_style_var = ctk.StringVar(value=op.get("user_defined_writing_style", ""))
+
+        # -- Custom Prompts --
+        custom_prompts_config = self.loaded_config.get("custom_prompts", {})
+        self.custom_prompts = {
+            "first_chapter_draft": custom_prompts_config.get("first_chapter_draft", ""),
+            "next_chapter_draft": custom_prompts_config.get("next_chapter_draft", "")
+            # Add other customizable prompts here if needed
+        }
 
         # --------------- 整体Tab布局 ---------------
         self.tabview = ctk.CTkTabview(self.master)
@@ -138,6 +137,9 @@ class NovelGeneratorGUI:
         build_character_tab(self)
         build_summary_tab(self)
         build_chapters_tab(self)
+        build_writing_style_tab(self)
+        build_prompts_tab(self)
+        build_knowledge_base_tab(self) # Build the knowledge base tab
 
     # ----------------- 通用辅助函数 -----------------
     def show_tooltip(self, key: str):
