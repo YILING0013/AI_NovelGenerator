@@ -7,13 +7,23 @@ import logging
 import re
 import time
 import traceback
+import sys
+# 确保日志支持中文
 logging.basicConfig(
     filename='app.log',      # 日志文件名
     filemode='a',            # 追加模式（'w' 会覆盖）
     level=logging.INFO,      # 记录 INFO 及以上级别的日志
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    datefmt='%Y-%m-%d %H:%M:%S',
+    encoding='utf-8'         # 设置编码为UTF-8
 )
+
+# 配置控制台输出也支持中文
+if sys.platform.startswith('win'):
+    # Windows平台配置
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 def call_with_retry(func, max_retries=3, sleep_time=2, fallback_return=None, **kwargs):
     """
     通用的重试机制封装。

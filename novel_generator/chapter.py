@@ -22,6 +22,19 @@ from novel_generator.vectorstore_utils import (
     get_relevant_context_from_vector_store,
     load_vector_store  # 添加导入
 )
+
+# 导入语言纯度检查器
+try:
+    # 尝试从项目根目录导入
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from language_purity_checker import ensure_language_purity
+    LANGUAGE_PURITY_AVAILABLE = True
+    logging.info("语言纯度检查器已加载")
+except ImportError as e:
+    logging.warning(f"语言纯度检查器导入失败: {e}")
+    LANGUAGE_PURITY_AVAILABLE = False
 logging.basicConfig(
     filename='app.log',      # 日志文件名
     filemode='a',            # 追加模式（'w' 会覆盖）
@@ -422,26 +435,34 @@ def build_chapter_prompt(
 
         # 执行向量检索
         all_contexts = []
-        from embedding_adapters import create_embedding_adapter
-        embedding_adapter = create_embedding_adapter(
-            embedding_interface_format,
-            embedding_api_key,
-            embedding_url,
-            embedding_model_name
-        )
-        
-        store = load_vector_store(embedding_adapter, filepath)
-        if store:
-            collection_size = store._collection.count()
-            actual_k = min(embedding_retrieval_k, max(1, collection_size))
-            
-            for group in keyword_groups:
-                context = get_relevant_context_from_vector_store(
-                    embedding_adapter=embedding_adapter,
-                    query=group,
-                    filepath=filepath,
-                    k=actual_k
-                )
+        from embedding_adapters import create_embedding_adapter, is_embedding_adapter_available
+
+        # 创建embedding适配器
+        embedding_adapter = None
+        try:
+            embedding_adapter = create_embedding_adapter(
+                embedding_interface_format,
+                embedding_api_key,
+                embedding_url,
+                embedding_model_name
+            )
+        except Exception as e:
+            logging.warning(f"Failed to create embedding adapter: {e}")
+
+        # 检查embedding适配器是否可用
+        if embedding_adapter and is_embedding_adapter_available(embedding_adapter):
+            store = load_vector_store(embedding_adapter, filepath)
+            if store:
+                collection_size = store._collection.count()
+                actual_k = min(embedding_retrieval_k, max(1, collection_size))
+
+                for group in keyword_groups:
+                    context = get_relevant_context_from_vector_store(
+                        embedding_adapter=embedding_adapter,
+                        query=group,
+                        filepath=filepath,
+                        k=actual_k
+                    )
                 if context:
                     if any(kw in group.lower() for kw in ["技法", "手法", "模板"]):
                         all_contexts.append(f"[TECHNIQUE] {context}")
@@ -449,6 +470,10 @@ def build_chapter_prompt(
                         all_contexts.append(f"[SETTING] {context}")
                     else:
                         all_contexts.append(f"[GENERAL] {context}")
+            else:
+                logging.info("Vector store not available, skipping knowledge retrieval")
+        else:
+            logging.warning("Embedding adapter not available, skipping vector search. This is likely due to missing API keys.")
 
         # 应用内容规则
         processed_contexts = apply_content_rules(all_contexts, novel_number)
@@ -506,6 +531,28 @@ def build_chapter_prompt(
         key_items=key_items,
         scene_location=scene_location,
         time_constraint=time_constraint,
+        # 新增的扩展字段
+        emotional_arc=chapter_info.get("emotional_arc", ""),
+        emotional_intensity=chapter_info.get("emotional_intensity", ""),
+        turning_point=chapter_info.get("turning_point", ""),
+        emotional_memory=chapter_info.get("emotional_memory", ""),
+        main_hook=chapter_info.get("main_hook", ""),
+        secondary_hook=chapter_info.get("secondary_hook", ""),
+        foreshadowing_management=chapter_info.get("foreshadowing_management", ""),
+        conflict_design=chapter_info.get("conflict_design", ""),
+        character_arc_in_chapter=chapter_info.get("character_arc_in_chapter", ""),
+        limitations=chapter_info.get("limitations", ""),
+        character_state_in_chapter=chapter_info.get("character_state_in_chapter", ""),
+        opening_design=chapter_info.get("opening_design", ""),
+        climax_arrangement=chapter_info.get("climax_arrangement", ""),
+        ending_strategy=chapter_info.get("ending_strategy", ""),
+        pacing_control=chapter_info.get("pacing_control", ""),
+        key_scene=chapter_info.get("key_scene", ""),
+        style_requirements=chapter_info.get("style_requirements", ""),
+        language_features=chapter_info.get("language_features", ""),
+        avoidance_items=chapter_info.get("avoidance_items", ""),
+        worldview_progression=chapter_info.get("worldview_progression", ""),
+        # 下一章信息
         next_chapter_number=next_chapter_number,
         next_chapter_title=next_chapter_title,
         next_chapter_role=next_chapter_role,
@@ -538,7 +585,11 @@ def generate_chapter_draft(
     interface_format: str = "openai",
     max_tokens: int = 2048,
     timeout: int = 600,
-    custom_prompt_text: str = None
+    custom_prompt_text: str = None,
+    language_purity_enabled: bool = True,
+    auto_correct_mixed_language: bool = True,
+    preserve_proper_nouns: bool = True,
+    strict_language_mode: bool = False
 ) -> str:
     """
     生成章节草稿，支持自定义提示词
@@ -585,6 +636,55 @@ def generate_chapter_draft(
     chapter_content = invoke_with_cleaning(llm_adapter, prompt_text)
     if not chapter_content.strip():
         logging.warning("Generated chapter draft is empty.")
+
+    # 语言纯度检查和修正（混合策略实现）
+    if LANGUAGE_PURITY_AVAILABLE and language_purity_enabled:
+        try:
+            # 应用语言纯度检查和自动修正
+            cleaned_content, purity_stats = ensure_language_purity(
+                chapter_content,
+                auto_clean=auto_correct_mixed_language
+            )
+
+            # 记录修正统计
+            if purity_stats.get('corrections_count', 0) > 0:
+                logging.info(f"[Language Purity] Chapter {novel_number} 语言修正: "
+                           f"替换了 {purity_stats['words_replaced']} 个英文单词, "
+                           f"保留了 {purity_stats['proper_nouns_preserved']} 个专有名词")
+
+                # 记录详细修正信息（仅记录前3个修正，避免日志过长）
+                corrections = purity_stats.get('corrections', [])[:3]
+                for correction in corrections:
+                    logging.info(f"[Language Purity] 修正: '{correction['original']}' → '{correction['replacement']}' "
+                               f"(上下文: {correction['context'][:50]}...)")
+
+            # 验证最终输出质量
+            if purity_stats.get('validation_passed', False):
+                logging.info(f"[Language Purity] Chapter {novel_number} 语言纯度验证通过")
+                chapter_content = cleaned_content
+            else:
+                if strict_language_mode:
+                    # 严格模式：如果验证未通过，记录警告但仍使用清理后的内容
+                    logging.warning(f"[Language Purity] Chapter {novel_number} 严格模式下验证未完全通过: "
+                                  f"{purity_stats.get('validation_issues', [])}")
+                else:
+                    logging.info(f"[Language Purity] Chapter {novel_number} 语言纯度验证未完全通过（非严格模式）: "
+                               f"{purity_stats.get('validation_issues', [])}")
+                # 即使验证未完全通过，也使用清理后的内容（已经有所改善）
+                chapter_content = cleaned_content
+
+        except Exception as e:
+            logging.error(f"[Language Purity] Chapter {novel_number} 语言纯度检查失败: {str(e)}")
+            if strict_language_mode:
+                # 严格模式下，检查失败则使用原始内容并记录错误
+                logging.error(f"[Language Purity] Chapter {novel_number} 严格模式下检查失败，使用原始内容")
+            # 失败时使用原始内容，确保流程不中断
+            pass
+    elif language_purity_enabled:
+        logging.info(f"[Language Purity] Chapter {novel_number} 跳过语言纯度检查（模块不可用）")
+    else:
+        logging.info(f"[Language Purity] Chapter {novel_number} 语言纯度检查已禁用")
+
     chapter_file = os.path.join(chapters_dir, f"chapter_{novel_number}.txt")
     clear_file_content(chapter_file)
     save_string_to_txt(chapter_content, chapter_file)
