@@ -1,0 +1,133 @@
+{
+  "scan_timestamp": "2025-11-09T00:00:00Z",
+  "project_name": "AI_NovelGenerator",
+  "project_type": "Python GUI Application",
+  "total_files_scanned": 147,
+  "total_directories": 8,
+  "scan_coverage_percentage": 85,
+  "root_modules": [
+    "novel_generator",
+    "ui",
+    "docs"
+  ],
+  "module_details": {
+    "novel_generator": {
+      "path": "novel_generator/",
+      "file_count": 9,
+      "main_files": ["__init__.py", "common.py", "architecture.py", "blueprint.py", "chapter.py", "finalization.py", "vectorstore_utils.py", "knowledge.py", "wordcount_utils.py"],
+      "entry_point": "__init__.py",
+      "test_coverage": "partial",
+      "has_config": false,
+      "claude_md": true,
+      "responsibilities": "核心业务逻辑 - 小说生成、向量存储、一致性验证"
+    },
+    "ui": {
+      "path": "ui/",
+      "file_count": 15,
+      "main_files": ["__init__.py", "main_window.py", "config_tab.py", "novel_params_tab.py", "setting_tab.py", "directory_tab.py", "character_tab.py", "summary_tab.py", "chapters_tab.py", "generation_handlers.py", "other_settings.py", "context_menu.py", "helpers.py", "main_tab.py", "role_library.py"],
+      "entry_point": "main_window.py",
+      "test_coverage": "none",
+      "has_config": false,
+      "claude_md": true,
+      "responsibilities": "图形用户界面 - CustomTkinter GUI系统"
+    },
+    "docs": {
+      "path": "docs/",
+      "file_count": 6,
+      "main_files": ["README_NEW.md", "DEVELOPMENT.md", "USER_MANUAL.md", "API_REFERENCE.md", "DEPLOYMENT.md", "DOCUMENTATION_INDEX.md"],
+      "entry_point": "DOCUMENTATION_INDEX.md",
+      "test_coverage": "N/A",
+      "has_config": false,
+      "claude_md": true,
+      "responsibilities": "项目文档 - 用户手册、开发指南、API参考"
+    }
+  },
+  "core_files": {
+    "main": {
+      "path": "main.py",
+      "type": "entry_point",
+      "description": "应用入口，启动CustomTkinter GUI"
+    },
+    "config_manager": {
+      "path": "config_manager.py",
+      "type": "configuration",
+      "description": "配置管理系统，支持热重载"
+    },
+    "llm_adapters": {
+      "path": "llm_adapters.py",
+      "type": "adapter",
+      "description": "LLM接口适配器，支持多种服务"
+    },
+    "embedding_adapters": {
+      "path": "embedding_adapters.py",
+      "type": "adapter",
+      "description": "Embedding接口适配器"
+    },
+    "chapter_directory_parser": {
+      "path": "chapter_directory_parser.py",
+      "type": "parser",
+      "description": "章节目录解析器，支持24个字段"
+    },
+    "prompt_definitions": {
+      "path": "prompt_definitions.py",
+      "type": "configuration",
+      "description": "AI提示词定义和模板"
+    },
+    "utils": {
+      "path": "utils.py",
+      "type": "utility",
+      "description": "通用工具函数"
+    },
+    "tooltips": {
+      "path": "tooltips.py",
+      "type": "utility",
+      "description": "界面提示文本"
+    }
+  },
+  "test_files": {
+    "count": 15,
+    "main_tests": ["test_single_chapter.py", "test_auto_consistency.py", "test_blueprint_fix.py", "test_validation.py", "test_language_purity.py"],
+    "performance_tests": ["performance_analysis.py", "llm_performance_test.py", "gui_performance_test.py"],
+    "integration_tests": ["test_optimization_integration.py", "test_consistency_optimization.py"]
+  },
+  "dependencies": {
+    "python_version": "3.8+",
+    "main_packages": ["customtkinter>=5.2.2", "chromadb>=1.0.20", "langchain>=0.3.27", "openai>=1.106.1", "transformers>=4.56.1"],
+    "total_packages": 147
+  },
+  "coverage_gaps": {
+    "ui_module_testing": {
+      "severity": "high",
+      "description": "UI模块缺乏自动化测试",
+      "recommendation": "添加GUI组件测试和用户交互测试"
+    },
+    "architecture_testing": {
+      "severity": "medium",
+      "description": "架构生成模块测试覆盖不完整",
+      "recommendation": "完善架构生成的单元测试"
+    },
+    "api_documentation": {
+      "severity": "low",
+      "description": "部分API接口文档需要更新",
+      "recommendation": "同步API文档与最新代码实现"
+    }
+  },
+  "truncated": false,
+  "scan_duration_ms": 2000,
+  "next_scan_priorities": [
+    "ui/chapters_tab.py - 章节编辑界面核心逻辑",
+    "ui/generation_handlers.py - 业务逻辑处理接口",
+    "novel_generator/vectorstore_utils.py - 向量存储实现",
+    "novel_generator/architecture.py - 架构生成核心算法",
+    "performance optimization files - 性能分析和优化脚本"
+  ],
+  "special_features": {
+    "mermaid_diagram": true,
+    "navigation_breadcrumbs": true,
+    "multi_module_documentation": true,
+    "chinese_localization": true,
+    "auto_consistency_verification": true,
+    "multi_llm_support": true,
+    "zero_tolerance_omission": true
+  }
+}
