@@ -68,10 +68,10 @@ def create_config(config_file: str) -> dict:
     "other_params": {
         "topic": "",
         "genre": "",
-        "num_chapters": 0,
-        "word_number": 0,
+        "num_chapters": 50,
+        "word_number": 3000,
         "filepath": "",
-        "chapter_num": "120",
+        "chapter_num": "1",
         "user_guidance": "",
         "characters_involved": "",
         "key_items": "",
@@ -114,6 +114,11 @@ def test_llm_config(interface_format, api_key, base_url, model_name, temperature
     def task():
         try:
             log_func("开始测试LLM配置...")
+            log_func(f"接口格式: {interface_format}")
+            log_func(f"Base URL: {base_url}")
+            log_func(f"模型名称: {model_name}")
+            log_func(f"API Key: {'已配置' if api_key else '未配置'}")
+
             llm_adapter = create_llm_adapter(
                 interface_format=interface_format,
                 base_url=base_url,
@@ -125,14 +130,27 @@ def test_llm_config(interface_format, api_key, base_url, model_name, temperature
             )
 
             test_prompt = "Please reply 'OK'"
+            log_func(f"发送测试提示: {test_prompt}")
+
             response = llm_adapter.invoke(test_prompt)
-            if response:
+            if response and response.strip():
                 log_func("✅ LLM配置测试成功！")
                 log_func(f"测试回复: {response}")
             else:
                 log_func("❌ LLM配置测试失败：未获取到响应")
+                log_func("💡 可能的原因:")
+                log_func("  1. API Key无效或已过期")
+                log_func("  2. 网络连接问题")
+                log_func("  3. 模型名称不正确")
+                log_func("  4. Base URL不正确")
+                log_func("  5. 请求超时")
+                log_func("请检查app.log文件获取详细错误信息")
         except Exception as e:
             log_func(f"❌ LLM配置测试出错: {str(e)}")
+            log_func("💡 请检查:")
+            log_func("  1. API Key格式是否正确")
+            log_func("  2. 网络连接是否正常")
+            log_func("  3. 模型服务是否可用")
             handle_exception_func("测试LLM配置时出错")
 
     threading.Thread(target=task, daemon=True).start()

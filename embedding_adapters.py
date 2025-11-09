@@ -311,3 +311,18 @@ def create_embedding_adapter(
         return SiliconFlowEmbeddingAdapter(api_key, base_url, model_name)
     else:
         raise ValueError(f"Unknown embedding interface_format: {interface_format}")
+
+def is_embedding_adapter_available(adapter: BaseEmbeddingAdapter) -> bool:
+    """
+    检查embedding适配器是否可用（API密钥是否有效）
+    """
+    if not adapter:
+        return False
+
+    try:
+        # 尝试生成一个简单的测试embedding
+        test_result = adapter.embed_query("test")
+        return test_result is not None and len(test_result) > 0
+    except Exception as e:
+        logging.warning(f"Embedding adapter validation failed: {e}")
+        return False

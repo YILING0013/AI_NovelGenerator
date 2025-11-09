@@ -389,6 +389,171 @@ class GrokAdapter(BaseLLMAdapter):
             logging.error(f"Grok API 调用失败: {e}")
             return ""
 
+class ZhipuAdapter(BaseLLMAdapter):
+    """
+    适配智谱AI GLM API接口
+    智谱AI使用OpenAI兼容的API格式，但需要特殊的API Key格式和headers
+    """
+    def __init__(self, api_key: str, base_url: str, model_name: str, max_tokens: int, temperature: float = 0.7, timeout: Optional[int] = 600):
+        # 智谱AI需要特殊处理，不能使用check_base_url因为它会添加/v1
+        self.base_url = self._process_zhipu_base_url(base_url)
+        self.api_key = api_key
+        self.model_name = model_name
+        self.max_tokens = max_tokens
+        self.temperature = temperature
+        self.timeout = timeout
+
+        # 智谱AI需要特殊的默认headers
+        self._client = OpenAI(
+            api_key=self.api_key,
+            base_url=self.base_url,
+            timeout=self.timeout,
+            default_headers={
+                "Content-Type": "application/json"
+            }
+        )
+
+    def _process_zhipu_base_url(self, url: str) -> str:
+        """
+        智谱AI专用的URL处理逻辑 - 支持新旧API端点
+        """
+        url = url.strip()
+        if not url:
+            return url
+
+        if url.endswith('#'):
+            return url.rstrip('#')
+
+        # 支持新的anthropic端点 - 直接使用
+        if '/anthropic/v1/messages' in url:
+            return url.rstrip('/')
+
+        # 支持旧版本v4端点 - 需要OpenAI兼容接口
+        if '/api/paas/v4' in url:
+            return url.rstrip('/') if not url.endswith('/v4') else url
+
+        # 如果URL已经包含chat/completions，直接返回
+        if url.endswith('/chat/completions'):
+            return url
+
+        # 智谱AI标准接口应该是 /api/paas/v4
+        if '/v4' in url:
+            # 确保不会重复添加/v4
+            if not url.endswith('/v4'):
+                if '/v4/' in url:
+                    url = url.split('/v4/')[0] + '/v4'
+                else:
+                    url = url.split('/v4')[0] + '/v4'
+            return url
+
+        # 默认情况下，添加智谱AI标准路径
+        return url.rstrip('/') + '/api/paas/v4'
+
+    def invoke(self, prompt: str) -> str:
+        try:
+            logging.info(f"智谱AI API 调用 - 模型: {self.model_name}, base_url: {self.base_url}")
+            logging.info(f"请求参数 - max_tokens: {self.max_tokens}, temperature: {self.temperature}, timeout: {self.timeout}")
+
+            # 根据base_url判断使用哪种API格式
+            if '/anthropic/v1/messages' in self.base_url:
+                # 使用Anthropic格式API
+                return self._invoke_anthropic_api(prompt)
+            else:
+                # 使用OpenAI兼容格式API
+                return self._invoke_openai_api(prompt)
+
+        except Exception as e:
+            error_msg = str(e)
+            error_type = type(e).__name__
+            logging.error(f"智谱AI API 调用失败 - 错误类型: {error_type}, 错误信息: {error_msg}")
+            logging.error(f"智谱AI API 调用参数 - api_key前缀: {self.api_key[:10] if self.api_key else 'None'}...")
+
+            # 特殊处理常见错误
+            if "429" in error_msg or "rate limit" in error_msg.lower():
+                logging.error("智谱AI 速率限制错误 - 请稍后重试或检查账户余额")
+            elif "404" in error_msg:
+                logging.error("智谱AI 404错误 - 请检查模型名称或API地址是否正确")
+            elif "401" in error_msg:
+                logging.error("智谱AI 认证错误 - 请检查API Key是否有效")
+
+            return ""
+
+    def _invoke_anthropic_api(self, prompt: str) -> str:
+        """使用Anthropic格式API调用"""
+        try:
+            import requests
+
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+                "anthropic-version": "2023-06-01"
+            }
+
+            data = {
+                "model": self.model_name,
+                "max_tokens": self.max_tokens,
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": self.temperature
+            }
+
+            response = requests.post(
+                self.base_url,
+                headers=headers,
+                json=data,
+                timeout=self.timeout
+            )
+
+            response.raise_for_status()
+            result = response.json()
+
+            if "content" in result and result["content"]:
+                if isinstance(result["content"], list) and result["content"]:
+                    content = result["content"][0].get("text", "")
+                elif isinstance(result["content"], str):
+                    content = result["content"]
+                else:
+                    content = str(result["content"])
+
+                logging.info(f"智谱AI Anthropic API 成功获取响应: {content[:100]}...")
+                return content
+            else:
+                logging.warning("智谱AI Anthropic API 响应为空或无content")
+                return ""
+
+        except Exception as e:
+            logging.error(f"智谱AI Anthropic API 调用失败: {e}")
+            raise
+
+    def _invoke_openai_api(self, prompt: str) -> str:
+        """使用OpenAI兼容格式API调用"""
+        try:
+            response = self._client.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": "你是智谱AI训练的大语言模型，请遵循用户的指示提供帮助。"},
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+                timeout=self.timeout
+            )
+
+            logging.info(f"智谱AI OpenAI API 响应: {response}")
+
+            if response and response.choices:
+                content = response.choices[0].message.content
+                logging.info(f"智谱AI OpenAI API 成功获取响应: {content[:100]}...")
+                return content
+            else:
+                logging.warning("智谱AI OpenAI API 响应为空或无choices")
+                return ""
+
+        except Exception as e:
+            logging.error(f"智谱AI OpenAI API 调用失败: {e}")
+            raise
+
 def create_llm_adapter(
     interface_format: str,
     base_url: str,
@@ -424,5 +589,7 @@ def create_llm_adapter(
         return SiliconFlowAdapter(api_key, base_url, model_name, max_tokens, temperature, timeout)
     elif fmt == "grok":
         return GrokAdapter(api_key, base_url, model_name, max_tokens, temperature, timeout)
+    elif fmt == "智谱ai" or fmt == "智谱AI" or fmt == "zhipuai" or fmt == "zhipu":
+        return ZhipuAdapter(api_key, base_url, model_name, max_tokens, temperature, timeout)
     else:
         raise ValueError(f"Unknown interface_format: {interface_format}")
