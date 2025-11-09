@@ -17,7 +17,7 @@ from tooltips import tooltips
 from ui.context_menu import TextWidgetContextMenu
 from ui.main_tab import build_main_tab, build_left_layout, build_right_layout
 from ui.config_tab import build_config_tabview, load_config_btn, save_config_btn
-from ui.novel_params_tab import build_novel_params_area, build_optional_buttons_area
+from ui.novel_params_tab import build_novel_params_area, build_optional_buttons_area, add_save_button_to_params, save_novel_params_config
 from ui.generation_handlers import (
     generate_novel_architecture_ui,
     generate_chapter_blueprint_ui,
@@ -42,6 +42,7 @@ class NovelGeneratorGUI:
     小说生成器的主GUI类，包含所有的界面布局、事件处理、与后端逻辑的交互等。
     """
     def __init__(self, master):
+        performance_monitor.start_monitoring()
         self.master = master
         self.master.title("Novel Generator GUI")
         try:
@@ -167,6 +168,28 @@ class NovelGeneratorGUI:
         self.tabview = ctk.CTkTabview(self.master)
         self.tabview.pack(fill="both", expand=True)
 
+        # 绑定小说参数保存函数（在创建GUI组件之前）
+        self.add_save_button_to_params = lambda: add_save_button_to_params(self)
+
+        # 创建一个保存函数，包含防抖机制
+        def save_novel_params_config_with_debounce():
+            """带防抖机制的保存函数"""
+            # 防抖机制：如果已经有一个保存计划，先取消它
+            if hasattr(self, '_save_pending_timer'):
+                self.master.after_cancel(self._save_pending_timer)
+            # 计划新的保存操作
+            self._save_pending_timer = self.master.after(500, self._do_save_novel_params_config)
+
+        def do_save_novel_params_config():
+            """实际执行保存操作"""
+            save_novel_params_config(self)
+            # 清除待保存标记
+            if hasattr(self, '_save_pending_timer'):
+                delattr(self, '_save_pending_timer')
+
+        self.save_novel_params_config = save_novel_params_config_with_debounce
+        self._do_save_novel_params_config = do_save_novel_params_config
+
         # 创建各个标签页
         build_main_tab(self)
         build_config_tabview(self)
@@ -178,6 +201,31 @@ class NovelGeneratorGUI:
         build_summary_tab(self)
         build_chapters_tab(self)
         build_other_settings_tab(self)
+
+        # 设置窗口关闭时的自动保存
+        self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def on_closing(self):
+        """窗口关闭时的处理函数"""
+        try:
+            # 保存小说参数配置
+            if hasattr(self, 'save_novel_params_config'):
+                self.save_novel_params_config()
+
+            # 保存Embedding配置
+            if hasattr(self, 'auto_save_embedding_config'):
+                # 立即执行保存，不使用防抖
+                if hasattr(self, '_embedding_save_timer'):
+                    self.master.after_cancel(self._embedding_save_timer)
+                    delattr(self, '_embedding_save_timer')
+                self._do_save_embedding_config()
+
+            # 可以在这里添加其他保存逻辑
+            print("应用程序正在关闭，配置已自动保存")
+        except Exception as e:
+            print(f"关闭时保存配置出错: {e}")
+        finally:
+            self.master.destroy()
 
 
     # ----------------- 通用辅助函数 -----------------

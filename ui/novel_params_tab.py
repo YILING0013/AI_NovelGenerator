@@ -4,6 +4,7 @@ import customtkinter as ctk
 from tkinter import filedialog, messagebox
 from ui.context_menu import TextWidgetContextMenu
 from tooltips import tooltips
+from config_manager import save_config
 
 def build_novel_params_area(self, start_row=1):
     self.params_frame = ctk.CTkScrollableFrame(self.right_frame, orientation="vertical")
@@ -17,6 +18,16 @@ def build_novel_params_area(self, start_row=1):
     self.topic_text.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
     if hasattr(self, 'topic_default') and self.topic_default:
         self.topic_text.insert("0.0", self.topic_default)
+
+    # 为主题文本框添加修改事件绑定（延迟保存）
+    def on_topic_change(event=None):
+        # 延迟保存，避免频繁保存
+        if hasattr(self, '_topic_save_timer'):
+            self.master.after_cancel(self._topic_save_timer)
+        self._topic_save_timer = self.master.after(2000, self.save_novel_params_config)  # 2秒后保存
+
+    self.topic_text.bind("<KeyRelease>", on_topic_change)
+    self.topic_text.bind("<ButtonRelease>", on_topic_change)
 
     # 2) 类型(Genre)
     create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="类型(Genre):", tooltip_key="genre", row=1, column=0, font=("Microsoft YaHei", 12))
@@ -38,6 +49,16 @@ def build_novel_params_area(self, start_row=1):
     word_number_entry = ctk.CTkEntry(chapter_word_frame, textvariable=self.word_number_var, width=60, font=("Microsoft YaHei", 12))
     word_number_entry.grid(row=0, column=3, padx=5, pady=5, sticky="w")
 
+    # 为数字输入字段添加修改事件绑定
+    def on_numbers_change(*args):
+        # 延迟保存，避免频繁保存
+        if hasattr(self, '_numbers_save_timer'):
+            self.master.after_cancel(self._numbers_save_timer)
+        self._numbers_save_timer = self.master.after(1500, self.save_novel_params_config)  # 1.5秒后保存
+
+    self.num_chapters_var.trace_add("write", on_numbers_change)
+    self.word_number_var.trace_add("write", on_numbers_change)
+
     # 4) 保存路径
     row_fp = 3
     create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="保存路径:", tooltip_key="filepath", row=row_fp, column=0, font=("Microsoft YaHei", 12))
@@ -48,6 +69,15 @@ def build_novel_params_area(self, start_row=1):
     filepath_entry.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
     browse_btn = ctk.CTkButton(self.filepath_frame, text="浏览...", command=self.browse_folder, width=60, font=("Microsoft YaHei", 12))
     browse_btn.grid(row=0, column=1, padx=5, pady=5, sticky="e")
+
+    # 为保存路径添加修改事件绑定
+    def on_filepath_change(*args):
+        # 延迟保存，避免频繁保存
+        if hasattr(self, '_filepath_save_timer'):
+            self.master.after_cancel(self._filepath_save_timer)
+        self._filepath_save_timer = self.master.after(1500, self.save_novel_params_config)  # 1.5秒后保存
+
+    self.filepath_var.trace_add("write", on_filepath_change)
 
     # 5) 章节号
     row_chap_num = 4
@@ -98,6 +128,9 @@ def build_novel_params_area(self, start_row=1):
     time_const_entry = ctk.CTkEntry(self.params_frame, textvariable=self.time_constraint_var, font=("Microsoft YaHei", 12))
     time_const_entry.grid(row=row_idx, column=1, padx=5, pady=5, sticky="ew")
 
+    # 添加保存按钮
+    self.add_save_button_to_params()
+
 def build_optional_buttons_area(self, start_row=2):
     self.optional_btn_frame = ctk.CTkFrame(self.right_frame)
     self.optional_btn_frame.grid(row=start_row, column=0, sticky="ew", padx=5, pady=5)
@@ -144,3 +177,75 @@ def create_label_with_help_for_novel_params(self, parent, label_text, tooltip_ke
                         command=lambda: messagebox.showinfo("参数说明", tooltips.get(tooltip_key, "暂无说明")))
     btn.pack(side="left", padx=3)
     return frame
+
+def save_novel_params_config(self):
+    """保存小说参数配置到配置文件"""
+    try:
+        # 获取当前GUI中的值
+        topic_text = self.topic_text.get("0.0", "end").strip() if hasattr(self, 'topic_text') else ""
+        genre = self.genre_var.get() if hasattr(self, 'genre_var') else ""
+        num_chapters = self.num_chapters_var.get() if hasattr(self, 'num_chapters_var') else "10"
+        word_number = self.word_number_var.get() if hasattr(self, 'word_number_var') else "3000"
+        filepath = self.filepath_var.get() if hasattr(self, 'filepath_var') else ""
+        chapter_num = self.chapter_num_var.get() if hasattr(self, 'chapter_num_var') else "1"
+        characters_involved = self.char_inv_text.get("0.0", "end").strip() if hasattr(self, 'char_inv_text') else ""
+        key_items = self.key_items_var.get() if hasattr(self, 'key_items_var') else ""
+        scene_location = self.scene_location_var.get() if hasattr(self, 'scene_location_var') else ""
+        time_constraint = self.time_constraint_var.get() if hasattr(self, 'time_constraint_var') else ""
+        user_guidance = self.user_guide_text.get("0.0", "end").strip() if hasattr(self, 'user_guide_text') else ""
+
+        # 更新配置对象
+        if not hasattr(self, 'loaded_config') or not self.loaded_config:
+            self.loaded_config = {}
+
+        if "other_params" not in self.loaded_config:
+            self.loaded_config["other_params"] = {}
+
+        # 更新配置值
+        parsed_num_chapters = int(num_chapters) if num_chapters.isdigit() and int(num_chapters) > 0 else 50
+        parsed_word_number = int(word_number) if word_number.isdigit() and int(word_number) > 0 else 3000
+
+        self.loaded_config["other_params"].update({
+            "topic": topic_text,
+            "genre": genre,
+            "num_chapters": parsed_num_chapters,
+            "word_number": parsed_word_number,
+            "filepath": filepath,
+            "chapter_num": chapter_num,
+            "user_guidance": user_guidance,
+            "characters_involved": characters_involved,
+            "key_items": key_items,
+            "scene_location": scene_location,
+            "time_constraint": time_constraint
+        })
+
+        # 保存到文件
+        if save_config(self.loaded_config, self.config_file):
+            print("小说参数配置已保存")
+            if hasattr(self, 'log'):
+                self.log("小说参数配置已自动保存")
+        else:
+            print("保存小说参数配置失败")
+            if hasattr(self, 'log'):
+                self.log("保存小说参数配置失败")
+
+    except Exception as e:
+        print(f"保存小说参数配置时出错: {e}")
+        if hasattr(self, 'log'):
+            self.log(f"保存小说参数配置时出错: {e}")
+
+def add_save_button_to_params(self):
+    """在小说参数区域添加保存按钮"""
+    if hasattr(self, 'params_frame'):
+        save_btn_frame = ctk.CTkFrame(self.params_frame)
+        save_btn_frame.grid(row=20, column=0, columnspan=2, pady=10, sticky="ew")
+        save_btn_frame.columnconfigure(0, weight=1)
+
+        save_btn = ctk.CTkButton(
+            save_btn_frame,
+            text="保存小说参数配置",
+            command=self.save_novel_params_config,
+            font=("Microsoft YaHei", 12),
+            width=150
+        )
+        save_btn.grid(row=0, column=0, pady=5)

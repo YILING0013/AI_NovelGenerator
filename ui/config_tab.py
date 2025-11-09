@@ -346,7 +346,7 @@ def build_ai_config_tab(self):
     # 3) 接口格式
     create_label_with_help(self, self.ai_config_tab, "接口格式:", "interface_format", row_start+2, 0)
     self.interface_format_var = ctk.StringVar(value="OpenAI")
-    interface_options = ["OpenAI", "Azure OpenAI", "Ollama", "DeepSeek", "Gemini", "ML Studio"]
+    interface_options = ["OpenAI", "Azure OpenAI", "Ollama", "DeepSeek", "Gemini", "ML Studio", "智谱AI"]
     interface_dropdown = ctk.CTkOptionMenu(
         self.ai_config_tab,
         values=interface_options,
@@ -508,6 +508,66 @@ def build_embeddings_config_tab(self):
                 self.embedding_url_var.set("https://api.siliconflow.cn/v1/embeddings")
                 self.embedding_model_name_var.set("BAAI/bge-m3")
 
+        # 触发自动保存
+        self.auto_save_embedding_config()
+
+    def auto_save_embedding_config():
+        """自动保存Embedding配置（带防抖）"""
+        # 防抖机制：如果已经有一个保存计划，先取消它
+        if hasattr(self, '_embedding_save_timer'):
+            self.master.after_cancel(self._embedding_save_timer)
+
+        # 计划新的保存操作
+        self._embedding_save_timer = self.master.after(1500, self._do_save_embedding_config)
+
+    def _do_save_embedding_config():
+        """实际执行Embedding配置保存操作"""
+        try:
+            current_embedding_interface = self.embedding_interface_format_var.get().strip()
+
+            embedding_config = {
+                "api_key": self.embedding_api_key_var.get(),
+                "base_url": self.embedding_url_var.get(),
+                "model_name": self.embedding_model_name_var.get(),
+                "retrieval_k": self.safe_get_int(self.embedding_retrieval_k_var, 4),
+                "interface_format": current_embedding_interface
+            }
+
+            # 更新配置对象
+            if not hasattr(self, 'loaded_config') or not self.loaded_config:
+                self.loaded_config = {}
+
+            if "embedding_configs" not in self.loaded_config:
+                self.loaded_config["embedding_configs"] = {}
+
+            self.loaded_config["embedding_configs"][current_embedding_interface] = embedding_config
+
+            # 更新last_embedding_interface_format
+            self.loaded_config["last_embedding_interface_format"] = current_embedding_interface
+
+            # 保存到文件
+            if save_config(self.loaded_config, self.config_file):
+                print("Embedding配置已自动保存")
+                if hasattr(self, 'log'):
+                    self.log("Embedding配置已自动保存")
+            else:
+                print("Embedding配置保存失败")
+                if hasattr(self, 'log'):
+                    self.log("Embedding配置保存失败")
+
+        except Exception as e:
+            print(f"自动保存Embedding配置时出错: {e}")
+            if hasattr(self, 'log'):
+                self.log(f"自动保存Embedding配置时出错: {e}")
+        finally:
+            # 清除待保存标记
+            if hasattr(self, '_embedding_save_timer'):
+                delattr(self, '_embedding_save_timer')
+
+    # 将函数绑定到self，供其他地方调用
+    self.auto_save_embedding_config = auto_save_embedding_config
+    self._do_save_embedding_config = _do_save_embedding_config
+
     for i in range(5):
         self.embeddings_config_tab.grid_rowconfigure(i, weight=0)
     self.embeddings_config_tab.grid_columnconfigure(0, weight=0)
@@ -518,6 +578,11 @@ def build_embeddings_config_tab(self):
     create_label_with_help(self, parent=self.embeddings_config_tab, label_text="Embedding API Key:", tooltip_key="embedding_api_key", row=0, column=0, font=("Microsoft YaHei", 12))
     emb_api_key_entry = ctk.CTkEntry(self.embeddings_config_tab, textvariable=self.embedding_api_key_var, font=("Microsoft YaHei", 12), show="*")
     emb_api_key_entry.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
+
+    # 添加API Key的trace绑定来触发自动保存
+    def on_embedding_api_key_changed(*args):
+        self.auto_save_embedding_config()
+    self.embedding_api_key_var.trace_add("write", on_embedding_api_key_changed)
 
     # 2) Embedding 接口格式
     create_label_with_help(self, parent=self.embeddings_config_tab, label_text="Embedding 接口格式:", tooltip_key="embedding_intexrface_format", row=1, column=0, font=("Microsoft YaHei", 12))
@@ -532,15 +597,30 @@ def build_embeddings_config_tab(self):
     emb_url_entry = ctk.CTkEntry(self.embeddings_config_tab, textvariable=self.embedding_url_var, font=("Microsoft YaHei", 12))
     emb_url_entry.grid(row=2, column=1, padx=5, pady=5, sticky="nsew")
 
+    # 添加Base URL的trace绑定来触发自动保存
+    def on_embedding_url_changed(*args):
+        self.auto_save_embedding_config()
+    self.embedding_url_var.trace_add("write", on_embedding_url_changed)
+
     # 4) Embedding Model Name
     create_label_with_help(self, parent=self.embeddings_config_tab, label_text="Embedding Model Name:", tooltip_key="embedding_model_name", row=3, column=0, font=("Microsoft YaHei", 12))
     emb_model_name_entry = ctk.CTkEntry(self.embeddings_config_tab, textvariable=self.embedding_model_name_var, font=("Microsoft YaHei", 12))
     emb_model_name_entry.grid(row=3, column=1, padx=5, pady=5, sticky="nsew")
 
+    # 添加Model Name的trace绑定来触发自动保存
+    def on_embedding_model_name_changed(*args):
+        self.auto_save_embedding_config()
+    self.embedding_model_name_var.trace_add("write", on_embedding_model_name_changed)
+
     # 5) Retrieval Top-K
     create_label_with_help(self, parent=self.embeddings_config_tab, label_text="Retrieval Top-K:", tooltip_key="embedding_retrieval_k", row=4, column=0, font=("Microsoft YaHei", 12))
     emb_retrieval_k_entry = ctk.CTkEntry(self.embeddings_config_tab, textvariable=self.embedding_retrieval_k_var, font=("Microsoft YaHei", 12))
     emb_retrieval_k_entry.grid(row=4, column=1, padx=5, pady=5, sticky="nsew")
+
+    # 添加Retrieval K的trace绑定来触发自动保存
+    def on_embedding_retrieval_k_changed(*args):
+        self.auto_save_embedding_config()
+    self.embedding_retrieval_k_var.trace_add("write", on_embedding_retrieval_k_changed)
 
     # 添加测试按钮
     test_btn = ctk.CTkButton(self.embeddings_config_tab, text="测试配置", command=self.test_embedding_config, font=("Microsoft YaHei", 12))
