@@ -1,0 +1,256 @@
+{
+  "name": "cuitaochina-marketplace",
+  "version": "1.0.0",
+  "description": "Claude Code Marketplace - cuitaochina的精选插件和MCP服务器配置",
+  "author": "cuitaochina",
+  "repository": "https://github.com/cuitaochina/marketplace",
+  "license": "MIT",
+  "owner": {
+    "name": "cuitaochina",
+    "url": "https://github.com/cuitaochina"
+  },
+  "plugins": [
+    {
+      "name": "python-expert",
+      "description": "Production-ready Python expert with SOLID principles and modern best practices",
+      "category": "development",
+      "keywords": ["python", "development", "expert", "production"]
+    },
+    {
+      "name": "backend-architect",
+      "description": "Design reliable backend systems with focus on data integrity, security, and fault tolerance",
+      "category": "development",
+      "keywords": ["backend", "architecture", "api", "design"]
+    },
+    {
+      "name": "python-pro",
+      "description": "Master Python 3.12+ with modern features, async programming, and production-ready practices",
+      "category": "development",
+      "keywords": ["python", "async", "performance", "production"]
+    },
+    {
+      "name": "fastapi-pro",
+      "description": "Build high-performance async APIs with FastAPI, SQLAlchemy 2.0, and Pydantic V2",
+      "category": "development",
+      "keywords": ["fastapi", "api", "async", "python"]
+    },
+    {
+      "name": "django-pro",
+      "description": "Master Django 5.x with async views, DRF, Celery, and Django Channels",
+      "category": "development",
+      "keywords": ["django", "web", "async", "python"]
+    },
+    {
+      "name": "code-reviewer",
+      "description": "Elite code review specialist for security vulnerabilities and performance optimization",
+      "category": "development",
+      "keywords": ["code-review", "security", "quality", "best-practices"]
+    },
+    {
+      "name": "debugger",
+      "description": "Debugging specialist for errors, test failures, and unexpected behavior",
+      "category": "development",
+      "keywords": ["debugging", "troubleshooting", "errors", "testing"]
+    },
+    {
+      "name": "enterprise-security-reviewer",
+      "description": "Enterprise security specialist for comprehensive cybersecurity and compliance frameworks",
+      "category": "security",
+      "keywords": ["security", "enterprise", "compliance", "audit"]
+    },
+    {
+      "name": "database-performance-optimizer",
+      "description": "Expert database optimization specialist for query tuning and scalable architectures",
+      "category": "development",
+      "keywords": ["database", "performance", "optimization", "sql"]
+    },
+    {
+      "name": "ai-engineer",
+      "description": "Build production-ready LLM applications, RAG systems, and intelligent agents",
+      "category": "ai",
+      "keywords": ["ai", "llm", "rag", "machine-learning"]
+    },
+    {
+      "name": "code-architect",
+      "description": "Master software architect for clean architecture, microservices, and design patterns",
+      "category": "development",
+      "keywords": ["architecture", "design-patterns", "clean-code", "microservices"]
+    },
+    {
+      "name": "unit-testing",
+      "description": "Master comprehensive testing strategies with pytest, fixtures, and mocking",
+      "category": "testing",
+      "keywords": ["testing", "pytest", "tdd", "quality"]
+    },
+    {
+      "name": "api-testing-observability",
+      "description": "API testing with comprehensive observability strategies and monitoring",
+      "category": "testing",
+      "keywords": ["api-testing", "observability", "monitoring", "testing"]
+    },
+    {
+      "name": "document-skills",
+      "description": "Collection of document processing suite including Excel, Word, PowerPoint, and PDF",
+      "category": "productivity",
+      "keywords": ["documents", "office", "productivity", "processing"]
+    },
+    {
+      "name": "example-skills",
+      "description": "Collection of example skills demonstrating various capabilities",
+      "category": "examples",
+      "keywords": ["examples", "demos", "capabilities", "skills"]
+    }
+  ],
+  "mcpServers": [
+    {
+      "name": "context7",
+      "description": "Documentation and knowledge base server with advanced context retrieval",
+      "install": "npx -y @upstash/context7-mcp@latest",
+      "category": "productivity",
+      "keywords": ["documentation", "knowledge", "context", "search"]
+    },
+    {
+      "name": "open-websearch",
+      "description": "Multi-engine web search with DuckDuckGo, Bing, and Brave support",
+      "install": "npx -y open-websearch@latest",
+      "env": {
+        "MODE": "stdio",
+        "DEFAULT_SEARCH_ENGINE": "duckduckgo",
+        "ALLOWED_SEARCH_ENGINES": "duckduckgo,bing,brave"
+      },
+      "category": "search",
+      "keywords": ["web-search", "search", "research", "information"]
+    },
+    {
+      "name": "spec-workflow",
+      "description": "Specification workflow management for project requirements and design",
+      "install": "npx -y @pimzino/spec-workflow-mcp@latest",
+      "category": "productivity",
+      "keywords": ["specifications", "workflow", "requirements", "design"]
+    },
+    {
+      "name": "mcp-deepwiki",
+      "description": "Deep Wikipedia integration for comprehensive knowledge retrieval",
+      "install": "npx -y mcp-deepwiki@latest",
+      "category": "knowledge",
+      "keywords": ["wikipedia", "knowledge", "research", "encyclopedia"]
+    },
+    {
+      "name": "Playwright",
+      "description": "Browser automation and web testing with Playwright",
+      "install": "npx -y @playwright/mcp@latest",
+      "category": "testing",
+      "keywords": ["browser", "automation", "testing", "playwright"]
+    },
+    {
+      "name": "exa",
+      "description": "AI-powered search and code context engine",
+      "install": "npx -y exa-mcp-server@latest",
+      "env": {
+        "EXA_API_KEY": "YOUR_EXA_API_KEY"
+      },
+      "category": "search",
+      "keywords": ["ai-search", "code-search", "context", "search"]
+    },
+    {
+      "name": "filesystem",
+      "description": "Official filesystem access server for file operations",
+      "install": "npx @modelcontextprotocol/server-filesystem",
+      "args": ["/path/to/directory"],
+      "category": "productivity",
+      "keywords": ["filesystem", "files", "productivity", "access"]
+    },
+    {
+      "name": "notion",
+      "description": "Official Notion integration server for document management",
+      "install": "npx @notionhq/notion-mcp-server",
+      "category": "productivity",
+      "keywords": ["notion", "documents", "productivity", "integration"]
+    },
+    {
+      "name": "sentry",
+      "description": "Sentry integration for error monitoring and performance tracking",
+      "install": "npx @sentry/mcp-server",
+      "category": "monitoring",
+      "keywords": ["sentry", "monitoring", "errors", "performance"]
+    },
+    {
+      "name": "supabase",
+      "description": "Supabase integration for database and backend services",
+      "install": "npx @supabase/mcp-server-supabase",
+      "category": "database",
+      "keywords": ["supabase", "database", "backend", "postgresql"]
+    }
+  ],
+  "categories": {
+    "development": {
+      "name": "开发工具",
+      "description": "代码开发、架构设计、性能优化工具",
+      "icon": "🛠️"
+    },
+    "testing": {
+      "name": "测试工具",
+      "description": "单元测试、集成测试、API测试工具",
+      "icon": "🧪"
+    },
+    "security": {
+      "name": "安全工具",
+      "description": "安全审计、漏洞检测、合规性检查",
+      "icon": "🔒"
+    },
+    "ai": {
+      "name": "AI工具",
+      "description": "机器学习、LLM应用、智能助手",
+      "icon": "🤖"
+    },
+    "productivity": {
+      "name": "生产力工具",
+      "description": "文档处理、项目管理、工作流自动化",
+      "icon": "📊"
+    },
+    "search": {
+      "name": "搜索工具",
+      "description": "网络搜索、代码搜索、知识检索",
+      "icon": "🔍"
+    },
+    "knowledge": {
+      "name": "知识管理",
+      "description": "知识库、文档检索、学习资源",
+      "icon": "📚"
+    },
+    "database": {
+      "name": "数据库工具",
+      "description": "数据库操作、性能优化、数据管理",
+      "icon": "🗄️"
+    },
+    "monitoring": {
+      "name": "监控工具",
+      "description": "性能监控、错误追踪、日志分析",
+      "icon": "📈"
+    },
+    "examples": {
+      "name": "示例插件",
+      "description": "功能演示、学习示例、模板代码",
+      "icon": "📋"
+    }
+  },
+  "featured": [
+    "python-expert",
+    "backend-architect",
+    "code-reviewer",
+    "ai-engineer",
+    "context7",
+    "open-websearch"
+  ],
+  "metadata": {
+    "created": "2025-12-01",
+    "last_updated": "2025-12-01",
+    "plugin_count": 15,
+    "mcp_server_count": 10,
+    "category_count": 10,
+    "total_tools": 25,
+    "curated_by": "cuitaochina",
+    "quality_score": "A+",
+    "maintenance_status": "active"
+  }
+}
