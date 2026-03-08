@@ -1,21 +1,77 @@
+# Python
+__pycache__/
+*.py[cod]
+*.class
+
+# Node.js
+node_modules/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
+temp/
+logs/
+
+# Python virtualenvs
+.venv/
+venv/
+env/
+
+# Local backups and caches
+.backup/
+.pytest_cache/
+
+# Runtime/generated artifacts
+wxhyj/
+llm_conversation_logs/
+
+# Generated debug and report files
+debug_*.log
+debug_*.txt
+blueprint_debug_attempt_*.txt
+manual_test_*.log
+capture_*.log
+regeneration.log
+regexp_debug.log
+=1.0.0
+*_REPORT.md
+
+# Local agent and test workspace artifacts
+.omx/
+.sisyphus/
+.venv-tests/
+=5.2.2
+Novel_directory.txt
+world_state.json
+blueprint_EMPTY_*.txt
+blueprint_MAPPING_GAP_*.json
+*.backup
+*.backup_*
+*.backup_before_fix
+*.backup*
+
+# Legacy project-specific ignores
 /Novel_Src
-/.venv
 /build
 /dist
-/.vscode
-/__pycache__
-__pycache__/
-*.pyc
 /markdown
 /vectorstore
 /example
+/novel
+/backup
 config.json
 config_test.json
-.idea/
-/novel
 app.log
 test.py
-/backup
 uv.lock
 .python-version
 pyproject.toml

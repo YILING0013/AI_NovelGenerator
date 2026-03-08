@@ -1,0 +1,61 @@
+# Pre-commit hooks for AI Novel Generator
+# Install: pip install pre-commit && pre-commit install
+
+repos:
+  # Ruff - fast Python linter and formatter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.10
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  # Type checking with mypy
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.15.0
+    hooks:
+      - id: mypy
+        args: [--ignore-missing-imports]
+        additional_dependencies:
+          - types-requests
+          - types-setuptools
+        pass_filenames: false
+        entry: mypy . --ignore-missing-imports
+
+  # Security scanning with bandit
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.3
+    hooks:
+      - id: bandit
+        args: [-ll, --skip, "B101,B601"]
+        files: ^novel_generator/|^ui/|^main\.py|^config_manager\.py|^llm_adapters\.py
+
+  # General hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--unsafe]
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: detect-private-key
+
+  # Typos checker
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.29.7
+    hooks:
+      - id: typos
+        args: [--force-exclude]
+
+# CI configuration
+ci:
+  autofix_prs: true
+  autofix_commit_msg: "style: auto-fix pre-commit issues"
+  autoupdate_branch: develop
+  autoupdate_commit_msg: "chore: pre-commit autoupdate"
+  autoupdate_schedule: weekly
