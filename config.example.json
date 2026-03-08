@@ -9,7 +9,24 @@
             "temperature": 0.7,
             "max_tokens": 8192,
             "timeout": 600,
-            "interface_format": "OpenAI"
+            "interface_format": "OpenAI",
+            "quality_policy": {
+                "default_quality_threshold": 9.0,
+                "max_iterations": 10,
+                "min_word_count_before_expand": 3500,
+                "target_word_count_after_expand": 4000,
+                "word_count_adjust_score_tolerance": 0.5,
+                "severe_threshold_offset": 2.0,
+                "stagnation_threshold": 0.05,
+                "stagnation_count_limit": 5,
+                "parse_failure_streak_limit": 3,
+                "enable_llm_consistency_check": true,
+                "consistency_hard_gate": true,
+                "enable_timeline_check": true,
+                "timeline_hard_gate": true,
+                "enable_compression": false,
+                "force_critic_logging_each_iteration": false
+            }
         },
         "GPT 5": {
             "api_key": "",
@@ -18,7 +35,24 @@
             "temperature": 0.7,
             "max_tokens": 32768,
             "timeout": 600,
-            "interface_format": "OpenAI"
+            "interface_format": "OpenAI",
+            "quality_policy": {
+                "default_quality_threshold": 9.0,
+                "max_iterations": 10,
+                "min_word_count_before_expand": 3500,
+                "target_word_count_after_expand": 4000,
+                "word_count_adjust_score_tolerance": 0.5,
+                "severe_threshold_offset": 2.0,
+                "stagnation_threshold": 0.05,
+                "stagnation_count_limit": 5,
+                "parse_failure_streak_limit": 3,
+                "enable_llm_consistency_check": true,
+                "consistency_hard_gate": true,
+                "enable_timeline_check": true,
+                "timeline_hard_gate": true,
+                "enable_compression": false,
+                "force_critic_logging_each_iteration": false
+            }
         },
         "Gemini 2.5 Pro": {
             "api_key": "",
@@ -27,7 +61,76 @@
             "temperature": 0.7,
             "max_tokens": 32768,
             "timeout": 600,
-            "interface_format": "OpenAI"
+            "interface_format": "OpenAI",
+            "quality_policy": {
+                "default_quality_threshold": 9.0,
+                "max_iterations": 10,
+                "min_word_count_before_expand": 3500,
+                "target_word_count_after_expand": 4000,
+                "word_count_adjust_score_tolerance": 0.5,
+                "severe_threshold_offset": 2.0,
+                "stagnation_threshold": 0.05,
+                "stagnation_count_limit": 5,
+                "parse_failure_streak_limit": 3,
+                "enable_llm_consistency_check": true,
+                "consistency_hard_gate": true,
+                "enable_timeline_check": true,
+                "timeline_hard_gate": true,
+                "enable_compression": false,
+                "force_critic_logging_each_iteration": false
+            }
+        },
+        "智谱AI GLM": {
+            "api_key": "",
+            "base_url": "https://open.bigmodel.cn/api/paas/v4",
+            "model_name": "glm-4-plus",
+            "temperature": 0.7,
+            "max_tokens": 8192,
+            "timeout": 600,
+            "interface_format": "智谱AI",
+            "quality_policy": {
+                "default_quality_threshold": 9.0,
+                "max_iterations": 10,
+                "min_word_count_before_expand": 3500,
+                "target_word_count_after_expand": 4000,
+                "word_count_adjust_score_tolerance": 0.5,
+                "severe_threshold_offset": 2.0,
+                "stagnation_threshold": 0.05,
+                "stagnation_count_limit": 5,
+                "parse_failure_streak_limit": 3,
+                "enable_llm_consistency_check": true,
+                "consistency_hard_gate": true,
+                "enable_timeline_check": true,
+                "timeline_hard_gate": true,
+                "enable_compression": false,
+                "force_critic_logging_each_iteration": false
+            }
+        },
+        "Gemini 3 Pro Preview": {
+            "api_key": "",
+            "base_url": "https://nvewvip.preview.tencent-zeabur.cn/v1",
+            "model_name": "gemini-3-pro-preview",
+            "temperature": 0.7,
+            "max_tokens": 32768,
+            "timeout": 600,
+            "interface_format": "OpenAI",
+            "quality_policy": {
+                "default_quality_threshold": 9.0,
+                "max_iterations": 10,
+                "min_word_count_before_expand": 3500,
+                "target_word_count_after_expand": 4000,
+                "word_count_adjust_score_tolerance": 0.5,
+                "severe_threshold_offset": 2.0,
+                "stagnation_threshold": 0.05,
+                "stagnation_count_limit": 5,
+                "parse_failure_streak_limit": 3,
+                "enable_llm_consistency_check": true,
+                "consistency_hard_gate": true,
+                "enable_timeline_check": true,
+                "timeline_hard_gate": true,
+                "enable_compression": false,
+                "force_critic_logging_each_iteration": false
+            }
         }
     },
     "embedding_configs": {
@@ -44,20 +147,82 @@
         "genre": "",
         "num_chapters": 0,
         "word_number": 0,
+        "blueprint_batch_size": 5,
+        "blueprint_target_score": 80.0,
+        "blueprint_optimize_per_batch": false,
+        "blueprint_stage_timeout": 1800,
+        "blueprint_heartbeat_interval": 30,
+        "blueprint_enable_critic": false,
+        "blueprint_critic_threshold": 7.5,
+        "blueprint_critic_trigger_margin": 8.0,
+        "blueprint_full_auto_mode": true,
+        "blueprint_auto_restart_on_arch_change": true,
+        "blueprint_resume_auto_repair_existing": true,
+        "blueprint_force_resume_skip_history_validation": false,
+        "batch_partial_resume_allow_fallback": true,
+        "batch_precheck_deep_scan": true,
+        "batch_precheck_auto_continue_on_warning": true,
+        "enable_iterative_generation": true,
+        "max_iterations": 10,
+        "quality_threshold": 9.0,
+        "force_critic_logging_each_iteration": false,
+        "enable_llm_consistency_check": true,
+        "consistency_hard_gate": true,
+        "enable_timeline_check": true,
+        "timeline_hard_gate": true,
+        "stop_batch_on_hard_gate": true,
+        "post_batch_runtime_audit_enabled": false,
+        "post_batch_runtime_audit_sample_size": 20,
+        "architecture_context_ignore_budget": true,
+        "enable_chapter_contract_guard": true,
+        "chapter_contract_hard_gate": true,
+        "enable_state_ledger_writeback": true,
+        "state_ledger_hard_gate": true,
+        "enable_next_opening_anchor_guard": true,
+        "next_opening_anchor_hard_gate": true,
+        "enable_output_integrity_guard": true,
+        "output_integrity_hard_gate": true,
+        "architecture_context_budget_chapter_prompt": 18000,
+        "architecture_context_budget_consistency": 22000,
+        "architecture_context_budget_quality_loop": 16000,
         "filepath": "",
         "chapter_num": "120",
         "user_guidance": "",
         "characters_involved": "",
         "key_items": "",
         "scene_location": "",
-        "time_constraint": ""
+        "time_constraint": "",
+        "language_purity_enabled": true,
+        "auto_correct_mixed_language": true,
+        "preserve_proper_nouns": true,
+        "strict_language_mode": false
+    },
+    "blueprint_generation": {
+        "mode": "progressive",
+        "description": "Blueprint generation mode: 'batch' (original, faster) or 'progressive' (3-stage, higher quality)",
+        "progressive_config": {
+            "stage1_max_retries": 5,
+            "stage1_retry_delay": 5,
+            "stage2_max_retries": 5,
+            "stage2_retry_delay": 3,
+            "stage2_quality_threshold": 0.9,
+            "stage3_quality_threshold": 0.85,
+            "enable_self_reflection": true,
+            "enable_consistency_check": true
+        },
+        "batch_config": {
+            "batch_size": 10,
+            "max_attempts": 3,
+            "auto_consistency_check": true,
+            "consistency_threshold": 0.75
+        }
     },
     "choose_configs": {
-        "prompt_draft_llm": "DeepSeek V3",
-        "chapter_outline_llm": "DeepSeek V3",
-        "architecture_llm": "Gemini 2.5 Pro",
-        "final_chapter_llm": "GPT 5",
-        "consistency_review_llm": "DeepSeek V3"
+        "prompt_draft_llm": "Gemini 3 Pro Preview",
+        "chapter_outline_llm": "Gemini 3 Pro Preview",
+        "architecture_llm": "Gemini 3 Pro Preview",
+        "final_chapter_llm": "Gemini 3 Pro Preview",
+        "consistency_review_llm": "Gemini 3 Pro Preview"
     },
     "proxy_setting": {
         "proxy_url": "127.0.0.1",
@@ -67,6 +232,7 @@
     "webdav_config": {
         "webdav_url": "",
         "webdav_username": "",
-        "webdav_password": ""
+        "webdav_password": "",
+        "webdav_target_dir": "AI_Novel_Generator"
     }
 }

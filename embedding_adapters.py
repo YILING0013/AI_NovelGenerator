@@ -204,7 +204,7 @@ class GeminiEmbeddingAdapter(BaseEmbeddingAdapter):
         """
         直接调用 Google Generative Language API (Gemini) 接口，获取文本 embedding
         """
-        url = f"{self.base_url}/{self.model_name}:embedContent?key={self.api_key}"
+        url = f"{self.base_url}/{self.model_name}:embedContent"
         payload = {
             "model": self.model_name,
             "content": {
@@ -215,8 +215,11 @@ class GeminiEmbeddingAdapter(BaseEmbeddingAdapter):
         }
 
         try:
-            response = requests.post(url, json=payload)
-            print(response.text)
+            headers = {
+                "x-goog-api-key": self.api_key,
+                "Content-Type": "application/json"
+            }
+            response = requests.post(url, json=payload, headers=headers)
             response.raise_for_status()
             result = response.json()
             embedding_data = result.get("embedding", {})

@@ -1,0 +1,52 @@
+{
+  "metric_weights": {
+    "logic_consistency": 0.30,
+    "content_quality": 0.25,
+    "format_compliance": 0.15,
+    "readability": 0.20,
+    "creativity": 0.10
+  },
+  "word_count_tolerance": 0.10,
+  "min_paragraph_length": 20,
+  "max_paragraph_length": 300,
+  "min_dialogue_ratio": 0.1,
+  "max_dialogue_ratio": 0.6,
+  "suspense_threshold": 0.6,
+  "emotion_words_file": "emotion_words.txt",
+  "enable_advanced_checks": true,
+  "custom_rules": [
+    {
+      "name": "避免使用过于陈词滥调的表达",
+      "pattern": "阳光明媚",
+      "severity": "warning"
+    },
+    {
+      "name": "检查段落长度",
+      "min_length": 50,
+      "max_length": 400,
+      "severity": "error"
+    }
+  ],
+  "scoring_criteria": {
+    "excellent": {
+      "min_score": 90,
+      "description": "质量优秀，达到出版标准"
+    },
+    "good": {
+      "min_score": 80,
+      "description": "质量良好，小幅修改即可"
+    },
+    "fair": {
+      "min_score": 70,
+      "description": "质量一般，需要改进"
+    },
+    "poor": {
+      "min_score": 60,
+      "description": "质量较差，需要大幅修改"
+    },
+    "unacceptable": {
+      "min_score": 0,
+      "description": "质量不可接受，建议重写"
+    }
+  }
+}

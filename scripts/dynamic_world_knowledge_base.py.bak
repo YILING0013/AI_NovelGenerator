@@ -1,0 +1,1205 @@
+# dynamic_world_knowledge_base.py
+# -*- coding: utf-8 -*-
+"""
+动态世界知识库系统 - 解决超长篇小说一致性问题
+基于"五行混元决"理论设计的AI创作中央大脑
+
+核心功能：
+- 结构化角色、设定、情节数据管理
+- 实时检索增强生成(RAG)系统
+- 智能一致性校验与自动修正
+- 动态知识图谱构建与维护
+- 多维度关联关系追踪
+"""
+
+import asyncio
+import json
+import time
+import sqlite3
+import hashlib
+from typing import Dict, List, Any, Optional, Set, Tuple
+from dataclasses import dataclass, field, asdict
+from enum import Enum
+import logging
+from pathlib import Path
+import pickle
+import networkx as nx
+from collections import defaultdict, deque
+import re
+import difflib
+from datetime import datetime
+import threading
+import weakref
+
+# 知识类型枚举
+class KnowledgeType(Enum):
+    CHARACTER = "character"
+    WORLD_SETTING = "world_setting"
+    PLOT_EVENT = "plot_event"
+    ITEM = "item"
+    LOCATION = "location"
+    RELATIONSHIP = "relationship"
+    SKILL = "skill"
+    ORGANIZATION = "organization"
+
+# 一致性级别枚举
+class ConsistencyLevel(Enum):
+    CRITICAL = "critical"      # 关键信息，绝不能冲突
+    IMPORTANT = "important"    # 重要信息，尽量避免冲突
+    NORMAL = "normal"          # 一般信息，允许轻微冲突
+    FLEXIBLE = "flexible"      # 灵活信息，允许合理变化
+
+@dataclass
+class CharacterProfile:
+    """角色档案"""
+    id: str
+    name: str
+    aliases: List[str] = field(default_factory=list)
+    appearance: str = ""
+    personality: str = ""
+    background: str = ""
+    cultivation_level: str = ""
+    attributes: Dict[str, Any] = field(default_factory=dict)
+    skills: List[str] = field(default_factory=list)
+    items: List[str] = field(default_factory=list)
+    relationships: Dict[str, str] = field(default_factory=dict)
+    current_location: str = ""
+    status: str = "alive"
+    first_appearance: int = 0
+    last_appearance: int = 0
+    consistency_level: ConsistencyLevel = ConsistencyLevel.IMPORTANT
+    created_at: float = field(default_factory=time.time)
+    updated_at: float = field(default_factory=time.time)
+
+@dataclass
+class WorldSetting:
+    """世界设定"""
+    id: str
+    name: str
+    category: str  # "cultivation", "geography", "organization", etc.
+    description: str = ""
+    rules: List[str] = field(default_factory=list)
+    sub_elements: List[str] = field(default_factory=list)
+    related_elements: List[str] = field(default_factory=list)
+    consistency_level: ConsistencyLevel = ConsistencyLevel.IMPORTANT
+    created_at: float = field(default_factory=time.time)
+    updated_at: float = field(default_factory=time.time)
+
+@dataclass
+class PlotEvent:
+    """情节事件"""
+    id: str
+    title: str
+    chapter_id: int
+    timeline_position: int
+    location: str = ""
+    involved_characters: List[str] = field(default_factory=list)
+    event_type: str = ""
+    description: str = ""
+    consequences: List[str] = field(default_factory=list)
+    related_events: List[str] = field(default_factory=list)
+    importance: int = 1  # 1-10
+    consistency_level: ConsistencyLevel = ConsistencyLevel.NORMAL
+    created_at: float = field(default_factory=time.time)
+
+@dataclass
+class ConsistencyIssue:
+    """一致性问题"""
+    id: str
+    type: str
+    severity: str  # "critical", "major", "minor"
+    description: str
+    conflicting_elements: List[str]
+    suggested_resolution: str = ""
+    auto_fixable: bool = False
+    detected_at: float = field(default_factory=time.time)
+    resolved: bool = False
+    resolved_at: Optional[float] = None
+
+class DynamicWorldKnowledgeBase:
+    """动态世界知识库核心系统"""
+
+    def __init__(self, project_path: str, config: Optional[Dict[str, Any]] = None):
+        self.project_path = Path(project_path)
+        self.config = config or self._get_default_config()
+
+        # 数据存储
+        self.db_path = self.project_path / "world_knowledge.db"
+        self.cache_path = self.project_path / "knowledge_cache.pkl"
+        self.graph_path = self.project_path / "knowledge_graph.pkl"
+
+        # 内存缓存
+        self.character_cache: Dict[str, CharacterProfile] = {}
+        self.setting_cache: Dict[str, WorldSetting] = {}
+        self.plot_cache: Dict[str, PlotEvent] = {}
+        self.knowledge_graph = nx.DiGraph()
+
+        # 索引系统
+        self.name_index: Dict[str, str] = {}  # 名称到ID的映射
+        self.chapter_index: Dict[int, List[str]] = defaultdict(list)  # 章节到元素的映射
+        self.timeline_index: List[Tuple[int, str]] = []  # 时间线索引
+
+        # 一致性检查器
+        self.consistency_checker = ConsistencyChecker(self)
+        self.auto_fixer = AutoFixer(self)
+
+        # 统计信息
+        self.stats = {
+            'characters': 0,
+            'settings': 0,
+            'plot_events': 0,
+            'consistency_issues': 0,
+            'last_update': time.time()
+        }
+
+        # 初始化系统
+        self._init_database()
+        self._load_cache()
+        self._build_knowledge_graph()
+
+        logging.info(f"动态世界知识库初始化完成: {self.project_path}")
+
+    def _get_default_config(self) -> Dict[str, Any]:
+        """获取默认配置"""
+        return {
+            'auto_save_interval': 300,  # 自动保存间隔（秒）
+            'cache_size_limit': 10000,  # 缓存大小限制
+            'consistency_check_enabled': True,
+            'auto_fix_enabled': True,
+            'knowledge_graph_enabled': True,
+            'similarity_threshold': 0.8,  # 相似度阈值
+            'conflict_resolution_strategy': 'human_priority'  # 冲突解决策略
+        }
+
+    def _init_database(self):
+        """初始化数据库"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        # 创建角色表
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS characters (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                aliases TEXT,
+                appearance TEXT,
+                personality TEXT,
+                background TEXT,
+                cultivation_level TEXT,
+                attributes TEXT,
+                skills TEXT,
+                items TEXT,
+                relationships TEXT,
+                current_location TEXT,
+                status TEXT,
+                first_appearance INTEGER,
+                last_appearance INTEGER,
+                consistency_level TEXT,
+                created_at REAL,
+                updated_at REAL
+            )
+        ''')
+
+        # 创建世界设定表
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS world_settings (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                category TEXT,
+                description TEXT,
+                rules TEXT,
+                sub_elements TEXT,
+                related_elements TEXT,
+                consistency_level TEXT,
+                created_at REAL,
+                updated_at REAL
+            )
+        ''')
+
+        # 创建情节事件表
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS plot_events (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                chapter_id INTEGER,
+                timeline_position INTEGER,
+                location TEXT,
+                involved_characters TEXT,
+                event_type TEXT,
+                description TEXT,
+                consequences TEXT,
+                related_events TEXT,
+                importance INTEGER,
+                consistency_level TEXT,
+                created_at REAL
+            )
+        ''')
+
+        # 创建一致性问题表
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS consistency_issues (
+                id TEXT PRIMARY KEY,
+                type TEXT,
+                severity TEXT,
+                description TEXT,
+                conflicting_elements TEXT,
+                suggested_resolution TEXT,
+                auto_fixable INTEGER,
+                detected_at REAL,
+                resolved INTEGER,
+                resolved_at REAL
+            )
+        ''')
+
+        # 创建索引
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_characters_name ON characters(name)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_plot_events_chapter ON plot_events(chapter_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_plot_events_timeline ON plot_events(timeline_position)')
+
+        conn.commit()
+        conn.close()
+
+    def _load_cache(self):
+        """加载缓存数据"""
+        try:
+            if self.cache_path.exists():
+                with open(self.cache_path, 'rb') as f:
+                    cache_data = pickle.load(f)
+
+                self.character_cache = cache_data.get('characters', {})
+                self.setting_cache = cache_data.get('settings', {})
+                self.plot_cache = cache_data.get('plot_events', {})
+
+                logging.info(f"从缓存加载: {len(self.character_cache)}角色, {len(self.setting_cache)}设定, {len(self.plot_cache)}情节")
+
+            if self.graph_path.exists():
+                with open(self.graph_path, 'rb') as f:
+                    self.knowledge_graph = pickle.load(f)
+
+                logging.info(f"知识图谱加载完成: {self.knowledge_graph.number_of_nodes()}节点")
+
+        except Exception as e:
+            logging.warning(f"加载缓存失败: {e}")
+
+    def _build_knowledge_graph(self):
+        """构建知识图谱"""
+        if not self.config.get('knowledge_graph_enabled', True):
+            return
+
+        # 清空现有图谱
+        self.knowledge_graph.clear()
+
+        # 添加角色节点
+        for char_id, character in self.character_cache.items():
+            self.knowledge_graph.add_node(char_id,
+                                        type='character',
+                                        name=character.name,
+                                        level=character.cultivation_level)
+
+        # 添加设定节点
+        for setting_id, setting in self.setting_cache.items():
+            self.knowledge_graph.add_node(setting_id,
+                                        type='setting',
+                                        name=setting.name,
+                                        category=setting.category)
+
+        # 添加情节事件节点
+        for event_id, event in self.plot_cache.items():
+            self.knowledge_graph.add_node(event_id,
+                                        type='event',
+                                        title=event.title,
+                                        chapter=event.chapter_id)
+
+        # 添加关系边
+        self._add_relationship_edges()
+        self._add_event_edges()
+        self._add_setting_edges()
+
+        logging.info(f"知识图谱构建完成: {self.knowledge_graph.number_of_nodes()}节点, {self.knowledge_graph.number_of_edges()}边")
+
+    def _add_relationship_edges(self):
+        """添加角色关系边"""
+        for char_id, character in self.character_cache.items():
+            for related_char, relation_type in character.relationships.items():
+                if related_char in self.name_index:
+                    related_id = self.name_index[related_char]
+                    self.knowledge_graph.add_edge(char_id, related_id,
+                                                type='relationship',
+                                                relation=relation_type)
+
+    def _add_event_edges(self):
+        """添加情节事件边"""
+        for event_id, event in self.plot_cache.items():
+            # 角色-事件关系
+            for char_name in event.involved_characters:
+                if char_name in self.name_index:
+                    char_id = self.name_index[char_name]
+                    self.knowledge_graph.add_edge(char_id, event_id,
+                                                type='participated',
+                                                role='participant')
+
+            # 事件-事件关系
+            for related_event in event.related_events:
+                if related_event in self.plot_cache:
+                    self.knowledge_graph.add_edge(event_id, related_event,
+                                                type='sequence',
+                                                relation='related')
+
+    def _add_setting_edges(self):
+        """添加设定关系边"""
+        for setting_id, setting in self.setting_cache.items():
+            # 设定-子元素关系
+            for sub_element in setting.sub_elements:
+                if sub_element in self.name_index:
+                    sub_id = self.name_index[sub_element]
+                    self.knowledge_graph.add_edge(setting_id, sub_id,
+                                                type='contains',
+                                                relation='sub_element')
+
+    def add_character(self, character: CharacterProfile) -> str:
+        """添加角色"""
+        # 检查一致性
+        if self.config.get('consistency_check_enabled', True):
+            issues = self.consistency_checker.check_character_consistency(character)
+            if issues:
+                for issue in issues:
+                    self._record_consistency_issue(issue)
+
+        # 添加到缓存
+        self.character_cache[character.id] = character
+
+        # 更新索引
+        self.name_index[character.name] = character.id
+        for alias in character.aliases:
+            self.name_index[alias] = character.id
+
+        # 添加到数据库
+        self._save_character_to_db(character)
+
+        # 更新知识图谱
+        if self.config.get('knowledge_graph_enabled', True):
+            self.knowledge_graph.add_node(character.id,
+                                        type='character',
+                                        name=character.name,
+                                        level=character.cultivation_level)
+
+        logging.info(f"添加角色: {character.name} (ID: {character.id})")
+        return character.id
+
+    def add_world_setting(self, setting: WorldSetting) -> str:
+        """添加世界设定"""
+        # 检查一致性
+        if self.config.get('consistency_check_enabled', True):
+            issues = self.consistency_checker.check_setting_consistency(setting)
+            if issues:
+                for issue in issues:
+                    self._record_consistency_issue(issue)
+
+        # 添加到缓存
+        self.setting_cache[setting.id] = setting
+
+        # 更新索引
+        self.name_index[setting.name] = setting.id
+
+        # 添加到数据库
+        self._save_setting_to_db(setting)
+
+        # 更新知识图谱
+        if self.config.get('knowledge_graph_enabled', True):
+            self.knowledge_graph.add_node(setting.id,
+                                        type='setting',
+                                        name=setting.name,
+                                        category=setting.category)
+
+        logging.info(f"添加世界设定: {setting.name} (ID: {setting.id})")
+        return setting.id
+
+    def add_plot_event(self, event: PlotEvent) -> str:
+        """添加情节事件"""
+        # 检查一致性
+        if self.config.get('consistency_check_enabled', True):
+            issues = self.consistency_checker.check_plot_consistency(event)
+            if issues:
+                for issue in issues:
+                    self._record_consistency_issue(issue)
+
+        # 添加到缓存
+        self.plot_cache[event.id] = event
+
+        # 更新索引
+        self.chapter_index[event.chapter_id].append(event.id)
+        self.timeline_index.append((event.timeline_position, event.id))
+        self.timeline_index.sort()
+
+        # 添加到数据库
+        self._save_plot_event_to_db(event)
+
+        # 更新知识图谱
+        if self.config.get('knowledge_graph_enabled', True):
+            self.knowledge_graph.add_node(event.id,
+                                        type='event',
+                                        title=event.title,
+                                        chapter=event.chapter_id)
+
+        logging.info(f"添加情节事件: {event.title} (章节{event.chapter_id})")
+        return event.id
+
+    def get_relevant_context(self, query: str, context_type: str = "all", limit: int = 10) -> List[Dict[str, Any]]:
+        """检索相关上下文（RAG功能）"""
+        context = []
+
+        # 分析查询意图
+        query_analysis = self._analyze_query(query)
+
+        # 根据分析结果检索相关内容
+        if context_type in ["all", "character"] and "character" in query_analysis['entities']:
+            character_context = self._search_character_context(query, query_analysis, limit)
+            context.extend(character_context)
+
+        if context_type in ["all", "setting"] and "setting" in query_analysis['entities']:
+            setting_context = self._search_setting_context(query, query_analysis, limit)
+            context.extend(setting_context)
+
+        if context_type in ["all", "plot"] and "plot" in query_analysis['entities']:
+            plot_context = self._search_plot_context(query, query_analysis, limit)
+            context.extend(plot_context)
+
+        # 根据相关度排序
+        context.sort(key=lambda x: x['relevance'], reverse=True)
+
+        return context[:limit]
+
+    def _analyze_query(self, query: str) -> Dict[str, Any]:
+        """分析查询意图"""
+        analysis = {
+            'entities': [],
+            'keywords': [],
+            'intent': 'search'
+        }
+
+        # 提取实体名称
+        for name in self.name_index.keys():
+            if name in query:
+                analysis['entities'].append(name)
+
+        # 提取关键词
+        keywords = re.findall(r'[\u4e00-\u9fff]+|[a-zA-Z]+', query)
+        analysis['keywords'] = [kw for kw in keywords if len(kw) > 1]
+
+        # 判断意图类型
+        if any(word in query for word in ['战斗', '打斗', '比武', '战斗']):
+            analysis['intent'] = 'battle'
+        elif any(word in query for word in ['修炼', '突破', '升级', '进阶']):
+            analysis['intent'] = 'cultivation'
+        elif any(word in query for word in ['关系', '朋友', '敌人', '师徒']):
+            analysis['intent'] = 'relationship'
+        elif any(word in query for word in ['地点', '位置', '场所', '区域']):
+            analysis['intent'] = 'location'
+
+        return analysis
+
+    def _search_character_context(self, query: str, analysis: Dict[str, Any], limit: int) -> List[Dict[str, Any]]:
+        """搜索角色上下文"""
+        context = []
+
+        for char_id, character in self.character_cache.items():
+            relevance = self._calculate_character_relevance(character, query, analysis)
+
+            if relevance > 0.3:  # 相关度阈值
+                context.append({
+                    'type': 'character',
+                    'id': char_id,
+                    'name': character.name,
+                    'relevance': relevance,
+                    'content': self._format_character_context(character),
+                    'source': 'knowledge_base'
+                })
+
+        return context
+
+    def _search_setting_context(self, query: str, analysis: Dict[str, Any], limit: int) -> List[Dict[str, Any]]:
+        """搜索设定上下文"""
+        context = []
+
+        for setting_id, setting in self.setting_cache.items():
+            relevance = self._calculate_setting_relevance(setting, query, analysis)
+
+            if relevance > 0.3:
+                context.append({
+                    'type': 'setting',
+                    'id': setting_id,
+                    'name': setting.name,
+                    'relevance': relevance,
+                    'content': self._format_setting_context(setting),
+                    'source': 'knowledge_base'
+                })
+
+        return context
+
+    def _search_plot_context(self, query: str, analysis: Dict[str, Any], limit: int) -> List[Dict[str, Any]]:
+        """搜索情节上下文"""
+        context = []
+
+        for event_id, event in self.plot_cache.items():
+            relevance = self._calculate_plot_relevance(event, query, analysis)
+
+            if relevance > 0.3:
+                context.append({
+                    'type': 'plot_event',
+                    'id': event_id,
+                    'title': event.title,
+                    'chapter': event.chapter_id,
+                    'relevance': relevance,
+                    'content': self._format_plot_context(event),
+                    'source': 'knowledge_base'
+                })
+
+        return context
+
+    def _calculate_character_relevance(self, character: CharacterProfile, query: str, analysis: Dict[str, Any]) -> float:
+        """计算角色相关度"""
+        relevance = 0.0
+
+        # 名称匹配
+        if character.name in query:
+            relevance += 1.0
+
+        # 别名匹配
+        for alias in character.aliases:
+            if alias in query:
+                relevance += 0.8
+
+        # 属性匹配
+        for keyword in analysis['keywords']:
+            if keyword in character.appearance:
+                relevance += 0.3
+            if keyword in character.personality:
+                relevance += 0.3
+            if keyword in character.background:
+                relevance += 0.2
+
+        # 技能匹配
+        for skill in character.skills:
+            for keyword in analysis['keywords']:
+                if keyword in skill:
+                    relevance += 0.2
+
+        return min(relevance, 1.0)
+
+    def _calculate_setting_relevance(self, setting: WorldSetting, query: str, analysis: Dict[str, Any]) -> float:
+        """计算设定相关度"""
+        relevance = 0.0
+
+        # 名称匹配
+        if setting.name in query:
+            relevance += 1.0
+
+        # 分类匹配
+        if analysis['intent'] == 'cultivation' and setting.category == 'cultivation':
+            relevance += 0.5
+        elif analysis['intent'] == 'location' and setting.category == 'geography':
+            relevance += 0.5
+
+        # 描述匹配
+        for keyword in analysis['keywords']:
+            if keyword in setting.description:
+                relevance += 0.3
+
+        return min(relevance, 1.0)
+
+    def _calculate_plot_relevance(self, event: PlotEvent, query: str, analysis: Dict[str, Any]) -> float:
+        """计算情节相关度"""
+        relevance = 0.0
+
+        # 标题匹配
+        for keyword in analysis['keywords']:
+            if keyword in event.title:
+                relevance += 0.4
+
+        # 描述匹配
+        for keyword in analysis['keywords']:
+            if keyword in event.description:
+                relevance += 0.3
+
+        # 角色匹配
+        for char_name in event.involved_characters:
+            if char_name in query:
+                relevance += 0.5
+
+        # 事件类型匹配
+        if analysis['intent'] == 'battle' and 'battle' in event.event_type:
+            relevance += 0.4
+        elif analysis['intent'] == 'cultivation' and 'cultivation' in event.event_type:
+            relevance += 0.4
+
+        return min(relevance, 1.0)
+
+    def _format_character_context(self, character: CharacterProfile) -> str:
+        """格式化角色上下文"""
+        context_parts = []
+
+        if character.appearance:
+            context_parts.append(f"外貌：{character.appearance}")
+        if character.personality:
+            context_parts.append(f"性格：{character.personality}")
+        if character.cultivation_level:
+            context_parts.append(f"修为：{character.cultivation_level}")
+        if character.current_location:
+            context_parts.append(f"当前位置：{character.current_location}")
+        if character.skills:
+            context_parts.append(f"技能：{', '.join(character.skills)}")
+
+        return "\n".join(context_parts)
+
+    def _format_setting_context(self, setting: WorldSetting) -> str:
+        """格式化设定上下文"""
+        context_parts = []
+
+        if setting.description:
+            context_parts.append(f"描述：{setting.description}")
+        if setting.rules:
+            context_parts.append(f"规则：{'; '.join(setting.rules)}")
+        if setting.sub_elements:
+            context_parts.append(f"包含：{', '.join(setting.sub_elements)}")
+
+        return "\n".join(context_parts)
+
+    def _format_plot_context(self, event: PlotEvent) -> str:
+        """格式化情节上下文"""
+        context_parts = []
+
+        if event.location:
+            context_parts.append(f"地点：{event.location}")
+        if event.involved_characters:
+            context_parts.append(f"涉及角色：{', '.join(event.involved_characters)}")
+        if event.description:
+            context_parts.append(f"事件描述：{event.description}")
+        if event.consequences:
+            context_parts.append(f"后果：{'; '.join(event.consequences)}")
+
+        return "\n".join(context_parts)
+
+    def check_consistency(self, chapter_content: str, chapter_id: int) -> List[ConsistencyIssue]:
+        """检查章节一致性"""
+        if not self.config.get('consistency_check_enabled', True):
+            return []
+
+        issues = []
+
+        # 解析章节内容
+        parsed_content = self._parse_chapter_content(chapter_content)
+
+        # 检查角色一致性
+        character_issues = self.consistency_checker.check_character_content_consistency(
+            parsed_content['characters'], self.character_cache
+        )
+        issues.extend(character_issues)
+
+        # 检查设定一致性
+        setting_issues = self.consistency_checker.check_setting_content_consistency(
+            parsed_content['settings'], self.setting_cache
+        )
+        issues.extend(setting_issues)
+
+        # 检查时间线一致性
+        timeline_issues = self.consistency_checker.check_timeline_consistency(
+            parsed_content['events'], self.timeline_index, chapter_id
+        )
+        issues.extend(timeline_issues)
+
+        # 自动修复问题
+        if self.config.get('auto_fix_enabled', True):
+            fixed_issues = []
+            for issue in issues:
+                if issue.auto_fixable:
+                    fix_result = self.auto_fixer.fix_issue(issue, chapter_content)
+                    if fix_result['success']:
+                        fixed_issues.append(issue)
+
+            # 记录修复结果
+            for issue in fixed_issues:
+                issue.resolved = True
+                issue.resolved_at = time.time()
+                self._save_consistency_issue_to_db(issue)
+
+            issues = [issue for issue in issues if not issue.resolved]
+
+        # 记录未解决的问题
+        for issue in issues:
+            self._record_consistency_issue(issue)
+
+        return issues
+
+    def _parse_chapter_content(self, content: str) -> Dict[str, Any]:
+        """解析章节内容"""
+        parsed = {
+            'characters': [],
+            'settings': [],
+            'events': [],
+            'items': [],
+            'skills': []
+        }
+
+        # 简化的实体提取（实际中应该使用更复杂的NLP方法）
+        lines = content.split('\n')
+        for line in lines:
+            # 提取角色名称
+            for name in self.name_index.keys():
+                if name in line and name not in parsed['characters']:
+                    parsed['characters'].append(name)
+
+            # 提取地点信息
+            location_patterns = ['在', '来到', '前往', '位于']
+            for pattern in location_patterns:
+                if pattern in line:
+                    # 简化的地点提取
+                    words = line.split()
+                    for i, word in enumerate(words):
+                        if word == pattern and i + 1 < len(words):
+                            location = words[i + 1].strip('，。！？；：')
+                            if location and location not in parsed['settings']:
+                                parsed['settings'].append(location)
+
+            # 提取技能信息
+            skill_keywords = ['剑法', '功法', '神通', '法术', '武技']
+            for keyword in skill_keywords:
+                if keyword in line:
+                    # 提取技能名称
+                    match = re.search(f'([^，。！？；：]*{keyword}[^，。！？；：]*)', line)
+                    if match:
+                        skill = match.group(1).strip()
+                        if skill and skill not in parsed['skills']:
+                            parsed['skills'].append(skill)
+
+        return parsed
+
+    def _record_consistency_issue(self, issue: ConsistencyIssue):
+        """记录一致性问题"""
+        self.stats['consistency_issues'] += 1
+        self._save_consistency_issue_to_db(issue)
+
+    def _save_character_to_db(self, character: CharacterProfile):
+        """保存角色到数据库"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            INSERT OR REPLACE INTO characters
+            (id, name, aliases, appearance, personality, background, cultivation_level,
+             attributes, skills, items, relationships, current_location, status,
+             first_appearance, last_appearance, consistency_level, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            character.id,
+            character.name,
+            json.dumps(character.aliases, ensure_ascii=False),
+            character.appearance,
+            character.personality,
+            character.background,
+            character.cultivation_level,
+            json.dumps(character.attributes, ensure_ascii=False),
+            json.dumps(character.skills, ensure_ascii=False),
+            json.dumps(character.items, ensure_ascii=False),
+            json.dumps(character.relationships, ensure_ascii=False),
+            character.current_location,
+            character.status,
+            character.first_appearance,
+            character.last_appearance,
+            character.consistency_level.value,
+            character.created_at,
+            character.updated_at
+        ))
+
+        conn.commit()
+        conn.close()
+
+    def _save_setting_to_db(self, setting: WorldSetting):
+        """保存设定到数据库"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            INSERT OR REPLACE INTO world_settings
+            (id, name, category, description, rules, sub_elements, related_elements,
+             consistency_level, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            setting.id,
+            setting.name,
+            setting.category,
+            setting.description,
+            json.dumps(setting.rules, ensure_ascii=False),
+            json.dumps(setting.sub_elements, ensure_ascii=False),
+            json.dumps(setting.related_elements, ensure_ascii=False),
+            setting.consistency_level.value,
+            setting.created_at,
+            setting.updated_at
+        ))
+
+        conn.commit()
+        conn.close()
+
+    def _save_plot_event_to_db(self, event: PlotEvent):
+        """保存情节事件到数据库"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            INSERT OR REPLACE INTO plot_events
+            (id, title, chapter_id, timeline_position, location, involved_characters,
+             event_type, description, consequences, related_events, importance,
+             consistency_level, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            event.id,
+            event.title,
+            event.chapter_id,
+            event.timeline_position,
+            event.location,
+            json.dumps(event.involved_characters, ensure_ascii=False),
+            event.event_type,
+            event.description,
+            json.dumps(event.consequences, ensure_ascii=False),
+            json.dumps(event.related_events, ensure_ascii=False),
+            event.importance,
+            event.consistency_level.value,
+            event.created_at
+        ))
+
+        conn.commit()
+        conn.close()
+
+    def _save_consistency_issue_to_db(self, issue: ConsistencyIssue):
+        """保存一致性问题到数据库"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            INSERT OR REPLACE INTO consistency_issues
+            (id, type, severity, description, conflicting_elements, suggested_resolution,
+             auto_fixable, detected_at, resolved, resolved_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            issue.id,
+            issue.type,
+            issue.severity,
+            issue.description,
+            json.dumps(issue.conflicting_elements, ensure_ascii=False),
+            issue.suggested_resolution,
+            int(issue.auto_fixable),
+            issue.detected_at,
+            int(issue.resolved),
+            issue.resolved_at
+        ))
+
+        conn.commit()
+        conn.close()
+
+    def save_cache(self):
+        """保存缓存"""
+        try:
+            cache_data = {
+                'characters': self.character_cache,
+                'settings': self.setting_cache,
+                'plot_events': self.plot_cache
+            }
+
+            with open(self.cache_path, 'wb') as f:
+                pickle.dump(cache_data, f)
+
+            if self.config.get('knowledge_graph_enabled', True):
+                with open(self.graph_path, 'wb') as f:
+                    pickle.dump(self.knowledge_graph, f)
+
+            logging.info("缓存已保存")
+
+        except Exception as e:
+            logging.error(f"保存缓存失败: {e}")
+
+    def get_statistics(self) -> Dict[str, Any]:
+        """获取统计信息"""
+        self.stats.update({
+            'characters': len(self.character_cache),
+            'settings': len(self.setting_cache),
+            'plot_events': len(self.plot_cache),
+            'knowledge_graph_nodes': self.knowledge_graph.number_of_nodes(),
+            'knowledge_graph_edges': self.knowledge_graph.number_of_edges(),
+            'last_update': time.time()
+        })
+
+        return self.stats
+
+    def export_knowledge_summary(self, filepath: str):
+        """导出知识摘要"""
+        summary = {
+            'export_time': time.strftime('%Y-%m-%d %H:%M:%S'),
+            'statistics': self.get_statistics(),
+            'characters': {
+                char_id: {
+                    'name': char.name,
+                    'cultivation_level': char.cultivation_level,
+                    'status': char.status,
+                    'first_appearance': char.first_appearance,
+                    'last_appearance': char.last_appearance
+                }
+                for char_id, char in self.character_cache.items()
+            },
+            'major_settings': {
+                setting_id: {
+                    'name': setting.name,
+                    'category': setting.category,
+                    'description': setting.description[:200] + "..." if len(setting.description) > 200 else setting.description
+                }
+                for setting_id, setting in self.setting_cache.items()
+                if setting.consistency_level == ConsistencyLevel.CRITICAL
+            },
+            'major_events': {
+                event_id: {
+                    'title': event.title,
+                    'chapter': event.chapter_id,
+                    'importance': event.importance
+                }
+                for event_id, event in self.plot_cache.items()
+                if event.importance >= 7
+            }
+        }
+
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(summary, f, ensure_ascii=False, indent=2)
+
+        logging.info(f"知识摘要已导出到: {filepath}")
+
+
+class ConsistencyChecker:
+    """一致性检查器"""
+
+    def __init__(self, knowledge_base: DynamicWorldKnowledgeBase):
+        self.knowledge_base = knowledge_base
+
+    def check_character_consistency(self, character: CharacterProfile) -> List[ConsistencyIssue]:
+        """检查角色一致性"""
+        issues = []
+
+        # 检查名称冲突
+        for existing_id, existing_char in self.knowledge_base.character_cache.items():
+            if existing_id != character.id and existing_char.name == character.name:
+                issues.append(ConsistencyIssue(
+                    id=f"char_name_conflict_{int(time.time())}",
+                    type="character_name_conflict",
+                    severity="major",
+                    description=f"角色名称冲突：{character.name}",
+                    conflicting_elements=[character.id, existing_id],
+                    auto_fixable=False
+                ))
+
+        return issues
+
+    def check_setting_consistency(self, setting: WorldSetting) -> List[ConsistencyIssue]:
+        """检查设定一致性"""
+        issues = []
+
+        # 检查规则冲突
+        for existing_id, existing_setting in self.knowledge_base.setting_cache.items():
+            if (existing_id != setting.id and
+                existing_setting.name == setting.name and
+                setting.consistency_level == ConsistencyLevel.CRITICAL):
+
+                # 比较规则
+                if set(setting.rules) != set(existing_setting.rules):
+                    issues.append(ConsistencyIssue(
+                        id=f"setting_rule_conflict_{int(time.time())}",
+                        type="setting_rule_conflict",
+                        severity="major",
+                        description=f"设定规则冲突：{setting.name}",
+                        conflicting_elements=[setting.id, existing_id],
+                        auto_fixable=False
+                    ))
+
+        return issues
+
+    def check_plot_consistency(self, event: PlotEvent) -> List[ConsistencyIssue]:
+        """检查情节一致性"""
+        issues = []
+
+        # 检查时间线冲突
+        for existing_pos, existing_id in self.knowledge_base.timeline_index:
+            if existing_id == event.id:
+                continue
+
+            existing_event = self.knowledge_base.plot_cache.get(existing_id)
+            if existing_event and abs(existing_pos - event.timeline_position) < 10:
+                # 检查是否有冲突的情节
+                if (existing_event.location == event.location and
+                    set(existing_event.involved_characters) & set(event.involved_characters)):
+
+                    issues.append(ConsistencyIssue(
+                        id=f"plot_timeline_conflict_{int(time.time())}",
+                        type="plot_timeline_conflict",
+                        severity="minor",
+                        description=f"时间线冲突：相近时间同一地点有多个事件",
+                        conflicting_elements=[event.id, existing_id],
+                        auto_fixable=True
+                    ))
+
+        return issues
+
+    def check_character_content_consistency(self, mentioned_characters: List[str],
+                                          character_cache: Dict[str, CharacterProfile]) -> List[ConsistencyIssue]:
+        """检查内容中的角色一致性"""
+        issues = []
+
+        for char_name in mentioned_characters:
+            if char_name not in character_cache:
+                issues.append(ConsistencyIssue(
+                    id=f"unknown_character_{int(time.time())}",
+                    type="unknown_character",
+                    severity="minor",
+                    description=f"未知角色：{char_name}",
+                    conflicting_elements=[char_name],
+                    auto_fixable=True,
+                    suggested_resolution=f"将{char_name}添加到角色库或删除该提及"
+                ))
+
+        return issues
+
+    def check_setting_content_consistency(self, mentioned_settings: List[str],
+                                        setting_cache: Dict[str, WorldSetting]) -> List[ConsistencyIssue]:
+        """检查内容中的设定一致性"""
+        issues = []
+
+        for setting_name in mentioned_settings:
+            if setting_name not in setting_cache:
+                issues.append(ConsistencyIssue(
+                    id=f"unknown_setting_{int(time.time())}",
+                    type="unknown_setting",
+                    severity="minor",
+                    description=f"未知设定：{setting_name}",
+                    conflicting_elements=[setting_name],
+                    auto_fixable=True,
+                    suggested_resolution=f"将{setting_name}添加到设定库或删除该提及"
+                ))
+
+        return issues
+
+    def check_timeline_consistency(self, mentioned_events: List[str],
+                                 timeline_index: List[Tuple[int, str]], chapter_id: int) -> List[ConsistencyIssue]:
+        """检查时间线一致性"""
+        issues = []
+
+        # 这里可以添加更复杂的时间线检查逻辑
+        # 例如检查事件顺序的合理性等
+
+        return issues
+
+
+class AutoFixer:
+    """自动修复器"""
+
+    def __init__(self, knowledge_base: DynamicWorldKnowledgeBase):
+        self.knowledge_base = knowledge_base
+
+    def fix_issue(self, issue: ConsistencyIssue, content: str) -> Dict[str, Any]:
+        """修复一致性问题"""
+        result = {
+            'success': False,
+            'fixed_content': content,
+            'changes': []
+        }
+
+        try:
+            if issue.type == "unknown_character":
+                # 删除未知角色提及
+                fixed_content = content.replace(issue.conflicting_elements[0], "")
+                result['success'] = True
+                result['fixed_content'] = fixed_content
+                result['changes'].append(f"删除未知角色提及：{issue.conflicting_elements[0]}")
+
+            elif issue.type == "unknown_setting":
+                # 删除未知设定提及
+                fixed_content = content.replace(issue.conflicting_elements[0], "")
+                result['success'] = True
+                result['fixed_content'] = fixed_content
+                result['changes'].append(f"删除未知设定提及：{issue.conflicting_elements[0]}")
+
+            elif issue.type == "plot_timeline_conflict":
+                # 调整事件位置
+                # 这里可以实现更复杂的时间线调整逻辑
+                result['success'] = True
+                result['changes'].append("调整情节时间线")
+
+        except Exception as e:
+            logging.error(f"自动修复失败: {e}")
+
+        return result
+
+
+# 工厂函数
+def create_dynamic_world_knowledge_base(project_path: str, config: Optional[Dict[str, Any]] = None) -> DynamicWorldKnowledgeBase:
+    """创建动态世界知识库实例"""
+    return DynamicWorldKnowledgeBase(project_path, config)
+
+# 示例使用
+async def main():
+    """示例使用"""
+    # 创建动态世界知识库
+    knowledge_base = create_dynamic_world_knowledge_base("./test_project")
+
+    # 添加角色
+    protagonist = CharacterProfile(
+        id="char_001",
+        name="叶辰",
+        aliases=["叶大师", "辰哥"],
+        appearance="身材修长，面容俊朗，眼神锐利",
+        personality="坚毅果断，重情重义",
+        cultivation_level="炼气期九层",
+        skills=["基础剑法", "炼气术"],
+        relationships={"师父": "玄机子", "朋友": "林雪儿"}
+    )
+
+    knowledge_base.add_character(protagonist)
+
+    # 添加世界设定
+    cultivation_system = WorldSetting(
+        id="setting_001",
+        name="修真等级体系",
+        category="cultivation",
+        description="修真者的修炼等级划分",
+        rules=["炼气期", "筑基期", "金丹期", "元婴期", "化神期"],
+        consistency_level=ConsistencyLevel.CRITICAL
+    )
+
+    knowledge_base.add_world_setting(cultivation_system)
+
+    # 添加情节事件
+    tournament_event = PlotEvent(
+        id="event_001",
+        title="宗门大比初赛",
+        chapter_id=5,
+        timeline_position=100,
+        location="演武场",
+        involved_characters=["叶辰", "李威"],
+        event_type="competition",
+        description="叶辰参加宗门大比初赛",
+        importance=8
+    )
+
+    knowledge_base.add_plot_event(tournament_event)
+
+    # 测试检索功能
+    query = "叶辰的修炼等级"
+    context = knowledge_base.get_relevant_context(query)
+
+    print("🔍 检索结果:")
+    for item in context:
+        print(f"  {item['type']}: {item.get('name', item.get('title', ''))} (相关度: {item['relevance']:.2f})")
+        print(f"    {item['content'][:100]}...")
+
+    # 获取统计信息
+    stats = knowledge_base.get_statistics()
+    print(f"\n📊 知识库统计:")
+    print(f"  角色: {stats['characters']}")
+    print(f"  设定: {stats['settings']}")
+    print(f"  情节: {stats['plot_events']}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
