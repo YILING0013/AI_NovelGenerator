@@ -8,8 +8,7 @@ import customtkinter as ctk
 
 from config_manager import load_config, save_config
 from tooltips import tooltips
-
-import os
+from ui.proxy_utils import build_proxy_url, clear_proxy_env, apply_proxy_env
 
 
 def create_label_with_help(self, parent, label_text, tooltip_key, row, column,
@@ -179,6 +178,7 @@ def build_ai_config_tab(self):
         "interface_format": self.embedding_interface_format_var.get().strip()
 
         }
+        existing_other = self.loaded_config.get("other_params", {})
         other_params = {
             "topic": self.topic_text.get("0.0", "end").strip(),
             "genre": self.genre_var.get(),
@@ -192,6 +192,8 @@ def build_ai_config_tab(self):
             "scene_location": self.scene_location_var.get(),
             "time_constraint": self.time_constraint_var.get()
         }
+        existing_other.update(other_params)
+        other_params = existing_other
         self.loaded_config["embedding_configs"][self.embedding_interface_format_var.get().strip()] = embedding_config
         self.loaded_config["other_params"] = other_params
 
@@ -545,18 +547,20 @@ def build_embeddings_config_tab(self):
             # 更新last_embedding_interface_format
             self.loaded_config["last_embedding_interface_format"] = current_embedding_interface
 
+            # 🔧 修复：先从文件重新加载，避免覆盖其他配置节（如choose_configs）
+            fresh_config = load_config(self.config_file)
+            fresh_config["embedding_configs"] = self.loaded_config.get("embedding_configs", {})
+            fresh_config["last_embedding_interface_format"] = current_embedding_interface
+            
             # 保存到文件
-            if save_config(self.loaded_config, self.config_file):
-                print("Embedding配置已自动保存")
+            if save_config(fresh_config, self.config_file):
                 if hasattr(self, 'log'):
                     self.log("Embedding配置已自动保存")
             else:
-                print("Embedding配置保存失败")
                 if hasattr(self, 'log'):
                     self.log("Embedding配置保存失败")
 
         except Exception as e:
-            print(f"自动保存Embedding配置时出错: {e}")
             if hasattr(self, 'log'):
                 self.log(f"自动保存Embedding配置时出错: {e}")
         finally:
@@ -627,12 +631,26 @@ def build_embeddings_config_tab(self):
     test_btn.grid(row=5, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
 
 def build_config_choose_tab(self):
-
+    # 刷新loaded_config以获取最新配置
+    self.loaded_config = load_config(self.config_file)
 
     self.config_choose.grid_rowconfigure(0, weight=0)
     self.config_choose.grid_columnconfigure(0, weight=0)
     self.config_choose.grid_columnconfigure(1, weight=1)
     config_choose_options = list(self.loaded_config.get("llm_configs", {}).keys())
+    
+    # 验证当前变量值是否有效，无效则设为第一个可用配置
+    default_config = config_choose_options[0] if config_choose_options else ""
+    # 🆕 增加 critique_llm_var
+    self.critique_llm_var = ctk.StringVar(value=self.loaded_config.get("choose_configs", {}).get("critique_llm", default_config))
+    
+    for var in [self.architecture_llm_var, self.chapter_outline_llm_var, 
+                self.prompt_draft_llm_var, self.final_chapter_llm_var, 
+                self.consistency_review_llm_var, self.quality_loop_llm_var,
+                self.critique_llm_var]:  # 🔧 添加 critique_llm_var
+        if var.get() not in config_choose_options and config_choose_options:
+            var.set(default_config)
+    
     create_label_with_help(self, parent=self.config_choose, label_text="生成架构所用大模型", tooltip_key="architecture_llm_config", row=0, column=0, font=("Microsoft YaHei", 12))
     architecture_dropdown = ctk.CTkOptionMenu(self.config_choose, values=config_choose_options, variable=self.architecture_llm_var, font=("Microsoft YaHei", 12))
     architecture_dropdown.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
@@ -653,8 +671,18 @@ def build_config_choose_tab(self):
     consistency_review_dropdown = ctk.CTkOptionMenu(self.config_choose, values=config_choose_options, variable=self.consistency_review_llm_var, font=("Microsoft YaHei", 12))
     consistency_review_dropdown.grid(row=4, column=1, padx=5, pady=5, sticky="nsew")
 
+    # 🆕 质量闭环所用大模型
+    create_label_with_help(self, parent=self.config_choose, label_text="质量闭环所用大模型", tooltip_key="quality_loop_llm_config", row=5, column=0, font=("Microsoft YaHei", 12))
+    quality_loop_dropdown = ctk.CTkOptionMenu(self.config_choose, values=config_choose_options, variable=self.quality_loop_llm_var, font=("Microsoft YaHei", 12))
+    quality_loop_dropdown.grid(row=5, column=1, padx=5, pady=5, sticky="nsew")
+
+    # 🆕 毒舌读者评论员所用大模型
+    create_label_with_help(self, parent=self.config_choose, label_text="毒舌读者评论员所用大模型", tooltip_key="critique_llm_config", row=6, column=0, font=("Microsoft YaHei", 12))
+    critique_dropdown = ctk.CTkOptionMenu(self.config_choose, values=config_choose_options, variable=self.critique_llm_var, font=("Microsoft YaHei", 12))
+    critique_dropdown.grid(row=6, column=1, padx=5, pady=5, sticky="nsew")
+
     def save_config_choose():
-        config_data = load_config(self.config_file)["choose_configs"]
+        config_data = load_config(self.config_file).get("choose_configs", {})
         if not config_data:
             config_data = {}
         config_data["architecture_llm"] = self.architecture_llm_var.get()
@@ -662,17 +690,22 @@ def build_config_choose_tab(self):
         config_data["prompt_draft_llm"] = self.prompt_draft_llm_var.get()
         config_data["final_chapter_llm"] = self.final_chapter_llm_var.get()
         config_data["consistency_review_llm"] = self.consistency_review_llm_var.get()
+        config_data["quality_loop_llm"] = self.quality_loop_llm_var.get()
+        config_data["critique_llm"] = self.critique_llm_var.get()
 
 
         config_data_full = load_config(self.config_file)
         config_data_full["choose_configs"] = config_data
         save_config(config_data_full, self.config_file)
+        
         messagebox.showinfo("提示", "配置已保存。")
 
     def refresh_config_dropdowns():
         """刷新所有配置下拉菜单"""
         config_names = list(self.loaded_config.get("llm_configs", {}).keys())
-        for dropdown in [architecture_dropdown, chapter_outline_dropdown, prompt_draft_dropdown, final_chapter_dropdown, consistency_review_dropdown]:
+        for dropdown in [architecture_dropdown, chapter_outline_dropdown, prompt_draft_dropdown, 
+                         final_chapter_dropdown, consistency_review_dropdown, 
+                         quality_loop_dropdown, critique_dropdown]:
             dropdown.configure(values=config_names)
             if config_names and dropdown.cget("variable").get() not in config_names:
                 dropdown.cget("variable").set(config_names[0])
@@ -742,10 +775,9 @@ def build_proxy_setting_tab(self):
 
 
     def open_proxy(address, port):
-        """启动代理"""
-        # 设置环境变量
-        os.environ['HTTP_PROXY'] = f"http://{address}:{port}"
-        os.environ['HTTPS_PROXY'] = f"http://{address}:{port}"
+        proxy_url = build_proxy_url(address, port)
+        if proxy_url:
+            apply_proxy_env(proxy_url)
 
     def save_proxy_setting():
         config_data = load_config(self.config_file)
@@ -762,8 +794,7 @@ def build_proxy_setting_tab(self):
         if self.proxy_enabled_var.get():
             open_proxy(self.proxy_address_var.get(), self.proxy_port_var.get())
         else:
-            os.environ.pop('HTTP_PROXY', None)
-            os.environ.pop('HTTPS_PROXY', None)
+            clear_proxy_env()
 
     # 添加保存按钮
     save_btn = ctk.CTkButton(
@@ -804,7 +835,7 @@ def load_config_btn(self):
         other_params = cfg.get("other_params", {})
         self.topic_text.delete("0.0", "end")
         self.topic_text.insert("0.0", other_params.get("topic", ""))
-        self.genre_var.set(other_params.get("genre", "玄幻"))
+        self.genre_var.set(other_params.get("genre", ""))
         self.num_chapters_var.set(str(other_params.get("num_chapters", 10)))
         self.word_number_var.set(str(other_params.get("word_number", 3000)))
         self.filepath_var.set(other_params.get("filepath", ""))
@@ -857,6 +888,9 @@ def save_config_btn(self):
     existing_config = load_config(self.config_file)
     if not existing_config:
         existing_config = {}
+    existing_other = existing_config.get("other_params", {})
+    existing_other.update(other_params)
+    other_params = existing_other
     existing_config["last_interface_format"] = current_llm_interface
     existing_config["last_embedding_interface_format"] = current_embedding_interface
     if "llm_configs" not in existing_config:

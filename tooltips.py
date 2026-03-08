@@ -37,5 +37,6 @@ tooltips = {
     "key_items": "在本章中出现的重要道具、线索或物品。",
     "scene_location": "本章主要发生的地点或场景描述。",
     "time_constraint": "本章剧情中涉及的时间压力或时限设置。",
+    "webdav_target_dir": "WebDAV 远端目录名。用于存放/恢复配置文件（config.json）。留空时默认使用 AI_Novel_Generator。",
     "interface_config": "选择你要使用的AI接口配置。"
 }

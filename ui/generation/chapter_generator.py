@@ -30,6 +30,13 @@ from utils import save_string_to_txt
 from .config_manager import ConfigurationManager
 from .error_handler import ErrorHandler
 
+# 预生成验证器
+try:
+    from novel_generator.pre_generation_validator import get_chapter_enhancement, validate_before_generation
+    PRE_VALIDATOR_AVAILABLE = True
+except ImportError:
+    PRE_VALIDATOR_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -95,6 +102,17 @@ class ChapterGenerator:
             'total_time': 0.0,
             'average_time': 0.0
         }
+        
+        # === 新增：质量增强器 ===
+        self.quality_enhancer = None
+        try:
+            from quality.generation_enhancer import create_quality_enhancer
+            filepath = self.config_manager.get_novel_parameters().get('filepath', '')
+            if filepath:
+                self.quality_enhancer = create_quality_enhancer(filepath)
+                logger.info("质量增强器已加载")
+        except Exception as e:
+            logger.warning(f"质量增强器加载失败: {e}")
 
         logger.info("ChapterGenerator 初始化完成")
 
@@ -202,6 +220,40 @@ class ChapterGenerator:
             # 获取草稿配置
             draft_config = self.config_manager.get_draft_config()
             novel_params = self.config_manager.get_novel_parameters()
+            
+            # === 新增：质量增强分析 ===
+            quality_enhancement_text = ""
+            if self.quality_enhancer:
+                try:
+                    enhancement_result = self.quality_enhancer.analyze_before_generation(request.chapter_id)
+                    quality_enhancement_text = self.quality_enhancer.get_prompt_enhancement(enhancement_result)
+                    if quality_enhancement_text:
+                        logger.info(f"第{request.chapter_id}章应用质量增强建议")
+                except Exception as e:
+                    logger.warning(f"质量增强分析失败: {e}")
+            
+            # === 新增：预生成验证器（整合分卷校正、修为约束、重大事件等） ===
+            pre_validation_text = ""
+            if PRE_VALIDATOR_AVAILABLE:
+                try:
+                    filepath = novel_params.get('filepath', '')
+                    pre_validation_text = get_chapter_enhancement(filepath, request.chapter_id)
+                    if pre_validation_text:
+                        logger.info(f"第{request.chapter_id}章应用预生成验证增强")
+                except Exception as e:
+                    logger.warning(f"预生成验证失败: {e}")
+            else:
+                # 回退到单独的分卷校正
+                try:
+                    from prompts import get_volume_info
+                    volume_info = get_volume_info(request.chapter_id)
+                    pre_validation_text = f"\n\n{volume_info['position_text']}\n"
+                    logger.info(f"第{request.chapter_id}章分卷定位: {volume_info['full_position']}")
+                except Exception as e:
+                    logger.warning(f"分卷定位获取失败: {e}")
+            
+            # 合并自定义提示词（质量增强 + 预生成验证）
+            custom_prompt = quality_enhancement_text + pre_validation_text
 
             # 构建生成提示
             prompt = build_chapter_prompt(
@@ -225,7 +277,7 @@ class ChapterGenerator:
                 interface_format=draft_config['interface_format'],
                 max_tokens=draft_config['max_tokens'],
                 timeout=draft_config['timeout'],
-                custom_prompt_text=""
+                custom_prompt_text=custom_prompt
             )
 
             # 调用生成函数

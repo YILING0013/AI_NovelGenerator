@@ -3,6 +3,26 @@
 import os
 import json
 
+
+def resolve_architecture_file(project_dir: str, prefer_active: bool = False) -> str:
+    preferred = [
+        "Novel_architecture_active.txt",
+        "Novel_architecture.txt",
+        "novel_architecture.txt",
+    ]
+    fallback = [
+        "Novel_architecture.txt",
+        "novel_architecture.txt",
+    ]
+    candidates = preferred if prefer_active else fallback
+
+    for name in candidates:
+        candidate = os.path.join(project_dir, name)
+        if os.path.exists(candidate):
+            return candidate
+
+    return os.path.join(project_dir, "Novel_architecture.txt")
+
 def read_file(filename: str) -> str:
     """读取文件的全部内容，若文件不存在或异常则返回空字符串。"""
     try:

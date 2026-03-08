@@ -59,7 +59,7 @@ def build_left_layout(self):
 
     self.btn_generate_architecture = ctk.CTkButton(
         self.step_buttons_frame,
-        text="Step1. 生成架构",
+        text="🔵 S1 架构生成",
         command=self.generate_novel_architecture_ui,
         font=("Microsoft YaHei", 12)
     )
@@ -67,7 +67,7 @@ def build_left_layout(self):
 
     self.btn_generate_directory = ctk.CTkButton(
         self.step_buttons_frame,
-        text="Step2. 生成目录",
+        text="🟣 S2 章节目录",
         command=self.generate_chapter_blueprint_ui,
         font=("Microsoft YaHei", 12)
     )
@@ -75,7 +75,7 @@ def build_left_layout(self):
 
     self.btn_generate_chapter = ctk.CTkButton(
         self.step_buttons_frame,
-        text="Step3. 生成草稿",
+        text="🟢 S3 单章草稿",
         command=self.generate_chapter_draft_ui,
         font=("Microsoft YaHei", 12)
     )
@@ -83,7 +83,7 @@ def build_left_layout(self):
 
     self.btn_finalize_chapter = ctk.CTkButton(
         self.step_buttons_frame,
-        text="Step4. 定稿章节",
+        text="🟠 S4 章节定稿",
         command=self.finalize_chapter_ui,
         font=("Microsoft YaHei", 12)
     )
@@ -91,15 +91,35 @@ def build_left_layout(self):
 
     self.btn_batch_generate = ctk.CTkButton(
         self.step_buttons_frame,
-        text="批量生成",
+        text="🟢 S3 批量章节",
         command=self.generate_batch_ui,
         font=("Microsoft YaHei", 12)
     )
     self.btn_batch_generate.grid(row=0, column=4, padx=5, pady=2, sticky="ew")
 
+    self.step_stage_legend_label = ctk.CTkLabel(
+        self.step_buttons_frame,
+        text="图例：🔵S1架构生成  |  🟣S2章节目录  |  🟢S3章节生成/批量",
+        font=("Microsoft YaHei", 11),
+        text_color="gray",
+    )
+    self.step_stage_legend_label.grid(row=1, column=0, columnspan=5, padx=5, pady=(2, 0), sticky="w")
+
+    # Step2 自动修复/续写进度可视化
+    self.step2_repair_status_label = ctk.CTkLabel(
+        self.step_buttons_frame,
+        text="Step2状态：空闲",
+        font=("Microsoft YaHei", 11),
+        text_color="gray",
+    )
+    self.step2_repair_status_label.grid(row=2, column=0, columnspan=5, padx=5, pady=(4, 0), sticky="w")
+
+    self.step2_repair_progressbar = ctk.CTkProgressBar(self.step_buttons_frame, height=12)
+    self.step2_repair_progressbar.grid(row=3, column=0, columnspan=5, padx=5, pady=(2, 4), sticky="ew")
+    self.step2_repair_progressbar.set(0)
 
     # 日志文本框
-    log_label = ctk.CTkLabel(self.left_frame, text="输出日志 (只读)", font=("Microsoft YaHei", 12))
+    log_label = ctk.CTkLabel(self.left_frame, text="输出日志 (只读，含[S1/S2/S3]阶段标记)", font=("Microsoft YaHei", 12))
     log_label.grid(row=3, column=0, padx=5, pady=(5, 0), sticky="w")
 
     self.log_text = ctk.CTkTextbox(self.left_frame, wrap="word", font=("Microsoft YaHei", 12))
