@@ -1,0 +1,29 @@
+{
+  "description": "Quality loop policy example. Copy values into config.json -> llm_configs -> <Your Model> -> quality_policy",
+  "quality_policy": {
+    "default_quality_threshold": 9.0,
+    "max_iterations": 10,
+    "min_word_count_before_expand": 3500,
+    "target_word_count_after_expand": 4000,
+    "word_count_adjust_score_tolerance": 0.5,
+    "severe_threshold_offset": 2.0,
+    "stagnation_threshold": 0.05,
+    "stagnation_count_limit": 5
+  },
+  "profiles": {
+    "fast": {
+      "default_quality_threshold": 8.5,
+      "max_iterations": 6,
+      "stagnation_count_limit": 3
+    },
+    "balanced": {
+      "default_quality_threshold": 9.0,
+      "max_iterations": 10
+    },
+    "strict": {
+      "default_quality_threshold": 9.2,
+      "max_iterations": 12,
+      "word_count_adjust_score_tolerance": 0.3
+    }
+  }
+}

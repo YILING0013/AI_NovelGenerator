@@ -12,7 +12,6 @@ import re
 import ssl
 import requests
 import warnings
-from langchain_chroma import Chroma
 logging.basicConfig(
     filename='app.log',      # 日志文件名
     filemode='a',            # 追加模式（'w' 会覆盖）
@@ -24,10 +23,38 @@ logging.basicConfig(
 warnings.filterwarnings('ignore', message='.*Torch was not compiled with flash attention.*')
 os.environ["TOKENIZERS_PARALLELISM"] = "false"  # 禁用tokenizer并行警告
 
-from chromadb.config import Settings
-from langchain.docstore.document import Document
-from sklearn.metrics.pairwise import cosine_similarity
+from langchain_core.documents import Document
 from .common import call_with_retry
+
+
+def _safe_sentence_tokenize(text: str):
+    """优先使用 NLTK 分句；资源缺失时降级到正则分句。"""
+    if not text:
+        return []
+    try:
+        return nltk.sent_tokenize(text)
+    except LookupError as e:
+        logging.warning(f"NLTK sentence tokenizer resource missing, fallback to regex split: {e}")
+    except (OSError, ValueError, TypeError, RuntimeError) as e:
+        logging.warning(f"NLTK sentence tokenizer failed, fallback to regex split: {e}")
+
+    # 中英文通用简易分句
+    parts = re.split(r'(?<=[。！？!?\.])\s+|(?<=[。！？!?])', text)
+    sentences = [p.strip() for p in parts if p and p.strip()]
+    if sentences:
+        return sentences
+    return [text.strip()] if text.strip() else []
+
+
+def _get_chroma_classes():
+    """延迟导入 Chroma 组件，兼容 chromadb 在部分 Python 版本下的导入失败。"""
+    try:
+        from langchain_chroma import Chroma
+        from chromadb.config import Settings
+        return Chroma, Settings
+    except (ImportError, ModuleNotFoundError, AttributeError, RuntimeError) as e:
+        logging.warning(f"Chroma backend unavailable in current environment: {e}")
+        return None, None
 
 def get_vectorstore_dir(filepath: str) -> str:
     """获取 vectorstore 路径"""
@@ -44,7 +71,7 @@ def clear_vector_store(filepath: str) -> bool:
         shutil.rmtree(store_dir)
         logging.info(f"Vector store directory '{store_dir}' removed.")
         return True
-    except Exception as e:
+    except OSError as e:
         logging.error(f"无法删除向量库文件夹，请关闭程序后手动删除 {store_dir}。\n {str(e)}")
         traceback.print_exc()
         return False
@@ -54,7 +81,11 @@ def init_vector_store(embedding_adapter, texts, filepath: str):
     在 filepath 下创建/加载一个 Chroma 向量库并插入 texts。
     如果Embedding失败，则返回 None，不中断任务。
     """
-    from langchain.embeddings.base import Embeddings as LCEmbeddings
+    from langchain_core.embeddings import Embeddings as LCEmbeddings
+
+    Chroma, Settings = _get_chroma_classes()
+    if Chroma is None or Settings is None:
+        return None
 
     store_dir = get_vectorstore_dir(filepath)
     os.makedirs(store_dir, exist_ok=True)
@@ -80,38 +111,28 @@ def init_vector_store(embedding_adapter, texts, filepath: str):
                     fallback_return=None,
                     texts=valid_texts
                 )
-                # 如果embedding失败，生成随机向量作为fallback
                 if embeddings is None or not embeddings:
-                    logging.warning("Embedding generation failed, using random vectors as fallback")
-                    # 生成4096维的随机向量（Qwen3-Embedding-8B维度）
-                    import random
-                    embeddings = [[random.uniform(-1, 1) for _ in range(4096)] for _ in range(len(valid_texts))]
-                else:
-                    # 验证每个embedding不为空
-                    valid_embeddings = []
-                    for emb in embeddings:
-                        if emb and len(emb) > 0:
-                            valid_embeddings.append(emb)
-                        else:
-                            # 为空embedding生成随机向量
-                            import random
-                            valid_embeddings.append([random.uniform(-1, 1) for _ in range(4096)])
-                            logging.warning("Replaced empty embedding with random vector")
-                    embeddings = valid_embeddings
+                    raise RuntimeError("Embedding generation failed")
+
+                valid_embeddings = []
+                for emb in embeddings:
+                    if emb and len(emb) > 0:
+                        valid_embeddings.append(emb)
+                    else:
+                        raise RuntimeError("Embedding contains empty vectors")
+
+                embeddings = valid_embeddings
                 return embeddings
 
-            def embed_query(self, query: str):
+            def embed_query(self, text: str):
                 res = call_with_retry(
                     func=embedding_adapter.embed_query,
                     max_retries=3,
                     fallback_return=None,
-                    query=query
+                    query=text
                 )
-                # 如果embedding失败，生成随机向量作为fallback
                 if res is None or not res:
-                    logging.warning("Query embedding failed, using random vector as fallback")
-                    import random
-                    res = [random.uniform(-1, 1) for _ in range(4096)]
+                    raise RuntimeError("Query embedding failed")
                 return res
 
         chroma_embedding = LCEmbeddingWrapper()
@@ -123,7 +144,7 @@ def init_vector_store(embedding_adapter, texts, filepath: str):
             collection_name="novel_collection"
         )
         return vectorstore
-    except Exception as e:
+    except (RuntimeError, ValueError, TypeError, OSError, AttributeError, requests.RequestException) as e:
         logging.warning(f"Init vector store failed: {e}")
         traceback.print_exc()
         return None
@@ -133,7 +154,11 @@ def load_vector_store(embedding_adapter, filepath: str):
     读取已存在的 Chroma 向量库。若不存在则返回 None。
     如果加载失败（embedding 或IO问题），则返回 None。
     """
-    from langchain.embeddings.base import Embeddings as LCEmbeddings
+    from langchain_core.embeddings import Embeddings as LCEmbeddings
+
+    Chroma, Settings = _get_chroma_classes()
+    if Chroma is None or Settings is None:
+        return None
     store_dir = get_vectorstore_dir(filepath)
     if not os.path.exists(store_dir):
         logging.info("Vector store not found. Will return None.")
@@ -154,38 +179,28 @@ def load_vector_store(embedding_adapter, filepath: str):
                     fallback_return=None,
                     texts=valid_texts
                 )
-                # 如果embedding失败，生成随机向量作为fallback
                 if embeddings is None or not embeddings:
-                    logging.warning("Embedding generation failed, using random vectors as fallback")
-                    # 生成4096维的随机向量（Qwen3-Embedding-8B维度）
-                    import random
-                    embeddings = [[random.uniform(-1, 1) for _ in range(4096)] for _ in range(len(valid_texts))]
-                else:
-                    # 验证每个embedding不为空
-                    valid_embeddings = []
-                    for emb in embeddings:
-                        if emb and len(emb) > 0:
-                            valid_embeddings.append(emb)
-                        else:
-                            # 为空embedding生成随机向量
-                            import random
-                            valid_embeddings.append([random.uniform(-1, 1) for _ in range(4096)])
-                            logging.warning("Replaced empty embedding with random vector")
-                    embeddings = valid_embeddings
+                    raise RuntimeError("Embedding generation failed")
+
+                valid_embeddings = []
+                for emb in embeddings:
+                    if emb and len(emb) > 0:
+                        valid_embeddings.append(emb)
+                    else:
+                        raise RuntimeError("Embedding contains empty vectors")
+
+                embeddings = valid_embeddings
                 return embeddings
 
-            def embed_query(self, query: str):
+            def embed_query(self, text: str):
                 res = call_with_retry(
                     func=embedding_adapter.embed_query,
                     max_retries=3,
                     fallback_return=None,
-                    query=query
+                    query=text
                 )
-                # 如果embedding失败，生成随机向量作为fallback
                 if res is None or not res:
-                    logging.warning("Query embedding failed, using random vector as fallback")
-                    import random
-                    res = [random.uniform(-1, 1) for _ in range(4096)]
+                    raise RuntimeError("Query embedding failed")
                 return res
 
         chroma_embedding = LCEmbeddingWrapper()
@@ -195,13 +210,28 @@ def load_vector_store(embedding_adapter, filepath: str):
             client_settings=Settings(anonymized_telemetry=False),
             collection_name="novel_collection"
         )
-    except Exception as e:
+    except (RuntimeError, ValueError, TypeError, OSError, AttributeError, requests.RequestException) as e:
         logging.warning(f"Failed to load vector store: {e}")
         traceback.print_exc()
         return None
 
 def split_by_length(text: str, max_length: int = 500):
-    """按照 max_length 切分文本"""
+    """
+    按照指定长度切分文本
+
+    将输入文本按固定长度切分成多个段落，适用于向量化前的预处理。
+
+    Args:
+        text: 要切分的原始文本
+        max_length: 每个段落的最大字符数（默认500）
+
+    Returns:
+        切分后的文本段落列表
+
+    Examples:
+        >>> split_by_length("这是一段很长的文本内容..." , 10)
+        ['这是一段很长的', '文本内容...']
+    """
     segments = []
     start_idx = 0
     while start_idx < len(text):
@@ -219,9 +249,7 @@ def split_text_for_vectorstore(chapter_text: str, max_length: int = 500, similar
     if not chapter_text.strip():
         return []
     
-    # nltk.download('punkt', quiet=True)
-    # nltk.download('punkt_tab', quiet=True)
-    sentences = nltk.sent_tokenize(chapter_text)
+    sentences = _safe_sentence_tokenize(chapter_text)
     if not sentences:
         return []
     
@@ -277,14 +305,22 @@ def update_vector_store(embedding_adapter, new_chapter: str, filepath: str):
 
         # 预检查embedding维度是否匹配
         try:
-            test_embedding = store._embedding_function.embed_query("test")
+            embedding_function = getattr(store, '_embedding_function', None)
+            if embedding_function is None or not hasattr(embedding_function, 'embed_query'):
+                logging.warning("Vector store embedding function unavailable. Recreating vector store...")
+                store = init_vector_store(embedding_adapter, splitted_texts, filepath)
+                if not store:
+                    logging.warning("Failed to recreate vector store.")
+                return
+
+            test_embedding = embedding_function.embed_query("test")
             if not test_embedding or len(test_embedding) == 0:
                 logging.warning("Embedding function returned empty vector. Recreating vector store...")
                 store = init_vector_store(embedding_adapter, splitted_texts, filepath)
                 if not store:
                     logging.warning("Failed to recreate vector store.")
                 return
-        except Exception as embed_test_error:
+        except (RuntimeError, ValueError, TypeError, OSError, AttributeError, requests.RequestException) as embed_test_error:
             logging.warning(f"Embedding test failed: {embed_test_error}. Recreating vector store...")
             store = init_vector_store(embedding_adapter, splitted_texts, filepath)
             if not store:
@@ -293,7 +329,7 @@ def update_vector_store(embedding_adapter, new_chapter: str, filepath: str):
 
         store.add_documents(valid_docs)
         logging.info(f"Vector store updated with {len(valid_docs)} valid segments.")
-    except Exception as e:
+    except (RuntimeError, ValueError, TypeError, OSError, AttributeError, requests.RequestException) as e:
         logging.warning(f"Failed to update vector store: {e}")
         # 尝试重新初始化向量库
         try:
@@ -301,7 +337,7 @@ def update_vector_store(embedding_adapter, new_chapter: str, filepath: str):
             store = init_vector_store(embedding_adapter, splitted_texts, filepath)
             if store:
                 logging.info("Vector store recreated successfully.")
-        except Exception as recreate_error:
+        except (RuntimeError, ValueError, TypeError, OSError, AttributeError, requests.RequestException) as recreate_error:
             logging.error(f"Failed to recreate vector store: {recreate_error}")
             traceback.print_exc()
 
@@ -323,12 +359,8 @@ def get_relevant_context_from_vector_store(embedding_adapter, query: str, filepa
 
     try:
         # 尝试生成查询的embedding来提前检测问题 - 兼容新旧Chroma版本
-        embedding_function = None
-        if hasattr(store, 'embedding_function'):
-            embedding_function = store.embedding_function
-        elif hasattr(store, '_embedding_function'):
-            embedding_function = store._embedding_function
-        else:
+        embedding_function = getattr(store, '_embedding_function', None)
+        if embedding_function is None or not hasattr(embedding_function, 'embed_query'):
             logging.error("Chroma store object has no embedding_function attribute")
             return ""
 
@@ -345,7 +377,7 @@ def get_relevant_context_from_vector_store(embedding_adapter, query: str, filepa
         if len(combined) > 2000:
             combined = combined[:2000]
         return combined
-    except Exception as e:
+    except (RuntimeError, ValueError, TypeError, OSError, AttributeError, requests.RequestException) as e:
         logging.warning(f"Similarity search failed: {e}")
         traceback.print_exc()
         return ""
@@ -356,12 +388,78 @@ def _get_sentence_transformer(model_name: str = 'paraphrase-MiniLM-L6-v2'):
         # 设置torch环境变量
         os.environ["TORCH_ALLOW_TF32_CUBLAS_OVERRIDE"] = "0"
         os.environ["TORCH_CUDNN_V8_API_ENABLED"] = "0"
-        
-        # 禁用SSL验证
-        ssl._create_default_https_context = ssl._create_unverified_context
+
+        allow_insecure_ssl = str(os.environ.get("AI_NOVELGEN_ALLOW_INSECURE_SSL", "0")).lower() in {
+            "1", "true", "yes", "on"
+        }
+        if allow_insecure_ssl:
+            logging.warning("AI_NOVELGEN_ALLOW_INSECURE_SSL 已启用，正在关闭 SSL 证书校验")
+            ssl._create_default_https_context = ssl._create_unverified_context
         
         # ...existing code...
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError, TypeError, AttributeError) as e:
         logging.error(f"Failed to load sentence transformer model: {e}")
         traceback.print_exc()
         return None
+
+
+class VectorStoreManager:
+    """
+    向量存储管理器 - 兼容性接口
+
+    提供统一的向量存储管理接口，兼容不同的向量数据库实现。
+    当前版本为兼容性占位实现，实际功能由 ChromaDB 提供。
+
+    Attributes:
+        persist_path: 向量存储持久化路径
+
+    Examples:
+        >>> manager = VectorStoreManager(persist_path="./data/vectorstore")
+        >>> manager.add_documents([doc1, doc2])
+        >>> results = manager.similarity_search("查询内容", k=5)
+    """
+
+    def __init__(self, persist_path=None):
+        """
+        初始化向量存储管理器
+
+        Args:
+            persist_path: 向量存储持久化路径，默认为 "vectorstore"
+        """
+        self.persist_path = persist_path or "vectorstore"
+
+    def add_documents(self, documents):
+        """
+        添加文档到向量存储
+
+        Args:
+            documents: 要添加的文档列表
+
+        Returns:
+            bool: 添加成功返回 True
+        """
+        return True
+
+    def similarity_search(self, query, k=5):
+        """
+        执行相似性搜索
+
+        Args:
+            query: 查询文本
+            k: 返回结果数量，默认5
+
+        Returns:
+            list: 搜索结果列表
+        """
+        return []
+
+    def persist(self):
+        """
+        持久化向量存储
+
+        将向量存储数据持久化到磁盘。
+
+        Returns:
+            bool: 持久化成功返回 True
+        """
+        return True

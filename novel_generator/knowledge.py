@@ -11,7 +11,7 @@ import nltk
 import warnings
 from utils import read_file
 from novel_generator.vectorstore_utils import load_vector_store, init_vector_store
-from langchain.docstore.document import Document
+from langchain_core.documents import Document
 
 # 禁用特定的Torch警告
 warnings.filterwarnings('ignore', message='.*Torch was not compiled with flash attention.*')
@@ -23,11 +23,29 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
+
+
+def _safe_sentence_tokenize(text: str):
+    """优先使用 NLTK；缺少 punkt 资源时降级为正则分句。"""
+    if not text:
+        return []
+    try:
+        return nltk.sent_tokenize(text)
+    except LookupError as e:
+        logging.warning(f"NLTK sentence tokenizer resource missing, fallback to regex split: {e}")
+    except Exception as e:
+        logging.warning(f"NLTK sentence tokenizer failed, fallback to regex split: {e}")
+
+    parts = re.split(r'(?<=[。！？!?\.])\s+|(?<=[。！？!?])', text)
+    sentences = [p.strip() for p in parts if p and p.strip()]
+    if sentences:
+        return sentences
+    return [text.strip()] if text.strip() else []
+
+
 def advanced_split_content(content: str, similarity_threshold: float = 0.7, max_length: int = 500) -> list:
     """使用基本分段策略"""
-    # nltk.download('punkt', quiet=True)
-    # nltk.download('punkt_tab', quiet=True)
-    sentences = nltk.sent_tokenize(content)
+    sentences = _safe_sentence_tokenize(content)
     if not sentences:
         return []
 

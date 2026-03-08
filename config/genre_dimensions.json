@@ -1,0 +1,173 @@
+{
+    "题材维度配置": {
+        "description": "根据小说题材动态加载额外的质量评估维度",
+        "version": "1.0"
+    },
+    "程序员穿越": {
+        "programmer_density": {
+            "name": "程序员特色",
+            "keywords": [
+                "代码",
+                "BUG",
+                "bug",
+                "调试",
+                "算法",
+                "逻辑",
+                "数据",
+                "运行",
+                "程序",
+                "编译",
+                "变量",
+                "函数",
+                "接口",
+                "系统",
+                "优化",
+                "循环",
+                "debug",
+                "底层",
+                "架构"
+            ],
+            "min_count": 3,
+            "weight": 0.10,
+            "threshold": 0.6,
+            "improvement_hint": "请添加更多程序员思维隐喻，如：代码调试、算法优化、逻辑分析等"
+        },
+        "female_lead_presence": {
+            "name": "女主戏份",
+            "names": [
+                "女主",
+                "女性角色",
+                "她"
+            ],
+            "min_mentions": 2,
+            "weight": 0.08,
+            "threshold": 0.5,
+            "improvement_hint": "请增加女主出场或与主角的互动场景"
+        },
+        "system_interaction": {
+            "name": "系统交互",
+            "keywords": [
+                "【",
+                "系统",
+                "任务",
+                "奖励",
+                "积分",
+                "商城",
+                "签到",
+                "叮"
+            ],
+            "min_count": 2,
+            "weight": 0.05,
+            "threshold": 0.5,
+            "improvement_hint": "请增加系统交互场景，如任务提示、奖励发放等"
+        }
+    },
+    "都市修仙": {
+        "modern_elements": {
+            "name": "现代元素",
+            "keywords": [
+                "手机",
+                "电脑",
+                "汽车",
+                "城市",
+                "公司",
+                "网络",
+                "现代"
+            ],
+            "min_count": 2,
+            "weight": 0.08,
+            "threshold": 0.5,
+            "improvement_hint": "请融入更多现代都市元素"
+        },
+        "cultivation_system": {
+            "name": "修真体系",
+            "keywords": [
+                "灵气",
+                "丹田",
+                "经脉",
+                "境界",
+                "修炼",
+                "功法",
+                "灵力"
+            ],
+            "min_count": 3,
+            "weight": 0.10,
+            "threshold": 0.6,
+            "improvement_hint": "请保持修真体系的一致性描述"
+        }
+    },
+    "系统流": {
+        "system_interaction": {
+            "name": "系统交互",
+            "keywords": [
+                "【",
+                "系统",
+                "任务",
+                "奖励",
+                "积分",
+                "商城",
+                "签到",
+                "叮",
+                "面板",
+                "属性"
+            ],
+            "min_count": 3,
+            "weight": 0.12,
+            "threshold": 0.6,
+            "improvement_hint": "请增加系统交互频率，突出系统流特色"
+        },
+        "upgrade_satisfaction": {
+            "name": "升级爽感",
+            "keywords": [
+                "突破",
+                "升级",
+                "进阶",
+                "暴涨",
+                "提升",
+                "恭喜",
+                "成功"
+            ],
+            "min_count": 2,
+            "weight": 0.08,
+            "threshold": 0.5,
+            "improvement_hint": "请增加升级突破的爽感描写"
+        }
+    },
+    "玄幻": {
+        "combat_scenes": {
+            "name": "战斗描写",
+            "keywords": [
+                "攻击",
+                "一拳",
+                "一剑",
+                "轰",
+                "碎",
+                "杀",
+                "战斗",
+                "爆发",
+                "斩",
+                "刺"
+            ],
+            "min_count": 3,
+            "weight": 0.10,
+            "threshold": 0.6,
+            "improvement_hint": "请增强战斗场景的描写力度"
+        },
+        "power_system": {
+            "name": "力量体系",
+            "keywords": [
+                "境界",
+                "实力",
+                "修为",
+                "灵力",
+                "功法",
+                "秘技",
+                "神通"
+            ],
+            "min_count": 2,
+            "weight": 0.08,
+            "threshold": 0.5,
+            "improvement_hint": "请保持力量体系描述的一致性"
+        }
+    }
+}

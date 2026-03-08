@@ -99,8 +99,7 @@ def Novel_architecture_generate(
             topic=topic,
             genre=genre,
             number_of_chapters=number_of_chapters,
-            word_number=word_number,
-            user_guidance=user_guidance  # 修复：添加内容指导
+            word_number=word_number
         )
         core_seed_result = invoke_with_cleaning(llm_adapter, prompt_core)
         if not core_seed_result.strip():

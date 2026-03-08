@@ -1,0 +1,12 @@
+{
+  "_meta": {
+    "version": "2.0.0",
+    "description": "小说验证规则配置文件 - 仅保留通用框架，具体规则应由各小说项目自行定义",
+    "last_updated": "2025-12-28",
+    "note": "已清空硬编码设定，验证器会自动跳过空配置"
+  },
+  "major_reversal_chapters": {},
+  "female_lead_milestones": {},
+  "foreshadowing_requirements": {},
+  "romance_suggestions": {}
+}
