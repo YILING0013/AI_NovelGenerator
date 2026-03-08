@@ -1,300 +1,180 @@
-# 修复pkg_resources警告
-import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning, module="pkg_resources")
-# -*- coding: utf-8 -*-
-"""
-pytest全局配置和共享fixture
-"""
-import os
+from __future__ import annotations
+
+import importlib.util
+from importlib.machinery import ModuleSpec
 import sys
-import json
-import tempfile
-import shutil
-from pathlib import Path
-from unittest.mock import Mock, MagicMock
-import pytest
-
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
-# 测试数据目录
-TEST_DATA_DIR = project_root / "tests" / "data"
+import types
+from dataclasses import dataclass
 
 
-@pytest.fixture(scope="session")
-def project_root_path():
-    """项目根目录路径"""
-    return project_root
+def _ensure_module(name: str) -> types.ModuleType:
+    module = sys.modules.get(name)
+    if module is not None:
+        return module
+    module = types.ModuleType(name)
+    sys.modules[name] = module
+    return module
 
 
-@pytest.fixture(scope="session")
-def test_data_dir():
-    """测试数据目录"""
-    return TEST_DATA_DIR
+def _install_openai_stubs() -> None:
+    try:
+        import openai  # type: ignore
+    except ModuleNotFoundError:
+        openai = _ensure_module("openai")
+        setattr(openai, "ChatCompletion", type("ChatCompletion", (), {"create": staticmethod(lambda *_a, **_k: None)}))
+        setattr(openai, "OpenAI", type("OpenAI", (), {}))
 
 
-@pytest.fixture
-def temp_dir():
-    """临时目录fixture"""
-    temp_path = tempfile.mkdtemp()
-    yield Path(temp_path)
-    shutil.rmtree(temp_path)
+def _install_langchain_openai_stubs() -> None:
+    try:
+        import langchain_openai  # type: ignore
+    except ModuleNotFoundError:
+        module = _ensure_module("langchain_openai")
+
+        class _Base:
+            def __init__(self, *args, **kwargs) -> None:
+                self.args = args
+                self.kwargs = kwargs
+
+            def invoke(self, *_args, **_kwargs):
+                return None
+
+            def embed_documents(self, _texts):
+                return []
+
+            def embed_query(self, _text):
+                return []
+
+        setattr(module, "ChatOpenAI", _Base)
+        setattr(module, "AzureChatOpenAI", _Base)
+        setattr(module, "AzureOpenAIEmbeddings", _Base)
+        setattr(module, "OpenAIEmbeddings", _Base)
 
 
-@pytest.fixture
-def mock_config():
-    """模拟配置文件"""
-    return {
-        "choose_configs": {
-            "worldview_llm": "test-llm",
-            "character_llm": "test-llm",
-            "plot_llm": "test-llm",
-            "chapter_blueprint_llm": "test-llm",
-            "chapter_outline_llm": "test-llm",
-            "chapter_content_llm": "test-llm",
-            "embedding_model": "test-embedding"
-        },
-        "llm_configs": {
-            "test-llm": {
-                "api_key": "test-api-key",
-                "base_url": "https://api.test.com",
-                "model_name": "test-model",
-                "interface_format": "test",
-                "temperature": 0.7,
-                "max_tokens": 2000,
-                "timeout": 60
-            }
-        },
-        "embedding_configs": {
-            "test-embedding": {
-                "model_path": "test-model-path",
-                "dimension": 768
-            }
-        },
-        "filepath": "test_output",
-        "vector_db_path": "test_vectorstore",
-        "log_level": "INFO"
-    }
+def _install_azure_stubs() -> None:
+    try:
+        import azure.ai.inference  # type: ignore
+        import azure.core.credentials  # type: ignore
+    except ModuleNotFoundError:
+        _ensure_module("azure")
+        _ensure_module("azure.ai")
+        inference_module = _ensure_module("azure.ai.inference")
+        inference_models_module = _ensure_module("azure.ai.inference.models")
+        core_module = _ensure_module("azure.core")
+        credentials_module = _ensure_module("azure.core.credentials")
+
+        setattr(inference_module, "ChatCompletionsClient", type("ChatCompletionsClient", (), {}))
+        setattr(credentials_module, "AzureKeyCredential", type("AzureKeyCredential", (), {}))
+        setattr(inference_models_module, "SystemMessage", type("SystemMessage", (), {}))
+        setattr(inference_models_module, "UserMessage", type("UserMessage", (), {}))
+        setattr(core_module, "credentials", credentials_module)
 
 
-@pytest.fixture
-def config_file(mock_config, temp_dir):
-    """创建临时配置文件"""
-    config_path = temp_dir / "config.json"
-    with open(config_path, 'w', encoding='utf-8') as f:
-        json.dump(mock_config, f, ensure_ascii=False, indent=2)
-    return str(config_path)
+def _install_langchain_core_stubs() -> None:
+    try:
+        import langchain_core.documents  # type: ignore
+        import langchain_core.embeddings  # type: ignore
+    except ModuleNotFoundError:
+        _ensure_module("langchain_core")
+        documents_module = _ensure_module("langchain_core.documents")
+        embeddings_module = _ensure_module("langchain_core.embeddings")
+
+        @dataclass
+        class Document:
+            page_content: str
+
+        class Embeddings:
+            def embed_documents(self, texts):
+                raise NotImplementedError
+
+            def embed_query(self, text):
+                raise NotImplementedError
+
+        setattr(documents_module, "Document", Document)
+        setattr(embeddings_module, "Embeddings", Embeddings)
 
 
-@pytest.fixture
-def mock_llm_adapter():
-    """模拟LLM适配器"""
-    adapter = Mock()
-    adapter.invoke.return_value = "测试生成的文本内容"
-    return adapter
+def _install_tkinter_stubs() -> None:
+    if importlib.util.find_spec("tkinter") is not None:
+        return
+
+    tkinter_module = _ensure_module("tkinter")
+    filedialog_module = _ensure_module("tkinter.filedialog")
+    messagebox_module = _ensure_module("tkinter.messagebox")
+    customtkinter_module = _ensure_module("customtkinter")
+
+    class _DummyWidget:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            self.args: tuple[object, ...] = args
+            self.kwargs: dict[str, object] = dict(kwargs)
+
+        def __call__(self, *args: object, **kwargs: object) -> None:
+            return None
+
+        def __getattr__(self, _name: str):
+            return self._noop
+
+        def _noop(self, *args: object, **kwargs: object) -> None:
+            return None
+
+    class _DummyVariable:
+        def __init__(self, value: object | None = None, *args: object, **kwargs: object) -> None:
+            self._value: object | None = value
+
+        def get(self) -> object | None:
+            return self._value
+
+        def set(self, value: object) -> None:
+            self._value = value
+
+    class _DummyTclError(Exception):
+        pass
+
+    def _return_empty_string(*_args, **_kwargs) -> str:
+        return ""
+
+    def _return_false(*_args, **_kwargs) -> bool:
+        return False
+
+    def _return_none(*_args, **_kwargs) -> None:
+        return None
+
+    setattr(filedialog_module, "askdirectory", _return_empty_string)
+    setattr(filedialog_module, "askopenfilename", _return_empty_string)
+    setattr(filedialog_module, "asksaveasfilename", _return_empty_string)
+
+    setattr(messagebox_module, "askyesno", _return_false)
+    setattr(messagebox_module, "showinfo", _return_none)
+    setattr(messagebox_module, "showwarning", _return_none)
+    setattr(messagebox_module, "showerror", _return_none)
+
+    setattr(tkinter_module, "filedialog", filedialog_module)
+    setattr(tkinter_module, "messagebox", messagebox_module)
+    setattr(tkinter_module, "Tk", _DummyWidget)
+    setattr(tkinter_module, "Toplevel", _DummyWidget)
+    setattr(tkinter_module, "Text", _DummyWidget)
+    setattr(tkinter_module, "TclError", _DummyTclError)
+    setattr(tkinter_module, "END", "end")
+    setattr(tkinter_module, "INSERT", "insert")
+    setattr(tkinter_module, "BOTH", "both")
+
+    tkinter_module.__spec__ = ModuleSpec("tkinter", loader=None)
+    filedialog_module.__spec__ = ModuleSpec("tkinter.filedialog", loader=None)
+    messagebox_module.__spec__ = ModuleSpec("tkinter.messagebox", loader=None)
+    customtkinter_module.__spec__ = ModuleSpec("customtkinter", loader=None)
+
+    setattr(customtkinter_module, "CTkToplevel", _DummyWidget)
+    setattr(customtkinter_module, "CTkTextbox", _DummyWidget)
+    setattr(customtkinter_module, "CTkLabel", _DummyWidget)
+    setattr(customtkinter_module, "CTkFrame", _DummyWidget)
+    setattr(customtkinter_module, "CTkButton", _DummyWidget)
+    setattr(customtkinter_module, "CTkEntry", _DummyWidget)
+    setattr(customtkinter_module, "CTkCheckBox", _DummyWidget)
+    setattr(customtkinter_module, "BooleanVar", _DummyVariable)
 
 
-@pytest.fixture
-def mock_embedding_adapter():
-    """模拟嵌入适配器"""
-    adapter = Mock()
-    adapter.embed_documents.return_value = [
-        [0.1] * 768  # 模拟768维向量
-    ]
-    adapter.embed_query.return_value = [0.1] * 768
-    return adapter
-
-
-@pytest.fixture
-def sample_chapter_data():
-    """示例章节数据"""
-    return {
-        "chapter_number": 1,
-        "chapter_title": "第一章：冒险的开始",
-        "chapter_content": "这是一个关于勇气和冒险的故事。主人公踏上了寻找真相的旅程。",
-        "word_count": 100,
-        "summary": "主人公开始冒险旅程",
-        "characters": ["主人公"],
-        "keywords": ["冒险", "勇气", "真相"],
-        "creation_time": "2025-01-01T00:00:00"
-    }
-
-
-@pytest.fixture
-def sample_architecture_data():
-    """示例架构数据"""
-    return {
-        "worldview": "奇幻世界",
-        "main_characters": [
-            {
-                "name": "主人公",
-                "description": "勇敢的冒险者",
-                "role": "主角"
-            }
-        ],
-        "plot_outline": "从平凡到英雄的蜕变",
-        "themes": ["勇气", "成长", "友情"],
-        "style_guide": "面向青少年读者的奇幻小说风格"
-    }
-
-
-@pytest.fixture
-def mock_vector_store():
-    """模拟向量存储"""
-    store = Mock()
-    store.add_documents.return_value = None
-    store.similarity_search.return_value = [
-        Mock(
-            page_content="相关文档内容",
-            metadata={"source": "test.txt"}
-        )
-    ]
-    return store
-
-
-@pytest.fixture
-def create_test_file(temp_dir):
-    """创建测试文件的工厂函数"""
-    def _create_file(filename: str, content: str = "") -> Path:
-        file_path = temp_dir / filename
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(content, encoding='utf-8')
-        return file_path
-    return _create_file
-
-
-@pytest.fixture
-def mock_chroma_collection():
-    """模拟ChromaDB集合"""
-    collection = Mock()
-    collection.add.return_value = None
-    collection.query.return_value = {
-        "documents": ["文档1", "文档2"],
-        "metadatas": [{"source": "test1.txt"}, {"source": "test2.txt"}],
-        "distances": [0.1, 0.2]
-    }
-    return collection
-
-
-@pytest.fixture(autouse=True)
-def cleanup_temp_files():
-    """自动清理临时文件"""
-    yield
-    # 测试后清理
-    import glob
-    temp_files = glob.glob("test_*") + glob.glob("temp_*")
-    for file in temp_files:
-        try:
-            if os.path.isfile(file):
-                os.remove(file)
-            elif os.path.isdir(file):
-                shutil.rmtree(file)
-        except Exception:
-            pass
-
-
-@pytest.fixture
-def mock_logger():
-    """模拟日志记录器"""
-    logger = Mock()
-    logger.info.return_value = None
-    logger.warning.return_value = None
-    logger.error.return_value = None
-    logger.debug.return_value = None
-    return logger
-
-
-@pytest.fixture
-def sample_chapter_directory():
-    """示例章节目录数据"""
-    return """第一章：勇气的考验
-章节标题：勇气的考验
-字数目标：1500
-核心冲突：主人公面临第一次真正的挑战
-时间地点：迷雾森林，清晨
-本章简介：主人公在迷雾森林中遇到了第一个考验，需要展现内心的勇气。
-
-情感弧光：从恐惧到坚定
-钩子设计：神秘的森林传说
-伏笔线索：古树上的符号
-冲突设计：内心恐惧与外在挑战
-人物关系：与守护者的第一次相遇
-场景描述：迷雾笼罩的神秘森林
-动作设计：跨越深渊的决定
-对话设计：与守护者的对话
-心理描写：内心的挣扎和决心
-环境描写：森林中的声音和景象
-象征隐喻：迷雾象征内心的困惑
-节奏控制：紧张与缓解交替
-悬念设置：古树符号的含义
-高潮设计：跨越深渊的瞬间
-结局安排：获得新的指引
-过渡设计：为下一段旅程做准备
-风格要求：第一人称视角，细腻的心理描写
-创作备注：突出勇气的主题
-
-
-第二章：智慧的启迪
-章节标题：智慧的启迪
-字数目标：1800
-核心冲突：解决古老的谜题
-时间地点：智慧神殿，正午
-本章简介：主人公在神殿中需要运用智慧解开古老的谜题。
-
-情感弧光：从迷茫到领悟
-钩子设计：神秘的神殿大门
-伏笔线索：壁画中的预言
-冲突设计：智力与时间的竞赛
-人物关系：与智慧的化身交流
-场景描述：庄严的神殿内部
-动作设计：研究壁画的过程
-对话设计：与守护者的问答
-心理描写：思考的专注过程
-环境描写：神殿中的光影变化
-象征隐喻：光明象征智慧
-节奏控制：平稳而富有节奏
-悬念设置：下一个谜题的暗示
-高潮设计：解开谜题的瞬间
-结局安排：获得智慧的启示
-过渡设计：准备迎接新的挑战
-风格要求：第二人称视角，富有哲理
-创作备注：强调智慧的珍贵"""
-
-
-# 测试标记定义
-def pytest_configure(config):
-    """配置测试标记"""
-    config.addinivalue_line(
-        "markers", "unit: 单元测试"
-    )
-    config.addinivalue_line(
-        "markers", "integration: 集成测试"
-    )
-    config.addinivalue_line(
-        "markers", "gui: GUI测试"
-    )
-    config.addinivalue_line(
-        "markers", "slow: 慢速测试"
-    )
-    config.addinivalue_line(
-        "markers", "network: 网络测试"
-    )
-    config.addinivalue_line(
-        "markers", "external: 外部服务测试"
-    )
-    config.addinivalue_line(
-        "markers", "smoke: 基础功能测试"
-    )
-    config.addinivalue_line(
-        "markers", "regression: 回归测试"
-    )
-
-
-# 测试收集钩子
-def pytest_collection_modifyitems(config, items):
-    """修改测试收集"""
-    for item in items:
-        # 为没有标记的测试自动添加unit标记
-        if not any(item.iter_markers()):
-            item.add_marker(pytest.mark.unit)
+_install_openai_stubs()
+_install_langchain_openai_stubs()
+_install_azure_stubs()
+_install_langchain_core_stubs()
+_install_tkinter_stubs()
