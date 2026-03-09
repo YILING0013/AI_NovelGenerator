@@ -1,230 +1,235 @@
-# 📖 自动小说生成工具
+# 📖 Automatic Novel Generation Tool
 
->- 当前没有什么精力维护该项目，本身该项目并无任何收益，以及临近毕业，有很多内容要忙，如果后面有时间的话，再考虑基于更新的技术去重构吧。——2025/9/24
+[中文文档](./README_zh-CN.md) | English
+
+> ~~Currently I don't have much energy to maintain this project. The project brings no revenue, and with graduation approaching I have many other priorities. If time permits in the future I may consider a refactor using newer technologies. — 2025/09/24~~
+>
+> **Update (2026/03/09):** This project will be refactored soon, featuring modern implementations and fresh creative concepts.
 
 <div align="center">
   
-✨ **核心功能** ✨
+✨ **Core Features** ✨
 
-| 功能模块          | 关键能力                          |
-|-------------------|----------------------------------|
-| 🎨 小说设定工坊    | 世界观架构 / 角色设定 / 剧情蓝图   |
-| 📖 智能章节生成    | 多阶段生成保障剧情连贯性           |
-| 🧠 状态追踪系统    | 角色发展轨迹 / 伏笔管理系统         |
-| 🔍 语义检索引擎    | 基于向量的长程上下文一致性维护      |
-| 📚 知识库集成      | 支持本地文档参考         |
-| ✅ 自动审校机制    | 检测剧情矛盾与逻辑冲突          |
-| 🖥 可视化工作台    | 全流程GUI操作，配置/生成/审校一体化 |
+| Module                | Key Capabilities                        |
+|-----------------------|-----------------------------------------|
+| 🎨 Novel Setting Workshop | Worldbuilding / Character Design / Plot Blueprint |
+| 📖 Intelligent Chapter Generation | Multi-stage generation to ensure plot coherence |
+| 🧠 State Tracking System | Character development trajectory / Foreshadowing management |
+| 🔍 Semantic Search Engine | Vector-based long-term context consistency |
+| 📚 Knowledge Base Integration | Supports local document references |
+| ✅ Automatic Proofreading | Detects plot contradictions and logical conflicts |
+| 🖥 Visual Workbench | Full-process GUI for configuration / generation / proofreading |
 
 </div>
 
-> 一款基于大语言模型的多功能小说生成器，助您高效创作逻辑严谨、设定统一的长篇故事
+> A multifunctional novel generator built on large language models. Helps you efficiently create long-form stories with consistent settings and rigorous logic.
 
 ---
 
-## 📑 目录导航
-1. [环境准备](#-环境准备)  
-2. [项目架构](#-项目架构)  
-3. [配置指南](#⚙️-配置指南)  
-4. [运行说明](#🚀-运行说明)  
-5. [使用教程](#📘-使用教程)  
-6. [疑难解答](#❓-疑难解答)  
+## 📑 Table of Contents
+1. [Environment Preparation](#-environment-preparation)  
+2. [Project Structure](#-project-structure)  
+3. [Configuration Guide](#⚙️-configuration-guide)  
+4. [Run Instructions](#🚀-run-instructions)  
+5. [User Guide](#📘-user-guide)  
+6. [FAQ](#❓-faq)  
 
 ---
 
-## 🛠 环境准备
-确保满足以下运行条件：
-- **Python 3.9+** 运行环境（推荐3.10-3.12之间）
-- **pip** 包管理工具
-- 有效API密钥：
-  - 云端服务：OpenAI / DeepSeek 等
-  - 本地服务：Ollama 等兼容 OpenAI 的接口
+## 🛠 Environment Preparation
+Ensure the environment meets the following requirements:
+- **Python 3.9+** (recommended 3.10–3.12)
+- **pip** package manager
+- Valid API keys:
+   - Cloud services: OpenAI / DeepSeek, etc.
+   - Local services: Ollama or other OpenAI-compatible interfaces
 
 ---
 
+## 📥 Installation
+1. **Download the project**  
+    - Download the project ZIP from [GitHub](https://github.com) or clone the repository:
+       ```bash
+       git clone https://github.com/YILING0013/AI_NovelGenerator
+       ```
 
-## 📥 安装说明
-1. **下载项目**  
-   - 通过 [GitHub](https://github.com) 下载项目 ZIP 文件，或使用以下命令克隆本项目：
-     ```bash
-     git clone https://github.com/YILING0013/AI_NovelGenerator
-     ```
 
-2. **安装编译工具（可选）**  
-   - 如果对某些包无法正常安装，访问 [Visual Studio Build Tools](https://visualstudio.microsoft.com/zh-hans/visual-cpp-build-tools/) 下载并安装C++编译工具，用于构建部分模块包；
-   - 安装时，默认只包含 MSBuild 工具，需手动勾选左上角列表栏中的 **C++ 桌面开发** 选项。
+2. **Install build tools (optional)**  
+    - If some packages fail to install, visit [Visual Studio Build Tools](https://visualstudio.microsoft.com/zh-hans/visual-cpp-build-tools/) to download and install C++ build tools required by some modules.
+    - By default the installer includes MSBuild only; make sure to select **C++ Desktop Development** from the workload list.
 
-3. **安装依赖并运行**  
-   - 打开终端，进入项目源文件目录：
-     ```bash
-     cd AI_NovelGenerator
-     ```
-   - 安装项目依赖：
-     ```bash
-     pip install -r requirements.txt
-     ```
-   - 安装完成后，运行主程序：
-     ```bash
-     python main.py
-     ```
+3. **Install dependencies and run**  
+    - Open a terminal and change to the project directory:
+       ```bash
+       cd AI_NovelGenerator
+       ```
+    - Install project dependencies:
+       ```bash
+       pip install -r requirements.txt
+       ```
+    - After installation run the main program:
+       ```bash
+       python main.py
+       ```
 
->如果缺失部分依赖，后续**手动执行**
->```bash
->pip install XXX
->```
->进行安装即可
+If some dependencies are still missing, manually run:
+```bash
+pip install <package-name>
+```
+to install them.
 
-## 🗂 项目架构
+
+## 🗂 Project Structure
 ```
 novel-generator/
-├── main.py                      # 入口文件, 运行 GUI
-├── consistency_checker.py       # 一致性检查, 防止剧情冲突
-|—— chapter_directory_parser.py  # 目录解析
-|—— embedding_adapters.py        # Embedding 接口封装
-|—— llm_adapters.py              # LLM 接口封装
-├── prompt_definitions.py        # 定义 AI 提示词
-├── utils.py                     # 常用工具函数, 文件操作
-├── config_manager.py            # 管理配置 (API Key, Base URL)
-├── config.json                  # 用户配置文件 (可选)
-├── novel_generator/             # 章节生成核心逻辑
-├── ui/                          # 图形界面
-└── vectorstore/                 # (可选) 本地向量数据库存储
+├── main.py                      # Entry file, runs the GUI
+├── consistency_checker.py       # Consistency checks to prevent plot conflicts
+|—— chapter_directory_parser.py  # Directory parsing
+|—— embedding_adapters.py        # Embedding interface wrappers
+|—— llm_adapters.py              # LLM interface wrappers
+├── prompt_definitions.py        # AI prompt templates
+├── utils.py                     # Utility functions and file operations
+├── config_manager.py            # Configuration manager (API keys, base URL)
+├── config.json                  # User configuration (optional)
+├── novel_generator/             # Core chapter generation logic
+├── ui/                          # Graphical user interface
+└── vectorstore/                 # (Optional) Local vector DB storage
 ```
 
 ---
 
-## ⚙️ 配置指南
-### 📌 基础配置（config.json）
+## ⚙️ Configuration Guide
+### 📌 Basic configuration (`config.json`)
 ```json
 {
-    "api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-    "base_url": "https://api.openai.com/v1",
-    "interface_format": "OpenAI",
-    "model_name": "gpt-4o-mini",
-    "temperature": 0.7,
-    "max_tokens": 4096,
-    "embedding_api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-    "embedding_interface_format": "OpenAI",
-    "embedding_url": "https://api.openai.com/v1",
-    "embedding_model_name": "text-embedding-ada-002",
-    "embedding_retrieval_k": 4,
-    "topic": "星穹铁道主角星穿越到原神提瓦特大陆，拯救提瓦特大陆，并与其中的角色展开爱恨情仇的小说",
-    "genre": "玄幻",
-    "num_chapters": 120,
-    "word_number": 4000,
-    "filepath": "D:/AI_NovelGenerator/filepath"
+   "api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+   "base_url": "https://api.openai.com/v1",
+   "interface_format": "OpenAI",
+   "model_name": "gpt-4o-mini",
+   "temperature": 0.7,
+   "max_tokens": 4096,
+   "embedding_api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+   "embedding_interface_format": "OpenAI",
+   "embedding_url": "https://api.openai.com/v1",
+   "embedding_model_name": "text-embedding-ada-002",
+   "embedding_retrieval_k": 4,
+   "topic": "The protagonist of Star Rail travels to Genshin Impact's Teyvat continent, saves it, and develops complex relationships with its characters.",
+   "genre": "Fantasy",
+   "num_chapters": 120,
+   "word_number": 4000,
+   "filepath": "D:/AI_NovelGenerator/filepath"
 }
 ```
 
-### 🔧 配置说明
-1. **生成模型配置**
-   - `api_key`: 大模型服务的API密钥
-   - `base_url`: API终端地址（本地服务填Ollama等地址）
-   - `interface_format`: 接口模式
-   - `model_name`: 主生成模型名称（如gpt-4, claude-3等）
-   - `temperature`: 创意度参数（0-1，越高越有创造性）
-   - `max_tokens`: 模型最大回复长度
+### 🔧 Explanation
+1. **Generation model configuration**
+   - `api_key`: API key for the LLM service
+   - `base_url`: API endpoint (for local services use the Ollama address)
+   - `interface_format`: Interface mode
+   - `model_name`: Main generation model (e.g., gpt-4, claude-3)
+   - `temperature`: Creativity parameter (0–1, higher is more creative)
+   - `max_tokens`: Maximum model response length
 
-2. **Embedding模型配置**
-   - `embedding_model_name`: 模型名称（如Ollama的nomic-embed-text）
-   - `embedding_url`: 服务地址
-   - `embedding_retrieval_k`: 
+2. **Embedding model configuration**
+   - `embedding_model_name`: Embedding model name (e.g., Ollama's nomic-embed-text)
+   - `embedding_url`: Service endpoint
+   - `embedding_retrieval_k`: Number of nearest neighbors to retrieve
 
-3. **小说参数配置**
-   - `topic`: 核心故事主题
-   - `genre`: 作品类型
-   - `num_chapters`: 总章节数
-   - `word_number`: 单章目标字数
-   - `filepath`: 生成文件存储路径
+3. **Novel parameters**
+   - `topic`: Core story theme
+   - `genre`: Genre
+   - `num_chapters`: Total number of chapters
+   - `word_number`: Target words per chapter
+   - `filepath`: Path to save generated files
 
 ---
 
-## 🚀 运行说明
-### **方式 1：使用 Python 解释器**
+## 🚀 Run Instructions
+### Method 1 — Run with Python
 ```bash
 python main.py
 ```
-执行后，GUI 将会启动，你可以在图形界面中进行各项操作。
+This launches the GUI for interactive use.
 
-### **方式 2：打包为可执行文件**
-如果你想在无 Python 环境的机器上使用本工具，可以使用 **PyInstaller** 进行打包：
-
+### Method 2 — Build an executable
+If you want to run the tool on machines without Python, package it with **PyInstaller**:
 ```bash
 pip install pyinstaller
 pyinstaller main.spec
 ```
-打包完成后，会在 `dist/` 目录下生成可执行文件（如 Windows 下的 `main.exe`）。
+After packaging an executable (e.g., `main.exe` on Windows) will appear in the `dist/` folder.
 
 ---
 
-## 📘 使用教程
-1. **启动后，先完成基本参数设置：**  
-   - **API Key & Base URL**（如 `https://api.openai.com/v1`）  
-   - **模型名称**（如 `gpt-3.5-turbo`、`gpt-4o` 等）  
-   - **Temperature** (0~1，决定文字创意程度)  
-   - **主题(Topic)**（如 “废土世界的 AI 叛乱”）  
-   - **类型(Genre)**（如 “科幻”/“魔幻”/“都市幻想”）  
-   - **章节数**、**每章字数**（如 10 章，每章约 3000 字）  
-   - **保存路径**（建议创建一个新的输出文件夹）
+## 📘 User Guide
+1. **After launching the app, fill in the basic parameters:**  
+   - **API Key & Base URL** (e.g., `https://api.openai.com/v1`)  
+   - **Model name** (e.g., `gpt-3.5-turbo`, `gpt-4o`)  
+   - **Temperature** (0–1, controls creative variance)  
+   - **Topic** (e.g., "AI uprising in a post-apocalyptic world")  
+   - **Genre** (e.g., "Sci-fi" / "Fantasy" / "Urban Fantasy")  
+   - **Number of chapters** and **words per chapter** (e.g., 10 chapters × ~3000 words)  
+   - **Save path** (create a new output folder for results)
 
-2. **点击「Step1. 生成设定」**  
-   - 系统将基于主题、类型、章节数等信息，生成：  
-     - `Novel_setting.txt`：包含世界观、角色信息、雷点暗线等。  
-   - 可以在生成后的 `Novel_setting.txt` 中查看或修改设定内容。
+2. **Click "Step1. Generate Settings"**  
+   - The system will generate, based on topic/genre/chapter count:  
+     - `Novel_setting.txt`: Worldbuilding, characters, trigger points and foreshadowing.  
+   - You can view or edit these settings after generation.
 
-3. **点击「Step2. 生成目录」**  
-   - 系统会根据已完成的 `Novel_setting.txt` 内容，为全部章节生成：  
-     - `Novel_directory.txt`：包括每章标题和简要提示。  
-   - 可以在生成后的文件中查看、修改或补充章节标题和描述。
+3. **Click "Step2. Generate Directory"**  
+   - The system will use `Novel_setting.txt` to produce:  
+     - `Novel_directory.txt`: Chapter titles and short prompts.  
+   - You can review and modify chapter titles and descriptions.
 
-4. **点击「Step3. 生成章节草稿」**  
-   - 在生成章节之前，你可以：  
-     - **设置章节号**（如写第 1 章，就填 `1`）  
-     - **在“本章指导”输入框**中提供对本章剧情的任何期望或提示  
-   - 点击按钮后，系统将：  
-     - 自动读取前文设定、`Novel_directory.txt`、以及已定稿章节  
-     - 调用向量检索回顾剧情，保证上下文连贯  
-     - 生成本章大纲 (`outline_X.txt`) 及正文 (`chapter_X.txt`)  
-   - 生成完成后，你可在左侧的文本框查看、编辑本章草稿内容。
+4. **Click "Step3. Generate Chapter Draft"**  
+   - Before generating a chapter you can:  
+     - Set the chapter number (e.g., `1`)  
+     - Provide chapter-specific guidance in the "This chapter guidance" box  
+   - When you generate a chapter the system will:  
+     - Read prior settings, `Novel_directory.txt`, and finalized chapters  
+     - Use vector retrieval to recall relevant context for coherence  
+     - Produce an outline (`outline_X.txt`) and chapter text (`chapter_X.txt`)  
+   - You can view and edit the draft in the editor pane.
 
-5. **点击「Step4. 定稿当前章节」**  
-   - 系统将：  
-     - **更新全局摘要**（写入 `global_summary.txt`）  
-     - **更新角色状态**（写入 `character_state.txt`）  
-     - **更新向量检索库**（保证后续章节可以调用最新信息）  
-     - **更新剧情要点**（如 `plot_arcs.txt`）  
-   - 定稿完成后，你可以在 `chapter_X.txt` 中看到定稿后的文本。
+5. **Click "Step4. Finalize Current Chapter"**  
+   - The system will:  
+     - Update the global summary (`global_summary.txt`)  
+     - Update character states (`character_state.txt`)  
+     - Update the vector store (so future chapters can use the latest info)  
+     - Update major plot points (e.g., `plot_arcs.txt`)  
+   - After finalizing you will see the finalized text in `chapter_X.txt`.
 
-6. **一致性检查（可选）**  
-   - 点击「[可选] 一致性审校」按钮，对最新章节进行冲突检测，如角色逻辑、剧情前后矛盾等。  
-   - 若有冲突，会在日志区输出详细提示。
+6. **Consistency check (optional)**  
+   - Click the "[Optional] Consistency Proofread" button to scan the latest chapter for conflicts (character logic, plot contradictions, etc.).  
+   - If conflicts are detected, detailed messages will appear in the log area.
 
-7. **重复第 4-6 步** 直到所有章节生成并定稿！
+7. **Repeat steps 4–6** until all chapters are generated and finalized.
 
-> **向量检索配置提示**  
-> 1. embedding模型需要显示指定接口和模型名称；
-> 2. 使用**本地Ollama**的**Embedding**时需提前启动Ollama服务：  
+> Vector retrieval tips:
+> 1. Explicitly set the embedding interface and model name.
+> 2. For local Ollama embeddings start the Ollama service first:
 >    ```bash
->    ollama serve  # 启动服务
->    ollama pull nomic-embed-text  # 下载/启用模型
+>    ollama serve  # Start the service
+>    ollama pull nomic-embed-text  # Download/enable the model
 >    ```
-> 3. 切换不同Embedding模型后建议清空vectorstore目录
-> 4. 云端Embedding需确保对应API权限已开通
+> 3. Clear the `vectorstore` directory after switching embedding models.
+> 4. For cloud embeddings ensure the API permissions are enabled.
 
 ---
 
-## ❓ 疑难解答
+## ❓ FAQ
 ### Q1: Expecting value: line 1 column 1 (char 0)
 
-该问题大概率由于API未正确响应造成，也许响应了一个html？其它内容，导致出现该报错；
+This error usually indicates the API did not return valid JSON—sometimes an HTML error page or other unexpected content was returned.
 
+### Q2: HTTP/1.1 504 Gateway Timeout?
 
-### Q2: HTTP/1.1 504 Gateway Timeout？
-确认接口是否稳定；
+Check the stability of the API endpoint and network connectivity.
 
-### Q3: 如何切换不同的Embedding提供商？
-在GUI界面中对应输入即可。
+### Q3: How do I switch Embedding providers?
+
+Enter the new provider settings in the GUI fields for embedding configuration.
 
 ---
 
-如有更多问题或需求，欢迎在**项目 Issues** 中提出。
+If you have further questions or feature requests, please open an issue on the project repository.
