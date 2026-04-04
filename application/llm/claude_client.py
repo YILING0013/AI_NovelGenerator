@@ -111,6 +111,7 @@ class ClaudeClient(BaseLLMClient):
 
     async def text_generate(self, request: LLMRequest) -> LLMResponse:
         """调用 Claude Messages API 进行普通文本生成。"""
+        request = self._apply_defaults(request)
         model = self._resolve_model(request)
         log_llm_request(request, self.provider_name)
         start = time.perf_counter()
@@ -151,6 +152,7 @@ class ClaudeClient(BaseLLMClient):
         Pydantic Schema 对应的 JSON Schema，并通过 tool_choice 强制模型
         以 tool_use 形式返回结构化数据。
         """
+        request = self._apply_defaults(request)
         model = self._resolve_model(request)
         log_llm_request(request, self.provider_name)
         start = time.perf_counter()
@@ -216,6 +218,7 @@ class ClaudeClient(BaseLLMClient):
 
     async def stream_text(self, request: LLMRequest) -> AsyncGenerator[str, None]:
         """流式调用 Claude Messages API，逐块 yield 生成文本。"""
+        request = self._apply_defaults(request)
         model = self._resolve_model(request)
         log_llm_request(request, self.provider_name)
 

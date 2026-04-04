@@ -18,6 +18,7 @@ import {
 } from "@heroui/react";
 import type { AppConfig, ProviderConfig } from "@/types/config";
 import { newProviderConfig } from "@/types/config";
+import { OptionalSliderParam, OptionalNumberParam, OptionalTextParam } from "@/components/shared/OptionalParamControls";
 
 interface Props {
   config: AppConfig;
@@ -245,6 +246,7 @@ function ProviderForm({
 }) {
   const t = useTranslations("settings.provider");
   const [showKey, setShowKey] = useState(false);
+  const [showGenParams, setShowGenParams] = useState(false);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
@@ -365,6 +367,106 @@ function ProviderForm({
           </Switch.Control>
           <Switch.Content className="text-sm">{t("supportsFunctionCalling")}</Switch.Content>
         </Switch>
+      </div>
+
+      {/* Generation Parameters (collapsible) */}
+      <div className="md:col-span-2">
+        <button
+          type="button"
+          className="flex items-center gap-2 text-sm font-medium text-muted hover:text-foreground transition-colors py-2"
+          onClick={() => setShowGenParams(!showGenParams)}
+        >
+          <svg
+            className={`w-4 h-4 transition-transform ${showGenParams ? "rotate-90" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          {t("genParams.title")}
+        </button>
+        {showGenParams && (
+          <div className="border border-border rounded-lg p-4 mt-1 space-y-4 bg-surface-secondary/30">
+            <p className="text-xs text-muted">{t("genParams.hint")}</p>
+
+            {/* Temperature */}
+            <OptionalSliderParam
+              label={t("genParams.temperature")}
+              value={provider.temperature}
+              onToggle={(enabled) =>
+                onChange({ temperature: enabled ? 0.7 : null })
+              }
+              onValueChange={(v) => onChange({ temperature: v })}
+              min={0}
+              max={2}
+              step={0.05}
+            />
+
+            {/* Top P */}
+            <OptionalSliderParam
+              label={t("genParams.topP")}
+              value={provider.top_p}
+              onToggle={(enabled) =>
+                onChange({ top_p: enabled ? 0.9 : null })
+              }
+              onValueChange={(v) => onChange({ top_p: v })}
+              min={0}
+              max={1}
+              step={0.05}
+            />
+
+            {/* Max Tokens */}
+            <OptionalNumberParam
+              label={t("genParams.maxTokens")}
+              value={provider.max_tokens}
+              onToggle={(enabled) =>
+                onChange({ max_tokens: enabled ? 4096 : null })
+              }
+              onValueChange={(v) => onChange({ max_tokens: v })}
+              min={256}
+              max={1000000}
+              step={256}
+            />
+
+            {/* Presence Penalty */}
+            <OptionalSliderParam
+              label={t("genParams.presencePenalty")}
+              value={provider.presence_penalty}
+              onToggle={(enabled) =>
+                onChange({ presence_penalty: enabled ? 0 : null })
+              }
+              onValueChange={(v) => onChange({ presence_penalty: v })}
+              min={-2}
+              max={2}
+              step={0.1}
+            />
+
+            {/* Frequency Penalty */}
+            <OptionalSliderParam
+              label={t("genParams.frequencyPenalty")}
+              value={provider.frequency_penalty}
+              onToggle={(enabled) =>
+                onChange({ frequency_penalty: enabled ? 0 : null })
+              }
+              onValueChange={(v) => onChange({ frequency_penalty: v })}
+              min={-2}
+              max={2}
+              step={0.1}
+            />
+
+            {/* System Prompt */}
+            <OptionalTextParam
+              label={t("genParams.systemPrompt")}
+              value={provider.system_prompt}
+              onToggle={(enabled) =>
+                onChange({ system_prompt: enabled ? "" : null })
+              }
+              onValueChange={(v) => onChange({ system_prompt: v })}
+              placeholder={t("genParams.systemPromptPlaceholder")}
+            />
+          </div>
+        )}
       </div>
 
       {/* Delete */}

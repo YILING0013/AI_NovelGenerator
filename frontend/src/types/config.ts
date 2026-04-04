@@ -10,6 +10,13 @@ export interface ProviderConfig {
   supports_streaming: boolean;
   supports_json_schema: boolean;
   supports_function_calling: boolean;
+  // 生成参数默认值（可选）
+  temperature?: number | null;
+  top_p?: number | null;
+  max_tokens?: number | null;
+  system_prompt?: string | null;
+  presence_penalty?: number | null;
+  frequency_penalty?: number | null;
 }
 
 export interface WorkflowStep {
@@ -23,6 +30,7 @@ export interface WorkflowConfig {
 
 export interface LLMConfig {
   default_provider: string;
+  format_review_provider?: string;
   providers: Record<string, ProviderConfig>;
   workflows?: Record<string, WorkflowConfig>;
 }
@@ -48,6 +56,12 @@ export function newProviderConfig(): ProviderConfig {
     supports_streaming: true,
     supports_json_schema: false,
     supports_function_calling: false,
+    temperature: null,
+    top_p: null,
+    max_tokens: null,
+    system_prompt: null,
+    presence_penalty: null,
+    frequency_penalty: null,
   };
 }
 

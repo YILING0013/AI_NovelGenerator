@@ -14,6 +14,8 @@ class CreateNovelRequest(BaseModel):
     genre: Optional[str] = "unclassified"
     tags: Optional[List[str]] = []
     introduction: Optional[str] = None
+    summary: Optional[str] = None
+    core_seed: Optional[str] = None
     worldview: Optional[str] = None
     writing_style: Optional[str] = None
     narrative_pov: Optional[str] = None
@@ -26,7 +28,12 @@ class UpdateNovelRequest(BaseModel):
     genre: Optional[str] = None
     tags: Optional[List[str]] = None
     introduction: Optional[str] = None
+    summary: Optional[str] = None
+    core_seed: Optional[str] = None
     worldview: Optional[str] = None
+    writing_style: Optional[str] = None
+    narrative_pov: Optional[str] = None
+    era_background: Optional[str] = None
     cover_image: Optional[str] = None
 
 class StatusUpdate(BaseModel):
@@ -46,6 +53,19 @@ async def create_novel(req: CreateNovelRequest):
 async def get_all_novels():
     """获取所有小说的列表，仅包含基础信息。"""
     novels = await novel_repo.get_all_novels()
+    for novel in novels:
+        if "_id" in novel:
+            novel["_id"] = str(novel["_id"])
+        novel["stats"] = {
+            "chapter_count": novel.get("current_chapter_count", 0),
+            "total_word_count": novel.get("current_word_count", 0)
+        }
+    return {"data": novels}
+
+@router.get("/deleted/list")
+async def get_deleted_novels():
+    """获取所有已软删除的小说列表（回收站）。"""
+    novels = await novel_repo.get_deleted_novels()
     for novel in novels:
         if "_id" in novel:
             novel["_id"] = str(novel["_id"])

@@ -85,6 +85,7 @@ class OpenAICompatibleClient(BaseLLMClient):
 
     async def text_generate(self, request: LLMRequest) -> LLMResponse:
         """调用 Chat Completions API 进行普通文本生成。"""
+        request = self._apply_defaults(request)
         model = self._resolve_model(request)
         log_llm_request(request, self.provider_name)
         start = time.perf_counter()
@@ -117,6 +118,7 @@ class OpenAICompatibleClient(BaseLLMClient):
         将 Pydantic Schema 作为 response_format 传入，SDK 自动处理
         JSON Schema 注入与响应解析，返回的 content 为序列化后的 JSON 字符串。
         """
+        request = self._apply_defaults(request)
         model = self._resolve_model(request)
         log_llm_request(request, self.provider_name)
         start = time.perf_counter()
@@ -159,6 +161,7 @@ class OpenAICompatibleClient(BaseLLMClient):
 
     async def stream_text(self, request: LLMRequest) -> AsyncGenerator[str, None]:
         """流式调用 Chat Completions API，逐块 yield 生成文本。"""
+        request = self._apply_defaults(request)
         model = self._resolve_model(request)
         log_llm_request(request, self.provider_name)
 

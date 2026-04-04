@@ -25,6 +25,26 @@ class BaseLLMClient(ABC):
         """确定实际使用的模型名称，请求未指定时回退到服务商默认模型。"""
         return request.model or self.config.default_model
 
+    def _apply_defaults(self, request: LLMRequest) -> LLMRequest:
+        """将服务商配置中的生成参数默认值合并到请求中（请求级别优先）。"""
+        cfg = self.config
+        overrides: dict = {}
+        if request.temperature is None and cfg.temperature is not None:
+            overrides["temperature"] = cfg.temperature
+        if request.top_p is None and cfg.top_p is not None:
+            overrides["top_p"] = cfg.top_p
+        if request.max_tokens is None and cfg.max_tokens is not None:
+            overrides["max_tokens"] = cfg.max_tokens
+        if request.presence_penalty is None and cfg.presence_penalty is not None:
+            overrides["presence_penalty"] = cfg.presence_penalty
+        if request.frequency_penalty is None and cfg.frequency_penalty is not None:
+            overrides["frequency_penalty"] = cfg.frequency_penalty
+        if not request.system_prompt and cfg.system_prompt:
+            overrides["system_prompt"] = cfg.system_prompt
+        if not overrides:
+            return request
+        return request.model_copy(update=overrides)
+
     def _build_messages(self, request: LLMRequest) -> list[dict[str, str]]:
         """将 system_prompt 与 messages 合并为完整消息列表。"""
         messages: list[dict[str, str]] = []

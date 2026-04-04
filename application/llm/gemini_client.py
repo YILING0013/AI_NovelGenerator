@@ -88,6 +88,7 @@ class GeminiClient(BaseLLMClient):
 
     async def text_generate(self, request: LLMRequest) -> LLMResponse:
         """调用 Gemini API 进行普通文本生成。"""
+        request = self._apply_defaults(request)
         model = self._resolve_model(request)
         log_llm_request(request, self.provider_name)
         start = time.perf_counter()
@@ -122,6 +123,7 @@ class GeminiClient(BaseLLMClient):
         将 Pydantic Schema 通过 generation_config 中的 response_mime_type
         和 response_schema 传入，获取符合 Schema 约束的 JSON 响应。
         """
+        request = self._apply_defaults(request)
         model = self._resolve_model(request)
         log_llm_request(request, self.provider_name)
         start = time.perf_counter()
@@ -170,6 +172,7 @@ class GeminiClient(BaseLLMClient):
 
     async def stream_text(self, request: LLMRequest) -> AsyncGenerator[str, None]:
         """流式调用 Gemini API，逐块 yield 生成文本。"""
+        request = self._apply_defaults(request)
         model = self._resolve_model(request)
         log_llm_request(request, self.provider_name)
 

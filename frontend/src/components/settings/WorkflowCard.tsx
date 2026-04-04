@@ -23,6 +23,12 @@ export function WorkflowCard({ config, onChange }: Props) {
 
   const providers = config.llm?.providers || {};
   const providerAliases = Object.keys(providers);
+  const formatReviewProvider = config.llm?.format_review_provider || "";
+
+  // 仅展示支持 JSON Schema 的 provider 别名
+  const schemaProviderAliases = providerAliases.filter(
+    (alias) => providers[alias]?.supports_json_schema
+  );
 
   const workflow: WorkflowConfig = config.llm?.workflows?.create_novel_by_ai || {
     default_provider: config.llm?.default_provider || "",
@@ -48,6 +54,16 @@ export function WorkflowCard({ config, onChange }: Props) {
       steps: {
         ...workflow.steps,
         [stepName]: { provider },
+      },
+    });
+  };
+
+  const updateFormatReviewProvider = (provider: string) => {
+    onChange({
+      ...config,
+      llm: {
+        ...config.llm,
+        format_review_provider: provider,
       },
     });
   };
@@ -95,6 +111,33 @@ export function WorkflowCard({ config, onChange }: Props) {
             </Select.Popover>
           </Select>
           <ProviderWarning warning={getProviderWarning(workflow.default_provider)} />
+        </div>
+
+        {/* Format review provider */}
+        <div>
+          <Select
+            selectedKey={formatReviewProvider || null}
+            onSelectionChange={(key) => {
+              updateFormatReviewProvider(key ? String(key) : "");
+            }}
+            className="max-w-sm"
+          >
+            <Label className="text-sm text-muted">{t("formatReviewProvider")}</Label>
+            <Select.Trigger className="border border-border rounded-lg px-3 py-2 text-sm bg-surface hover:border-warm-400">
+              <Select.Value />
+            </Select.Trigger>
+            <Select.Popover>
+              <ListBox>
+                {schemaProviderAliases.map((alias) => (
+                  <ListBoxItem key={alias} id={alias}>
+                    {alias}
+                  </ListBoxItem>
+                ))}
+              </ListBox>
+            </Select.Popover>
+          </Select>
+          <p className="text-xs text-muted mt-1">{t("formatReviewHint")}</p>
+          <ProviderWarning warning={formatReviewProvider ? getProviderWarning(formatReviewProvider) : null} />
         </div>
 
         {/* Steps */}

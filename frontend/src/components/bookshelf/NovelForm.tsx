@@ -22,6 +22,8 @@ export default function NovelForm({ defaults, onCreated, onBack }: NovelFormProp
     genre: "",
     tags: [],
     introduction: "",
+    summary: "",
+    core_seed: "",
     worldview: "",
     writing_style: "",
     narrative_pov: "",
@@ -49,7 +51,7 @@ export default function NovelForm({ defaults, onCreated, onBack }: NovelFormProp
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {       
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -93,12 +95,12 @@ const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-1">
       {/* Cover + Title/Subtitle/Genre Row */}
       <div className="flex gap-4">
         {/* Left: Cover Upload */}
         <div className="shrink-0">
-          <label className="block text-sm font-medium text-foreground mb-2">    
+          <label className="block text-sm font-medium text-foreground mb-2">
             {t("coverImage")}
           </label>
           <div className="flex items-start gap-4">
@@ -194,6 +196,24 @@ const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
           className="w-full rounded-lg border border-border bg-background p-3 text-sm text-foreground resize-y min-h-[80px] focus:outline-none focus:ring-2 focus:ring-primary"
           value={form.introduction ?? ""}
           onChange={(e) => updateField("introduction", e.target.value)}
+        />
+      </FormField>
+
+      {/* Summary */}
+      <FormField label={t("summary")}>
+        <textarea
+          className="w-full rounded-lg border border-border bg-background p-3 text-sm text-foreground resize-y min-h-[80px] focus:outline-none focus:ring-2 focus:ring-primary"
+          value={form.summary ?? ""}
+          onChange={(e) => updateField("summary", e.target.value)}
+        />
+      </FormField>
+
+      {/* Core Seed */}
+      <FormField label={t("coreSeed")}>
+        <textarea
+          className="w-full rounded-lg border border-border bg-background p-3 text-sm text-foreground resize-y min-h-[60px] focus:outline-none focus:ring-2 focus:ring-primary"
+          value={form.core_seed ?? ""}
+          onChange={(e) => updateField("core_seed", e.target.value)}
         />
       </FormField>
 

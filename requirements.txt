@@ -8,3 +8,6 @@ google-genai
 anthropic
 customtkinter
 python-multipart
+motor
+pymongo
+httpx

@@ -51,12 +51,25 @@
       "badgeDefault": "默认",
       "deleteProvider": "删除",
       "deleteConfirm": "确认删除此 Provider？",
-      "mustExist": "默认 Provider 必须存在于已配置列表中"
+      "mustExist": "默认 Provider 必须存在于已配置列表中",
+      "genParams": {
+        "title": "生成参数（可选）",
+        "hint": "为此 Provider 配置默认生成参数。启用后将作为默认值，请求级别的参数会覆盖这里的配置。",
+        "temperature": "采样温度 (Temperature)",
+        "topP": "核采样 (Top P)",
+        "maxTokens": "最大 Token 数",
+        "presencePenalty": "存在惩罚 (Presence Penalty)",
+        "frequencyPenalty": "频率惩罚 (Frequency Penalty)",
+        "systemPrompt": "系统提示词 (System Prompt)",
+        "systemPromptPlaceholder": "输入此 Provider 的默认系统提示词..."
+      }
     },
     "workflow": {
       "title": "小说生成流程配置",
       "workflowName": "流程名称",
       "defaultProvider": "流程默认 Provider",
+      "formatReviewProvider": "格式审校 Provider",
+      "formatReviewHint": "用于修正 AI 响应格式错误，需支持 JSON Schema",
       "inheritDefault": "继承流程默认",
       "steps": {
         "extract_idea": "根据用户创意提取故事核心要素",
@@ -81,14 +94,22 @@
     "searchPlaceholder": "搜索小说...",
     "deleteConfirm": "确认删除「{title}」？此操作可恢复。",
     "deleteSuccess": "已移入回收站",
-    "deleteFailed": "删除失败"
+    "deleteFailed": "删除失败",
+    "trashBin": "回收站",
+    "trashEmpty": "回收站是空的",
+    "restore": "恢复",
+    "hardDelete": "彻底删除",
+    "hardDeleteConfirm": "彻底删除「{title}」？此操作不可恢复！",
+    "deletedAt": "删除时间"
   },
   "novel": {
     "title": "标题",
     "subtitle": "副标题",
     "genre": "类型",
     "tags": "标签",
-    "introduction": "简介",
+    "introduction": "引言",
+    "summary": "简介",
+    "coreSeed": "核心种子",
     "worldview": "世界观",
     "writingStyle": "写作风格",
     "narrativePov": "叙事视角",
@@ -107,6 +128,9 @@
     "delete": "删除",
     "save": "保存",
     "cancel": "取消",
+    "confirmContinue": "确认继续",
+    "dangerEditTitle": "编辑警告",
+    "dangerEditMessage": "该小说已存在卷/章节内容。编辑简介、核心种子、世界观、写作风格、叙事视角或时代背景可能对小说后续生成造成不可逆的影响，是否确认继续？",
     "uploadCover": "上传封面",
     "removeCover": "移除封面",
     "povFirst": "第一人称",
@@ -134,6 +158,17 @@
     "saveNovel": "保存并创建小说",
     "createSuccess": "小说创建成功！",
     "createFailed": "创建失败",
-    "back": "返回书架"
+    "back": "返回书架",
+    "genParams": {
+      "title": "生成参数（可选，如果不懂请勿启用和修改）",
+      "hint": "覆盖本次创作的 LLM 生成参数。未设置时使用 Provider 默认值。",
+      "temperature": "采样温度 (Temperature)",
+      "topP": "核采样 (Top P)",
+      "maxTokens": "最大 Token 数",
+      "presencePenalty": "存在惩罚 (Presence Penalty)",
+      "frequencyPenalty": "频率惩罚 (Frequency Penalty)",
+      "systemPrompt": "系统提示词 (System Prompt)",
+      "systemPromptPlaceholder": "输入系统提示词来引导 AI 的生成风格..."
+    }
   }
 }

@@ -38,7 +38,44 @@ async def init_novel_indexes():
     except Exception as e:
         logger.error(f"初始化novel索引失败：{e}")
 
+
+async def init_volume_indexes():
+    """初始化volumes集合的索引。"""
+    try:
+        db = get_database()
+        volumes_collection = db["volumes"]
+
+        logger.info("正在初始化'volumes'集合的索引...")
+
+        indexes = [
+            # 单字段索引：按小说过滤拉取全书卷列表
+            pymongo.IndexModel([("novel_id", pymongo.ASCENDING)]),
+
+            # 唯一组合索引：保证同一小说内卷序号不重复
+            pymongo.IndexModel(
+                [("novel_id", pymongo.ASCENDING), ("order_index", pymongo.ASCENDING)],
+                unique=True
+            ),
+
+            # 读优化组合索引：未删除卷按序号排列的常用查询
+            pymongo.IndexModel([
+                ("novel_id", pymongo.ASCENDING),
+                ("is_deleted", pymongo.ASCENDING),
+                ("order_index", pymongo.ASCENDING)
+            ]),
+
+            # 按最近更新时间检索
+            pymongo.IndexModel([("updated_at", pymongo.DESCENDING)]),
+        ]
+
+        await volumes_collection.create_indexes(indexes)
+        logger.info("成功初始化'volumes'集合的索引。")
+    except Exception as e:
+        logger.error(f"初始化volume索引失败：{e}")
+
+
 async def init_all_indexes():
     """初始化所有数据库索引。"""
     await init_novel_indexes()
+    await init_volume_indexes()
     # 在这里添加其他集合的索引初始化

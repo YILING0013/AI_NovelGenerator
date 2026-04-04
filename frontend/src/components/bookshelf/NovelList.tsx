@@ -12,6 +12,7 @@ interface NovelListProps {
   loading: boolean;
   onSelect: (id: string) => void;
   onNewNovel: () => void;
+  onOpenTrash: () => void;
 }
 
 export default function NovelList({
@@ -20,17 +21,19 @@ export default function NovelList({
   loading,
   onSelect,
   onNewNovel,
+  onOpenTrash,
 }: NovelListProps) {
   const t = useTranslations("bookshelf");
 
   return (
     <div className="flex flex-col h-full gap-3">
       {/* New Novel Button */}
-      <Button
-        variant="primary"
-        className="w-full shrink-0"
-        onPress={onNewNovel}
-      >
+      <div className="flex gap-2 shrink-0">
+        <Button
+          variant="primary"
+          className="flex-1"
+          onPress={onNewNovel}
+        >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="16"
@@ -46,6 +49,18 @@ export default function NovelList({
         </svg>
         {t("newNovel")}
       </Button>
+        <Button
+          variant="ghost"
+          className="shrink-0 px-3"
+          onPress={onOpenTrash}
+          aria-label={t("trashBin")}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+          </svg>
+        </Button>
+      </div>
 
       {/* Novel Count */}
       {!loading && novels.length > 0 && (

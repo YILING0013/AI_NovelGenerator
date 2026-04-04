@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@heroui/react";
-import { apiPost } from "@/lib/api";
+import { apiPostSSE } from "@/lib/api";
+import { OptionalSliderParam, OptionalNumberParam, OptionalTextParam } from "@/components/shared/OptionalParamControls";
 import type { AICreateResponse, AICreateRequest } from "@/types/novel";
 
 interface AICreateStepperProps {
@@ -23,13 +24,22 @@ const STEPS = ["extract_idea", "core_seed", "novel_meta"] as const;
 export default function AICreateStepper({ onComplete }: AICreateStepperProps) {
   const t = useTranslations("create");
   const [idea, setIdea] = useState("");
-  const [chapters, setChapters] = useState(100);
+  const [chapters, setChapters] = useState(600);
   const [wordsPerChapter, setWordsPerChapter] = useState(3000);
+  const [showGenParams, setShowGenParams] = useState(false);
+  const [temperature, setTemperature] = useState<number | null>(null);
+  const [topP, setTopP] = useState<number | null>(null);
+  const [maxTokens, setMaxTokens] = useState<number | null>(null);
+  const [presencePenalty, setPresencePenalty] = useState<number | null>(null);
+  const [frequencyPenalty, setFrequencyPenalty] = useState<number | null>(null);
+  const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
   const [steps, setSteps] = useState<StepState[]>(
     STEPS.map((key) => ({ key, status: "pending" }))
   );
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<AICreateResponse | null>(null);
+  const stepsRef = useRef(steps);
+  stepsRef.current = steps;
 
   const stepLabelMap: Record<string, string> = {
     extract_idea: t("stepExtractIdea"),
@@ -37,42 +47,61 @@ export default function AICreateStepper({ onComplete }: AICreateStepperProps) {
     novel_meta: t("stepNovelMeta"),
   };
 
-  const updateStep = (idx: number, patch: Partial<StepState>) => {
-    setSteps((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
-  };
-
   const startGeneration = async () => {
     if (!idea.trim()) return;
 
     setIsRunning(true);
+    setResult(null);
     setSteps(STEPS.map((key) => ({ key, status: "pending" })));
 
-    // Mark all as pending, then run sequentially via single API call
-    setSteps((prev) => prev.map((s, i) => (i === 0 ? { ...s, status: "running" } : s)));
+    const payload: AICreateRequest = {
+      user_idea: idea.trim(),
+      number_of_chapters: chapters,
+      words_per_chapter: wordsPerChapter,
+      ...(temperature != null && { temperature }),
+      ...(topP != null && { top_p: topP }),
+      ...(maxTokens != null && { max_tokens: maxTokens }),
+      ...(presencePenalty != null && { presence_penalty: presencePenalty }),
+      ...(frequencyPenalty != null && { frequency_penalty: frequencyPenalty }),
+      ...(systemPrompt != null && { system_prompt: systemPrompt }),
+    };
 
     try {
-      const payload: AICreateRequest = {
-        user_idea: idea.trim(),
-        number_of_chapters: chapters,
-        words_per_chapter: wordsPerChapter,
-      };
-
-      // Use SSE-like polling: single API call that runs all 3 steps
-      const res = await apiPost<AICreateResponse & { _step_progress?: string }>(
+      await apiPostSSE(
         "/api/llm/create-novel-by-ai",
-        payload
-      );
+        payload,
+        (event, data) => {
+          if (event === "step") {
+            const stepName = data.step as string;
+            const status = data.status as StepStatus;
+            const error = data.error as string | undefined;
 
-      // Mark all steps as done since the API runs them all
-      setSteps(STEPS.map((key) => ({ key, status: "done" })));
-      setResult(res);
-      onComplete(res);
+            setSteps((prev) =>
+              prev.map((s) =>
+                s.key === stepName ? { ...s, status, error } : s
+              )
+            );
+          } else if (event === "done") {
+            if (data.success && data.result) {
+              const res = data.result as AICreateResponse;
+              setResult(res);
+              onComplete(res);
+            }
+          }
+        }
+      );
     } catch (err) {
-      const currentRunning = steps.findIndex((s) => s.status === "running");
-      const failIdx = currentRunning >= 0 ? currentRunning : 0;
-      updateStep(failIdx, {
-        status: "error",
-        error: err instanceof Error ? err.message : String(err),
+      // 如果发生错误，标记当前正在运行的步骤为 error
+      setSteps((prev) => {
+        const firstPending = prev.findIndex(
+          (s) => s.status === "pending" || s.status === "running"
+        );
+        if (firstPending < 0) return prev;
+        return prev.map((s, i) =>
+          i === firstPending
+            ? { ...s, status: "error" as StepStatus, error: err instanceof Error ? err.message : String(err) }
+            : s
+        );
       });
     } finally {
       setIsRunning(false);
@@ -80,7 +109,7 @@ export default function AICreateStepper({ onComplete }: AICreateStepperProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-1">
       {/* Idea Input */}
       <div>
         <label className="block text-sm font-medium text-foreground mb-2">
@@ -125,6 +154,74 @@ export default function AICreateStepper({ onComplete }: AICreateStepperProps) {
             disabled={isRunning}
           />
         </div>
+      </div>
+
+      {/* Generation Parameters (collapsible) */}
+      <div>
+        <button
+          type="button"
+          className="flex items-center gap-2 text-sm font-medium text-muted hover:text-foreground transition-colors py-1"
+          onClick={() => setShowGenParams(!showGenParams)}
+          disabled={isRunning}
+        >
+          <svg
+            className={`w-4 h-4 transition-transform ${showGenParams ? "rotate-90" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          {t("genParams.title")}
+        </button>
+        {showGenParams && (
+          <div className="border border-border rounded-lg p-4 mt-1 space-y-3 bg-surface-secondary/30">
+            <p className="text-xs text-muted">{t("genParams.hint")}</p>
+
+            <OptionalSliderParam
+              label={t("genParams.temperature")}
+              value={temperature}
+              onToggle={(on) => setTemperature(on ? 0.7 : null)}
+              onValueChange={setTemperature}
+              min={0} max={2} step={0.05}
+            />
+            <OptionalSliderParam
+              label={t("genParams.topP")}
+              value={topP}
+              onToggle={(on) => setTopP(on ? 0.9 : null)}
+              onValueChange={setTopP}
+              min={0} max={1} step={0.05}
+            />
+            <OptionalNumberParam
+              label={t("genParams.maxTokens")}
+              value={maxTokens}
+              onToggle={(on) => setMaxTokens(on ? 4096 : null)}
+              onValueChange={setMaxTokens}
+              min={256} max={1000000} step={256}
+            />
+            <OptionalSliderParam
+              label={t("genParams.presencePenalty")}
+              value={presencePenalty}
+              onToggle={(on) => setPresencePenalty(on ? 0 : null)}
+              onValueChange={setPresencePenalty}
+              min={-2} max={2} step={0.1}
+            />
+            <OptionalSliderParam
+              label={t("genParams.frequencyPenalty")}
+              value={frequencyPenalty}
+              onToggle={(on) => setFrequencyPenalty(on ? 0 : null)}
+              onValueChange={setFrequencyPenalty}
+              min={-2} max={2} step={0.1}
+            />
+            <OptionalTextParam
+              label={t("genParams.systemPrompt")}
+              value={systemPrompt}
+              onToggle={(on) => setSystemPrompt(on ? "" : null)}
+              onValueChange={setSystemPrompt}
+              placeholder={t("genParams.systemPromptPlaceholder")}
+            />
+          </div>
+        )}
       </div>
 
       {/* Step Progress */}

@@ -31,11 +31,20 @@ class LLMProviderConfig(BaseModel):
     supports_json_schema: bool = Field(default=False, description="是否支持 JSON Schema 输出")
     supports_function_calling: bool = Field(default=False, description="是否支持 function calling")
 
+    # 生成参数默认值（请求未指定时使用，请求级别优先）
+    temperature: float | None = Field(default=None, ge=0, le=2, description="默认采样温度")
+    top_p: float | None = Field(default=None, ge=0, le=1, description="默认核采样概率")
+    max_tokens: int | None = Field(default=None, gt=0, description="默认最大生成 token 数")
+    system_prompt: str | None = Field(default=None, description="默认系统提示词")
+    presence_penalty: float | None = Field(default=None, ge=-2, le=2, description="默认存在惩罚")
+    frequency_penalty: float | None = Field(default=None, ge=-2, le=2, description="默认频率惩罚")
+
 
 class LLMConfig(BaseModel):
     """LLM 总体配置，包含默认服务商与所有服务商列表。"""
 
     default_provider: str = Field(default="openai_gpt4o_mini", description="默认服务商别名")
+    format_review_provider: str = Field(default="", description="格式审校服务商别名，需支持 json_schema")
     providers: dict[str, LLMProviderConfig] = Field(default_factory=dict, description="服务商配置映射（key 为别名）")
 
 

@@ -51,12 +51,25 @@
       "badgeDefault": "Default",
       "deleteProvider": "Delete",
       "deleteConfirm": "Confirm to delete this Provider?",
-      "mustExist": "Default Provider must exist in the configured list"
+      "mustExist": "Default Provider must exist in the configured list",
+      "genParams": {
+        "title": "Generation Parameters (Optional)",
+        "hint": "Configure default generation parameters for this provider. When enabled, these values will be used as defaults unless overridden per request.",
+        "temperature": "Temperature",
+        "topP": "Top P",
+        "maxTokens": "Max Tokens",
+        "presencePenalty": "Presence Penalty",
+        "frequencyPenalty": "Frequency Penalty",
+        "systemPrompt": "System Prompt",
+        "systemPromptPlaceholder": "Enter default system prompt for this provider..."
+      }
     },
     "workflow": {
       "title": "Novel Generation Workflow",
       "workflowName": "Workflow Name",
       "defaultProvider": "Workflow Default Provider",
+      "formatReviewProvider": "Format Review Provider",
+      "formatReviewHint": "Used to fix malformed AI responses; must support JSON Schema",
       "inheritDefault": "Inherit workflow default",
       "steps": {
         "extract_idea": "Extract core story elements from user idea",
@@ -81,7 +94,13 @@
     "searchPlaceholder": "Search novels...",
     "deleteConfirm": "Confirm to delete \"{title}\"? This can be restored.",
     "deleteSuccess": "Moved to trash",
-    "deleteFailed": "Delete failed"
+    "deleteFailed": "Delete failed",
+    "trashBin": "Trash",
+    "trashEmpty": "Trash is empty",
+    "restore": "Restore",
+    "hardDelete": "Delete Permanently",
+    "hardDeleteConfirm": "Permanently delete \"{title}\"? This action CANNOT be undone.",
+    "deletedAt": "Deleted"
   },
   "novel": {
     "title": "Title",
@@ -89,6 +108,8 @@
     "genre": "Genre",
     "tags": "Tags",
     "introduction": "Introduction",
+    "summary": "Summary",
+    "coreSeed": "Core Seed",
     "worldview": "Worldview",
     "writingStyle": "Writing Style",
     "narrativePov": "Narrative POV",
@@ -107,6 +128,9 @@
     "delete": "Delete",
     "save": "Save",
     "cancel": "Cancel",
+    "confirmContinue": "Confirm & Continue",
+    "dangerEditTitle": "Edit Warning",
+    "dangerEditMessage": "This novel already has chapters/volumes. Editing the summary, core seed, worldview, writing style, narrative POV, or era background may cause irreversible impact on subsequent generation. Are you sure you want to continue?",
     "uploadCover": "Upload Cover",
     "removeCover": "Remove Cover",
     "povFirst": "First Person",
@@ -134,6 +158,17 @@
     "saveNovel": "Save & Create Novel",
     "createSuccess": "Novel created successfully!",
     "createFailed": "Creation failed",
-    "back": "Back to Bookshelf"
+    "back": "Back to Bookshelf",
+    "genParams": {
+      "title": "Generation Parameters (Optional), if you don't understand, please do not enable or modify",
+      "hint": "Override LLM generation parameters for this creation session. If not set, provider defaults will be used.",
+      "temperature": "Temperature",
+      "topP": "Top P",
+      "maxTokens": "Max Tokens",
+      "presencePenalty": "Presence Penalty",
+      "frequencyPenalty": "Frequency Penalty",
+      "systemPrompt": "System Prompt",
+      "systemPromptPlaceholder": "Enter a system prompt to guide the AI generation style..."
+    }
   }
 }

@@ -39,6 +39,18 @@ class NovelRepository(BaseRepository):
         )
         return await cursor.to_list(length=None)
 
+    async def get_deleted_novels(self) -> List[Dict[str, Any]]:
+        """获取所有已软删除的小说列表（回收站视图）"""
+        cursor = self.collection.find(
+            {"is_deleted": True},
+            projection={"_id": 1, "title": 1, "subtitle": 1,
+                        "genre": 1, "status": 1, "tags": 1,
+                        "cover_image": 1, "current_chapter_count": 1, "current_word_count": 1,
+                        "deleted_at": 1
+                    }
+        )
+        return await cursor.to_list(length=None)
+
     async def get_novel_by_id(self, novel_id: str, include_deleted: bool = False) -> Dict[str, Any]:
         """根据ID获取小说的详细信息，如果不存在则抛出NotFoundError异常"""
         obj_id = to_object_id(novel_id)
@@ -73,6 +85,15 @@ class NovelRepository(BaseRepository):
         # 预期的键如current_volume_count、current_chapter_count、current_word_count
         obj_id = to_object_id(novel_id)
         return await self.update_one({"_id": obj_id}, stats_data)
+
+    async def increment_novel_stats(self, novel_id: str, stats_deltas: Dict[str, int]) -> bool:
+        """原子增减小说的统计数据（如current_volume_count +1/-1）"""
+        allowed_keys = {"current_volume_count", "current_chapter_count", "current_word_count"}
+        filtered = {k: v for k, v in stats_deltas.items() if k in allowed_keys and v != 0}
+        if not filtered:
+            return False
+        obj_id = to_object_id(novel_id)
+        return await self.increment_one({"_id": obj_id}, filtered)
 
     async def soft_delete_novel(self, novel_id: str) -> bool:
         """软删除指定ID的小说"""

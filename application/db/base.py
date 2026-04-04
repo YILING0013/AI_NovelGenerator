@@ -80,6 +80,19 @@ class BaseRepository:
         result = await self.collection.update_one(q, update_doc)
         return result.modified_count > 0
 
+    async def increment_one(self, query: Dict[str, Any], increments: Dict[str, int], include_deleted: bool = False) -> bool:
+        """对单条文档的数值字段进行原子增减（$inc），同时更新updated_at。"""
+        q = dict(query)
+        if not include_deleted:
+            q["is_deleted"] = False
+
+        update_doc = {
+            "$inc": increments,
+            "$set": {"updated_at": get_utc_now()}
+        }
+        result = await self.collection.update_one(q, update_doc)
+        return result.modified_count > 0
+
     async def update_many(self, query: Dict[str, Any], update_data: Dict[str, Any], include_deleted: bool = False) -> int:
         """更新多条匹配的文档记录，返回更新影响的行数。"""
         q = dict(query)

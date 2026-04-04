@@ -6,6 +6,7 @@ import type { NovelSummary, NovelDetail } from "@/types/novel";
 import NovelList from "./NovelList";
 import NovelDetailPanel from "./NovelDetail";
 import NewNovelPanel from "./NewNovelPanel";
+import TrashBin from "./TrashBin";
 
 type RightPanel = "detail" | "new";
 
@@ -15,6 +16,7 @@ export default function BookshelfContent() {
   const [selectedNovel, setSelectedNovel] = useState<NovelDetail | null>(null);
   const [rightPanel, setRightPanel] = useState<RightPanel>("detail");
   const [loading, setLoading] = useState(true);
+  const [trashOpen, setTrashOpen] = useState(false);
 
   const fetchNovels = useCallback(async () => {
     try {
@@ -77,11 +79,12 @@ export default function BookshelfContent() {
           loading={loading}
           onSelect={handleSelect}
           onNewNovel={handleNewNovel}
+          onOpenTrash={() => setTrashOpen(true)}
         />
       </div>
 
       {/* Right: Detail / New Panel (7/10) */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 overflow-hidden">
         {rightPanel === "new" ? (
           <NewNovelPanel
             onCreated={handleNovelCreated}
@@ -98,6 +101,13 @@ export default function BookshelfContent() {
           />
         )}
       </div>
+
+      {/* Trash Bin Modal */}
+      <TrashBin
+        open={trashOpen}
+        onClose={() => setTrashOpen(false)}
+        onRestored={fetchNovels}
+      />
     </div>
   );
 }

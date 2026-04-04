@@ -9,6 +9,7 @@ from application.db.indexes import init_all_indexes
 from application.api.default_routers.config_router import router as config_router
 from application.api.default_routers.novel_router import router as novel_router
 from application.api.default_routers.upload_router import router as upload_router
+from application.api.default_routers.volume_router import router as volume_router
 from application.api.llm_routers.create_novel_router import router as create_novel_router
 from fastapi.staticfiles import StaticFiles
 # FastAPI setup with lifespan
@@ -40,6 +41,7 @@ os.makedirs("static/covers", exist_ok=True)
 app.mount("/static/covers", StaticFiles(directory="static/covers"), name="static_covers")
 
 app.include_router(novel_router)
+app.include_router(volume_router)
 app.include_router(config_router)
 app.include_router(create_novel_router)
 app.include_router(upload_router)

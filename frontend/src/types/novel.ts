@@ -16,6 +16,8 @@ export interface NovelSummary {
 
 export interface NovelDetail extends NovelSummary {
   introduction?: string;
+  summary?: string;
+  core_seed?: string;
   worldview?: string;
   writing_style?: string;
   narrative_pov?: string;
@@ -28,6 +30,8 @@ export interface CreateNovelRequest {
   genre?: string;
   tags?: string[];
   introduction?: string;
+  summary?: string;
+  core_seed?: string;
   worldview?: string;
   writing_style?: string;
   narrative_pov?: string;
@@ -39,6 +43,13 @@ export interface AICreateRequest {
   user_idea: string;
   number_of_chapters?: number;
   words_per_chapter?: number;
+  // 可选生成参数
+  temperature?: number | null;
+  top_p?: number | null;
+  max_tokens?: number | null;
+  presence_penalty?: number | null;
+  frequency_penalty?: number | null;
+  system_prompt?: string | null;
 }
 
 export interface AICreateStepResult {
@@ -60,6 +71,7 @@ export interface AICreateResponse {
   novel_meta: {
     title: string;
     subtitle: string;
+    introduction: string;
     summary: string;
     worldview: string;
     writing_style: string;

@@ -8,8 +8,11 @@
 # LLM 大模型配置
 # 每个 provider 条目的 key 是用户自定义的别名，type 指定客户端类别（openai / gemini / claude）
 # 同一个 type 可以定义多个不同别名的配置，方便在不同场景使用不同模型
+# 每个 provider 可选配置生成参数默认值（temperature / top_p / max_tokens / system_prompt 等），
+# 请求级别的参数会覆盖 provider 级别的默认值
 llm:
   default_provider: openai_gpt4o_mini
+  format_review_provider: openai_gpt5_4_nano
   providers:
     openai_gpt4o_mini:
       type: openai
@@ -23,6 +26,13 @@ llm:
       supports_streaming: true
       supports_json_schema: true
       supports_function_calling: true
+      # 生成参数默认值（可选，不设置则由模型自行决定）
+      # temperature: 0.7
+      # top_p: 0.9
+      # max_tokens: 4096
+      # system_prompt: ""
+      # presence_penalty: 0.0
+      # frequency_penalty: 0.0
     deepseek_chat:
       type: openai
       base_url: "https://api.deepseek.com/v1"

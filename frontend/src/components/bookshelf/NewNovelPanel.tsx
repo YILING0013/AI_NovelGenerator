@@ -34,7 +34,9 @@ export default function NewNovelPanel({ onCreated, onCancel }: NewNovelPanelProp
       subtitle: meta.subtitle,
       genre: aiResult.extract_idea.genre,
       tags: meta.tags,
-      introduction: meta.summary,
+      introduction: meta.introduction,
+      summary: meta.summary,
+      core_seed: aiResult.core_seed.core_seed,
       worldview: meta.worldview,
       writing_style: meta.writing_style,
       narrative_pov: meta.narrative_pov,
@@ -59,21 +61,19 @@ export default function NewNovelPanel({ onCreated, onCancel }: NewNovelPanelProp
           {!showForm && (
             <div className="flex gap-1 mb-6 border-b border-border">
               <button
-                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                  tab === "ai"
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${tab === "ai"
                     ? "border-primary text-primary"
                     : "border-transparent text-muted hover:text-foreground"
-                }`}
+                  }`}
                 onClick={() => setTab("ai")}
               >
                 {t("tabAI")}
               </button>
               <button
-                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                  tab === "manual"
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${tab === "manual"
                     ? "border-primary text-primary"
                     : "border-transparent text-muted hover:text-foreground"
-                }`}
+                  }`}
                 onClick={() => setTab("manual")}
               >
                 {t("tabManual")}

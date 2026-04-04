@@ -11,7 +11,7 @@ class ExtractIdeaSchema(BaseModel):
     plot: str = Field(
         ...,
         min_length=50,
-        max_length=300,
+        max_length=600,
         description="故事剧情概括，简短描绘主要情节走向和核心冲突"
     )
     genre: str = Field(
@@ -49,7 +49,7 @@ class CoreSeedSchema(BaseModel):
     core_seed: str = Field(
         ...,
         min_length=30,
-        max_length=100,
+        max_length=150,
         description="故事核心公式，需包含显性冲突、潜在危机、人物核心驱动力与世界观关键矛盾暗示，长度30-100字"
     )
 
@@ -72,11 +72,17 @@ class NovelMetaSchema(BaseModel):
         max_length=50,
         description="副标题，补充核心冲突或主题，具有一定文学感或商业感"
     )
-    summary: str = Field(
+    introduction: str = Field(
         ...,
         min_length=100,
         max_length=300,
-        description="小说简介，100-300字，需清晰呈现主线冲突与悬念"
+        description="小说引言，100-300字，引入故事，吸引读者阅读兴趣"
+    )
+    summary: str = Field(
+        ...,
+        min_length=100,
+        max_length=600,
+        description="小说简介，100-600字，需清晰呈现主线冲突与悬念"
     )
     worldview: str = Field(
         ...,
