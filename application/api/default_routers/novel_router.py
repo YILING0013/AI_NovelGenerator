@@ -42,7 +42,7 @@ class StatusUpdate(BaseModel):
 @router.post("/create")
 async def create_novel(req: CreateNovelRequest):
     """创建一个新的小说项目。"""
-    data = req.dict(exclude_unset=True)
+    data = req.model_dump(exclude_unset=True)
     try:
         novel_id = await novel_repo.create_novel(data)
         return {"id": novel_id, "message": "Novel created"}
@@ -95,7 +95,7 @@ async def get_novel(novel_id: str):
 async def update_novel(novel_id: str, req: UpdateNovelRequest):
     """更新指定小说的基础信息（如标题、简介等）。"""
     try:
-        success = await novel_repo.update_novel_info(novel_id, req.dict(exclude_unset=True))
+        success = await novel_repo.update_novel_info(novel_id, req.model_dump(exclude_unset=True))
         return {"success": success}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

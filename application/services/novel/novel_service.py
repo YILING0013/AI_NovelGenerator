@@ -40,6 +40,7 @@ class NovelService:
         outlines_repo = BaseRepository("outlines")
         tasks_repo = BaseRepository("generation_tasks")
         memories_repo = BaseRepository("memory_fragments")
+        factions_repo = BaseRepository("factions")
         
         stats = {}
         
@@ -48,6 +49,7 @@ class NovelService:
         stats["outlines_deleted"] = await outlines_repo.hard_delete_many(query)
         stats["tasks_deleted"] = await tasks_repo.hard_delete_many(query)
         stats["memories_deleted"] = await memories_repo.hard_delete_many(query)
+        stats["factions_deleted"] = await factions_repo.hard_delete_many(query)
         
         # 最后删除小说本身
         novel_deleted = await novel_repo.hard_delete_one({"_id": obj_id})

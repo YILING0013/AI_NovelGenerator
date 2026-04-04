@@ -11,3 +11,4 @@ python-multipart
 motor
 pymongo
 httpx
+pytest

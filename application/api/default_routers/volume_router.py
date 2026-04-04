@@ -30,7 +30,7 @@ class UpdateVolumeStatsRequest(BaseModel):
 @router.post("/create")
 async def create_volume(req: CreateVolumeRequest):
     """创建一个新卷，挂载到指定小说下。"""
-    data = req.dict(exclude_unset=True)
+    data = req.model_dump(exclude_unset=True)
     try:
         volume_id = await VolumeService.create_volume(data)
         return {"id": volume_id, "message": "Volume created"}
@@ -75,7 +75,7 @@ async def get_volume(volume_id: str):
 async def update_volume(volume_id: str, req: UpdateVolumeRequest):
     """更新卷的基础信息（标题、概要、状态、序号）。"""
     try:
-        success = await VolumeService.update_volume_info(volume_id, req.dict(exclude_unset=True))
+        success = await VolumeService.update_volume_info(volume_id, req.model_dump(exclude_unset=True))
         return {"success": success}
     except DuplicateKeyError as e:
         raise HTTPException(status_code=409, detail=str(e))
