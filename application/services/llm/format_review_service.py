@@ -67,6 +67,12 @@ async def validate_and_fix_format(
 
     # 调用审校 Provider
     reviewer_provider = _resolve_format_review_provider()
+    logger.info(
+        "%s 启用格式审校 provider=%s schema=%s",
+        step_label or "unknown",
+        reviewer_provider,
+        schema.__name__,
+    )
     reviewer = LLMService(provider_name=reviewer_provider)
     review_prompt = (
         "以下是另一个 AI 的原始输出，但格式不符合要求。\n"

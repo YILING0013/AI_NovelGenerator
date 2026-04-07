@@ -7,6 +7,7 @@ export interface ProviderConfig {
   timeout_seconds: number;
   max_retries: number;
   max_concurrency: number;
+  use_system_proxy: boolean;
   supports_streaming: boolean;
   supports_json_schema: boolean;
   supports_function_calling: boolean;
@@ -53,6 +54,7 @@ export function newProviderConfig(): ProviderConfig {
     timeout_seconds: 60,
     max_retries: 2,
     max_concurrency: 5,
+    use_system_proxy: false,
     supports_streaming: true,
     supports_json_schema: false,
     supports_function_calling: false,
@@ -65,4 +67,41 @@ export function newProviderConfig(): ProviderConfig {
   };
 }
 
-export const WORKFLOW_STEPS = ["extract_idea", "core_seed", "novel_meta"] as const;
+export const WORKFLOW_STEPS = [
+  "expand_idea_to_full_novel_story",
+  "extract_idea",
+  "core_seed",
+  "novel_meta",
+] as const;
+
+export function normalizeAppConfig(config: AppConfig): AppConfig {
+  const providers = Object.fromEntries(
+    Object.entries(config.llm?.providers || {}).map(([alias, provider]) => [
+      alias,
+      { ...newProviderConfig(), ...provider },
+    ])
+  );
+
+  const workflows = config.llm?.workflows;
+  const createNovelWorkflow = workflows?.create_novel_by_ai;
+
+  return {
+    ...config,
+    llm: {
+      ...config.llm,
+      providers,
+      workflows: createNovelWorkflow
+        ? {
+            ...workflows,
+            create_novel_by_ai: {
+              ...createNovelWorkflow,
+              steps: {
+                ...Object.fromEntries(WORKFLOW_STEPS.map((step) => [step, { provider: "" }])),
+                ...createNovelWorkflow.steps,
+              },
+            },
+          }
+        : workflows,
+    },
+  };
+}

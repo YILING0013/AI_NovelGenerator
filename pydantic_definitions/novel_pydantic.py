@@ -2,18 +2,26 @@ from typing import Literal
 from pydantic import BaseModel, Field, ConfigDict
 
 
-class ExtractIdeaSchema(BaseModel):
+class ExpandIdeaSchema(BaseModel):
     """
-    从用户创意中提炼出的故事构思要素
+    将用户创意扩写为完整长篇小说压缩故事
     """
     model_config = ConfigDict(extra="forbid")
 
     plot: str = Field(
         ...,
-        min_length=50,
-        max_length=600,
-        description="故事剧情概括，简短描绘主要情节走向和核心冲突"
+        min_length=200,
+        max_length=5000,
+        description="完整的约3000字长篇压缩故事正文"
     )
+
+
+class ExtractIdeaSchema(BaseModel):
+    """
+    从扩展剧情中提炼出的故事构思要素
+    """
+    model_config = ConfigDict(extra="forbid")
+
     genre: str = Field(
         ...,
         min_length=1,
@@ -81,13 +89,13 @@ class NovelMetaSchema(BaseModel):
     summary: str = Field(
         ...,
         min_length=100,
-        max_length=600,
-        description="小说简介，100-600字，需清晰呈现主线冲突与悬念"
+        max_length=500,
+        description="小说简介，100-500字，需清晰呈现主线冲突与悬念"
     )
     worldview: str = Field(
         ...,
         min_length=100,
-        max_length=1000,
+        max_length=800,
         description="世界观设定，说明世界规则、力量体系、社会结构等，不少于100字"
     )
     writing_style: str = Field(

@@ -8,7 +8,7 @@ import { OptionalSliderParam, OptionalNumberParam, OptionalTextParam } from "@/c
 import type { AICreateResponse, AICreateRequest } from "@/types/novel";
 
 interface AICreateStepperProps {
-  onComplete: (result: AICreateResponse) => void;
+  onComplete: (result: AICreateResponse, chapters: number, wordsPerChapter: number) => void;
 }
 
 type StepStatus = "pending" | "running" | "done" | "error";
@@ -19,7 +19,7 @@ interface StepState {
   error?: string;
 }
 
-const STEPS = ["extract_idea", "core_seed", "novel_meta"] as const;
+const STEPS = ["expand_idea", "extract_idea", "core_seed", "novel_meta"] as const;
 
 export default function AICreateStepper({ onComplete }: AICreateStepperProps) {
   const t = useTranslations("create");
@@ -42,6 +42,7 @@ export default function AICreateStepper({ onComplete }: AICreateStepperProps) {
   stepsRef.current = steps;
 
   const stepLabelMap: Record<string, string> = {
+    expand_idea: t("stepExpandIdea"),
     extract_idea: t("stepExtractIdea"),
     core_seed: t("stepCoreSeed"),
     novel_meta: t("stepNovelMeta"),
@@ -85,7 +86,7 @@ export default function AICreateStepper({ onComplete }: AICreateStepperProps) {
             if (data.success && data.result) {
               const res = data.result as AICreateResponse;
               setResult(res);
-              onComplete(res);
+              onComplete(res, chapters, wordsPerChapter);
             }
           }
         }

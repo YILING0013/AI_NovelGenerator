@@ -41,11 +41,19 @@ class ClaudeClient(BaseLLMClient):
 
     def __init__(self, config: LLMProviderConfig, provider_name: str = "claude") -> None:
         super().__init__(config, provider_name)
-        self._client = AsyncAnthropic(
-            api_key=config.api_key,
+        self._http_client = anthropic.DefaultAsyncHttpxClient(
+            trust_env=config.use_system_proxy,
             timeout=float(config.timeout_seconds),
-            max_retries=config.max_retries,
         )
+        client_kwargs: dict[str, Any] = {
+            "api_key": config.api_key,
+            "timeout": float(config.timeout_seconds),
+            "max_retries": config.max_retries,
+            "http_client": self._http_client,
+        }
+        if config.base_url:
+            client_kwargs["base_url"] = config.base_url
+        self._client = AsyncAnthropic(**client_kwargs)
 
     def _build_params(self, request: LLMRequest) -> dict[str, Any]:
         """构建 Claude Messages API 调用参数。"""
@@ -142,6 +150,7 @@ class ClaudeClient(BaseLLMClient):
             finish_reason=resp.stop_reason or "",
             success=True,
         )
+        result = self._finalize_response(result)
         log_llm_response(result)
         return result
 
@@ -213,6 +222,7 @@ class ClaudeClient(BaseLLMClient):
             finish_reason=resp.stop_reason or "",
             success=True,
         )
+        result = self._finalize_response(result)
         log_llm_response(result)
         return result
 
@@ -225,8 +235,13 @@ class ClaudeClient(BaseLLMClient):
         try:
             params = self._build_params(request)
             async with self._client.messages.stream(**params) as stream:
-                async for text in stream.text_stream:
-                    yield text
+
+                async def raw_chunks() -> AsyncGenerator[str, None]:
+                    async for text in stream.text_stream:
+                        yield text
+
+                async for clean_chunk in self._sanitize_stream_chunks(raw_chunks()):
+                    yield clean_chunk
         except Exception as exc:
             mapped = self._map_error(exc, model)
             log_llm_error(mapped, provider=self.provider_name, model=model)

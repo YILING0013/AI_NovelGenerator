@@ -21,6 +21,12 @@ class CreateNovelRequest(BaseModel):
     narrative_pov: Optional[str] = None
     era_background: Optional[str] = None
     cover_image: Optional[str] = None
+    plot: Optional[str] = None
+    tone: Optional[str] = None
+    target_audience: Optional[str] = None
+    core_idea: Optional[str] = None
+    number_of_chapters: Optional[int] = None
+    words_per_chapter: Optional[int] = None
 
 class UpdateNovelRequest(BaseModel):
     title: Optional[str] = None
@@ -35,6 +41,12 @@ class UpdateNovelRequest(BaseModel):
     narrative_pov: Optional[str] = None
     era_background: Optional[str] = None
     cover_image: Optional[str] = None
+    plot: Optional[str] = None
+    tone: Optional[str] = None
+    target_audience: Optional[str] = None
+    core_idea: Optional[str] = None
+    number_of_chapters: Optional[int] = None
+    words_per_chapter: Optional[int] = None
 
 class StatusUpdate(BaseModel):
     status: str

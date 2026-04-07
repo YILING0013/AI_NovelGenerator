@@ -40,6 +40,7 @@
       "apiKey": "API Key",
       "defaultModel": "默认模型",
       "enabled": "启用",
+      "useSystemProxy": "使用系统代理",
       "timeoutSeconds": "请求超时 (秒)",
       "maxRetries": "最大重试次数",
       "maxConcurrency": "最大并发数",
@@ -72,6 +73,7 @@
       "formatReviewHint": "用于修正 AI 响应格式错误，需支持 JSON Schema",
       "inheritDefault": "继承流程默认",
       "steps": {
+        "expand_idea_to_full_novel_story": "先把用户创意扩写成完整长篇剧情压缩稿",
         "extract_idea": "根据用户创意提取故事核心要素",
         "core_seed": "基于故事要素生成故事核心种子",
         "novel_meta": "整合参数并生成完整小说初始化信息"
@@ -100,7 +102,9 @@
     "restore": "恢复",
     "hardDelete": "彻底删除",
     "hardDeleteConfirm": "彻底删除「{title}」？此操作不可恢复！",
-    "deletedAt": "删除时间"
+    "deletedAt": "删除时间",
+    "goWriting": "进入创作页",
+    "aiCompleteRedirect": "AI 生成完成，正在跳转到创作页..."
   },
   "novel": {
     "title": "标题",
@@ -135,18 +139,24 @@
     "removeCover": "移除封面",
     "povFirst": "第一人称",
     "povThirdLimited": "第三人称有限视角",
-    "povOmniscient": "全知视角"
+    "povOmniscient": "全知视角",
+    "plot": "主线剧情",
+    "tone": "基调",
+    "targetAudience": "目标读者",
+    "coreIdea": "核心创意",
+    "numberOfChapters": "预计章节数",
+    "wordsPerChapter": "每章字数"
   },
   "create": {
     "title": "创建小说",
     "tabAI": "AI 创作",
-    "tabManual": "手动创建",
     "ideaLabel": "你的创意",
     "ideaPlaceholder": "描述你想写的故事，比如：一个废柴少年在末日世界觉醒了时间回溯能力...",
     "chaptersLabel": "预计章节数",
     "wordsPerChapterLabel": "每章字数",
     "startAI": "开始 AI 创作",
     "generating": "AI 生成中...",
+    "stepExpandIdea": "扩写完整剧情",
     "stepExtractIdea": "提炼创意",
     "stepCoreSeed": "生成故事核心",
     "stepNovelMeta": "生成小说设定",
@@ -170,5 +180,58 @@
       "systemPrompt": "系统提示词 (System Prompt)",
       "systemPromptPlaceholder": "输入系统提示词来引导 AI 的生成风格..."
     }
+  },
+  "writing": {
+    "pageTitle": "创作工作台",
+    "backToShelf": "返回书架",
+    "sidebar": {
+      "novelInfo": "小说信息",
+      "chapterEditor": "章节编辑",
+      "entityGroup": "实体管理",
+      "characterCards": "角色卡",
+      "locationCards": "地点卡",
+      "factionCards": "势力卡",
+      "itemCards": "物品卡",
+      "ruleCards": "设定规则卡",
+      "relationshipMap": "角色关系图"
+    },
+    "placeholder": {
+      "title": "{module}",
+      "description": "该模块正在开发中，敬请期待。",
+      "hint": "本轮暂不实现"
+    },
+    "novelInfo": {
+      "createTitle": "创建新小说",
+      "createDescription": "以下信息由 AI 生成，你可以复核和调整后保存创建。",
+      "editTitle": "小说信息",
+      "noDraft": "未找到创建草稿，请从书架页发起 AI 创作。",
+      "saveCreate": "保存并创建小说",
+      "creating": "创建中...",
+      "createSuccess": "小说创建成功！",
+      "createFailed": "创建失败",
+      "editSection": "编辑",
+      "saveSection": "保存",
+      "cancelEdit": "取消",
+      "saving": "保存中...",
+      "saveSuccess": "保存成功",
+      "saveFailed": "保存失败",
+      "sections": {
+        "basic": "基础信息",
+        "creative": "创意设定",
+        "scale": "规模参数",
+        "content": "小说内容",
+        "style": "风格设定"
+      },
+      "expand": "展开",
+      "collapse": "收起",
+      "noContent": "暂无内容"
+    },
+    "dangerEditTitle": "编辑警告",
+    "dangerEditMessage": "该小说已存在卷/章节内容。修改以下字段可能对后续生成造成不可逆影响，是否确认继续？",
+    "confirmContinue": "确认继续",
+    "cancel": "取消",
+    "loading": "加载中...",
+    "loadFailed": "加载失败",
+    "backToCreate": "返回书架创建"
   }
 }

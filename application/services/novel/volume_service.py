@@ -15,7 +15,7 @@ class VolumeService:
     纯集合内操作由 VolumeRepository 负责，跨集合联动由此处编排。
     """
 
-    # ── 创建 ─────────────────────────────────────────────────
+    # 创建 
 
     @staticmethod
     async def create_volume(data: Dict[str, Any]) -> str:
@@ -39,7 +39,7 @@ class VolumeService:
 
         return volume_id
 
-    # ── 查询（透传） ──────────────────────────────────────────
+    # 查询（透传） 
 
     @staticmethod
     async def get_volumes_by_novel(novel_id: str) -> List[Dict[str, Any]]:
@@ -51,7 +51,7 @@ class VolumeService:
         """获取单个卷详情。"""
         return await volume_repo.get_volume_by_id(volume_id)
 
-    # ── 更新（透传） ──────────────────────────────────────────
+    # 更新（透传） 
 
     @staticmethod
     async def update_volume_info(volume_id: str, update_data: Dict[str, Any]) -> bool:
@@ -67,7 +67,7 @@ class VolumeService:
         """更新卷统计（由下级 arcs 增删时回调使用）。"""
         return await volume_repo.update_volume_stats(volume_id, arcs_count_delta, word_count_delta)
 
-    # ── 软删除（级联） ────────────────────────────────────────
+    # 软删除（级联） 
 
     @staticmethod
     async def soft_delete_volume(volume_id: str) -> bool:
@@ -105,7 +105,7 @@ class VolumeService:
 
         return True
 
-    # ── 恢复（级联） ──────────────────────────────────────────
+    # 恢复（级联） 
 
     @staticmethod
     async def restore_volume(volume_id: str) -> bool:
@@ -147,7 +147,7 @@ class VolumeService:
 
         return True
 
-    # ── 硬删除（级联） ────────────────────────────────────────
+    # 硬删除（级联） 
 
     @staticmethod
     async def hard_delete_volume(volume_id: str) -> Dict[str, Any]:

@@ -28,7 +28,17 @@ class GeminiClient(BaseLLMClient):
 
     def __init__(self, config: LLMProviderConfig, provider_name: str = "gemini") -> None:
         super().__init__(config, provider_name)
-        self._client = genai.Client(api_key=config.api_key)
+        client_kwargs: dict[str, Any] = {"api_key": config.api_key}
+        http_options_kwargs: dict[str, Any] = {
+            "timeout": int(config.timeout_seconds * 1000),
+            "client_args": {"trust_env": config.use_system_proxy},
+            "async_client_args": {"trust_env": config.use_system_proxy},
+        }
+        if config.base_url:
+            http_options_kwargs["base_url"] = config.base_url
+        self._http_options = types.HttpOptions(**http_options_kwargs)
+        client_kwargs["http_options"] = self._http_options
+        self._client = genai.Client(**client_kwargs)
 
     def _build_contents(self, request: LLMRequest) -> list[types.Content]:
         """将 messages 转换为 Gemini SDK 的 Content 列表。"""
@@ -107,6 +117,7 @@ class GeminiClient(BaseLLMClient):
         elapsed_ms = int((time.perf_counter() - start) * 1000)
         result = LLMResponse(
             content=resp.text or "",
+            raw_response=resp.model_dump() if hasattr(resp, "model_dump") else {"text": resp.text or ""},
             usage=self._extract_usage(resp.usage_metadata),
             model=model,
             provider=self.provider_name,
@@ -114,6 +125,7 @@ class GeminiClient(BaseLLMClient):
             finish_reason=resp.candidates[0].finish_reason.name if resp.candidates else "",
             success=True,
         )
+        result = self._finalize_response(result)
         log_llm_response(result)
         return result
 
@@ -144,7 +156,7 @@ class GeminiClient(BaseLLMClient):
             raise mapped from exc
 
         elapsed_ms = int((time.perf_counter() - start) * 1000)
-        text = resp.text or ""
+        text = self._sanitize_text_content(resp.text or "")
 
         # 验证返回的 JSON 能被 Schema 解析
         try:
@@ -160,6 +172,7 @@ class GeminiClient(BaseLLMClient):
 
         result = LLMResponse(
             content=parsed.model_dump_json(),
+            raw_response=resp.model_dump() if hasattr(resp, "model_dump") else {"text": text},
             usage=self._extract_usage(resp.usage_metadata),
             model=model,
             provider=self.provider_name,
@@ -167,6 +180,7 @@ class GeminiClient(BaseLLMClient):
             finish_reason=resp.candidates[0].finish_reason.name if resp.candidates else "",
             success=True,
         )
+        result = self._finalize_response(result)
         log_llm_response(result)
         return result
 
@@ -177,13 +191,19 @@ class GeminiClient(BaseLLMClient):
         log_llm_request(request, self.provider_name)
 
         try:
-            async for chunk in await self._client.aio.models.generate_content_stream(
+            stream = await self._client.aio.models.generate_content_stream(
                 model=model,
                 contents=self._build_contents(request),
                 config=self._build_config(request),
-            ):
-                if chunk.text:
-                    yield chunk.text
+            )
+
+            async def raw_chunks() -> AsyncGenerator[str, None]:
+                async for chunk in stream:
+                    if chunk.text:
+                        yield chunk.text
+
+            async for clean_chunk in self._sanitize_stream_chunks(raw_chunks()):
+                yield clean_chunk
         except Exception as exc:
             mapped = self._map_error(exc, model)
             log_llm_error(mapped, provider=self.provider_name, model=model)

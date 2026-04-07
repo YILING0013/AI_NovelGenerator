@@ -2,13 +2,100 @@
 
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator
 
 from pydantic import BaseModel
 
 from application.llm.config import LLMProviderConfig
 from application.llm.models import LLMRequest, LLMResponse
+
+
+_THINK_BLOCK_RE = re.compile(r"<think\b[^>]*>.*?</think>", re.IGNORECASE | re.DOTALL)
+_THINK_OPEN_RE = re.compile(r"<think\b[^>]*>", re.IGNORECASE)
+_THINK_CLOSE_RE = re.compile(r"</think>", re.IGNORECASE)
+
+
+class _ThinkStreamFilter:
+    """流式文本过滤器，支持跨 chunk 移除 <think>...</think> 内容。"""
+
+    def __init__(self) -> None:
+        self._buffer = ""
+        self._inside_think = False
+
+    def feed(self, chunk: str) -> str:
+        if not chunk:
+            return ""
+
+        self._buffer += chunk
+        output_parts: list[str] = []
+
+        while self._buffer:
+            if self._inside_think:
+                close_match = _THINK_CLOSE_RE.search(self._buffer)
+                if close_match:
+                    self._buffer = self._buffer[close_match.end():]
+                    self._inside_think = False
+                    continue
+
+                keep_len = len("</think>") - 1
+                if len(self._buffer) > keep_len:
+                    self._buffer = self._buffer[-keep_len:]
+                break
+
+            open_match = _THINK_OPEN_RE.search(self._buffer)
+            if open_match:
+                if open_match.start() > 0:
+                    output_parts.append(self._buffer[:open_match.start()])
+                self._buffer = self._buffer[open_match.end():]
+                self._inside_think = True
+                continue
+
+            safe_length = self._safe_emit_length(self._buffer)
+            if safe_length <= 0:
+                break
+            output_parts.append(self._buffer[:safe_length])
+            self._buffer = self._buffer[safe_length:]
+
+        return "".join(output_parts)
+
+    def finish(self) -> str:
+        if self._inside_think:
+            return ""
+        if self._is_potential_think_prefix(self._buffer):
+            return ""
+        return BaseLLMClient._sanitize_text_content(self._buffer)
+
+    def _safe_emit_length(self, text: str) -> int:
+        last_lt = text.rfind("<")
+        if last_lt == -1:
+            return len(text)
+        tail = text[last_lt:]
+        if self._is_potential_think_prefix(tail):
+            return last_lt
+        return len(text)
+
+    @staticmethod
+    def _is_potential_think_prefix(text: str) -> bool:
+        lowered = text.lower()
+
+        if "<think".startswith(lowered) or "</think>".startswith(lowered):
+            return True
+
+        if lowered.startswith("<think"):
+            if len(lowered) == len("<think"):
+                return True
+            next_char = lowered[len("<think")]
+            return not (next_char.isalnum() or next_char == "_")
+
+        if lowered.startswith("</think"):
+            if len(lowered) == len("</think"):
+                return True
+            next_char = lowered[len("</think")]
+            return next_char == ">"
+
+        return False
 
 
 class BaseLLMClient(ABC):
@@ -52,6 +139,63 @@ class BaseLLMClient(ABC):
             messages.append({"role": "system", "content": request.system_prompt})
         messages.extend(request.messages)
         return messages
+
+    @staticmethod
+    def _sanitize_text_content(text: str) -> str:
+        """移除响应文本中的 <think>...</think> 思维链。"""
+        if not text:
+            return text
+
+        sanitized = _THINK_BLOCK_RE.sub("", text)
+        sanitized = _THINK_OPEN_RE.sub("", sanitized)
+        sanitized = _THINK_CLOSE_RE.sub("", sanitized)
+
+        if sanitized != text:
+            return sanitized.strip()
+        return sanitized
+
+    @classmethod
+    def _sanitize_raw_response(cls, payload: Any) -> Any:
+        """递归清洗原始响应中的 think 标签。"""
+        if isinstance(payload, str):
+            return cls._sanitize_text_content(payload)
+        if isinstance(payload, list):
+            return [cls._sanitize_raw_response(item) for item in payload]
+        if isinstance(payload, tuple):
+            return tuple(cls._sanitize_raw_response(item) for item in payload)
+        if isinstance(payload, dict):
+            return {key: cls._sanitize_raw_response(value) for key, value in payload.items()}
+        return payload
+
+    def _finalize_response(self, response: LLMResponse) -> LLMResponse:
+        """在返回前统一清洗 content 与 raw_response。"""
+        clean_content = self._sanitize_text_content(response.content)
+        clean_raw_response = self._sanitize_raw_response(response.raw_response)
+
+        if clean_content == response.content and clean_raw_response == response.raw_response:
+            return response
+
+        return response.model_copy(
+            update={
+                "content": clean_content,
+                "raw_response": clean_raw_response,
+            }
+        )
+
+    async def _sanitize_stream_chunks(
+        self,
+        chunks: AsyncGenerator[str, None],
+    ) -> AsyncGenerator[str, None]:
+        """统一清洗流式输出中的 think 标签。"""
+        stream_filter = _ThinkStreamFilter()
+        async for chunk in chunks:
+            clean_chunk = stream_filter.feed(chunk)
+            if clean_chunk:
+                yield clean_chunk
+
+        tail = stream_filter.finish()
+        if tail:
+            yield tail
 
     @abstractmethod
     async def text_generate(self, request: LLMRequest) -> LLMResponse:

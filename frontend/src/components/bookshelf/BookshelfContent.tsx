@@ -94,10 +94,6 @@ export default function BookshelfContent() {
           <NovelDetailPanel
             novel={selectedNovel}
             onDelete={handleDelete}
-            onUpdated={() => {
-              if (selectedId) handleSelect(selectedId);
-              fetchNovels();
-            }}
           />
         )}
       </div>

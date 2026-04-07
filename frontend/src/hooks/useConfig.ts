@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { apiGet, apiPut } from "@/lib/api";
-import type { AppConfig } from "@/types/config";
+import { normalizeAppConfig, type AppConfig } from "@/types/config";
 
 interface ConfigState {
   config: AppConfig | null;
@@ -29,12 +29,13 @@ export function useConfig() {
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
       const res = await apiGet<{ data: AppConfig }>("/api/config");
+      const normalized = normalizeAppConfig(res.data);
       setState((s) => ({
         ...s,
-        config: res.data,
+        config: normalized,
         loading: false,
       }));
-      return res.data;
+      return normalized;
     } catch (err) {
       setState((s) => ({
         ...s,
@@ -53,9 +54,10 @@ export function useConfig() {
           "/api/config",
           data
         );
+        const normalized = normalizeAppConfig(res.data);
         setState((s) => ({
           ...s,
-          config: res.data,
+          config: normalized,
           saving: false,
           success: successMsg,
         }));

@@ -29,6 +29,12 @@ export default function NovelForm({ defaults, onCreated, onBack }: NovelFormProp
     narrative_pov: "",
     era_background: "",
     cover_image: "",
+    plot: "",
+    tone: "",
+    target_audience: "",
+    core_idea: "",
+    number_of_chapters: undefined,
+    words_per_chapter: undefined,
   });
   const [tagInput, setTagInput] = useState("");
   const [saving, setSaving] = useState(false);
@@ -198,6 +204,68 @@ export default function NovelForm({ defaults, onCreated, onBack }: NovelFormProp
           onChange={(e) => updateField("introduction", e.target.value)}
         />
       </FormField>
+
+      {/* Plot */}
+      <FormField label={t("plot")}>
+        <textarea
+          className="w-full rounded-lg border border-border bg-background p-3 text-sm text-foreground resize-y min-h-[80px] focus:outline-none focus:ring-2 focus:ring-primary"
+          value={form.plot ?? ""}
+          onChange={(e) => updateField("plot", e.target.value)}
+        />
+      </FormField>
+
+      {/* Core Idea */}
+      <FormField label={t("coreIdea")}>
+        <textarea
+          className="w-full rounded-lg border border-border bg-background p-3 text-sm text-foreground resize-y min-h-[60px] focus:outline-none focus:ring-2 focus:ring-primary"
+          value={form.core_idea ?? ""}
+          onChange={(e) => updateField("core_idea", e.target.value)}
+        />
+      </FormField>
+
+      {/* Tone / Target Audience Row */}
+      <div className="grid grid-cols-2 gap-4">
+        <FormField label={t("tone")}>
+          <input
+            type="text"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            value={form.tone ?? ""}
+            onChange={(e) => updateField("tone", e.target.value)}
+          />
+        </FormField>
+        <FormField label={t("targetAudience")}>
+          <input
+            type="text"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            value={form.target_audience ?? ""}
+            onChange={(e) => updateField("target_audience", e.target.value)}
+          />
+        </FormField>
+      </div>
+
+      {/* Chapters / Words per Chapter Row */}
+      <div className="grid grid-cols-2 gap-4">
+        <FormField label={t("numberOfChapters")}>
+          <input
+            type="number"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            value={form.number_of_chapters ?? ""}
+            onChange={(e) => updateField("number_of_chapters", e.target.value ? Number(e.target.value) : undefined)}
+            min={1}
+            max={10000}
+          />
+        </FormField>
+        <FormField label={t("wordsPerChapter")}>
+          <input
+            type="number"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            value={form.words_per_chapter ?? ""}
+            onChange={(e) => updateField("words_per_chapter", e.target.value ? Number(e.target.value) : undefined)}
+            min={500}
+            max={50000}
+          />
+        </FormField>
+      </div>
 
       {/* Summary */}
       <FormField label={t("summary")}>

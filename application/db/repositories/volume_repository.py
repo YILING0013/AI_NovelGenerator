@@ -15,7 +15,7 @@ class VolumeRepository(BaseRepository):
         """初始化卷仓储，指定集合为'volumes'"""
         super().__init__("volumes")
 
-    # ── 辅助方法 ──────────────────────────────────────────────
+    # 辅助方法 
 
     async def _get_next_order_index(self, novel_id) -> int:
         """查询该小说下当前最大 order_index，返回下一个可用值。"""
@@ -28,7 +28,7 @@ class VolumeRepository(BaseRepository):
             return docs[0].get("order_index", 0) + 1
         return 1
 
-    # ── 创建 ─────────────────────────────────────────────────
+    # 创建 
 
     async def create_volume(self, data: Dict[str, Any]) -> str:
         """
@@ -63,7 +63,7 @@ class VolumeRepository(BaseRepository):
                 f"同一小说下 order_index={data['order_index']} 已存在，请使用其他序号"
             )
 
-    # ── 查询 ─────────────────────────────────────────────────
+    # 查询 
 
     async def get_volumes_by_novel(self, novel_id: str) -> List[Dict[str, Any]]:
         """获取指定小说下所有未删除的卷，按 order_index 升序排列。"""
@@ -81,7 +81,7 @@ class VolumeRepository(BaseRepository):
             raise NotFoundError(f"Volume with id {volume_id} not found")
         return volume
 
-    # ── 更新 ─────────────────────────────────────────────────
+    # 更新 
 
     async def update_volume_info(self, volume_id: str, update_data: Dict[str, Any]) -> bool:
         """
@@ -122,7 +122,7 @@ class VolumeRepository(BaseRepository):
         obj_id = to_object_id(volume_id)
         return await self.increment_one({"_id": obj_id}, increments)
 
-    # ── 删除与恢复 ────────────────────────────────────────────
+    # 删除与恢复 
 
     async def soft_delete_volume(self, volume_id: str) -> bool:
         """软删除指定卷。"""

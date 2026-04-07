@@ -2,13 +2,23 @@
 
 from __future__ import annotations
 
+import json
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+from application.runtime import is_backend_debug_enabled
 
 if TYPE_CHECKING:
     from application.llm.models import LLMRequest, LLMResponse
 
 logger = logging.getLogger("llm")
+
+
+def _format_debug_payload(payload: Any) -> str:
+    try:
+        return json.dumps(payload, ensure_ascii=False, indent=2, default=str)
+    except Exception:
+        return str(payload)
 
 
 def log_llm_request(request: LLMRequest, provider: str) -> None:
@@ -21,6 +31,26 @@ def log_llm_request(request: LLMRequest, provider: str) -> None:
         request.temperature,
         request.max_tokens,
     )
+    if is_backend_debug_enabled():
+        logger.debug(
+            "[LLM 请求详情] provider=%s payload=\n%s",
+            provider,
+            _format_debug_payload(
+                {
+                    "model": request.model or "(default)",
+                    "system_prompt": request.system_prompt,
+                    "messages": request.messages,
+                    "temperature": request.temperature,
+                    "top_p": request.top_p,
+                    "max_tokens": request.max_tokens,
+                    "presence_penalty": request.presence_penalty,
+                    "frequency_penalty": request.frequency_penalty,
+                    "stop": request.stop,
+                    "stream": request.stream,
+                    "metadata": request.metadata,
+                }
+            ),
+        )
 
 
 def log_llm_response(response: LLMResponse) -> None:
@@ -41,6 +71,17 @@ def log_llm_response(response: LLMResponse) -> None:
             response.model,
             response.error,
             response.duration_ms,
+        )
+
+    if is_backend_debug_enabled():
+        raw_payload = response.raw_response
+        if raw_payload is None:
+            raw_payload = {"content": response.content}
+        logger.debug(
+            "[LLM 原始响应] provider=%s model=%s payload=\n%s",
+            response.provider,
+            response.model,
+            _format_debug_payload(raw_payload),
         )
 
 

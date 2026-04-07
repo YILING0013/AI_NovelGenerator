@@ -115,10 +115,19 @@ class ServicePanel(ctk.CTkFrame):
         self.open_btn.pack(side="right")
 
     def _append(self, text: str):
+        should_autoscroll = self._should_autoscroll()
         self.log.configure(state="normal")
         self.log.insert("end", text)
-        self.log.see("end")
+        if should_autoscroll:
+            self.log.see("end")
         self.log.configure(state="disabled")
+
+    def _should_autoscroll(self) -> bool:
+        try:
+            _, bottom = self.log.yview()
+            return bottom >= 0.995
+        except Exception:
+            return True
 
     def _read_stream(self, stream):
         """以字节流读取并尝试多编码解码以防止乱码。"""
@@ -296,6 +305,14 @@ class App(ctk.CTk):
         )
         self.backend.pack(fill="both", expand=True, padx=12, pady=(10, 4))
 
+        self.backend_debug = ctk.CTkCheckBox(
+            self.backend.header,
+            text="后端调试日志",
+            command=self._on_backend_debug_change,
+        )
+        self.backend_debug.pack(side="right", padx=(0, 10))
+        self._on_backend_debug_change()
+
         self.frontend = ServicePanel(
             self, title="Frontend  /  Next.js",
             command=[],
@@ -344,6 +361,17 @@ class App(ctk.CTk):
         else:
             cmd = [self.npm_cmd, "run", "dev"]
         self.frontend.set_command(cmd)
+
+    def _build_backend_command(self) -> list[str]:
+        cmd = [VENV_PYTHON, "main.py"]
+        if self.backend_debug.get():
+            cmd.append("--debug")
+        return cmd
+
+    def _on_backend_debug_change(self):
+        self.backend.set_command(self._build_backend_command())
+        if self.backend._proc is not None and self.backend._proc.poll() is None:
+            self.backend._append("[INFO] 后端调试模式已切换，重启后端后生效。\n")
 
     def start_all(self):
         self.backend.start()

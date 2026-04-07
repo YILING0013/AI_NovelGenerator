@@ -27,6 +27,7 @@ class LLMProviderConfig(BaseModel):
     timeout_seconds: int = Field(default=60, description="请求超时（秒）")
     max_retries: int = Field(default=2, description="最大重试次数")
     max_concurrency: int = Field(default=5, description="最大并发数")
+    use_system_proxy: bool = Field(default=False, description="是否允许 SDK 读取系统代理配置")
     supports_streaming: bool = Field(default=True, description="是否支持流式输出")
     supports_json_schema: bool = Field(default=False, description="是否支持 JSON Schema 输出")
     supports_function_calling: bool = Field(default=False, description="是否支持 function calling")

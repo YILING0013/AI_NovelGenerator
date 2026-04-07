@@ -349,6 +349,15 @@ function ProviderForm({
           </Switch.Control>
           <Switch.Content className="text-sm">{t("enabled")}</Switch.Content>
         </Switch>
+        <Switch
+          isSelected={provider.use_system_proxy ?? false}
+          onChange={(v) => onChange({ use_system_proxy: v })}
+        >
+          <Switch.Control>
+            <Switch.Thumb />
+          </Switch.Control>
+          <Switch.Content className="text-sm">{t("useSystemProxy")}</Switch.Content>
+        </Switch>
         <Switch isSelected={provider.supports_streaming} onChange={(v) => onChange({ supports_streaming: v })}>
           <Switch.Control>
             <Switch.Thumb />

@@ -28,7 +28,7 @@ export default function Navbar() {
   };
 
   const goSettings = () => {
-    router.push(`/${currentLocale}/settings`);
+    router.push(`/${currentLocale}/settings`, { scroll: false });
   };
 
   const goHome = () => {

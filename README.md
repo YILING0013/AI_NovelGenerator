@@ -36,6 +36,7 @@ Before running AI-related features, update the LLM provider settings in `applica
 - `api_key`
 - `base_url` where applicable
 - `default_provider` and workflow provider mapping
+- `use_system_proxy` if you explicitly want the SDK to inherit your Windows/system proxy. The default is `false`.
 
 You should also make sure MongoDB is running locally if you use the default database settings.
 
@@ -77,6 +78,14 @@ This starts the desktop launcher, which can then start:
 ```bash
 python main.py
 ```
+
+Enable backend debug logging and raw AI response output:
+
+```bash
+python main.py --debug
+```
+
+When you use the Windows launcher, you can enable the backend checkbox labeled `后端调试日志` before starting the backend.
 
 ### Option 3: Run frontend manually
 

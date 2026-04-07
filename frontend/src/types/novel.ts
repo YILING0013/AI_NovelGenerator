@@ -22,6 +22,12 @@ export interface NovelDetail extends NovelSummary {
   writing_style?: string;
   narrative_pov?: string;
   era_background?: string;
+  plot?: string;
+  tone?: string;
+  target_audience?: string;
+  core_idea?: string;
+  number_of_chapters?: number;
+  words_per_chapter?: number;
 }
 
 export interface CreateNovelRequest {
@@ -37,6 +43,12 @@ export interface CreateNovelRequest {
   narrative_pov?: string;
   era_background?: string;
   cover_image?: string;
+  plot?: string;
+  tone?: string;
+  target_audience?: string;
+  core_idea?: string;
+  number_of_chapters?: number;
+  words_per_chapter?: number;
 }
 
 export interface AICreateRequest {
@@ -58,8 +70,11 @@ export interface AICreateStepResult {
 }
 
 export interface AICreateResponse {
-  extract_idea: {
+  expand_idea?: {
     plot: string;
+  };
+  extract_idea: {
+    plot?: string;
     genre: string;
     tone: string;
     target_audience: string;
@@ -80,3 +95,19 @@ export interface AICreateResponse {
     tags: string[];
   };
 }
+
+/** AI 创建草稿，用于 sessionStorage 传递到 Writing 创建态 */
+export interface WritingDraft extends CreateNovelRequest {
+  _fromAI?: boolean;
+}
+
+/** Writing 侧栏导航项 */
+export type WritingSidebarItem =
+  | "novel-info"
+  | "chapter-editor"
+  | "character-cards"
+  | "location-cards"
+  | "faction-cards"
+  | "item-cards"
+  | "rule-cards"
+  | "relationship-map";
