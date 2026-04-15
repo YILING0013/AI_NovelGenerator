@@ -19,3 +19,4 @@ test.py
 uv.lock
 .python-version
 pyproject.toml
+test_output/
