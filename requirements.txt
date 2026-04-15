@@ -33,8 +33,8 @@ google-auth-httplib2==0.2.0
 google-generativeai==0.8.5
 googleapis-common-protos==1.70.0
 greenlet==3.2.4
-grpcio==1.74.0
-grpcio-status==1.71.2
+# grpcio==1.74.0  # commented out: build failed on this environment
+# grpcio-status==1.71.2
 h11==0.16.0
 httpcore==1.0.9
 httplib2==0.30.0
@@ -75,7 +75,7 @@ networkx==3.5
 nltk==3.9.1
 numpy==2.3.2
 oauthlib==3.3.1
-onnxruntime==1.22.1
+onnxruntime==1.24.4
 openai==1.106.1
 opentelemetry-api==1.36.0
 opentelemetry-exporter-otlp-proto-common==1.36.0
@@ -94,12 +94,12 @@ protobuf==5.29.5
 pyasn1==0.6.1
 pyasn1_modules==0.4.2
 pybase64==1.4.2
-pydantic==2.11.7
-pydantic-settings==2.10.1
-pydantic_core==2.33.2
+pydantic==2.13.0
+pydantic-settings==2.13.1
+pydantic-core==2.46.0  # pinned wheel for Python 3.14
 Pygments==2.19.2
 pyparsing==3.2.3
-PyPika==0.48.9
+PyPika==0.51.1
 pyproject_hooks==1.2.0
 pyreadline3==3.5.4
 python-dateutil==2.9.0.post0
@@ -114,7 +114,7 @@ rich==14.1.0
 rpds-py==0.27.1
 rsa==4.9.1
 safetensors==0.6.2
-scikit-learn==1.7.1
+scikit-learn==1.8.0
 scipy==1.16.1
 sentence-transformers==5.1.0
 setuptools==80.9.0
@@ -125,14 +125,14 @@ SQLAlchemy==2.0.43
 sympy==1.14.0
 tenacity==9.1.2
 threadpoolctl==3.6.0
-tiktoken==0.11.0
+# tiktoken==0.11.0  # commented out: Rust/pyo3 build failed
 tokenizers==0.22.0
-torch==2.8.0
+torch==2.11.0
 tqdm==4.67.1
 transformers==4.56.1
 typer==0.17.4
 typing-inspect==0.9.0
-typing-inspection==0.4.1
+typing-inspection==0.4.2
 typing_extensions==4.15.0
 uritemplate==4.2.0
 urllib3==2.6.0

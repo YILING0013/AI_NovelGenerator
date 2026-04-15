@@ -1,0 +1,35 @@
+任务：生成第一章正文（直接输出章节正文，不要解释）
+
+说明：
+- novel_number: 第几章（整数），示例：1
+- word_number: 目标字数，示例：500
+- novel_setting: 小说总体设定（可留空）
+- chapter_title: 章节标题（可留空）
+- chapter_role: 本章定位（可留空）
+- chapter_purpose: 本章核心作用（可留空）
+- characters_involved: 主要人物（逗号分隔）
+- key_items: 关键道具（可留空）
+- scene_location: 场景地点（可留空）
+- user_guidance: 用户对写作的额外指导（可留空）
+
+模板：
+请基于以下信息直接生成第 {novel_number} 章的章节正文，目标字数约 {word_number} 字，要求紧凑、叙事流畅，并包含至少两个具有动态张力的场景（对话/动作/心理/环境）。
+
+小说设定：
+{novel_setting}
+
+章节信息：
+标题：{chapter_title}
+定位：{chapter_role}
+核心作用：{chapter_purpose}
+简述：{chapter_summary}
+
+可用元素：
+主要人物：{characters_involved}
+关键道具：{key_items}
+场景：{scene_location}
+用户指导：{user_guidance}
+
+注意：
+- 仅输出章节正文，不添加说明或结构化标记。
+- 避免与已有章节重复；如需引用历史情节请进行改写。
