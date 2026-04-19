@@ -4,6 +4,7 @@ import customtkinter as ctk
 from ui import NovelGeneratorGUI
 
 def main():
+    """Entry point for the NovelForge application."""
     app = ctk.CTk()
     gui = NovelGeneratorGUI(app)
     app.mainloop()

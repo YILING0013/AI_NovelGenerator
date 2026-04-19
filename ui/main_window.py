@@ -39,11 +39,11 @@ from ui.other_settings import build_other_settings_tab
 
 class NovelGeneratorGUI:
     """
-    小说生成器的主GUI类，包含所有的界面布局、事件处理、与后端逻辑的交互等。
+    Main GUI class for NovelForge, handling layout, events, and interaction with backend logic.
     """
     def __init__(self, master):
         self.master = master
-        self.master.title("Novel Generator GUI")
+        self.master.title("NovelForge - Intelligent Novel Generator")
         try:
             if os.path.exists("icon.ico"):
                 self.master.iconbitmap("icon.ico")
@@ -51,29 +51,17 @@ class NovelGeneratorGUI:
             pass
         self.master.geometry("1350x840")
 
-        # --------------- 配置文件路径 ---------------
+        # --------------- Configuration ---------------
         self.config_file = "config.json"
         self.loaded_config = load_config(self.config_file)
 
         if self.loaded_config:
             last_llm = next(iter(self.loaded_config["llm_configs"].values())).get("interface_format", "OpenAI")
-
             last_embedding = self.loaded_config.get("last_embedding_interface_format", "OpenAI")
         else:
             last_llm = "OpenAI"
             last_embedding = "OpenAI"
 
-        # if self.loaded_config and "llm_configs" in self.loaded_config and last_llm in self.loaded_config["llm_configs"]:
-        #     llm_conf = next(iter(self.loaded_config["llm_configs"]))
-        # else:
-        #     llm_conf = {
-        #         "api_key": "",
-        #         "base_url": "https://api.openai.com/v1",
-        #         "model_name": "gpt-4o-mini",
-        #         "temperature": 0.7,
-        #         "max_tokens": 8192,
-        #         "timeout": 600
-        #     }
         llm_conf = next(iter(self.loaded_config["llm_configs"].values()))
         choose_configs = self.loaded_config.get("choose_configs", {})
 
@@ -88,7 +76,7 @@ class NovelGeneratorGUI:
                 "retrieval_k": 4
             }
 
-        # PenBo 增加代理功能支持
+        # Proxy support
         proxy_url = self.loaded_config["proxy_setting"]["proxy_url"]
         proxy_port = self.loaded_config["proxy_setting"]["proxy_port"]
         if self.loaded_config["proxy_setting"]["enabled"]:
@@ -100,8 +88,7 @@ class NovelGeneratorGUI:
 
 
 
-        # -- LLM通用参数 --
-        # self.llm_conf_name = next(iter(self.loaded_config["llm_configs"]))
+        # -- General LLM Parameters --
         self.api_key_var = ctk.StringVar(value=llm_conf.get("api_key", ""))
         self.base_url_var = ctk.StringVar(value=llm_conf.get("base_url", "https://api.openai.com/v1"))
         self.interface_format_var = ctk.StringVar(value=llm_conf.get("interface_format", "OpenAI"))
@@ -113,7 +100,7 @@ class NovelGeneratorGUI:
 
 
 
-        # -- Embedding相关 --
+        # -- Embedding Parameters --
         self.embedding_interface_format_var = ctk.StringVar(value=last_embedding)
         self.embedding_api_key_var = ctk.StringVar(value=emb_conf.get("api_key", ""))
         self.embedding_url_var = ctk.StringVar(value=emb_conf.get("base_url", "https://api.openai.com/v1"))
@@ -121,7 +108,7 @@ class NovelGeneratorGUI:
         self.embedding_retrieval_k_var = ctk.StringVar(value=str(emb_conf.get("retrieval_k", 4)))
 
 
-        # -- 生成配置相关 --
+        # -- Generation Config --
         self.architecture_llm_var = ctk.StringVar(value=choose_configs.get("architecture_llm", "DeepSeek"))
         self.chapter_outline_llm_var = ctk.StringVar(value=choose_configs.get("chapter_outline_llm", "DeepSeek"))
         self.final_chapter_llm_var = ctk.StringVar(value=choose_configs.get("final_chapter_llm", "DeepSeek"))
@@ -129,14 +116,11 @@ class NovelGeneratorGUI:
         self.prompt_draft_llm_var = ctk.StringVar(value=choose_configs.get("prompt_draft_llm", "DeepSeek"))
 
 
-
-
-
-        # -- 小说参数相关 --
+        # -- Novel Parameters --
         if self.loaded_config and "other_params" in self.loaded_config:
             op = self.loaded_config["other_params"]
             self.topic_default = op.get("topic", "")
-            self.genre_var = ctk.StringVar(value=op.get("genre", "玄幻"))
+            self.genre_var = ctk.StringVar(value=op.get("genre", "Fantasy"))
             self.num_chapters_var = ctk.StringVar(value=str(op.get("num_chapters", 10)))
             self.word_number_var = ctk.StringVar(value=str(op.get("word_number", 3000)))
             self.filepath_var = ctk.StringVar(value=op.get("filepath", ""))
@@ -152,7 +136,7 @@ class NovelGeneratorGUI:
 
         else:
             self.topic_default = ""
-            self.genre_var = ctk.StringVar(value="玄幻")
+            self.genre_var = ctk.StringVar(value="Fantasy")
             self.num_chapters_var = ctk.StringVar(value="10")
             self.word_number_var = ctk.StringVar(value="3000")
             self.filepath_var = ctk.StringVar(value="")
@@ -163,11 +147,11 @@ class NovelGeneratorGUI:
             self.time_constraint_var = ctk.StringVar(value="")
             self.user_guidance_default = ""
 
-        # --------------- 整体Tab布局 ---------------
+        # --------------- Tab Layout ---------------
         self.tabview = ctk.CTkTabview(self.master)
         self.tabview.pack(fill="both", expand=True)
 
-        # 创建各个标签页
+        # Build tabs
         build_main_tab(self)
         build_config_tabview(self)
         build_novel_params_area(self, start_row=1)
@@ -180,10 +164,10 @@ class NovelGeneratorGUI:
         build_other_settings_tab(self)
 
 
-    # ----------------- 通用辅助函数 -----------------
+    # ----------------- Helper Functions -----------------
     def show_tooltip(self, key: str):
-        info_text = tooltips.get(key, "暂无说明")
-        messagebox.showinfo("参数说明", info_text)
+        info_text = tooltips.get(key, "No description available")
+        messagebox.showinfo("Parameter Info", info_text)
 
     def safe_get_int(self, var, default=1):
         try:
@@ -219,9 +203,7 @@ class NovelGeneratorGUI:
         self.chapter_result.see("end")
     
     def test_llm_config(self):
-        """
-        测试当前的LLM配置是否可用
-        """
+        """Tests if the current LLM configuration works."""
         interface_format = self.interface_format_var.get().strip()
         api_key = self.api_key_var.get().strip()
         base_url = self.base_url_var.get().strip()
@@ -243,9 +225,7 @@ class NovelGeneratorGUI:
         )
 
     def test_embedding_config(self):
-        """
-        测试当前的Embedding配置是否可用
-        """
+        """Tests if the current Embedding configuration works."""
         api_key = self.embedding_api_key_var.get().strip()
         base_url = self.embedding_url_var.get().strip()
         interface_format = self.embedding_interface_format_var.get().strip()
@@ -266,28 +246,24 @@ class NovelGeneratorGUI:
             self.filepath_var.set(selected_dir)
 
     def show_character_import_window(self):
-        """显示角色导入窗口"""
+        """Shows character import window."""
         import_window = ctk.CTkToplevel(self.master)
-        import_window.title("导入角色信息")
+        import_window.title("Import Character Info")
         import_window.geometry("600x500")
-        import_window.transient(self.master)  # 设置为父窗口的临时窗口
-        import_window.grab_set()  # 保持窗口在顶层
+        import_window.transient(self.master)
+        import_window.grab_set()
         
-        # 主容器
         main_frame = ctk.CTkFrame(import_window)
         main_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # 滚动容器
         scroll_frame = ctk.CTkScrollableFrame(main_frame)
         scroll_frame.pack(fill="both", expand=True, padx=5, pady=5)
         
-        # 获取角色库路径
-        role_lib_path = os.path.join(self.filepath_var.get().strip(), "角色库")
-        self.selected_roles = []  # 存储选中的角色名称
+        # Character library path
+        role_lib_path = os.path.join(self.filepath_var.get().strip(), "CharacterLibrary")
+        self.selected_roles = []
         
-        # 动态加载角色分类
         if os.path.exists(role_lib_path):
-            # 配置网格布局参数
             scroll_frame.columnconfigure(0, weight=1)
             max_roles_per_row = 4
             current_row = 0
@@ -295,21 +271,17 @@ class NovelGeneratorGUI:
             for category in os.listdir(role_lib_path):
                 category_path = os.path.join(role_lib_path, category)
                 if os.path.isdir(category_path):
-                    # 创建分类容器
                     category_frame = ctk.CTkFrame(scroll_frame)
                     category_frame.grid(row=current_row, column=0, sticky="w", pady=(10,5), padx=5)
                     
-                    # 添加分类标签
-                    category_label = ctk.CTkLabel(category_frame, text=f"【{category}】", 
-                                                font=("Microsoft YaHei", 12, "bold"))
+                    category_label = ctk.CTkLabel(category_frame, text=f"[{category}]",
+                                                font=("Arial", 12, "bold"))
                     category_label.grid(row=0, column=0, padx=(0,10), sticky="w")
                     
-                    # 初始化角色排列参数
                     role_count = 0
                     row_num = 0
-                    col_num = 1  # 从第1列开始（第0列是分类标签）
+                    col_num = 1
                     
-                    # 添加角色复选框
                     for role_file in os.listdir(category_path):
                         if role_file.endswith(".txt"):
                             role_name = os.path.splitext(role_file)[0]
@@ -318,50 +290,41 @@ class NovelGeneratorGUI:
                                 chk.grid(row=row_num, column=col_num, padx=5, pady=2, sticky="w")
                                 self.selected_roles.append((chk, role_name))
                                 
-                                # 更新行列位置
                                 role_count += 1
                                 col_num += 1
                                 if col_num > max_roles_per_row:
                                     col_num = 1
                                     row_num += 1
                     
-                    # 如果没有角色，调整分类标签占满整行
                     if role_count == 0:
                         category_label.grid(columnspan=max_roles_per_row+1, sticky="w")
                     
-                    # 更新主布局的行号
                     current_row += 1
-                    
-                    # 添加分隔线
                     separator = ctk.CTkFrame(scroll_frame, height=1, fg_color="gray")
                     separator.grid(row=current_row, column=0, sticky="ew", pady=5)
                     current_row += 1
         
-        # 底部按钮框架
         btn_frame = ctk.CTkFrame(main_frame)
         btn_frame.pack(fill="x", pady=10)
         
-        # 选择按钮
         def confirm_selection():
             selected = [name for chk, name in self.selected_roles if chk.get() == 1]
             self.char_inv_text.delete("0.0", "end")
             self.char_inv_text.insert("0.0", ", ".join(selected))
             import_window.destroy()
             
-        btn_confirm = ctk.CTkButton(btn_frame, text="选择", command=confirm_selection)
+        btn_confirm = ctk.CTkButton(btn_frame, text="Select", command=confirm_selection)
         btn_confirm.pack(side="left", padx=20)
         
-        # 取消按钮
-        btn_cancel = ctk.CTkButton(btn_frame, text="取消", command=import_window.destroy)
+        btn_cancel = ctk.CTkButton(btn_frame, text="Cancel", command=import_window.destroy)
         btn_cancel.pack(side="right", padx=20)
 
     def show_role_library(self):
         save_path = self.filepath_var.get().strip()
         if not save_path:
-            messagebox.showwarning("警告", "请先设置保存路径")
+            messagebox.showwarning("Warning", "Please set the save path first")
             return
         
-        # 初始化LLM适配器
         llm_adapter = create_llm_adapter(
             interface_format=self.interface_format_var.get(),
             base_url=self.base_url_var.get(),
@@ -372,14 +335,13 @@ class NovelGeneratorGUI:
             timeout=self.timeout_var.get()
         )
         
-        # 传递LLM适配器实例到角色库
         if hasattr(self, '_role_lib'):
             if self._role_lib.window and self._role_lib.window.winfo_exists():
                 self._role_lib.window.destroy()
         
-        self._role_lib = RoleLibrary(self.master, save_path, llm_adapter)  # 新增参数
+        self._role_lib = RoleLibrary(self.master, save_path, llm_adapter)
 
-    # ----------------- 将导入的各模块函数直接赋给类方法 -----------------
+    # ----------------- UI Methods Mapping -----------------
     generate_novel_architecture_ui = generate_novel_architecture_ui
     generate_chapter_blueprint_ui = generate_chapter_blueprint_ui
     generate_chapter_draft_ui = generate_chapter_draft_ui

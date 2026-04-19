@@ -1,7 +1,7 @@
-#novel_generator/architecture.py
+# novel_generator/architecture.py
 # -*- coding: utf-8 -*-
 """
-小说总体架构生成（Novel_architecture_generate 及相关辅助函数）
+Novel overall architecture generation (Novel_architecture_generate and related helper functions)
 """
 import os
 import json
@@ -16,10 +16,11 @@ from prompt_definitions import (
     plot_architecture_prompt,
     create_character_state_prompt
 )
+
 logging.basicConfig(
-    filename='app.log',      # 日志文件名
-    filemode='a',            # 追加模式（'w' 会覆盖）
-    level=logging.INFO,      # 记录 INFO 及以上级别的日志
+    filename='app.log',
+    filemode='a',
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
@@ -27,8 +28,8 @@ from utils import clear_file_content, save_string_to_txt
 
 def load_partial_architecture_data(filepath: str) -> dict:
     """
-    从 filepath 下的 partial_architecture.json 读取已有的阶段性数据。
-    如果文件不存在或无法解析，返回空 dict。
+    Reads existing staged data from partial_architecture.json under filepath.
+    Returns an empty dict if the file does not exist or cannot be parsed.
     """
     partial_file = os.path.join(filepath, "partial_architecture.json")
     if not os.path.exists(partial_file):
@@ -43,7 +44,7 @@ def load_partial_architecture_data(filepath: str) -> dict:
 
 def save_partial_architecture_data(filepath: str, data: dict):
     """
-    将阶段性数据写入 partial_architecture.json。
+    Writes staged data to partial_architecture.json.
     """
     partial_file = os.path.join(filepath, "partial_architecture.json")
     try:
@@ -62,24 +63,25 @@ def Novel_architecture_generate(
     number_of_chapters: int,
     word_number: int,
     filepath: str,
-    user_guidance: str = "",  # 新增参数
+    user_guidance: str = "",
     temperature: float = 0.7,
     max_tokens: int = 2048,
     timeout: int = 600
 ) -> None:
     """
-    依次调用:
+    Sequentially calls:
       1. core_seed_prompt
       2. character_dynamics_prompt
       3. world_building_prompt
       4. plot_architecture_prompt
-    若在中间任何一步报错且重试多次失败，则将已经生成的内容写入 partial_architecture.json 并退出；
-    下次调用时可从该步骤继续。
-    最终输出 Novel_architecture.txt
+    If an error occurs in any step and fails after retries, the already generated content
+    is written to partial_architecture.json and the process exits.
+    Can be resumed from the same step on the next call.
+    Final output is saved to Novel_architecture.txt.
 
-    新增：
-    - 在完成角色动力学设定后，依据该角色体系，使用 create_character_state_prompt 生成初始角色状态表，
-      并存储到 character_state.txt，后续维护更新。
+    Additionally:
+    - After completing character dynamics, generates the initial character state table
+      using create_character_state_prompt and stores it in character_state.txt.
     """
     os.makedirs(filepath, exist_ok=True)
     partial_data = load_partial_architecture_data(filepath)
@@ -92,15 +94,15 @@ def Novel_architecture_generate(
         max_tokens=max_tokens,
         timeout=timeout
     )
-    # Step1: 核心种子
+    # Step 1: Core Seed
     if "core_seed_result" not in partial_data:
-        logging.info("Step1: Generating core_seed_prompt (核心种子) ...")
+        logging.info("Step 1: Generating core_seed_prompt ...")
         prompt_core = core_seed_prompt.format(
             topic=topic,
             genre=genre,
             number_of_chapters=number_of_chapters,
             word_number=word_number,
-            user_guidance=user_guidance  # 修复：添加内容指导
+            user_guidance=user_guidance
         )
         core_seed_result = invoke_with_cleaning(llm_adapter, prompt_core)
         if not core_seed_result.strip():
@@ -110,10 +112,11 @@ def Novel_architecture_generate(
         partial_data["core_seed_result"] = core_seed_result
         save_partial_architecture_data(filepath, partial_data)
     else:
-        logging.info("Step1 already done. Skipping...")
-    # Step2: 角色动力学
+        logging.info("Step 1 already done. Skipping...")
+
+    # Step 2: Character Dynamics
     if "character_dynamics_result" not in partial_data:
-        logging.info("Step2: Generating character_dynamics_prompt ...")
+        logging.info("Step 2: Generating character_dynamics_prompt ...")
         prompt_character = character_dynamics_prompt.format(
             core_seed=partial_data["core_seed_result"].strip(),
             user_guidance=user_guidance
@@ -126,8 +129,9 @@ def Novel_architecture_generate(
         partial_data["character_dynamics_result"] = character_dynamics_result
         save_partial_architecture_data(filepath, partial_data)
     else:
-        logging.info("Step2 already done. Skipping...")
-    # 生成初始角色状态
+        logging.info("Step 2 already done. Skipping...")
+
+    # Generate initial character state
     if "character_dynamics_result" in partial_data and "character_state_result" not in partial_data:
         logging.info("Generating initial character state from character dynamics ...")
         prompt_char_state_init = create_character_state_prompt.format(
@@ -144,12 +148,13 @@ def Novel_architecture_generate(
         save_string_to_txt(character_state_init, character_state_file)
         save_partial_architecture_data(filepath, partial_data)
         logging.info("Initial character state created and saved.")
-    # Step3: 世界观
+
+    # Step 3: World Building
     if "world_building_result" not in partial_data:
-        logging.info("Step3: Generating world_building_prompt ...")
+        logging.info("Step 3: Generating world_building_prompt ...")
         prompt_world = world_building_prompt.format(
             core_seed=partial_data["core_seed_result"].strip(),
-            user_guidance=user_guidance  # 修复：添加用户指导
+            user_guidance=user_guidance
         )
         world_building_result = invoke_with_cleaning(llm_adapter, prompt_world)
         if not world_building_result.strip():
@@ -159,15 +164,16 @@ def Novel_architecture_generate(
         partial_data["world_building_result"] = world_building_result
         save_partial_architecture_data(filepath, partial_data)
     else:
-        logging.info("Step3 already done. Skipping...")
-    # Step4: 三幕式情节
+        logging.info("Step 3 already done. Skipping...")
+
+    # Step 4: Three-act Plot Architecture
     if "plot_arch_result" not in partial_data:
-        logging.info("Step4: Generating plot_architecture_prompt ...")
+        logging.info("Step 4: Generating plot_architecture_prompt ...")
         prompt_plot = plot_architecture_prompt.format(
             core_seed=partial_data["core_seed_result"].strip(),
             character_dynamics=partial_data["character_dynamics_result"].strip(),
             world_building=partial_data["world_building_result"].strip(),
-            user_guidance=user_guidance  # 修复：添加用户指导
+            user_guidance=user_guidance
         )
         plot_arch_result = invoke_with_cleaning(llm_adapter, prompt_plot)
         if not plot_arch_result.strip():
@@ -177,7 +183,7 @@ def Novel_architecture_generate(
         partial_data["plot_arch_result"] = plot_arch_result
         save_partial_architecture_data(filepath, partial_data)
     else:
-        logging.info("Step4 already done. Skipping...")
+        logging.info("Step 4 already done. Skipping...")
 
     core_seed_result = partial_data["core_seed_result"]
     character_dynamics_result = partial_data["character_dynamics_result"]
@@ -185,15 +191,15 @@ def Novel_architecture_generate(
     plot_arch_result = partial_data["plot_arch_result"]
 
     final_content = (
-        "#=== 0) 小说设定 ===\n"
-        f"主题：{topic},类型：{genre},篇幅：约{number_of_chapters}章（每章{word_number}字）\n\n"
-        "#=== 1) 核心种子 ===\n"
+        "#=== 0) Novel Settings ===\n"
+        f"Topic: {topic}, Genre: {genre}, Length: approx {number_of_chapters} chapters ({word_number} words each)\n\n"
+        "#=== 1) Core Seed ===\n"
         f"{core_seed_result}\n\n"
-        "#=== 2) 角色动力学 ===\n"
+        "#=== 2) Character Dynamics ===\n"
         f"{character_dynamics_result}\n\n"
-        "#=== 3) 世界观 ===\n"
+        "#=== 3) World Building ===\n"
         f"{world_building_result}\n\n"
-        "#=== 4) 三幕式情节架构 ===\n"
+        "#=== 4) Three-act Plot Architecture ===\n"
         f"{plot_arch_result}\n"
     )
 

@@ -2,25 +2,25 @@
 # -*- coding: utf-8 -*-
 from llm_adapters import create_llm_adapter
 
-# ============== 增加对“剧情要点/未解决冲突”进行检查的可选引导 ==============
+# ============== Consistency checking prompt ==============
 CONSISTENCY_PROMPT = """\
-请检查下面的小说设定与最新章节是否存在明显冲突或不一致之处，如有请列出：
-- 小说设定：
+Please check if there are any obvious conflicts or inconsistencies between the novel settings below and the latest chapter. If any, please list them:
+- Novel Setting:
 {novel_setting}
 
-- 角色状态（可能包含重要信息）：
+- Character State (may contain important information):
 {character_state}
 
-- 前文摘要：
+- Global Summary:
 {global_summary}
 
-- 已记录的未解决冲突或剧情要点：
-{plot_arcs}  # 若为空可能不输出
+- Recorded unresolved conflicts or plot points:
+{plot_arcs}
 
-- 最新章节内容：
+- Latest Chapter Content:
 {chapter_text}
 
-如果存在冲突或不一致，请说明；如果在未解决冲突中有被忽略或需要推进的地方，也请提及；否则请返回“无明显冲突”。
+If there are conflicts or inconsistencies, please explain them. If there are unresolved conflicts that have been ignored or need further progression, please mention them as well; otherwise, please return "No obvious conflicts".
 """
 
 def check_consistency(
@@ -38,8 +38,8 @@ def check_consistency(
     timeout: int = 600
 ) -> str:
     """
-    调用模型做简单的一致性检查。可扩展更多提示或校验规则。
-    新增: 会额外检查对“未解决冲突或剧情要点”（plot_arcs）的衔接情况。
+    Calls the model to perform a simple consistency check. Can be extended with more prompts or validation rules.
+    Additional: Also checks for consistency with "unresolved conflicts or plot points" (plot_arcs).
     """
     prompt = CONSISTENCY_PROMPT.format(
         novel_setting=novel_setting,
@@ -59,14 +59,14 @@ def check_consistency(
         timeout=timeout
     )
 
-    # 调试日志
+    # Debug log
     print("\n[ConsistencyChecker] Prompt >>>", prompt)
 
     response = llm_adapter.invoke(prompt)
     if not response:
-        return "审校Agent无回复"
+        return "Review agent returned no response"
     
-    # 调试日志
+    # Debug log
     print("[ConsistencyChecker] Response <<<", response)
 
     return response

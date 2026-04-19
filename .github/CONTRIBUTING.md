@@ -1,65 +1,38 @@
-# Contributing to This Project
+# Contributing to NovelForge
 
-首先，感谢你愿意为本项目贡献力量！在提交任何形式的反馈或 Pull Request 之前，请先阅读以下内容。
+First of all, thank you for your interest in contributing to NovelForge! Before submitting any feedback or Pull Requests, please read the following guidelines.
 
----
+## 1. Types of Feedback
 
-## 一、反馈类型说明
+### Code Issues
+- Technical problems related to the code: compilation errors, crashes, logical bugs, etc.
+- Before reporting, please ensure the issue is not related to your specific environment or configuration.
+- To report a bug, please use the provided Bug Report template.
 
-1. **代码问题（Code Issue）**  
-   - 仅限与项目代码本身相关的问题：如编译失败、运行报错、逻辑缺陷等。  
-   - 反馈之前，请确认该问题与你的环境或配置无关。  
-   - 如果确认是代码本身导致的错误，请使用 [代码问题反馈模板](?template=code_issue.yml)。
+### Suggestions & Enhancements
+- If you have ideas for new features, code refactoring, or performance optimizations.
+- We will review and discuss feasibility, though implementation depends on the project roadmap.
 
-2. **意见或建议（Opinion / Enhancement）**  
-   - 如果你有关于功能新增、代码重构、性能优化或其他方面的意见或建议，请使用 [意见/建议模板](?template=opinion.yml)。  
-   - 我们会积极审阅并讨论可行性，但可能不会立刻实现，视项目计划而定。
+### Configuration & Deployment Support
+- This project does not provide direct support for API configuration, environment setup, or third-party service parameters.
+- Please refer to the official documentation of the providers (OpenAI, Ollama, etc.) or search online communities for these issues.
 
-3. **接口/配置/部署等问题**  
-   - 本项目不针对接口配置、环境部署或第三方服务的参数设置等问题提供支持。  
-   - 遇到此类问题，请阅读官方文档、社区讨论区或自行搜索相关信息。
+## 2. Before Submitting an Issue
 
----
+1. **Search Existing Issues**: Avoid submitting duplicate reports. You can add more information to an existing thread if applicable.
+2. **Provide Details**: Include reproduction steps, logs, and environment details.
+3. **Be Respectful**: Maintain a polite and professional tone in all communications.
 
-## 二、在提交 Issues 之前
+## 3. Pull Request Guidelines
 
-1. **搜索现有的 Issues**  
-   - 避免重复提交相同问题。  
-   - 如果发现类似问题可以补充你的信息或在对应 Issue 下评论。
+1. **Fork and Branch**: Create a feature branch in your own fork for changes.
+2. **Code Style**: Follow existing code patterns and ensure readability.
+3. **Update Documentation**: If your changes affect how the tool works, update the README or relevant docs.
+4. **Clear Descriptions**: Explain the purpose and impact of your PR in the description.
 
-2. **提供尽可能详细的信息**  
-   - 提交问题时，尽量提供可复现的步骤、日志信息、环境说明等。  
-   - 提交意见或建议时，需要清楚说明理由和期望。
+## 4. Other Notes
 
-3. **保持尊重与礼貌**  
-   - 请尊重项目维护者和其他贡献者。  
-   - 交流中请使用恰当、礼貌的语言。
+- We aim to respond to issues and PRs as soon as possible, but immediate responses are not guaranteed.
+- Issues or PRs that do not follow these guidelines may be closed or ignored.
 
----
-
-## 三、Pull Request 提交指南
-
-1. **先 Fork 再修改**  
-   - 在你自己的 Fork 中进行修改和测试。  
-   - 确保修改内容不会引入新的 Bug。
-
-2. **遵守代码风格**  
-   - 保持原有代码风格，遵循项目的 Lint 规则（如有）。  
-   - 减少不必要的格式改动，保证可读性。
-
-3. **更新文档或注释**  
-   - 如果你的修改影响到了文档或注释，请及时补充或更新。
-
-4. **描述清楚修改内容**  
-   - Pull Request 标题与描述中需包含本次修改的目的、解决的问题以及修改的主要内容。
-
----
-
-## 四、其他说明
-
-- 我们对所有 Issue 和 Pull Request 均会尽量及时处理，但无法保证立即回复。  
-- 对于不符合上述规则的 Issue 或 Pull Request，我们保留关闭或忽略的权利。
-
-如果你对上述要求有任何疑问，欢迎在意见区进行讨论。再次感谢你的贡献！
-
----
+Thank you for helping make NovelForge better!

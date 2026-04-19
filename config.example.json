@@ -2,50 +2,59 @@
     "last_interface_format": "OpenAI",
     "last_embedding_interface_format": "OpenAI",
     "llm_configs": {
-        "DeepSeek V3": {
+        "DeepSeek": {
             "api_key": "",
             "base_url": "https://api.deepseek.com/v1",
             "model_name": "deepseek-chat",
             "temperature": 0.7,
             "max_tokens": 8192,
             "timeout": 600,
-            "interface_format": "OpenAI"
+            "interface_format": "DeepSeek"
         },
-        "GPT 5": {
+        "GPT-4o": {
             "api_key": "",
             "base_url": "https://api.openai.com/v1",
-            "model_name": "gpt-5",
+            "model_name": "gpt-4o",
             "temperature": 0.7,
-            "max_tokens": 32768,
+            "max_tokens": 16384,
             "timeout": 600,
             "interface_format": "OpenAI"
         },
-        "Gemini 2.5 Pro": {
-            "api_key": "",
-            "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
-            "model_name": "gemini-2.5-pro",
+        "Ollama Local": {
+            "api_key": "ollama",
+            "base_url": "http://localhost:11434/v1",
+            "model_name": "llama3",
             "temperature": 0.7,
-            "max_tokens": 32768,
+            "max_tokens": 4096,
             "timeout": 600,
-            "interface_format": "OpenAI"
+            "interface_format": "Ollama"
+        },
+        "Ollama Cloud": {
+            "api_key": "",
+            "base_url": "https://ollama.com/v1",
+            "model_name": "llama3-70b",
+            "temperature": 0.7,
+            "max_tokens": 8192,
+            "timeout": 600,
+            "interface_format": "Ollama Cloud"
         }
     },
     "embedding_configs": {
         "OpenAI": {
             "api_key": "",
             "base_url": "https://api.openai.com/v1",
-            "model_name": "text-embedding-ada-002",
+            "model_name": "text-embedding-3-small",
             "retrieval_k": 4,
             "interface_format": "OpenAI"
         }
     },
     "other_params": {
-        "topic": "",
-        "genre": "",
-        "num_chapters": 0,
-        "word_number": 0,
-        "filepath": "",
-        "chapter_num": "120",
+        "topic": "A sci-fi story about a lost colony on a water planet.",
+        "genre": "Sci-Fi",
+        "num_chapters": 10,
+        "word_number": 3000,
+        "filepath": "./my_novel",
+        "chapter_num": "1",
         "user_guidance": "",
         "characters_involved": "",
         "key_items": "",
@@ -53,11 +62,11 @@
         "time_constraint": ""
     },
     "choose_configs": {
-        "prompt_draft_llm": "DeepSeek V3",
-        "chapter_outline_llm": "DeepSeek V3",
-        "architecture_llm": "Gemini 2.5 Pro",
-        "final_chapter_llm": "GPT 5",
-        "consistency_review_llm": "DeepSeek V3"
+        "prompt_draft_llm": "DeepSeek",
+        "chapter_outline_llm": "DeepSeek",
+        "architecture_llm": "GPT-4o",
+        "final_chapter_llm": "GPT-4o",
+        "consistency_review_llm": "DeepSeek"
     },
     "proxy_setting": {
         "proxy_url": "127.0.0.1",

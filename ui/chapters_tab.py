@@ -20,31 +20,31 @@ def build_chapters_tab(self):
     top_frame.columnconfigure(3, weight=0)
     top_frame.columnconfigure(4, weight=1)
 
-    prev_btn = ctk.CTkButton(top_frame, text="<< 上一章", command=self.prev_chapter, font=("Microsoft YaHei", 12))
+    prev_btn = ctk.CTkButton(top_frame, text="<< Previous", command=self.prev_chapter, font=("Arial", 12))
     prev_btn.grid(row=0, column=0, padx=5, pady=5, sticky="w")
 
-    next_btn = ctk.CTkButton(top_frame, text="下一章 >>", command=self.next_chapter, font=("Microsoft YaHei", 12))
+    next_btn = ctk.CTkButton(top_frame, text="Next >>", command=self.next_chapter, font=("Arial", 12))
     next_btn.grid(row=0, column=1, padx=5, pady=5, sticky="w")
 
     self.chapter_select_var = ctk.StringVar(value="")
-    self.chapter_select_menu = ctk.CTkOptionMenu(top_frame, values=[], variable=self.chapter_select_var, command=self.on_chapter_selected, font=("Microsoft YaHei", 12))
+    self.chapter_select_menu = ctk.CTkOptionMenu(top_frame, values=[], variable=self.chapter_select_var, command=self.on_chapter_selected, font=("Arial", 12))
     self.chapter_select_menu.grid(row=0, column=2, padx=5, pady=5, sticky="w")
 
-    save_btn = ctk.CTkButton(top_frame, text="保存修改", command=self.save_current_chapter, font=("Microsoft YaHei", 12))
+    save_btn = ctk.CTkButton(top_frame, text="Save Changes", command=self.save_current_chapter, font=("Arial", 12))
     save_btn.grid(row=0, column=3, padx=5, pady=5, sticky="w")
 
-    refresh_btn = ctk.CTkButton(top_frame, text="刷新章节列表", command=self.refresh_chapters_list, font=("Microsoft YaHei", 12))
+    refresh_btn = ctk.CTkButton(top_frame, text="Refresh List", command=self.refresh_chapters_list, font=("Arial", 12))
     refresh_btn.grid(row=0, column=5, padx=5, pady=5, sticky="e")
 
-    self.chapters_word_count_label = ctk.CTkLabel(top_frame, text="字数：0", font=("Microsoft YaHei", 12))
+    self.chapters_word_count_label = ctk.CTkLabel(top_frame, text="Word count: 0", font=("Arial", 12))
     self.chapters_word_count_label.grid(row=0, column=4, padx=(0,10), sticky="e")
 
-    self.chapter_view_text = ctk.CTkTextbox(self.chapters_view_tab, wrap="word", font=("Microsoft YaHei", 12))
+    self.chapter_view_text = ctk.CTkTextbox(self.chapters_view_tab, wrap="word", font=("Arial", 12))
     
     def update_word_count(event=None):
         text = self.chapter_view_text.get("0.0", "end-1c")
         text_length = len(text)
-        self.chapters_word_count_label.configure(text=f"字数：{text_length}")
+        self.chapters_word_count_label.configure(text=f"Word count: {text_length}")
     
     self.chapter_view_text.bind("<KeyRelease>", update_word_count)
     self.chapter_view_text.bind("<ButtonRelease>", update_word_count)
@@ -58,7 +58,7 @@ def refresh_chapters_list(self):
     filepath = self.filepath_var.get().strip()
     chapters_dir = os.path.join(filepath, "chapters")
     if not os.path.exists(chapters_dir):
-        self.safe_log("尚未找到 chapters 文件夹，请先生成章节或检查保存路径。")
+        self.safe_log("Chapters folder not found. Please generate chapters first or check the save path.")
         self.chapter_select_menu.configure(values=[])
         return
 
@@ -90,7 +90,7 @@ def load_chapter_content(self, chapter_number_str):
     filepath = self.filepath_var.get().strip()
     chapter_file = os.path.join(filepath, "chapters", f"chapter_{chapter_number_str}.txt")
     if not os.path.exists(chapter_file):
-        self.safe_log(f"章节文件 {chapter_file} 不存在！")
+        self.safe_log(f"Chapter file {chapter_file} does not exist!")
         return
     content = read_file(chapter_file)
     self.chapter_view_text.delete("0.0", "end")
@@ -99,17 +99,17 @@ def load_chapter_content(self, chapter_number_str):
 def save_current_chapter(self):
     chapter_number_str = self.chapter_select_var.get()
     if not chapter_number_str:
-        messagebox.showwarning("警告", "尚未选择章节，无法保存。")
+        messagebox.showwarning("Warning", "No chapter selected, cannot save.")
         return
     filepath = self.filepath_var.get().strip()
     if not filepath:
-        messagebox.showwarning("警告", "请先配置保存文件路径")
+        messagebox.showwarning("Warning", "Please configure the save path first.")
         return
     chapter_file = os.path.join(filepath, "chapters", f"chapter_{chapter_number_str}.txt")
     content = self.chapter_view_text.get("0.0", "end").strip()
     clear_file_content(chapter_file)
     save_string_to_txt(content, chapter_file)
-    self.safe_log(f"已保存对第 {chapter_number_str} 章的修改。")
+    self.safe_log(f"Saved changes to Chapter {chapter_number_str}.")
 
 def prev_chapter(self):
     if not self.chapters_list:
@@ -123,7 +123,7 @@ def prev_chapter(self):
         self.chapter_select_var.set(self.chapters_list[new_idx])
         load_chapter_content(self, self.chapters_list[new_idx])
     else:
-        messagebox.showinfo("提示", "已经是第一章了。")
+        messagebox.showinfo("Info", "Already at the first chapter.")
 
 def next_chapter(self):
     if not self.chapters_list:
@@ -137,4 +137,4 @@ def next_chapter(self):
         self.chapter_select_var.set(self.chapters_list[new_idx])
         load_chapter_content(self, self.chapters_list[new_idx])
     else:
-        messagebox.showinfo("提示", "已经是最后一章了。")
+        messagebox.showinfo("Info", "Already at the last chapter.")

@@ -1,7 +1,7 @@
-#novel_generator/vectorstore_utils.py
+# novel_generator/vectorstore_utils.py
 # -*- coding: utf-8 -*-
 """
-向量库相关操作（初始化、更新、检索、清空、文本切分等）
+Vector store related operations (initialization, update, retrieval, clearing, text splitting, etc.)
 """
 import os
 import logging
@@ -13,28 +13,29 @@ import ssl
 import requests
 import warnings
 from langchain_chroma import Chroma
-logging.basicConfig(
-    filename='app.log',      # 日志文件名
-    filemode='a',            # 追加模式（'w' 会覆盖）
-    level=logging.INFO,      # 记录 INFO 及以上级别的日志
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-# 禁用特定的Torch警告
-warnings.filterwarnings('ignore', message='.*Torch was not compiled with flash attention.*')
-os.environ["TOKENIZERS_PARALLELISM"] = "false"  # 禁用tokenizer并行警告
-
 from chromadb.config import Settings
 from langchain.docstore.document import Document
 from sklearn.metrics.pairwise import cosine_similarity
 from .common import call_with_retry
 
+logging.basicConfig(
+    filename='app.log',
+    filemode='a',
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
+# Disable specific Torch warnings
+warnings.filterwarnings('ignore', message='.*Torch was not compiled with flash attention.*')
+os.environ["TOKENIZERS_PARALLELISM"] = "false"  # Disable tokenizer parallelism warnings
+
 def get_vectorstore_dir(filepath: str) -> str:
-    """获取 vectorstore 路径"""
+    """Returns the vectorstore path."""
     return os.path.join(filepath, "vectorstore")
 
 def clear_vector_store(filepath: str) -> bool:
-    """清空 清空向量库"""
+    """Clears the vector store."""
     import shutil
     store_dir = get_vectorstore_dir(filepath)
     if not os.path.exists(store_dir):
@@ -45,14 +46,14 @@ def clear_vector_store(filepath: str) -> bool:
         logging.info(f"Vector store directory '{store_dir}' removed.")
         return True
     except Exception as e:
-        logging.error(f"无法删除向量库文件夹，请关闭程序后手动删除 {store_dir}。\n {str(e)}")
+        logging.error(f"Unable to delete vector store directory. Please close the program and delete {store_dir} manually.\n {str(e)}")
         traceback.print_exc()
         return False
 
 def init_vector_store(embedding_adapter, texts, filepath: str):
     """
-    在 filepath 下创建/加载一个 Chroma 向量库并插入 texts。
-    如果Embedding失败，则返回 None，不中断任务。
+    Creates/loads a Chroma vector store under filepath and inserts texts.
+    Returns None if embedding fails, without interrupting the task.
     """
     from langchain.embeddings.base import Embeddings as LCEmbeddings
 
@@ -94,8 +95,8 @@ def init_vector_store(embedding_adapter, texts, filepath: str):
 
 def load_vector_store(embedding_adapter, filepath: str):
     """
-    读取已存在的 Chroma 向量库。若不存在则返回 None。
-    如果加载失败（embedding 或IO问题），则返回 None。
+    Loads an existing Chroma vector store. Returns None if it does not exist.
+    Returns None if loading fails due to embedding or IO issues.
     """
     from langchain.embeddings.base import Embeddings as LCEmbeddings
     store_dir = get_vectorstore_dir(filepath)
@@ -134,7 +135,7 @@ def load_vector_store(embedding_adapter, filepath: str):
         return None
 
 def split_by_length(text: str, max_length: int = 500):
-    """按照 max_length 切分文本"""
+    """Splits text by max_length."""
     segments = []
     start_idx = 0
     while start_idx < len(text):
@@ -146,19 +147,17 @@ def split_by_length(text: str, max_length: int = 500):
 
 def split_text_for_vectorstore(chapter_text: str, max_length: int = 500, similarity_threshold: float = 0.7):
     """
-    对新的章节文本进行分段后,再用于存入向量库。
-    使用 embedding 进行文本相似度计算。
+    Segments new chapter text for insertion into the vector store.
+    Uses basic sentence segmentation.
     """
     if not chapter_text.strip():
         return []
     
-    # nltk.download('punkt', quiet=True)
-    # nltk.download('punkt_tab', quiet=True)
     sentences = nltk.sent_tokenize(chapter_text)
     if not sentences:
         return []
     
-    # 直接按长度分段,不做相似度合并
+    # Segment by length, no similarity-based merging currently
     final_segments = []
     current_segment = []
     current_length = 0
@@ -181,10 +180,9 @@ def split_text_for_vectorstore(chapter_text: str, max_length: int = 500, similar
 
 def update_vector_store(embedding_adapter, new_chapter: str, filepath: str):
     """
-    将最新章节文本插入到向量库中。
-    若库不存在则初始化；若初始化/更新失败，则跳过。
+    Inserts the latest chapter text into the vector store.
+    Initializes the store if it does not exist; skips if initialization or update fails.
     """
-    from utils import read_file, clear_file_content, save_string_to_txt
     splitted_texts = split_text_for_vectorstore(new_chapter)
     if not splitted_texts:
         logging.warning("No valid text to insert into vector store. Skipping.")
@@ -195,7 +193,7 @@ def update_vector_store(embedding_adapter, new_chapter: str, filepath: str):
         logging.info("Vector store does not exist or failed to load. Initializing a new one for new chapter...")
         store = init_vector_store(embedding_adapter, splitted_texts, filepath)
         if not store:
-            logging.warning("Init vector store failed, skip embedding.")
+            logging.warning("Init vector store failed, skipping embedding.")
         else:
             logging.info("New vector store created successfully.")
         return
@@ -203,16 +201,16 @@ def update_vector_store(embedding_adapter, new_chapter: str, filepath: str):
     try:
         docs = [Document(page_content=str(t)) for t in splitted_texts]
         store.add_documents(docs)
-        logging.info("Vector store updated with the new chapter splitted segments.")
+        logging.info("Vector store updated with the new chapter segments.")
     except Exception as e:
         logging.warning(f"Failed to update vector store: {e}")
         traceback.print_exc()
 
 def get_relevant_context_from_vector_store(embedding_adapter, query: str, filepath: str, k: int = 2) -> str:
     """
-    从向量库中检索与 query 最相关的 k 条文本，拼接后返回。
-    如果向量库加载/检索失败，则返回空字符串。
-    最终只返回最多2000字符的检索片段。
+    Retrieves the k most relevant text segments for a query from the vector store.
+    Returns an empty string if retrieval fails.
+    Returns a combined snippet of up to 2000 characters.
     """
     store = load_vector_store(embedding_adapter, filepath)
     if not store:
@@ -234,17 +232,12 @@ def get_relevant_context_from_vector_store(embedding_adapter, query: str, filepa
         return ""
 
 def _get_sentence_transformer(model_name: str = 'paraphrase-MiniLM-L6-v2'):
-    """获取sentence transformer模型，处理SSL问题"""
+    """Retrieves sentence transformer model, handling SSL issues."""
     try:
-        # 设置torch环境变量
         os.environ["TORCH_ALLOW_TF32_CUBLAS_OVERRIDE"] = "0"
         os.environ["TORCH_CUDNN_V8_API_ENABLED"] = "0"
-        
-        # 禁用SSL验证
         ssl._create_default_https_context = ssl._create_unverified_context
-        
-        # ...existing code...
     except Exception as e:
-        logging.error(f"Failed to load sentence transformer model: {e}")
+        logging.error(f"Failed to set up environment for sentence transformer: {e}")
         traceback.print_exc()
         return None

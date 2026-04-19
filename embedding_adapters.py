@@ -4,13 +4,13 @@ import logging
 import traceback
 from typing import List
 import requests
+import re
 from langchain_openai import AzureOpenAIEmbeddings, OpenAIEmbeddings
 
 def ensure_openai_base_url_has_v1(url: str) -> str:
     """
-    若用户输入的 url 不包含 '/v1'，则在末尾追加 '/v1'。
+    If the user-provided url does not contain '/v1', append '/v1' to the end.
     """
-    import re
     url = url.strip()
     if not url:
         return url
@@ -21,7 +21,7 @@ def ensure_openai_base_url_has_v1(url: str) -> str:
 
 class BaseEmbeddingAdapter:
     """
-    Embedding 接口统一基类
+    Base class for unified Embedding interfaces.
     """
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         raise NotImplementedError
@@ -31,7 +31,7 @@ class BaseEmbeddingAdapter:
 
 class OpenAIEmbeddingAdapter(BaseEmbeddingAdapter):
     """
-    基于 OpenAIEmbeddings（或兼容接口）的适配器
+    Adapter based on OpenAIEmbeddings (or compatible interfaces).
     """
     def __init__(self, api_key: str, base_url: str, model_name: str):
         self._embedding = OpenAIEmbeddings(
@@ -48,10 +48,9 @@ class OpenAIEmbeddingAdapter(BaseEmbeddingAdapter):
 
 class AzureOpenAIEmbeddingAdapter(BaseEmbeddingAdapter):
     """
-    基于 AzureOpenAIEmbeddings（或兼容接口）的适配器
+    Adapter based on AzureOpenAIEmbeddings (or compatible interfaces).
     """
     def __init__(self, api_key: str, base_url: str, model_name: str):
-        import re
         match = re.match(r'https://(.+?)/openai/deployments/(.+?)/embeddings\?api-version=(.+)', base_url)
         if match:
             self.azure_endpoint = f"https://{match.group(1)}"
@@ -75,7 +74,7 @@ class AzureOpenAIEmbeddingAdapter(BaseEmbeddingAdapter):
 
 class OllamaEmbeddingAdapter(BaseEmbeddingAdapter):
     """
-    其接口路径为 /api/embeddings
+    Interface path is /api/embeddings.
     """
     def __init__(self, model_name: str, base_url: str):
         self.model_name = model_name
@@ -93,7 +92,7 @@ class OllamaEmbeddingAdapter(BaseEmbeddingAdapter):
 
     def _embed_single(self, text: str) -> List[float]:
         """
-        调用 Ollama 本地服务 /api/embeddings 接口，获取文本 embedding
+        Call local Ollama service /api/embeddings interface to get text embedding.
         """
         url = self.base_url.rstrip("/")
         if "/api/embeddings" not in url:
@@ -121,7 +120,7 @@ class OllamaEmbeddingAdapter(BaseEmbeddingAdapter):
 
 class MLStudioEmbeddingAdapter(BaseEmbeddingAdapter):
     """
-    基于 LM Studio 的 embedding 适配器
+    Embedding adapter based on LM Studio.
     """
     def __init__(self, api_key: str, base_url: str, model_name: str):
         self.url = ensure_openai_base_url_has_v1(base_url)
@@ -176,15 +175,15 @@ class MLStudioEmbeddingAdapter(BaseEmbeddingAdapter):
 
 class GeminiEmbeddingAdapter(BaseEmbeddingAdapter):
     """
-    基于 Google Generative AI (Gemini) 接口的 Embedding 适配器
-    使用直接 POST 请求方式，URL 示例：
-    https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=YOUR_API_KEY
+    Embedding adapter based on Google Generative AI (Gemini) interface.
+    Uses direct POST request method.
+    Example URL: https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=YOUR_API_KEY
     """
     def __init__(self, api_key: str, model_name: str, base_url: str):
         """
-        :param api_key: 传入的 Google API Key
-        :param model_name: 这里一般是 "text-embedding-004"
-        :param base_url: e.g. https://generativelanguage.googleapis.com/v1beta/models
+        :param api_key: Google API Key
+        :param model_name: e.g., "text-embedding-004"
+        :param base_url: e.g., https://generativelanguage.googleapis.com/v1beta/models
         """
         self.api_key = api_key
         self.model_name = model_name
@@ -202,7 +201,7 @@ class GeminiEmbeddingAdapter(BaseEmbeddingAdapter):
 
     def _embed_single(self, text: str) -> List[float]:
         """
-        直接调用 Google Generative Language API (Gemini) 接口，获取文本 embedding
+        Directly call Google Generative Language API (Gemini) interface to get text embedding.
         """
         url = f"{self.base_url}/{self.model_name}:embedContent?key={self.api_key}"
         payload = {
@@ -216,7 +215,6 @@ class GeminiEmbeddingAdapter(BaseEmbeddingAdapter):
 
         try:
             response = requests.post(url, json=payload)
-            print(response.text)
             response.raise_for_status()
             result = response.json()
             embedding_data = result.get("embedding", {})
@@ -230,10 +228,10 @@ class GeminiEmbeddingAdapter(BaseEmbeddingAdapter):
 
 class SiliconFlowEmbeddingAdapter(BaseEmbeddingAdapter):
     """
-    基于 SiliconFlow 的 embedding 适配器
+    Embedding adapter based on SiliconFlow.
     """
     def __init__(self, api_key: str, base_url: str, model_name: str):
-        # 自动为 base_url 添加 scheme（如果缺失）
+        # Automatically add scheme to base_url if missing
         if not base_url.startswith("http://") and not base_url.startswith("https://"):
             base_url = "https://" + base_url
         self.url = base_url if base_url else "https://api.siliconflow.cn/v1/embeddings"
@@ -294,7 +292,7 @@ def create_embedding_adapter(
     model_name: str
 ) -> BaseEmbeddingAdapter:
     """
-    工厂函数：根据 interface_format 返回不同的 embedding 适配器实例
+    Factory function: Returns different embedding adapter instances based on interface_format.
     """
     fmt = interface_format.strip().lower()
     if fmt == "openai":

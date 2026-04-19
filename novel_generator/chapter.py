@@ -1,12 +1,12 @@
 # novel_generator/chapter.py
 # -*- coding: utf-8 -*-
 """
-章节草稿生成及获取历史章节文本、当前章节摘要等
+Chapter draft generation and retrieval of historical chapters, current chapter summaries, etc.
 """
 import os
 import json
 import logging
-import re  # 添加re模块导入
+import re
 from llm_adapters import create_llm_adapter
 from prompt_definitions import (
     first_chapter_draft_prompt, 
@@ -20,19 +20,20 @@ from novel_generator.common import invoke_with_cleaning
 from utils import read_file, clear_file_content, save_string_to_txt
 from novel_generator.vectorstore_utils import (
     get_relevant_context_from_vector_store,
-    load_vector_store  # 添加导入
+    load_vector_store
 )
+
 logging.basicConfig(
-    filename='app.log',      # 日志文件名
-    filemode='a',            # 追加模式（'w' 会覆盖）
-    level=logging.INFO,      # 记录 INFO 及以上级别的日志
+    filename='app.log',
+    filemode='a',
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
 def get_last_n_chapters_text(chapters_dir: str, current_chapter_num: int, n: int = 3) -> list:
     """
-    从目录 chapters_dir 中获取最近 n 章的文本内容，返回文本列表。
+    Retrieves the text content of the last n chapters from the chapters_dir.
     """
     texts = []
     start_chap = max(1, current_chapter_num - n)
@@ -53,21 +54,21 @@ def summarize_recent_chapters(
     temperature: float,
     max_tokens: int,
     chapters_text_list: list,
-    novel_number: int,            # 新增参数
-    chapter_info: dict,           # 新增参数
-    next_chapter_info: dict,      # 新增参数
+    novel_number: int,
+    chapter_info: dict,
+    next_chapter_info: dict,
     timeout: int = 600
-) -> str:  # 修改返回值类型为 str，不再是 tuple
+) -> str:
     """
-    根据前三章内容生成当前章节的精准摘要。
-    如果解析失败，则返回空字符串。
+    Generates a precise summary for the current chapter based on the previous three chapters.
+    Returns an empty string if parsing fails.
     """
     try:
         combined_text = "\n".join(chapters_text_list).strip()
         if not combined_text:
             return ""
             
-        # 限制组合文本长度
+        # Limit combined text length
         max_combined_length = 4000
         if len(combined_text) > max_combined_length:
             combined_text = combined_text[-max_combined_length:]
@@ -82,28 +83,28 @@ def summarize_recent_chapters(
             timeout=timeout
         )
         
-        # 确保所有参数都有默认值
+        # Ensure all parameters have default values
         chapter_info = chapter_info or {}
         next_chapter_info = next_chapter_info or {}
         
         prompt = summarize_recent_chapters_prompt.format(
             combined_text=combined_text,
             novel_number=novel_number,
-            chapter_title=chapter_info.get("chapter_title", "未命名"),
-            chapter_role=chapter_info.get("chapter_role", "常规章节"),
-            chapter_purpose=chapter_info.get("chapter_purpose", "内容推进"),
-            suspense_level=chapter_info.get("suspense_level", "中等"),
-            foreshadowing=chapter_info.get("foreshadowing", "无"),
-            plot_twist_level=chapter_info.get("plot_twist_level", "★☆☆☆☆"),
+            chapter_title=chapter_info.get("chapter_title", "Untitled"),
+            chapter_role=chapter_info.get("chapter_role", "Regular Chapter"),
+            chapter_purpose=chapter_info.get("chapter_purpose", "Content Progression"),
+            suspense_level=chapter_info.get("suspense_level", "Medium"),
+            foreshadowing=chapter_info.get("foreshadowing", "None"),
+            plot_twist_level=chapter_info.get("plot_twist_level", "1/5"),
             chapter_summary=chapter_info.get("chapter_summary", ""),
             next_chapter_number=novel_number + 1,
-            next_chapter_title=next_chapter_info.get("chapter_title", "（未命名）"),
-            next_chapter_role=next_chapter_info.get("chapter_role", "过渡章节"),
-            next_chapter_purpose=next_chapter_info.get("chapter_purpose", "承上启下"),
-            next_chapter_summary=next_chapter_info.get("chapter_summary", "衔接过渡内容"),
-            next_chapter_suspense_level=next_chapter_info.get("suspense_level", "中等"),
-            next_chapter_foreshadowing=next_chapter_info.get("foreshadowing", "无特殊伏笔"),
-            next_chapter_plot_twist_level=next_chapter_info.get("plot_twist_level", "★☆☆☆☆")
+            next_chapter_title=next_chapter_info.get("chapter_title", "Untitled"),
+            next_chapter_role=next_chapter_info.get("chapter_role", "Transition Chapter"),
+            next_chapter_purpose=next_chapter_info.get("chapter_purpose", "Connecting Plot"),
+            next_chapter_summary=next_chapter_info.get("chapter_summary", "Transition content"),
+            next_chapter_suspense_level=next_chapter_info.get("suspense_level", "Medium"),
+            next_chapter_foreshadowing=next_chapter_info.get("foreshadowing", "No specific foreshadowing"),
+            next_chapter_plot_twist_level=next_chapter_info.get("plot_twist_level", "1/5")
         )
         
         response_text = invoke_with_cleaning(llm_adapter, prompt)
@@ -111,25 +112,24 @@ def summarize_recent_chapters(
         
         if not summary:
             logging.warning("Failed to extract summary, using full response")
-            return response_text[:2000]  # 限制长度
+            return response_text[:2000]
             
-        return summary[:2000]  # 限制摘要长度
+        return summary[:2000]
         
     except Exception as e:
         logging.error(f"Error in summarize_recent_chapters: {str(e)}")
         return ""
 
 def extract_summary_from_response(response_text: str) -> str:
-    """从响应文本中提取摘要部分"""
+    """Extracts the summary part from the response text."""
     if not response_text:
         return ""
         
-    # 查找摘要标记
+    # Look for summary markers
     summary_markers = [
-        "当前章节摘要:", 
-        "章节摘要:",
-        "摘要:",
-        "本章摘要:"
+        "Current Chapter Summary:",
+        "Chapter Summary:",
+        "Summary:"
     ]
     
     for marker in summary_markers:
@@ -141,82 +141,80 @@ def extract_summary_from_response(response_text: str) -> str:
     return response_text.strip()
 
 def format_chapter_info(chapter_info: dict) -> str:
-    """将章节信息字典格式化为文本"""
+    """Formats the chapter info dictionary into text."""
     template = """
-章节编号：第{number}章
-章节标题：《{title}》
-章节定位：{role}
-核心作用：{purpose}
-主要人物：{characters}
-关键道具：{items}
-场景地点：{location}
-伏笔设计：{foreshadow}
-悬念密度：{suspense}
-转折程度：{twist}
-章节简述：{summary}
+Chapter Number: {number}
+Chapter Title: "{title}"
+Chapter Position: {role}
+Core Purpose: {purpose}
+Major Characters: {characters}
+Key Items: {items}
+Scene Location: {location}
+Foreshadowing: {foreshadow}
+Suspense Density: {suspense}
+Plot Twist Level: {twist}
+Chapter Summary: {summary}
 """
     return template.format(
-        number=chapter_info.get('chapter_number', '未知'),
-        title=chapter_info.get('chapter_title', '未知'),
-        role=chapter_info.get('chapter_role', '未知'),
-        purpose=chapter_info.get('chapter_purpose', '未知'),
-        characters=chapter_info.get('characters_involved', '未指定'),
-        items=chapter_info.get('key_items', '未指定'),
-        location=chapter_info.get('scene_location', '未指定'),
-        foreshadow=chapter_info.get('foreshadowing', '无'),
-        suspense=chapter_info.get('suspense_level', '一般'),
-        twist=chapter_info.get('plot_twist_level', '★☆☆☆☆'),
-        summary=chapter_info.get('chapter_summary', '未提供')
+        number=chapter_info.get('chapter_number', 'Unknown'),
+        title=chapter_info.get('chapter_title', 'Unknown'),
+        role=chapter_info.get('chapter_role', 'Unknown'),
+        purpose=chapter_info.get('chapter_purpose', 'Unknown'),
+        characters=chapter_info.get('characters_involved', 'Not specified'),
+        items=chapter_info.get('key_items', 'Not specified'),
+        location=chapter_info.get('scene_location', 'Not specified'),
+        foreshadow=chapter_info.get('foreshadowing', 'None'),
+        suspense=chapter_info.get('suspense_level', 'Medium'),
+        twist=chapter_info.get('plot_twist_level', '1/5'),
+        summary=chapter_info.get('chapter_summary', 'Not provided')
     )
 
 def parse_search_keywords(response_text: str) -> list:
-    """解析新版关键词格式（示例输入：'科技公司·数据泄露\n地下实验室·基因编辑'）"""
+    """Parses the search keyword format."""
     return [
-        line.strip().replace('·', ' ')
+        line.strip()
         for line in response_text.strip().split('\n')
-        if '·' in line
-    ][:5]  # 最多取5组
+        if line.strip()
+    ][:5]
 
 def apply_content_rules(texts: list, novel_number: int) -> list:
-    """应用内容处理规则"""
+    """Applies content processing rules to retrieved texts."""
     processed = []
     for text in texts:
-        if re.search(r'第[\d]+章', text) or re.search(r'chapter_[\d]+', text):
+        # Detect chapter references
+        match = re.search(r'Chapter\s*(\d+)', text, re.IGNORECASE)
+        if match or re.search(r'chapter_[\d]+', text):
             chap_nums = list(map(int, re.findall(r'\d+', text)))
             recent_chap = max(chap_nums) if chap_nums else 0
             time_distance = novel_number - recent_chap
             
             if time_distance <= 2:
-                processed.append(f"[SKIP] 跳过近章内容：{text[:120]}...")
+                processed.append(f"[SKIP] Skipping recent chapter content: {text[:120]}...")
             elif 3 <= time_distance <= 5:
-                processed.append(f"[MOD40%] {text}（需修改≥40%）")
+                processed.append(f"[MOD40%] {text} (Requires >= 40% modification)")
             else:
-                processed.append(f"[OK] {text}（可引用核心）")
+                processed.append(f"[OK] {text} (Core can be referenced)")
         else:
-            processed.append(f"[PRIOR] {text}（优先使用）")
+            processed.append(f"[PRIOR] {text} (Priority use)")
     return processed
 
 def apply_knowledge_rules(contexts: list, chapter_num: int) -> list:
-    """应用知识库使用规则"""
+    """Applies usage rules for knowledge base content."""
     processed = []
     for text in contexts:
-        # 检测历史章节内容
-        if "第" in text and "章" in text:
-            # 提取章节号判断时间远近
-            chap_nums = [int(s) for s in text.split() if s.isdigit()]
+        # Detect historical chapter content
+        if "Chapter" in text:
+            chap_nums = [int(s) for s in re.findall(r'\d+', text)]
             recent_chap = max(chap_nums) if chap_nums else 0
             time_distance = chapter_num - recent_chap
             
-            # 相似度处理规则
-            if time_distance <= 3:  # 近三章内容
-                processed.append(f"[历史章节限制] 跳过近期内容: {text[:50]}...")
+            if time_distance <= 3:
+                processed.append(f"[LIMIT] Skipping recent content: {text[:50]}...")
                 continue
                 
-            # 允许引用但需要转换
-            processed.append(f"[历史参考] {text} (需进行30%以上改写)")
+            processed.append(f"[REF] {text} (Requires >30% rewrite)")
         else:
-            # 第三方知识优先处理
-            processed.append(f"[外部知识] {text}")
+            processed.append(f"[EXTERNAL] {text}")
     return processed
 
 def get_filtered_knowledge_context(
@@ -231,9 +229,9 @@ def get_filtered_knowledge_context(
     max_tokens: int = 2048,
     timeout: int = 600
 ) -> str:
-    """优化后的知识过滤处理"""
+    """Optimized knowledge filtering process."""
     if not retrieved_texts:
-        return "（无相关知识库内容）"
+        return "(No relevant knowledge base content)"
 
     try:
         processed_texts = apply_knowledge_rules(retrieved_texts, chapter_info.get('chapter_number', 0))
@@ -247,34 +245,34 @@ def get_filtered_knowledge_context(
             timeout=timeout
         )
         
-        # 限制检索文本长度并格式化
+        # Limit retrieval text length and format
         formatted_texts = []
         max_text_length = 600
         for i, text in enumerate(processed_texts, 1):
             if len(text) > max_text_length:
                 text = text[:max_text_length] + "..."
-            formatted_texts.append(f"[预处理结果{i}]\n{text}")
+            formatted_texts.append(f"[Preprocessing Result {i}]\n{text}")
 
-        # 使用格式化函数处理章节信息
+        # Format chapter info for filtering
         formatted_chapter_info = (
-            f"当前章节定位：{chapter_info.get('chapter_role', '')}\n"
-            f"核心目标：{chapter_info.get('chapter_purpose', '')}\n"
-            f"关键要素：{chapter_info.get('characters_involved', '')} | "
+            f"Chapter Position: {chapter_info.get('chapter_role', '')}\n"
+            f"Core Target: {chapter_info.get('chapter_purpose', '')}\n"
+            f"Key Elements: {chapter_info.get('characters_involved', '')} | "
             f"{chapter_info.get('key_items', '')} | "
             f"{chapter_info.get('scene_location', '')}"
         )
 
         prompt = knowledge_filter_prompt.format(
             chapter_info=formatted_chapter_info,
-            retrieved_texts="\n\n".join(formatted_texts) if formatted_texts else "（无检索结果）"
+            retrieved_texts="\n\n".join(formatted_texts) if formatted_texts else "(No retrieval results)"
         )
         
         filtered_content = invoke_with_cleaning(llm_adapter, prompt)
-        return filtered_content if filtered_content else "（知识内容过滤失败）"
+        return filtered_content if filtered_content else "(Content filtering failed)"
         
     except Exception as e:
         logging.error(f"Error in knowledge filtering: {str(e)}")
-        return "（内容过滤过程出错）"
+        return "(Error during content filtering process)"
 
 def build_chapter_prompt(
     api_key: str,
@@ -299,13 +297,9 @@ def build_chapter_prompt(
     timeout: int = 600
 ) -> str:
     """
-    构造当前章节的请求提示词（完整实现版）
-    修改重点：
-    1. 优化知识库检索流程
-    2. 新增内容重复检测机制
-    3. 集成提示词应用规则
+    Constructs the request prompt for the current chapter.
     """
-    # 读取基础文件
+    # Read base files
     arch_file = os.path.join(filepath, "Novel_architecture.txt")
     novel_architecture_text = read_file(arch_file)
     directory_file = os.path.join(filepath, "Novel_directory.txt")
@@ -315,7 +309,7 @@ def build_chapter_prompt(
     character_state_file = os.path.join(filepath, "character_state.txt")
     character_state_text = read_file(character_state_file)
     
-    # 获取章节信息
+    # Get chapter info
     chapter_info = get_chapter_info_from_blueprint(blueprint_text, novel_number)
     chapter_title = chapter_info["chapter_title"]
     chapter_role = chapter_info["chapter_role"]
@@ -325,22 +319,22 @@ def build_chapter_prompt(
     plot_twist_level = chapter_info["plot_twist_level"]
     chapter_summary = chapter_info["chapter_summary"]
 
-    # 获取下一章节信息
+    # Get next chapter info
     next_chapter_number = novel_number + 1
     next_chapter_info = get_chapter_info_from_blueprint(blueprint_text, next_chapter_number)
-    next_chapter_title = next_chapter_info.get("chapter_title", "（未命名）")
-    next_chapter_role = next_chapter_info.get("chapter_role", "过渡章节")
-    next_chapter_purpose = next_chapter_info.get("chapter_purpose", "承上启下")
-    next_chapter_suspense = next_chapter_info.get("suspense_level", "中等")
-    next_chapter_foreshadow = next_chapter_info.get("foreshadowing", "无特殊伏笔")
-    next_chapter_twist = next_chapter_info.get("plot_twist_level", "★☆☆☆☆")
-    next_chapter_summary = next_chapter_info.get("chapter_summary", "衔接过渡内容")
+    next_chapter_title = next_chapter_info.get("chapter_title", "Untitled")
+    next_chapter_role = next_chapter_info.get("chapter_role", "Transition Chapter")
+    next_chapter_purpose = next_chapter_info.get("chapter_purpose", "Connecting Plot")
+    next_chapter_suspense = next_chapter_info.get("suspense_level", "Medium")
+    next_chapter_foreshadow = next_chapter_info.get("foreshadowing", "No specific foreshadowing")
+    next_chapter_twist = next_chapter_info.get("plot_twist_level", "1/5")
+    next_chapter_summary = next_chapter_info.get("chapter_summary", "Transition content")
 
-    # 创建章节目录
+    # Create chapters directory
     chapters_dir = os.path.join(filepath, "chapters")
     os.makedirs(chapters_dir, exist_ok=True)
 
-    # 第一章特殊处理
+    # Special handling for the first chapter
     if novel_number == 1:
         return first_chapter_draft_prompt.format(
             novel_number=novel_number,
@@ -360,7 +354,7 @@ def build_chapter_prompt(
             novel_setting=novel_architecture_text
         )
 
-    # 获取前文内容和摘要
+    # Get recent context and summary
     recent_texts = get_last_n_chapters_text(chapters_dir, novel_number, n=3)
     
     try:
@@ -381,18 +375,17 @@ def build_chapter_prompt(
         logging.info("Summary generated successfully")
     except Exception as e:
         logging.error(f"Error in summarize_recent_chapters: {str(e)}")
-        short_summary = "（摘要生成失败）"
+        short_summary = "(Summary generation failed)"
 
-    # 获取前一章结尾
+    # Get excerpt from the previous chapter
     previous_excerpt = ""
     for text in reversed(recent_texts):
         if text.strip():
             previous_excerpt = text[-800:] if len(text) > 800 else text
             break
 
-    # 知识库检索和处理
+    # Knowledge base retrieval and processing
     try:
-        # 生成检索关键词
         llm_adapter = create_llm_adapter(
             interface_format=interface_format,
             base_url=base_url,
@@ -408,7 +401,7 @@ def build_chapter_prompt(
             chapter_title=chapter_title,
             characters_involved=characters_involved,
             key_items=key_items,
-            scene_location=scene_location,
+            scene_location=scene_loc,
             chapter_role=chapter_role,
             chapter_purpose=chapter_purpose,
             foreshadowing=foreshadowing,
@@ -418,9 +411,8 @@ def build_chapter_prompt(
         )
         
         search_response = invoke_with_cleaning(llm_adapter, search_prompt)
-        keyword_groups = parse_search_keywords(search_response)
+        keyword_groups = search_response.strip().split('\n')[:5]
 
-        # 执行向量检索
         all_contexts = []
         from embedding_adapters import create_embedding_adapter
         embedding_adapter = create_embedding_adapter(
@@ -443,17 +435,15 @@ def build_chapter_prompt(
                     k=actual_k
                 )
                 if context:
-                    if any(kw in group.lower() for kw in ["技法", "手法", "模板"]):
+                    if any(kw in group.lower() for kw in ["technique", "method", "template"]):
                         all_contexts.append(f"[TECHNIQUE] {context}")
-                    elif any(kw in group.lower() for kw in ["设定", "技术", "世界观"]):
+                    elif any(kw in group.lower() for kw in ["setting", "tech", "worldbuilding"]):
                         all_contexts.append(f"[SETTING] {context}")
                     else:
                         all_contexts.append(f"[GENERAL] {context}")
 
-        # 应用内容规则
         processed_contexts = apply_content_rules(all_contexts, novel_number)
         
-        # 执行知识过滤
         chapter_info_for_filter = {
             "chapter_number": novel_number,
             "chapter_title": chapter_title,
@@ -462,7 +452,7 @@ def build_chapter_prompt(
             "characters_involved": characters_involved,
             "key_items": key_items,
             "scene_location": scene_location,
-            "foreshadowing": foreshadowing,  # 修复拼写错误
+            "foreshadowing": foreshadowing,
             "suspense_level": suspense_level,
             "plot_twist_level": plot_twist_level,
             "chapter_summary": chapter_summary,
@@ -483,12 +473,12 @@ def build_chapter_prompt(
         )
         
     except Exception as e:
-        logging.error(f"知识处理流程异常：{str(e)}")
-        filtered_context = "（知识库处理失败）"
+        logging.error(f"Knowledge processing error: {str(e)}")
+        filtered_context = "(Knowledge base processing failed)"
 
-    # 返回最终提示词
+    # Final prompt
     return next_chapter_draft_prompt.format(
-        user_guidance=user_guidance if user_guidance else "无特殊指导",
+        user_guidance=user_guidance if user_guidance else "No specific guidance",
         global_summary=global_summary_text,
         previous_chapter_excerpt=previous_excerpt,
         character_state=character_state_text,
@@ -541,7 +531,7 @@ def generate_chapter_draft(
     custom_prompt_text: str = None
 ) -> str:
     """
-    生成章节草稿，支持自定义提示词
+    Generates a chapter draft, supporting custom prompt text.
     """
     if custom_prompt_text is None:
         prompt_text = build_chapter_prompt(

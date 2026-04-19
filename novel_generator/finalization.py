@@ -1,7 +1,7 @@
-#novel_generator/finalization.py
+# novel_generator/finalization.py
 # -*- coding: utf-8 -*-
 """
-定稿章节和扩写章节（finalize_chapter、enrich_chapter_text）
+Chapter finalization and expansion (finalize_chapter, enrich_chapter_text)
 """
 import os
 import logging
@@ -11,13 +11,15 @@ from prompt_definitions import summary_prompt, update_character_state_prompt
 from novel_generator.common import invoke_with_cleaning
 from utils import read_file, clear_file_content, save_string_to_txt
 from novel_generator.vectorstore_utils import update_vector_store
+
 logging.basicConfig(
-    filename='app.log',      # 日志文件名
-    filemode='a',            # 追加模式（'w' 会覆盖）
-    level=logging.INFO,      # 记录 INFO 及以上级别的日志
+    filename='app.log',
+    filemode='a',
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
+
 def finalize_chapter(
     novel_number: int,
     word_number: int,
@@ -35,8 +37,8 @@ def finalize_chapter(
     timeout: int = 600
 ):
     """
-    对指定章节做最终处理：更新前文摘要、更新角色状态、插入向量库等。
-    默认无需再做扩写操作，若有需要可在外部调用 enrich_chapter_text 处理后再定稿。
+    Finalizes the specified chapter: updates the global summary, updates character states, and inserts into the vector store.
+    No expansion is performed by default; if needed, enrich_chapter_text should be called externally before finalization.
     """
     chapters_dir = os.path.join(filepath, "chapters")
     chapter_file = os.path.join(chapters_dir, f"chapter_{novel_number}.txt")
@@ -106,7 +108,7 @@ def enrich_chapter_text(
     timeout: int=600
 ) -> str:
     """
-    对章节文本进行扩写，使其更接近 word_number 字数，保持剧情连贯。
+    Expands the chapter text to make it closer to word_number while maintaining plot coherence.
     """
     llm_adapter = create_llm_adapter(
         interface_format=interface_format,
@@ -117,8 +119,8 @@ def enrich_chapter_text(
         max_tokens=max_tokens,
         timeout=timeout
     )
-    prompt = f"""以下章节文本较短，请在保持剧情连贯的前提下进行扩写，使其更充实，接近 {word_number} 字左右，仅给出最终文本，不要解释任何内容。：
-原内容：
+    prompt = f"""The following chapter text is quite short. Please expand it while maintaining plot coherence to make it more substantial, aiming for approximately {word_number} words. Only provide the final text, no extra explanation:
+Original Content:
 {chapter_text}
 """
     enriched_text = invoke_with_cleaning(llm_adapter, prompt)
