@@ -3,7 +3,7 @@
 import os
 import threading
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 import customtkinter as ctk
 import traceback
 import glob
@@ -26,12 +26,10 @@ def generate_novel_architecture_ui(self):
         messagebox.showwarning("警告", "请先选择保存文件路径")
         return
 
-    def task():
-        confirm = messagebox.askyesno("确认", "确定要生成小说架构吗？")
-        if not confirm:
-            self.enable_button_safe(self.btn_generate_architecture)
-            return
+    if not messagebox.askyesno("确认", "确定要生成小说架构吗？"):
+        return
 
+    def task():
         self.disable_button_safe(self.btn_generate_architecture)
         try:
 
@@ -82,10 +80,10 @@ def generate_chapter_blueprint_ui(self):
         messagebox.showwarning("警告", "请先选择保存文件路径")
         return
 
+    if not messagebox.askyesno("确认", "确定要生成章节目录吗？"):
+        return
+
     def task():
-        if not messagebox.askyesno("确认", "确定要生成章节目录吗？"):
-            self.enable_button_safe(self.btn_generate_chapter)
-            return
         self.disable_button_safe(self.btn_generate_directory)
         try:
 
@@ -233,9 +231,9 @@ def generate_chapter_draft_ui(self):
                             break
                     else:  # 如果没有找到任何已知占位符变体
                         lines = final_prompt.split('\n')
-                        for i, line in enumerate(lines):
+                        for line_idx, line in enumerate(lines):
                             if "核心人物" in line and "：" in line:
-                                lines[i] = f"核心人物：\n{role_content_str}"
+                                lines[line_idx] = f"核心人物：\n{role_content_str}"
                                 break
                         final_prompt = '\n'.join(lines)
 
@@ -316,12 +314,25 @@ def finalize_chapter_ui(self):
         messagebox.showwarning("警告", "请先配置保存文件路径。")
         return
 
-    def task():
-        if not messagebox.askyesno("确认", "确定要定稿当前章节吗？"):
-            self.enable_button_safe(self.btn_finalize_chapter)
-            return
+    if not messagebox.askyesno("确认", "确定要定稿当前章节吗？"):
+        return
 
-        self.disable_button_safe(self.btn_finalize_chapter)
+    # 在主线程预先获取文本框内容和参数（tkinter 非线程安全）
+    edited_text = self.chapter_result.get("0.0", "end").strip()
+    word_number = self.safe_get_int(self.word_number_var, 3000)
+
+    # 字数不足时在主线程询问用户是否扩写
+    should_enrich = False
+    if len(edited_text) < 0.7 * word_number:
+        should_enrich = messagebox.askyesno(
+            "字数不足",
+            f"当前章节字数 ({len(edited_text)}) 低于目标字数({word_number})的70%，是否要尝试扩写？"
+        )
+
+    self.disable_button_safe(self.btn_finalize_chapter)
+
+    def task():
+        nonlocal edited_text
         try:
 
             interface_format = self.loaded_config["llm_configs"][self.final_chapter_llm_var.get()]["interface_format"]
@@ -347,26 +358,22 @@ def finalize_chapter_ui(self):
             os.makedirs(chapters_dir, exist_ok=True)
             chapter_file = os.path.join(chapters_dir, f"chapter_{chap_num}.txt")
 
-            edited_text = self.chapter_result.get("0.0", "end").strip()
-
-            if len(edited_text) < 0.7 * word_number:
-                ask = messagebox.askyesno("字数不足", f"当前章节字数 ({len(edited_text)}) 低于目标字数({word_number})的70%，是否要尝试扩写？")
-                if ask:
-                    self.safe_log("正在扩写章节内容...")
-                    enriched = enrich_chapter_text(
-                        chapter_text=edited_text,
-                        word_number=word_number,
-                        api_key=api_key,
-                        base_url=base_url,
-                        model_name=model_name,
-                        temperature=temperature,
-                        interface_format=interface_format,
-                        max_tokens=max_tokens,
-                        timeout=timeout_val
-                    )
-                    edited_text = enriched
-                    self.master.after(0, lambda: self.chapter_result.delete("0.0", "end"))
-                    self.master.after(0, lambda: self.chapter_result.insert("0.0", edited_text))
+            if should_enrich:
+                self.safe_log("正在扩写章节内容...")
+                enriched = enrich_chapter_text(
+                    chapter_text=edited_text,
+                    word_number=word_number,
+                    api_key=api_key,
+                    base_url=base_url,
+                    model_name=model_name,
+                    temperature=temperature,
+                    interface_format=interface_format,
+                    max_tokens=max_tokens,
+                    timeout=timeout_val
+                )
+                edited_text = enriched
+                self.master.after(0, lambda: self.chapter_result.delete("0.0", "end"))
+                self.master.after(0, lambda t=edited_text: self.chapter_result.insert("0.0", t))
             clear_file_content(chapter_file)
             save_string_to_txt(edited_text, chapter_file)
 
@@ -609,9 +616,9 @@ def generate_batch_ui(self):
                     break
             else:  # 如果没有找到任何已知占位符变体
                 lines = final_prompt.split('\n')
-                for i, line in enumerate(lines):
+                for line_idx, line in enumerate(lines):
                     if "核心人物" in line and "：" in line:
-                        lines[i] = f"核心人物：\n{role_content_str}"
+                        lines[line_idx] = f"核心人物：\n{role_content_str}"
                         break
                 final_prompt = '\n'.join(lines)
         draft_text = generate_chapter_draft(
@@ -687,12 +694,21 @@ def generate_batch_ui(self):
     if result["close"]:
         return
 
-    for i in range(int(result["start"]), int(result["end"]) + 1):
-        generate_chapter_batch(self, i, int(result["word"]), int(result["min"]), result["auto_enrich"])
+    def batch_task():
+        try:
+            for i in range(int(result["start"]), int(result["end"]) + 1):
+                self.safe_log(f"批量生成：正在生成第 {i} 章...")
+                generate_chapter_batch(self, i, int(result["word"]), int(result["min"]), result["auto_enrich"])
+                self.safe_log(f"批量生成：第 {i} 章完成。")
+            self.safe_log("✅ 批量生成全部完成。")
+        except Exception:
+            self.handle_exception("批量生成时出错")
+
+    threading.Thread(target=batch_task, daemon=True).start()
 
 
 def import_knowledge_handler(self):
-    selected_file = tk.filedialog.askopenfilename(
+    selected_file = filedialog.askopenfilename(
         title="选择要导入的知识库文件",
         filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
     )
