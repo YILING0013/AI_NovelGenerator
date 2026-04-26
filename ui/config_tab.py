@@ -441,41 +441,6 @@ def build_ai_config_tab(self):
     on_config_selected(config_names[0])
 
 
-    # 初始化UI布局
-    for i in range(10):  # 增加一行给按钮组
-        self.ai_config_tab.grid_rowconfigure(i, weight=0)
-    self.ai_config_tab.grid_columnconfigure(0, weight=0)
-    self.ai_config_tab.grid_columnconfigure(1, weight=1)
-    self.ai_config_tab.grid_columnconfigure(2, weight=0)
-
-    # 配置选择控件
-    create_label_with_help(self, self.ai_config_tab, "当前配置", "interface_config", 0, 0)
-    config_names = list(self.loaded_config.get("llm_configs", {}).keys())
-    if not config_names:  # 如果没有配置，创建一个默认配置
-        self.loaded_config["llm_configs"] = {
-            "默认配置": {
-                "id": str(uuid.uuid4()),
-                "api_key": "",
-                "base_url": "https://api.openai.com/v1",
-                "model_name": "gpt-4",
-                "temperature": 0.7,
-                "max_tokens": 8192,
-                "timeout": 600,
-                "interface_format": "OpenAI",
-                "created_at": datetime.datetime.now().isoformat()
-            }
-        }
-        config_names = ["默认配置"]
-    
-    interface_config_dropdown = ctk.CTkOptionMenu(
-        self.ai_config_tab, 
-        values=config_names,
-        variable=self.interface_config_var,
-        command=on_config_selected,
-        font=("Microsoft YaHei", 12)
-    )
-    interface_config_dropdown.grid(row=0, column=1, columnspan=2, padx=5, pady=5, sticky="nsew")
-
 def build_embeddings_config_tab(self):
     def on_embedding_interface_changed(new_value):
         self.embedding_interface_format_var.set(new_value)
