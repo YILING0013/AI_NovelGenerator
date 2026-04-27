@@ -20,14 +20,14 @@
             "timeout": 600,
             "interface_format": "OpenAI"
         },
-        "Gemini 2.5 Pro": {
+        "Gemini 2.5 Flash": {
             "api_key": "",
-            "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
-            "model_name": "gemini-2.5-pro",
+            "base_url": "https://generativelanguage.googleapis.com/v1beta",
+            "model_name": "gemini-2.5-flash",
             "temperature": 0.7,
             "max_tokens": 32768,
             "timeout": 600,
-            "interface_format": "OpenAI"
+            "interface_format": "Gemini"
         }
     },
     "embedding_configs": {
@@ -37,6 +37,13 @@
             "model_name": "text-embedding-ada-002",
             "retrieval_k": 4,
             "interface_format": "OpenAI"
+        },
+        "Gemini": {
+            "api_key": "",
+            "base_url": "https://generativelanguage.googleapis.com/v1beta",
+            "model_name": "gemini-embedding-2",
+            "retrieval_k": 4,
+            "interface_format": "Gemini"
         }
     },
     "other_params": {

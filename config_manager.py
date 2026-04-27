@@ -48,14 +48,14 @@ def create_config(config_file: str) -> dict:
             "timeout": 600,
             "interface_format": "OpenAI"
         },
-        "Gemini 2.5 Pro": {
+        "Gemini 2.5 Flash": {
             "api_key": "",
-            "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
-            "model_name": "gemini-2.5-pro",
+            "base_url": "https://generativelanguage.googleapis.com/v1beta",
+            "model_name": "gemini-2.5-flash",
             "temperature": 0.7,
             "max_tokens": 32768,
             "timeout": 600,
-            "interface_format": "OpenAI"
+            "interface_format": "Gemini"
         }
     },
     "embedding_configs": {
@@ -65,6 +65,13 @@ def create_config(config_file: str) -> dict:
             "model_name": "text-embedding-ada-002",
             "retrieval_k": 4,
             "interface_format": "OpenAI"
+        },
+        "Gemini": {
+            "api_key": "",
+            "base_url": "https://generativelanguage.googleapis.com/v1beta",
+            "model_name": "gemini-embedding-2",
+            "retrieval_k": 4,
+            "interface_format": "Gemini"
         }
     },
     "other_params": {
@@ -83,7 +90,7 @@ def create_config(config_file: str) -> dict:
     "choose_configs": {
         "prompt_draft_llm": "DeepSeek V3",
         "chapter_outline_llm": "DeepSeek V3",
-        "architecture_llm": "Gemini 2.5 Pro",
+        "architecture_llm": "Gemini 2.0 Flash",
         "final_chapter_llm": "GPT 5",
         "consistency_review_llm": "DeepSeek V3"
     },
