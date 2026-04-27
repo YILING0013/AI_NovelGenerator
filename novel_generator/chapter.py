@@ -8,13 +8,7 @@ import json
 import logging
 import re  # 添加re模块导入
 from llm_adapters import create_llm_adapter
-from prompt_definitions import (
-    first_chapter_draft_prompt, 
-    next_chapter_draft_prompt, 
-    summarize_recent_chapters_prompt,
-    knowledge_filter_prompt,
-    knowledge_search_prompt
-)
+import prompt_definitions
 from chapter_directory_parser import get_chapter_info_from_blueprint
 from novel_generator.common import invoke_with_cleaning
 from utils import read_file, clear_file_content, save_string_to_txt
@@ -86,7 +80,7 @@ def summarize_recent_chapters(
         chapter_info = chapter_info or {}
         next_chapter_info = next_chapter_info or {}
         
-        prompt = summarize_recent_chapters_prompt.format(
+        prompt = prompt_definitions.summarize_recent_chapters_prompt.format(
             combined_text=combined_text,
             novel_number=novel_number,
             chapter_title=chapter_info.get("chapter_title", "未命名"),
@@ -126,6 +120,8 @@ def extract_summary_from_response(response_text: str) -> str:
         
     # 查找摘要标记
     summary_markers = [
+        "Current Chapter Summary:",
+        "Summary:",
         "当前章节摘要:", 
         "章节摘要:",
         "摘要:",
@@ -256,15 +252,25 @@ def get_filtered_knowledge_context(
             formatted_texts.append(f"[预处理结果{i}]\n{text}")
 
         # 使用格式化函数处理章节信息
-        formatted_chapter_info = (
-            f"当前章节定位：{chapter_info.get('chapter_role', '')}\n"
-            f"核心目标：{chapter_info.get('chapter_purpose', '')}\n"
-            f"关键要素：{chapter_info.get('characters_involved', '')} | "
-            f"{chapter_info.get('key_items', '')} | "
-            f"{chapter_info.get('scene_location', '')}"
-        )
+        import config_manager
+        if config_manager.IS_ENGLISH:
+            formatted_chapter_info = (
+                f"Current chapter role: {chapter_info.get('chapter_role', '')}\n"
+                f"Core goal: {chapter_info.get('chapter_purpose', '')}\n"
+                f"Key elements: {chapter_info.get('characters_involved', '')} | "
+                f"{chapter_info.get('key_items', '')} | "
+                f"{chapter_info.get('scene_location', '')}"
+            )
+        else:
+            formatted_chapter_info = (
+                f"当前章节定位：{chapter_info.get('chapter_role', '')}\n"
+                f"核心目标：{chapter_info.get('chapter_purpose', '')}\n"
+                f"关键要素：{chapter_info.get('characters_involved', '')} | "
+                f"{chapter_info.get('key_items', '')} | "
+                f"{chapter_info.get('scene_location', '')}"
+            )
 
-        prompt = knowledge_filter_prompt.format(
+        prompt = prompt_definitions.knowledge_filter_prompt.format(
             chapter_info=formatted_chapter_info,
             retrieved_texts="\n\n".join(formatted_texts) if formatted_texts else "（无检索结果）"
         )
@@ -342,7 +348,7 @@ def build_chapter_prompt(
 
     # 第一章特殊处理
     if novel_number == 1:
-        return first_chapter_draft_prompt.format(
+        return prompt_definitions.first_chapter_draft_prompt.format(
             novel_number=novel_number,
             word_number=word_number,
             chapter_title=chapter_title,
@@ -403,7 +409,7 @@ def build_chapter_prompt(
             timeout=timeout
         )
         
-        search_prompt = knowledge_search_prompt.format(
+        search_prompt = prompt_definitions.knowledge_search_prompt.format(
             chapter_number=novel_number,
             chapter_title=chapter_title,
             characters_involved=characters_involved,
@@ -487,7 +493,7 @@ def build_chapter_prompt(
         filtered_context = "（知识库处理失败）"
 
     # 返回最终提示词
-    return next_chapter_draft_prompt.format(
+    return prompt_definitions.next_chapter_draft_prompt.format(
         user_guidance=user_guidance if user_guidance else "无特殊指导",
         global_summary=global_summary_text,
         previous_chapter_excerpt=previous_excerpt,

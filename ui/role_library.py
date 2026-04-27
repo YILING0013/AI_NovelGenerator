@@ -9,7 +9,7 @@ from tkinter import messagebox, BooleanVar
 from customtkinter import CTkScrollableFrame, CTkTextbox, END
 from utils import read_file, save_string_to_txt  # 导入 utils 中的函数
 from novel_generator.common import invoke_with_cleaning  # 新增导入
-from prompt_definitions import Character_Import_Prompt
+import prompt_definitions
 
 DEFAULT_FONT = ("Microsoft YaHei", 12)
 
@@ -374,7 +374,7 @@ class RoleLibrary:
             os.makedirs(target_dir, exist_ok=True)
 
             # 调用LLM进行分析
-            prompt = f"{Character_Import_Prompt}\n<<待分析小说文本开始>>\n{content}\n<<待分析小说文本结束>>"
+            prompt = f"{prompt_definitions.Character_Import_Prompt}\n<<待分析小说文本开始>>\n{content}\n<<待分析小说文本结束>>"
             response = invoke_with_cleaning(
                 self.llm_adapter,
                 prompt

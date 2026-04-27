@@ -7,7 +7,7 @@ from tkinter import messagebox
 import customtkinter as ctk
 import traceback
 import glob
-from utils import read_file, save_string_to_txt, clear_file_content
+from utils import read_file, save_string_to_txt, clear_file_content, get_word_count
 from novel_generator import (
     Novel_architecture_generate,
     Chapter_blueprint_generate,
@@ -187,6 +187,7 @@ def generate_chapter_draft_ui(self):
             event = threading.Event()
 
             def create_dialog():
+                import config_manager
                 dialog = ctk.CTkToplevel(self.master)
                 dialog.title("当前章节请求提示词（可编辑）")
                 dialog.geometry("600x400")
@@ -194,7 +195,8 @@ def generate_chapter_draft_ui(self):
                 text_box.pack(fill="both", expand=True, padx=10, pady=10)
 
                 # 字数统计标签
-                wordcount_label = ctk.CTkLabel(dialog, text="字数：0", font=("Microsoft YaHei", 12))
+                count_prefix = "Words: " if config_manager.IS_ENGLISH else "字数："
+                wordcount_label = ctk.CTkLabel(dialog, text=f"字数：0", font=("Microsoft YaHei", 12))
                 wordcount_label.pack(side="left", padx=(10,0), pady=5)
                 
                 # 插入角色内容
@@ -217,7 +219,10 @@ def generate_chapter_draft_ui(self):
                 if role_contents:
                     role_content_str = "\n".join(role_contents)
                     # 更精确的替换逻辑，处理不同情况下的占位符
+                    role_label = "Core characters:" if config_manager.IS_ENGLISH else "核心人物："
                     placeholder_variations = [
+                        "Core characters (may not be specified): {characters_involved}",
+                        "Core characters: {characters_involved}",
                         "核心人物(可能未指定)：{characters_involved}",
                         "核心人物：{characters_involved}",
                         "核心人物(可能未指定):{characters_involved}",
@@ -228,22 +233,24 @@ def generate_chapter_draft_ui(self):
                         if placeholder in final_prompt:
                             final_prompt = final_prompt.replace(
                                 placeholder,
-                                f"核心人物：\n{role_content_str}"
+                                f"{role_label}\n{role_content_str}"
                             )
                             break
                     else:  # 如果没有找到任何已知占位符变体
                         lines = final_prompt.split('\n')
+                        search_key = "Core characters" if config_manager.IS_ENGLISH else "核心人物"
                         for i, line in enumerate(lines):
-                            if "核心人物" in line and "：" in line:
-                                lines[i] = f"核心人物：\n{role_content_str}"
+                            if search_key in line and (":" in line or "：" in line):
+                                lines[i] = f"{role_label}\n{role_content_str}"
                                 break
                         final_prompt = '\n'.join(lines)
 
                 text_box.insert("0.0", final_prompt)
                 # 更新字数函数
+                # 更新字数函数
                 def update_word_count(event=None):
                     text = text_box.get("0.0", "end-1c")
-                    text_length = len(text)
+                    text_length = get_word_count(text)
                     wordcount_label.configure(text=f"字数：{text_length}")
 
                 text_box.bind("<KeyRelease>", update_word_count)
@@ -349,8 +356,8 @@ def finalize_chapter_ui(self):
 
             edited_text = self.chapter_result.get("0.0", "end").strip()
 
-            if len(edited_text) < 0.7 * word_number:
-                ask = messagebox.askyesno("字数不足", f"当前章节字数 ({len(edited_text)}) 低于目标字数({word_number})的70%，是否要尝试扩写？")
+            if get_word_count(edited_text) < 0.7 * word_number:
+                ask = messagebox.askyesno("字数不足", f"当前章节字数 ({get_word_count(edited_text)}) 低于目标字数({word_number})的70%，是否要尝试扩写？")
                 if ask:
                     self.safe_log("正在扩写章节内容...")
                     enriched = enrich_chapter_text(
@@ -649,8 +656,8 @@ def generate_batch_ui(self):
         chapters_dir = os.path.join(self.filepath_var.get().strip(), "chapters")
         os.makedirs(chapters_dir, exist_ok=True)
         chapter_path = os.path.join(chapters_dir, f"chapter_{i}.txt")
-        if len(draft_text) < 0.7 * min and auto_enrich:
-            self.safe_log(f"第{i}章草稿字数 ({len(draft_text)}) 低于目标字数({min})的70%，正在扩写...")
+        if get_word_count(draft_text) < 0.7 * min and auto_enrich:
+            self.safe_log(f"第{i}章草稿字数 ({get_word_count(draft_text)}) 低于目标字数({min})的70%，正在扩写...")
             enriched = enrich_chapter_text(
                 chapter_text=draft_text,
                 word_number=word,
