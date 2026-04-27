@@ -3,10 +3,8 @@
 import logging
 from typing import Optional
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
-# from google import genai
-import google.generativeai as genai
-# from google.genai import types
-from google.generativeai import types
+from google import genai
+from google.genai import types
 from azure.ai.inference import ChatCompletionsClient
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.inference.models import SystemMessage, UserMessage
@@ -101,7 +99,6 @@ class GeminiAdapter(BaseLLMAdapter):
     适配 Google Gemini (Google Generative AI) 接口
     """
 
-    # PenBo 修复新版本google-generativeai 不支持 Client 类问题；而是使用 GenerativeModel 类来访问API
     def __init__(self, api_key: str, base_url: str, model_name: str, max_tokens: int, temperature: float = 0.7, timeout: Optional[int] = 600):
         self.api_key = api_key
         self.model_name = model_name
@@ -109,24 +106,22 @@ class GeminiAdapter(BaseLLMAdapter):
         self.temperature = temperature
         self.timeout = timeout
 
-        # 配置API密钥
-        genai.configure(api_key=self.api_key)
-        
-        # 创建生成模型实例
-        self._model = genai.GenerativeModel(model_name=self.model_name)
+        # 使用最新的 google-genai 客户端
+        self._client = genai.Client(api_key=self.api_key)
 
     def invoke(self, prompt: str) -> str:
         try:
             # 设置生成配置
-            generation_config = genai.types.GenerationConfig(
+            config = types.GenerateContentConfig(
                 max_output_tokens=self.max_tokens,
                 temperature=self.temperature,
             )
             
             # 生成内容
-            response = self._model.generate_content(
-                prompt,
-                generation_config=generation_config
+            response = self._client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=config
             )
             
             if response and response.text:

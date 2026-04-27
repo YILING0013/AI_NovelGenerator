@@ -4,6 +4,7 @@ import logging
 import traceback
 from typing import List
 import requests
+from google import genai
 from langchain_openai import AzureOpenAIEmbeddings, OpenAIEmbeddings
 
 def ensure_openai_base_url_has_v1(url: str) -> str:
@@ -177,55 +178,46 @@ class MLStudioEmbeddingAdapter(BaseEmbeddingAdapter):
 class GeminiEmbeddingAdapter(BaseEmbeddingAdapter):
     """
     基于 Google Generative AI (Gemini) 接口的 Embedding 适配器
-    使用直接 POST 请求方式，URL 示例：
-    https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=YOUR_API_KEY
+    使用 google-genai SDK。
     """
     def __init__(self, api_key: str, model_name: str, base_url: str):
         """
         :param api_key: 传入的 Google API Key
         :param model_name: 这里一般是 "text-embedding-004"
-        :param base_url: e.g. https://generativelanguage.googleapis.com/v1beta/models
+        :param base_url: e.g. https://generativelanguage.googleapis.com/v1beta/models (已弃用，SDK会自动处理)
         """
         self.api_key = api_key
         self.model_name = model_name
-        self.base_url = base_url.rstrip("/")
+        self._client = genai.Client(api_key=self.api_key)
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        embeddings = []
-        for text in texts:
-            vec = self._embed_single(text)
-            embeddings.append(vec)
-        return embeddings
+        try:
+            response = self._client.models.embed_content(
+                model=self.model_name,
+                contents=texts
+            )
+            return [emb.values for emb in response.embeddings]
+        except Exception as e:
+            logging.error(f"Gemini embed_documents error: {e}")
+            return [[]] * len(texts)
 
     def embed_query(self, query: str) -> List[float]:
         return self._embed_single(query)
 
     def _embed_single(self, text: str) -> List[float]:
         """
-        直接调用 Google Generative Language API (Gemini) 接口，获取文本 embedding
+        使用 google-genai SDK 获取文本 embedding
         """
-        url = f"{self.base_url}/{self.model_name}:embedContent?key={self.api_key}"
-        payload = {
-            "model": self.model_name,
-            "content": {
-                "parts": [
-                    {"text": text}
-                ]
-            }
-        }
-
         try:
-            response = requests.post(url, json=payload)
-            print(response.text)
-            response.raise_for_status()
-            result = response.json()
-            embedding_data = result.get("embedding", {})
-            return embedding_data.get("values", [])
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Gemini embed_content request error: {e}\n{traceback.format_exc()}")
+            response = self._client.models.embed_content(
+                model=self.model_name,
+                contents=text
+            )
+            if response and response.embeddings:
+                return response.embeddings[0].values
             return []
         except Exception as e:
-            logging.error(f"Gemini embed_content parse error: {e}\n{traceback.format_exc()}")
+            logging.error(f"Gemini _embed_single error: {e}")
             return []
 
 class SiliconFlowEmbeddingAdapter(BaseEmbeddingAdapter):
