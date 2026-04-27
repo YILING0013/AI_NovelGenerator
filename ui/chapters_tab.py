@@ -4,7 +4,7 @@ import os
 import customtkinter as ctk
 from tkinter import messagebox
 from ui.context_menu import TextWidgetContextMenu
-from utils import read_file, save_string_to_txt, clear_file_content
+from utils import read_file, save_string_to_txt, clear_file_content, get_word_count
 
 def build_chapters_tab(self):
     self.chapters_view_tab = self.tabview.add("Chapters Manage")
@@ -43,7 +43,7 @@ def build_chapters_tab(self):
     
     def update_word_count(event=None):
         text = self.chapter_view_text.get("0.0", "end-1c")
-        text_length = len(text)
+        text_length = get_word_count(text)
         self.chapters_word_count_label.configure(text=f"字数：{text_length}")
     
     self.chapter_view_text.bind("<KeyRelease>", update_word_count)

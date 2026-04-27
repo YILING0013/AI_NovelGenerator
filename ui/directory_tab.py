@@ -3,7 +3,7 @@
 import os
 import customtkinter as ctk
 from tkinter import messagebox
-from utils import read_file, save_string_to_txt, clear_file_content
+from utils import read_file, save_string_to_txt, clear_file_content, get_word_count
 from ui.context_menu import TextWidgetContextMenu
 
 def build_directory_tab(self):
@@ -24,8 +24,8 @@ def build_directory_tab(self):
     self.directory_text = ctk.CTkTextbox(self.directory_tab, wrap="word", font=("Microsoft YaHei", 12))
     
     def update_word_count(event=None):
-        text = self.directory_text.get("0.0", "end")
-        count = len(text) - 1
+        text = self.directory_text.get("0.0", "end-1c")
+        count = get_word_count(text)
         self.directory_word_count_label.configure(text=f"字数：{count}")
     
     self.directory_text.bind("<KeyRelease>", update_word_count)

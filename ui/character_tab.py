@@ -3,7 +3,7 @@
 import os
 import customtkinter as ctk
 from tkinter import messagebox
-from utils import read_file, save_string_to_txt, clear_file_content
+from utils import read_file, save_string_to_txt, clear_file_content, get_word_count
 from ui.context_menu import TextWidgetContextMenu
 
 def build_character_tab(self):
@@ -25,7 +25,7 @@ def build_character_tab(self):
     
     def update_word_count(event=None):
         text = self.character_text.get("0.0", "end-1c")
-        text_length = len(text)
+        text_length = get_word_count(text)
         self.character_wordcount_label.configure(text=f"字数：{text_length}")
     
     self.character_text.bind("<KeyRelease>", update_word_count)

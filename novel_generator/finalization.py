@@ -7,7 +7,7 @@ import os
 import logging
 from llm_adapters import create_llm_adapter
 from embedding_adapters import create_embedding_adapter
-from prompt_definitions import summary_prompt, update_character_state_prompt
+import prompt_definitions
 from novel_generator.common import invoke_with_cleaning
 from utils import read_file, clear_file_content, save_string_to_txt
 from novel_generator.vectorstore_utils import update_vector_store
@@ -60,7 +60,7 @@ def finalize_chapter(
         timeout=timeout
     )
 
-    prompt_summary = summary_prompt.format(
+    prompt_summary = prompt_definitions.summary_prompt.format(
         chapter_text=chapter_text,
         global_summary=old_global_summary
     )
@@ -68,7 +68,7 @@ def finalize_chapter(
     if not new_global_summary.strip():
         new_global_summary = old_global_summary
 
-    prompt_char_state = update_character_state_prompt.format(
+    prompt_char_state = prompt_definitions.update_character_state_prompt.format(
         chapter_text=chapter_text,
         old_state=old_character_state
     )
@@ -117,9 +117,9 @@ def enrich_chapter_text(
         max_tokens=max_tokens,
         timeout=timeout
     )
-    prompt = f"""以下章节文本较短，请在保持剧情连贯的前提下进行扩写，使其更充实，接近 {word_number} 字左右，仅给出最终文本，不要解释任何内容。：
-原内容：
-{chapter_text}
-"""
+    prompt = prompt_definitions.enrich_prompt.format(
+        word_number=word_number,
+        chapter_text=chapter_text
+    )
     enriched_text = invoke_with_cleaning(llm_adapter, prompt)
     return enriched_text if enriched_text else chapter_text
