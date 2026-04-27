@@ -670,3 +670,22 @@ The following chapter text is short. Please expand it while maintaining plot con
 Original content:
 {chapter_text}
 """
+
+# =============== Global Style Enforcement ===============
+# This block automatically injects common writing style requirements into all prompts.
+_STYLE_REQUIREMENTS = "- CRITICAL: Never use em dashes (—), en dashes (–), or double dashes (--) in any writing."
+
+def _inject_style_requirements(prompt_text):
+    if "Format requirements:" in prompt_text:
+        return prompt_text.replace("Format requirements:", f"Format requirements:\n{_STYLE_REQUIREMENTS}")
+    if "Requirements:" in prompt_text:
+        return prompt_text.replace("Requirements:", f"Requirements:\n{_STYLE_REQUIREMENTS}")
+    if "Generation rules:" in prompt_text:
+        return prompt_text.replace("Generation rules:", f"Generation rules:\n{_STYLE_REQUIREMENTS}")
+    if "<<Character State Format Requirements>>" in prompt_text:
+        return prompt_text.replace("<<Character State Format Requirements>>", f"<<Character State Format Requirements>>\n{_STYLE_REQUIREMENTS}")
+    return prompt_text + f"\n\nStyle Requirement:\n{_STYLE_REQUIREMENTS}"
+
+for _name in list(globals()):
+    if (_name.endswith("_prompt") or _name.endswith("_Prompt")) and isinstance(globals()[_name], str):
+        globals()[_name] = _inject_style_requirements(globals()[_name])
