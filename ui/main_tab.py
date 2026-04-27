@@ -22,6 +22,8 @@ def build_main_tab(self):
     build_left_layout(self)
     build_right_layout(self)
 
+from utils import get_word_count
+
 def build_left_layout(self):
     """
     左侧区域：本章内容(可编辑) + Step流程按钮 + 输出日志(只读)
@@ -44,8 +46,8 @@ def build_left_layout(self):
 
 
     def update_word_count(event=None):
-        text = self.chapter_result.get("0.0", "end")
-        count = len(text) - 1  # 减去最后一个换行符
+        text = self.chapter_result.get("0.0", "end-1c")
+        count = get_word_count(text)
         self.chapter_label.configure(text=f"本章内容（可编辑）  字数：{count}")
 
     self.chapter_result.bind("<KeyRelease>", update_word_count)

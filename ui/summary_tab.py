@@ -3,7 +3,7 @@
 import os
 import customtkinter as ctk
 from tkinter import messagebox
-from utils import read_file, save_string_to_txt, clear_file_content
+from utils import read_file, save_string_to_txt, clear_file_content, get_word_count
 from ui.context_menu import TextWidgetContextMenu
 
 def build_summary_tab(self):
@@ -28,8 +28,8 @@ def build_summary_tab(self):
     self.summary_text.grid(row=1, column=0, sticky="nsew", padx=5, pady=5, columnspan=3)
 
     def update_word_count(event=None):
-        text = self.summary_text.get("0.0", "end")
-        count = len(text) - 1
+        text = self.summary_text.get("0.0", "end-1c")
+        count = get_word_count(text)
         self.word_count_label.configure(text=f"字数：{count}")
 
     self.summary_text.bind("<KeyRelease>", update_word_count)
