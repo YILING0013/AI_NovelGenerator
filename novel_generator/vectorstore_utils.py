@@ -8,9 +8,7 @@ import logging
 import traceback
 import nltk
 import numpy as np
-import re
 import ssl
-import requests
 import warnings
 from langchain_chroma import Chroma
 logging.basicConfig(
@@ -26,7 +24,6 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"  # 禁用tokenizer并行警告
 
 from chromadb.config import Settings
 from langchain.docstore.document import Document
-from sklearn.metrics.pairwise import cosine_similarity
 from .common import call_with_retry
 
 def get_vectorstore_dir(filepath: str) -> str:
