@@ -63,6 +63,20 @@
      ```bash
      cd AI_NovelGenerator
      ```
+   - (可选) 创建并激活虚拟环境：
+     ```bash
+     python -m venv .venv
+     # 如果失败，尝试:
+     # python3 -m venv .venv
+     ```
+     ```
+     # Windows系统:
+     .venv/Scripts/activate
+     ```
+     ```
+     # Linux/Mac系统:
+     source .venv/bin/activate
+     ```
    - 安装项目依赖：
      ```bash
      pip install -r requirements.txt

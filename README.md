@@ -65,6 +65,20 @@ Ensure the environment meets the following requirements:
        ```bash
        cd AI_NovelGenerator
        ```
+    - (Optional) Create and activate virtual environment:
+       ```bash
+       python -m venv .venv
+       # if that doesn't work, try:
+       # python3 -m venv .venv
+       ```
+       ```
+       # On Windows:
+       .venv/Scripts/activate
+       ```
+       ```
+       # On Linux/Mac:
+       source .venv/bin/activate
+       ```
     - Install project dependencies:
        ```bash
        pip install -r requirements.txt
