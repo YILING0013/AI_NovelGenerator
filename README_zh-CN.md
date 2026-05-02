@@ -153,6 +153,8 @@ python main.py
 ### **方式 2：打包为可执行文件**
 如果你想在无 Python 环境的机器上使用本工具，可以使用 **PyInstaller** 进行打包：
 
+首先修改第26行的 `customtkinter_dir` 为你的项目目录，然后执行：
+
 ```bash
 pip install pyinstaller
 pyinstaller main.spec
