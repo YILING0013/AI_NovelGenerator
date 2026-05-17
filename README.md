@@ -24,14 +24,14 @@ This project is still under an ongoing refactor and is not yet considered featur
 
 ## Configuration
 
-Application configuration is loaded from `application/config/config.yaml`.
+Application configuration is loaded from `backend/config/config.yaml`.
 
 On first run, the project will ensure the following files exist:
 
-- `application/config/config_default.yaml`
-- `application/config/config.yaml`
+- `backend/config/config_default.yaml`
+- `backend/config/config.yaml`
 
-Before running AI-related features, update the LLM provider settings in `application/config/config.yaml`, especially:
+Before running AI-related features, update the LLM provider settings in `backend/config/config.yaml`, especially:
 
 - `api_key`
 - `base_url` where applicable
@@ -39,8 +39,18 @@ Before running AI-related features, update the LLM provider settings in `applica
 - `use_system_proxy` if you explicitly want the SDK to inherit your Windows/system proxy. The default is `false`.
 
 You should also make sure MongoDB is running locally if you use the default database settings.
+The backend uses PyMongo Async directly. On startup it pings MongoDB and initializes indexes, so invalid MongoDB settings fail early instead of surfacing during the first request.
+
+MongoDB-related settings:
+
+- `mongodb_url`: MongoDB connection string
+- `mongo_database_name`: database name
+- `mongo_timeout_ms`: server selection timeout in milliseconds
+- `mongo_transaction_mode`: `auto`, `required`, or `disabled`; `auto` uses transactions on replica set/sharded deployments and falls back to ordered writes on standalone MongoDB
 
 Configuration can be edited through the frontend settings interface or by directly modifying the YAML files mentioned above.
+
+Faction APIs are scoped by novel. Use paths under `/api/factions/novel/{novel_id}/...`; older unscoped faction paths are intentionally removed.
 
 ## Install
 

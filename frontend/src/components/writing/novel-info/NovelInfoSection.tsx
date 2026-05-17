@@ -6,83 +6,16 @@ import { Button, Chip } from "@heroui/react";
 import AutoResizeTextarea from "./AutoResizeTextarea";
 import CollapsibleField from "./CollapsibleField";
 import { apiPut, apiPostForm, getImageUrl } from "@/lib/api";
-import type { NovelDetail } from "@/types/novel";
+import {
+  DANGEROUS_FIELDS,
+  FIELD_LABEL_MAP,
+  LONG_TEXT_FIELDS,
+  SECTION_FIELDS,
+  type NovelInfoFieldDef,
+  type SectionKey,
+} from "@/lib/novelFields";
 
-/* section definitions */
-
-export type SectionKey = "basic" | "creative" | "scale" | "content" | "style";
-
-interface FieldDef {
-  key: string;
-  type: "text" | "textarea" | "number" | "tags" | "cover" | "select";
-  options?: { value: string; labelKey: string }[];
-}
-
-const SECTION_FIELDS: Record<SectionKey, FieldDef[]> = {
-  basic: [
-    { key: "title", type: "text" },
-    { key: "subtitle", type: "text" },
-    { key: "genre", type: "text" },
-    { key: "tags", type: "tags" },
-    { key: "cover_image", type: "cover" },
-  ],
-  creative: [
-    { key: "plot", type: "textarea" },
-    { key: "core_idea", type: "textarea" },
-    { key: "tone", type: "text" },
-    { key: "target_audience", type: "text" },
-  ],
-  scale: [
-    { key: "number_of_chapters", type: "number" },
-    { key: "words_per_chapter", type: "number" },
-  ],
-  content: [
-    { key: "introduction", type: "textarea" },
-    { key: "summary", type: "textarea" },
-    { key: "core_seed", type: "textarea" },
-    { key: "worldview", type: "textarea" },
-  ],
-  style: [
-    { key: "writing_style", type: "textarea" },
-    { key: "narrative_pov", type: "select", options: [
-      { value: "第一人称", labelKey: "povFirst" },
-      { value: "第三人称有限视角", labelKey: "povThirdLimited" },
-      { value: "全知视角", labelKey: "povOmniscient" },
-    ]},
-    { key: "era_background", type: "textarea" },
-  ],
-};
-
-const LONG_TEXT_FIELDS = new Set([
-  "introduction", "plot", "core_idea", "summary", "core_seed", "worldview",
-  "writing_style", "era_background",
-]);
-
-const DANGEROUS_FIELDS = new Set([
-  "plot", "core_idea", "summary", "core_seed", "worldview",
-  "writing_style", "narrative_pov", "era_background",
-]);
-
-const FIELD_LABEL_MAP: Record<string, string> = {
-  title: "title",
-  subtitle: "subtitle",
-  genre: "genre",
-  tags: "tags",
-  cover_image: "coverImage",
-  plot: "plot",
-  core_idea: "coreIdea",
-  tone: "tone",
-  target_audience: "targetAudience",
-  number_of_chapters: "numberOfChapters",
-  words_per_chapter: "wordsPerChapter",
-  introduction: "introduction",
-  summary: "summary",
-  core_seed: "coreSeed",
-  worldview: "worldview",
-  writing_style: "writingStyle",
-  narrative_pov: "narrativePov",
-  era_background: "eraBackground",
-};
+export type { SectionKey } from "@/lib/novelFields";
 
 /* component props */
 
@@ -210,7 +143,7 @@ export default function NovelInfoSection({
 
   /* render helpers */
 
-  const renderReadField = (f: FieldDef) => {
+  const renderReadField = (f: NovelInfoFieldDef) => {
     const val = data[f.key];
     const label = t(FIELD_LABEL_MAP[f.key] || f.key);
 
@@ -276,7 +209,7 @@ export default function NovelInfoSection({
     );
   };
 
-  const renderEditField = (f: FieldDef) => {
+  const renderEditField = (f: NovelInfoFieldDef) => {
     const val = getValue(f.key);
     const label = t(FIELD_LABEL_MAP[f.key] || f.key);
 

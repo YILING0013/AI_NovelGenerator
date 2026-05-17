@@ -1,16 +1,24 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@heroui/react";
 import { apiGet, apiPost } from "@/lib/api";
-import type { NovelDetail, WritingDraft, CreateNovelRequest } from "@/types/novel";
+import type {
+  CreateNovelRequest,
+  NovelDetail,
+  NovelRewriteFieldKey,
+  WritingDraft,
+  WritingDraftRewriteState,
+} from "@/types/novel";
+import { clearWritingDraft, loadWritingDraft, updateWritingDraft } from "@/lib/writingDraft";
+import { normalizeRewriteState } from "@/lib/rewriteDraftState";
 import NovelInfoSection, { type SectionKey } from "./NovelInfoSection";
+import NovelRewriteAssistant from "./NovelRewriteAssistant";
 import StickyActionBar from "./StickyActionBar";
 
 const SECTIONS: SectionKey[] = ["basic", "creative", "scale", "content", "style"];
-const DRAFT_KEY = "writing_draft";
 
 interface NovelInfoWorkspaceProps {
   mode: "create" | "edit";
@@ -22,7 +30,10 @@ export default function NovelInfoWorkspace({ mode, novelId }: NovelInfoWorkspace
   const twd = useTranslations("writing");
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const locale = pathname.startsWith("/en") ? "en" : "zh";
+  const draftId = searchParams.get("draft") || undefined;
+  const didLoadDraftRef = useRef(false);
 
   /* state */
   const [data, setData] = useState<Record<string, unknown>>({});
@@ -36,6 +47,32 @@ export default function NovelInfoWorkspace({ mode, novelId }: NovelInfoWorkspace
   /* danger confirm */
   const [showDangerModal, setShowDangerModal] = useState(false);
   const [dangerResolve, setDangerResolve] = useState<((v: boolean) => void) | null>(null);
+
+  const persistCreateDraft = useCallback(
+    (nextData: Record<string, unknown>) => {
+      if (mode !== "create") {
+        return;
+      }
+
+      updateWritingDraft(draftId, (draft) => ({
+        ...draft,
+        ...(nextData as Partial<WritingDraft>),
+      }));
+    },
+    [draftId, mode],
+  );
+
+  const updateCreateData = useCallback(
+    (updater: (prev: Record<string, unknown>) => Record<string, unknown>) => {
+      setData((prev) => {
+        const nextData = updater(prev);
+        // 创建态表单是本地草稿驱动，任何字段和改写状态变化都立即写回草稿。
+        persistCreateDraft(nextData);
+        return nextData;
+      });
+    },
+    [persistCreateDraft],
+  );
 
   /* load data */
   const loadNovel = useCallback(async () => {
@@ -56,22 +93,22 @@ export default function NovelInfoWorkspace({ mode, novelId }: NovelInfoWorkspace
   useEffect(() => {
     if (mode === "edit") {
       loadNovel();
-    } else {
-      // create mode: load from sessionStorage
-      try {
-        const raw = sessionStorage.getItem(DRAFT_KEY);
-        if (raw) {
-          const draft: WritingDraft = JSON.parse(raw);
-          setData(draft as unknown as Record<string, unknown>);
-          sessionStorage.removeItem(DRAFT_KEY);
-        } else {
-          setNoDraft(true);
-        }
-      } catch {
-        setNoDraft(true);
-      }
+      return;
     }
-  }, [mode, loadNovel]);
+
+    if (didLoadDraftRef.current) {
+      return;
+    }
+    didLoadDraftRef.current = true;
+
+    const draft: WritingDraft | null = loadWritingDraft(draftId);
+    if (draft) {
+      setData(draft as unknown as Record<string, unknown>);
+      setNoDraft(false);
+    } else {
+      setNoDraft(true);
+    }
+  }, [mode, loadNovel, draftId]);
 
   /* create novel */
   const handleCreate = async () => {
@@ -98,6 +135,7 @@ export default function NovelInfoWorkspace({ mode, novelId }: NovelInfoWorkspace
         words_per_chapter: data.words_per_chapter ? Number(data.words_per_chapter) : undefined,
       };
       const res = await apiPost<{ id: string }>("/api/novels/create", payload);
+      clearWritingDraft(draftId);
       router.push(`/${locale}/writing/${res.id}`);
     } catch {
       alert(tw("createFailed"));
@@ -108,7 +146,26 @@ export default function NovelInfoWorkspace({ mode, novelId }: NovelInfoWorkspace
 
   /* field change (create mode) */
   const handleFieldChange = (field: string, value: unknown) => {
-    setData((prev) => ({ ...prev, [field]: value }));
+    updateCreateData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleRewriteStateChange = (rewriteState: WritingDraftRewriteState) => {
+    updateCreateData((prev) => ({
+      ...prev,
+      _rewriteState: normalizeRewriteState(rewriteState),
+    }));
+  };
+
+  const handleApplyRewrite = (
+    field: NovelRewriteFieldKey,
+    value: string | string[],
+    rewriteState: WritingDraftRewriteState,
+  ) => {
+    updateCreateData((prev) => ({
+      ...prev,
+      [field]: value,
+      _rewriteState: normalizeRewriteState(rewriteState),
+    }));
   };
 
   /* danger confirm promise */
@@ -150,7 +207,10 @@ export default function NovelInfoWorkspace({ mode, novelId }: NovelInfoWorkspace
         <p className="text-muted">{tw("noDraft")}</p>
         <Button
           variant="outline"
-          onPress={() => router.push(`/${locale}`)}
+          onPress={() => {
+            clearWritingDraft(draftId);
+            router.push(`/${locale}`);
+          }}
         >
           {twd("backToCreate")}
         </Button>
@@ -224,7 +284,10 @@ export default function NovelInfoWorkspace({ mode, novelId }: NovelInfoWorkspace
         <StickyActionBar>
           <Button
             variant="ghost"
-            onPress={() => router.push(`/${locale}`)}
+            onPress={() => {
+              clearWritingDraft(draftId);
+              router.push(`/${locale}`);
+            }}
           >
             {twd("backToCreate")}
           </Button>
@@ -237,6 +300,15 @@ export default function NovelInfoWorkspace({ mode, novelId }: NovelInfoWorkspace
             {creating ? tw("creating") : tw("saveCreate")}
           </Button>
         </StickyActionBar>
+      )}
+
+      {mode === "create" && (
+        <NovelRewriteAssistant
+          data={data}
+          rewriteState={normalizeRewriteState(data._rewriteState as WritingDraftRewriteState | undefined)}
+          onApplyRewrite={handleApplyRewrite}
+          onRewriteStateChange={handleRewriteStateChange}
+        />
       )}
     </div>
   );

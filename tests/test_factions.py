@@ -7,13 +7,35 @@ from fastapi.testclient import TestClient
 
 
 def _create_faction(client: TestClient, novel_id: str, **overrides) -> dict:
+    """创建测试阵营。
+
+    Args:
+        client: FastAPI 测试客户端。
+        novel_id: 小说 ObjectId 字符串。
+        **overrides: 覆盖默认请求字段。
+
+    Returns:
+        包含 status_code 和 body 的响应摘要。
+    """
     payload = {
-        "novel_id": novel_id,
         "name": "测试阵营",
     }
     payload.update(overrides)
-    response = client.post("/api/factions/create", json=payload)
+    response = client.post(f"/api/factions/novel/{novel_id}/create", json=payload)
     return {"status_code": response.status_code, "body": response.json()}
+
+
+def _faction_path(novel_id: str, faction_id: str) -> str:
+    """生成新版小说作用域阵营路径。
+
+    Args:
+        novel_id: 小说 ObjectId 字符串。
+        faction_id: 业务层阵营 ID。
+
+    Returns:
+        阵营详情 API 路径。
+    """
+    return f"/api/factions/novel/{novel_id}/{faction_id}"
 
 
 def test_create_faction_auto_id_and_defaults(client: TestClient, create_novel):
@@ -32,11 +54,27 @@ def test_create_faction_auto_id_and_defaults(client: TestClient, create_novel):
     assert created["status_code"] == 200
     assert created["body"]["faction_id"] == "fac_000001"
 
-    detail = client.get(f"/api/factions/{created['body']['faction_id']}")
+    detail = client.get(_faction_path(novel_id, created["body"]["faction_id"]))
     assert detail.status_code == 200
     assert detail.json()["name"] == "天衡宗"
     assert detail.json()["alias"] == []
     assert detail.json()["is_public"] is True
+
+
+def test_same_faction_id_can_exist_in_different_novels(client: TestClient, create_novel):
+    first_novel_id = create_novel("factions_scope_a")
+    second_novel_id = create_novel("factions_scope_b")
+
+    first = _create_faction(client, first_novel_id, faction_id="fac_shared", name="甲阵营")
+    second = _create_faction(client, second_novel_id, faction_id="fac_shared", name="乙阵营")
+
+    first_detail = client.get(_faction_path(first_novel_id, "fac_shared"))
+    second_detail = client.get(_faction_path(second_novel_id, "fac_shared"))
+
+    assert first["status_code"] == 200
+    assert second["status_code"] == 200
+    assert first_detail.json()["name"] == "甲阵营"
+    assert second_detail.json()["name"] == "乙阵营"
 
 
 def test_create_child_faction_and_get_children(client: TestClient, create_novel):
@@ -62,7 +100,7 @@ def test_create_child_faction_and_get_children(client: TestClient, create_novel)
     assert children.json()["data"][0]["faction_id"] == child["body"]["faction_id"]
 
 
-def test_duplicate_faction_id_conflict(client: TestClient, create_novel):
+def test_duplicate_faction_id_conflict_in_same_novel(client: TestClient, create_novel):
     novel_id = create_novel("factions_duplicate")
     first = _create_faction(client, novel_id, faction_id="fac_custom_duplicate", name="甲阵营")
     duplicate = _create_faction(client, novel_id, faction_id="fac_custom_duplicate", name="乙阵营")
@@ -73,9 +111,8 @@ def test_duplicate_faction_id_conflict(client: TestClient, create_novel):
 
 def test_create_faction_bad_novel(client: TestClient):
     response = client.post(
-        "/api/factions/create",
+        "/api/factions/novel/000000000000000000000000/create",
         json={
-            "novel_id": "000000000000000000000000",
             "name": "孤儿阵营",
         },
     )
@@ -99,16 +136,27 @@ def test_get_factions_by_novel_sorted(client: TestClient, create_novel):
     assert [item["sort_order"] for item in data] == [10, 20, 30]
 
 
-def test_get_faction_by_id_and_not_found(client: TestClient, create_novel):
+def test_get_faction_by_scoped_id_and_not_found(client: TestClient, create_novel):
     novel_id = create_novel("factions_detail")
     created = _create_faction(client, novel_id, name="天衡宗")
 
-    found = client.get(f"/api/factions/{created['body']['faction_id']}")
-    missing = client.get("/api/factions/fac_not_exists")
+    found = client.get(_faction_path(novel_id, created["body"]["faction_id"]))
+    missing = client.get(_faction_path(novel_id, "fac_not_exists"))
 
     assert found.status_code == 200
     assert found.json()["name"] == "天衡宗"
     assert missing.status_code == 404
+
+
+def test_old_unscoped_faction_routes_are_removed(client: TestClient, create_novel):
+    novel_id = create_novel("factions_removed_routes")
+    created = _create_faction(client, novel_id, name="天衡宗")
+
+    removed_detail = client.get(f"/api/factions/{created['body']['faction_id']}")
+    removed_create = client.post("/api/factions/create", json={"novel_id": novel_id, "name": "旧接口"})
+
+    assert removed_detail.status_code == 404
+    assert removed_create.status_code == 404
 
 
 def test_get_factions_by_level_type(client: TestClient, create_novel):
@@ -130,7 +178,7 @@ def test_update_faction_info(client: TestClient, create_novel):
     faction_id = created["body"]["faction_id"]
 
     updated = client.put(
-        f"/api/factions/{faction_id}",
+        _faction_path(novel_id, faction_id),
         json={
             "name": "天衡宗修订版",
             "alias": ["天衡", "衡宗"],
@@ -138,7 +186,7 @@ def test_update_faction_info(client: TestClient, create_novel):
             "extra": {"symbol": "天衡剑印"},
         },
     )
-    detail = client.get(f"/api/factions/{faction_id}")
+    detail = client.get(_faction_path(novel_id, faction_id))
 
     assert updated.status_code == 200
     assert updated.json()["success"] is True
@@ -154,9 +202,8 @@ def test_batch_update_sort_order(client: TestClient, create_novel):
     third = _create_faction(client, novel_id, name="丙", sort_order=20)
 
     updated = client.patch(
-        "/api/factions/batch-sort",
+        f"/api/factions/novel/{novel_id}/batch-sort",
         json={
-            "novel_id": novel_id,
             "sort_map": {
                 first["body"]["faction_id"]: 20,
                 second["body"]["faction_id"]: 30,
@@ -175,37 +222,61 @@ def test_batch_update_sort_order(client: TestClient, create_novel):
     ]
 
 
-def test_soft_delete_parent_unlinks_children_and_restore(client: TestClient, create_novel):
-    novel_id = create_novel("factions_restore")
-    parent = _create_faction(client, novel_id, name="天衡宗")
+def test_soft_delete_parent_unlinks_only_same_novel_children_and_restore(client: TestClient, create_novel):
+    first_novel_id = create_novel("factions_restore_a")
+    second_novel_id = create_novel("factions_restore_b")
+    parent = _create_faction(client, first_novel_id, faction_id="fac_parent", name="天衡宗")
     child = _create_faction(
         client,
-        novel_id,
+        first_novel_id,
         name="执法堂",
         parent_faction_id=parent["body"]["faction_id"],
     )
+    other_parent = _create_faction(client, second_novel_id, faction_id="fac_parent", name="另一本父阵营")
+    other_child = _create_faction(
+        client,
+        second_novel_id,
+        name="另一本子阵营",
+        parent_faction_id=other_parent["body"]["faction_id"],
+    )
 
-    deleted = client.delete(f"/api/factions/{parent['body']['faction_id']}")
-    missing = client.get(f"/api/factions/{parent['body']['faction_id']}")
-    child_detail = client.get(f"/api/factions/{child['body']['faction_id']}")
-    restored = client.post(f"/api/factions/{parent['body']['faction_id']}/restore")
-    restored_detail = client.get(f"/api/factions/{parent['body']['faction_id']}")
+    deleted = client.delete(_faction_path(first_novel_id, parent["body"]["faction_id"]))
+    missing = client.get(_faction_path(first_novel_id, parent["body"]["faction_id"]))
+    child_detail = client.get(_faction_path(first_novel_id, child["body"]["faction_id"]))
+    other_child_detail = client.get(_faction_path(second_novel_id, other_child["body"]["faction_id"]))
+    restored = client.post(f"{_faction_path(first_novel_id, parent['body']['faction_id'])}/restore")
+    restored_detail = client.get(_faction_path(first_novel_id, parent["body"]["faction_id"]))
 
     assert deleted.status_code == 200
     assert deleted.json()["success"] is True
     assert missing.status_code == 404
     assert child_detail.status_code == 200
     assert child_detail.json()["parent_faction_id"] is None
+    assert other_child_detail.status_code == 200
+    assert other_child_detail.json()["parent_faction_id"] == "fac_parent"
     assert restored.status_code == 200
     assert restored.json()["success"] is True
     assert restored_detail.status_code == 200
+
+
+def test_soft_delete_then_recreate_same_faction_id_and_restore_conflict(client: TestClient, create_novel):
+    novel_id = create_novel("factions_partial_unique")
+    original = _create_faction(client, novel_id, faction_id="fac_reusable", name="原阵营")
+
+    deleted = client.delete(_faction_path(novel_id, original["body"]["faction_id"]))
+    recreated = _create_faction(client, novel_id, faction_id="fac_reusable", name="新阵营")
+    restore_conflict = client.post(f"{_faction_path(novel_id, original['body']['faction_id'])}/restore")
+
+    assert deleted.status_code == 200
+    assert recreated["status_code"] == 200
+    assert restore_conflict.status_code == 409
 
 
 def test_hard_delete_requires_soft_delete(client: TestClient, create_novel):
     novel_id = create_novel("factions_hard_guard")
     created = _create_faction(client, novel_id, name="四海商盟")
 
-    rejected = client.delete(f"/api/factions/{created['body']['faction_id']}/hard")
+    rejected = client.delete(f"{_faction_path(novel_id, created['body']['faction_id'])}/hard")
 
     assert rejected.status_code == 400
 
@@ -215,9 +286,9 @@ def test_hard_delete_faction_after_soft_delete(client: TestClient, create_novel)
     created = _create_faction(client, novel_id, name="四海商盟")
     faction_id = created["body"]["faction_id"]
 
-    client.delete(f"/api/factions/{faction_id}")
-    deleted = client.delete(f"/api/factions/{faction_id}/hard")
-    missing = client.get(f"/api/factions/{faction_id}")
+    client.delete(_faction_path(novel_id, faction_id))
+    deleted = client.delete(f"{_faction_path(novel_id, faction_id)}/hard")
+    missing = client.get(_faction_path(novel_id, faction_id))
 
     assert deleted.status_code == 200
     assert deleted.json()["stats"]["faction_deleted"] == 1
@@ -231,7 +302,7 @@ def test_hard_delete_novel_cascades_factions(client: TestClient, create_novel):
 
     soft_deleted = client.delete(f"/api/novels/{novel_id}")
     hard_deleted = client.delete(f"/api/novels/{novel_id}/hard")
-    missing = client.get(f"/api/factions/{faction_id}")
+    missing = client.get(_faction_path(novel_id, faction_id))
 
     assert soft_deleted.status_code == 200
     assert hard_deleted.status_code == 200

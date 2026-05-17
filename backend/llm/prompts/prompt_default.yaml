@@ -1,0 +1,357 @@
+llm_provider_test:
+  text_probe_prompt: |
+    请只回复：PROVIDER_TEXT_OK
+  stream_probe_prompt: |
+    请用尽量短的内容回复：PROVIDER_STREAM_OK
+  json_schema_probe_prompt: |
+    请按结构化输出返回 code 等于 ok，message 等于 ready。不要添加额外解释。
+  function_call_probe_prompt: |
+    请调用可用工具 report_provider_probe，并把 token 设为 probe-token-73、status 设为 ok。不要直接回答。
+  function_result_probe_prompt: |
+    工具执行结果如下：{tool_result}
+    请只回复：PROVIDER_FUNCTION_OK {probe_token}
+
+# 从AI创建小说 Prompt 配置
+create_novel_by_ai:
+  #扩展故事
+  expand_idea_to_full_novel_story_prompt_base: |
+    你是一名资深小说策划编辑兼小说作者，擅长将一个零散创意，扩写为“一整部长篇小说的完整故事雏形”。
+
+    我会给你一个“小说创意”，请你基于这个创意进行合理联想与深化，把它写成一篇约3000字的完整故事。
+
+    请使用叙事性的散文体裁书写，而非大纲或列表。它必须是一个读起来逻辑连贯、情感饱满的短篇小说。
+
+    你的写作目标如下：
+      1. 你需要将用户创意，扩展并讲述成“一整部长篇小说真正讲完后的完整故事”。
+      2. 这个故事需要像一部长篇小说的“浓缩版”，它的内容应该是一个完整的故事闭环。
+      3. 这个故事必须具备清晰的起承转合，有人物、有冲突、有转折、有高潮、有余韵。
+
+    请严格遵循以下创作原则：
+
+    【一、核心任务】
+    你需要将用户创意，扩展并用约3000字讲完一部长篇小说从开端到结局的完整故事。
+    这篇3000字内容必须覆盖：
+      - 故事的开端
+      - 主要冲突的发展
+      - 中期升级与重大转折
+      - 后期高潮与最终对决/最终抉择
+      - 整个故事的最终结局
+
+    【二、内容定位】
+    这不是提纲，不是设定集，不是分卷简介，也不是人物小传。
+    这是一篇具有完整故事感的“长篇小说全集压缩版叙事”。
+
+    【三、结构要求】
+    故事必须体现出一整部长篇小说应有的完整主线弧线，至少要自然包含以下部分：
+      1. 主角的初始处境、性格缺口、目标或危机
+      2. 核心事件或命运转折的开始
+      3. 主角在成长过程中遭遇的主要阻碍、敌人、代价与选择
+      4. 至少2至3次重要阶段变化或重大转折
+      5. 主角与关键人物/关键关系的变化
+      6. 故事主线冲突不断升级直至最终高潮
+      7. 最终真相、最终决战、最终抉择或最终命运落点
+      8. 一个明确的结局，让整本书真正讲完
+
+    【四、叙事要求】
+    1. 虽然本质上是在浓缩一整本长篇小说，但表达方式必须尽量保持“故事感”。
+    2. 不要写成分点式、目录式、大纲式总结。
+    3. 不要机械地写成“第一阶段……第二阶段……第三阶段……”。
+    4. 要用连贯叙事把整本书讲出来，让读者感觉自己是在读一个被高度浓缩过的完整故事。
+    5. 可以适度概括次要支线，但主线必须清楚、连贯、有起伏。
+    6. 必须体现出“长篇体量感”——让人感觉这背后本可以展开成很多卷、很多章节。
+    7. 可以压缩细节，但不能丢失关键因果、核心人物变化与终局完成感。
+
+    【五、重点控制】
+    1. 不要只写前半段，不要停在中途，不要留下“故事还没讲完”的状态。
+    2. 不要把这3000字写成“长篇小说开头样章”。
+    3. 不要为了追求细节场景感，而只覆盖很小一段剧情。
+    4. 不要写成纯设定说明。
+    5. 不要写成过于粗糙的剧情摘要，仍然要有阅读上的流动感。
+    6. 故事结尾必须是真正的整书结局，而不是留待续写的断点。
+
+    【六、风格要求】
+    - 语言流畅
+    - 叙事清晰
+    - 有戏剧张力
+    - 有人物命运感
+    - 有长篇小说被压缩后的厚重感
+
+    【七、输出要求】
+    - 直接输出故事正文
+    - 不要输出分析
+    - 不要输出分点说明
+    - 不要输出“后续可扩展方向”等附加内容
+    - 字数控制在约3000字，可有少量浮动
+    - 输出内容必须是“一整本长篇小说的完整压缩故事”
+
+    我的创意如下：
+    {user_idea}
+  expand_idea_to_full_novel_story_prompt_with_schema_suffix: |
+    在正式写作前，请先确保你写的是：
+    - 一整本长篇小说的完整故事，这篇内容必须覆盖“整本书”的完整主线，而不是某一个阶段。
+    - 要有明显的时间推进、冲突升级、人物成长与最终结局。
+    - 允许适度概括次要过程，但不能因此失去故事连贯性。
+    - 应当让读者感受到：这是一本几十万字长篇小说被压缩成了3000字。
+    - 不可只写一个事件，也不可只写前期成长。
+    - 不可只埋伏笔不回收，必须完成主线回收与结局落点。
+
+    现在请直接开始创作正文。
+  expand_idea_to_full_novel_story_prompt_without_schema_suffix: |
+    请按照以下 JSON 结构返回，不要输出额外内容，字数不得超过4000字：
+    {{"plot": "完整的3000字长篇压缩故事正文"}}
+  
+  #提炼小说构思要素
+  extract_idea_prompt_base: |
+    你是一名资深小说编辑, 请从用户提供的长篇小说压缩剧情中提炼出清晰的小说构思要素。
+
+    剧情文本: 
+    {plot}
+
+    提炼要求: 
+    2. 类型: 选择最合适的小说类型（如玄幻、科幻、都市、悬疑等）
+    3. 基调: 整体情绪（如热血、黑暗、轻松、搞笑等）
+    4. 目标读者: 大致读者群体（如男频、女频、青少年等）
+    5. 核心设想: 用几句话描述故事的核心设想
+
+  extract_idea_prompt_with_schema_suffix: |
+    请只提炼出故事构思要素, 不要输出任何额外内容。
+  extract_idea_prompt_without_schema_suffix: |
+    请严格输出 JSON, 不要输出任何额外内容: 
+    {{
+      "genre": "小说类型，如玄幻、科幻、都市、悬疑、历史、仙侠等，字数限制不超过20字",
+      "tone": "整体基调，如热血、黑暗、轻松、搞笑、治愈、压抑等，字数限制不超过20字",
+      "target_audience": "目标读者，如男频、女频、青少年等，字数限制不超过20字",
+      "core_idea": "核心设想，字数限制不超过250字"
+    }}
+
+  #故事核心
+  core_seed_prompt_base: |
+    作为专业作家, 请用“雪花写作法”第一步构建故事核心。
+
+    剧情: {plot}
+    类型: {genre}
+    基调: {tone}
+    目标读者: {target_audience}
+    核心设想: {core_idea}
+    篇幅: 约{number_of_chapters}章（每章{words_per_chapter}字）
+
+    请用单句公式概括故事本质, 例如: 
+    “当[主角]遭遇[核心事件], 必须[关键行动], 否则[灾难后果]；与此同时, [隐藏的更大危机]正在发酵。”
+
+    要求: 
+    1. 必须包含显性冲突与潜在危机
+    2. 体现人物核心驱动力
+    3. 暗示世界观关键矛盾
+    4. 使用30-100字精准表达
+  core_seed_prompt_with_schema_suffix: |
+    请只生成故事核心内容。
+  core_seed_prompt_without_schema_suffix: |
+    请严格输出一个 JSON 对象, 不要输出任何额外内容: 
+    {{"core_seed": "故事核心公式，需包含显性冲突、潜在危机、人物核心驱动力与世界观关键矛盾暗示，长度30-100字，不得超过100字"}}
+
+  #小说整体设定
+  novel_meta_prompt_base: |
+    你是一名专业小说策划人, 请基于以下信息构建小说的整体设定。
+
+    基础信息: 
+    剧情: {plot}
+    类型: {genre}
+    基调: {tone}
+    目标读者: {target_audience}
+    核心设想: {core_idea}
+    篇幅: 约{number_of_chapters}章（每章{words_per_chapter}字）
+
+    故事核心: 
+    {core_seed}
+
+    请在保持逻辑一致的前提下, 进行创造性扩展, 生成完整的小说基础信息。
+
+    生成要求: 
+
+    1. 标题: 
+       - 具有吸引力和传播性
+       - 符合该类型读者审美
+
+    2. 副标题: 
+       - 补充核心冲突或主题
+       - 具有一定文学感或商业感
+
+    3. 引言: 
+       - 100-300字
+       - 引入故事，吸引读者阅读兴趣
+
+    4. 简介: 
+       - 100-500字
+       - 需清晰呈现主线冲突与悬念
+
+    5. 世界观: 
+       - 说明世界规则 / 力量体系 / 社会结构
+       - 不少于100字
+
+    6. 创作风格: 
+       - 如“偏黑暗现实”“轻快幽默”“史诗宏大”等
+
+    7. 叙事视角: 
+       - 如“第一人称 / 第三人称有限视角 / 全知视角”
+
+    8. 时代背景: 
+       - 如“架空古代 / 未来星际 / 现代都市 / 末世废土”等
+
+    9. 标签: 
+       - 3-5个, 概括小说核心元素, 如“硬科幻”“冒险”“爱情”等
+
+    要求: 
+    - 所有设定必须围绕故事核心展开
+    - 风格与类型保持一致
+    - 不要出现自相矛盾
+  novel_meta_prompt_with_schema_suffix: |
+    请只生成小说整体设定内容。
+  novel_meta_prompt_without_schema_suffix: |
+    请严格输出 JSON, 不要输出任何额外内容: 
+    {{
+      "title": "小说主标题，具有吸引力和传播性，符合类型读者审美，字数限制不超过20字",
+      "subtitle": "副标题，补充核心冲突或主题，具有一定文学感或商业感，字数限制不超过20字",
+      "introduction": "引言，100-300字，引入故事，吸引读者阅读兴趣",
+      "summary": "小说简介，100-500字，需清晰呈现主线冲突与悬念",
+      "worldview": "世界观，说明世界规则 / 力量体系 / 社会结构等，字数限制不超过800字",
+      "writing_style": "创作风格，如“偏黑暗现实”“轻快幽默”“史诗宏大”等，字数限制不超过40字",
+      "narrative_pov": "叙事视角，只能为第一人称、第三人称有限视角、全知视角之一",
+      "era_background": "时代背景，如“架空古代 / 未来星际 / 现代都市 / 末世废土”等，字数限制不超过40字",
+      "tags": ["标签1", "标签2", "标签3"]
+    }}
+
+# 创建态单字段改写 Prompt 配置
+rewrite_novel_field:
+  rewrite_novel_field_prompt_base: |
+    你是一名资深中文小说策划编辑，正在帮助用户微调“创建新小说”页面中的单个字段。
+
+    目标字段: {target_field_label} ({target_field})
+
+    用户本次修改需求:
+    {instruction}
+
+    目标字段当前内容:
+    {current_value}
+
+    当前小说创建草稿中的精简上下文:
+    {context_json}
+
+    该字段此前对话记录:
+    {history_text}
+
+    改写要求:
+    1. 只改写目标字段，不要输出其他字段，也不要解释你的修改过程。
+    2. 改写结果必须符合精简上下文，不要与标题、类型、核心创意、故事核心、世界背景或风格互相矛盾。
+    3. 如果上下文没有提供某个长文本字段，说明它与本次改写无关，不要主动推断或复述该字段。
+    4. 如果目标字段是 tags，value 必须是 3 到 8 个短标签组成的字符串数组。
+    5. 如果目标字段是 narrative_pov，value 只能是以下三项之一: 第一人称、第三人称有限视角、全知视角。
+    6. 其他字段的 value 必须是字符串，直接给出可写回表单的最终内容。
+  rewrite_novel_field_prompt_with_schema_suffix: |
+    请只生成目标字段改写结果，不要输出任何额外内容。
+  rewrite_novel_field_prompt_without_schema_suffix: |
+    请严格输出 JSON，不要输出任何额外内容:
+    {{"target_field": "{target_field}", "value": "改写后的内容"}}
+
+# 阵营 Prompt 配置
+create_factions_by_ai:
+  create_core_factions_prompt_base: |
+    你是一名资深中文长篇小说世界观策划，正在为一部已保存的小说创建“全书级核心阵营”和“阵营之间的核心关系”。
+
+    小说基础信息:
+    标题: {title}
+    类型: {genre}
+    基调: {tone}
+    目标读者: {target_audience}
+    核心设想: {core_idea}
+    篇幅: 约{number_of_chapters}章（每章{words_per_chapter}字）
+    标签: {tags_json}
+
+    故事核心:
+    {core_seed}
+
+    简介:
+    {summary}
+
+    世界观:
+    {worldview}
+
+    创作风格: {writing_style}
+    叙事视角: {narrative_pov}
+    时代背景: {era_background}
+
+    主线剧情文本:
+    {plot}
+
+    生成目标:
+    1. 只生成会长期影响主线冲突和主要角色站位的全书级核心阵营。
+    2. 核心阵营数量必须为 2 到 6 个，通常 3 到 5 个最合适。
+    3. 核心阵营不是世界百科，不要生成卷级地方组织、临时小队、任务型团体或章节事件组织。
+    4. 本阶段角色尚未创建，严禁输出角色名单、角色归属、角色身份、角色绑定、角色派系职位。
+    5. 如果主线剧情文本里已经出现人名，也只能把它当作剧情线索，不要围绕人物创建角色信息。
+    6. 每个阵营必须直接服务主线冲突，并能在多卷中持续施加压力。
+    7. 阵营之间至少要有一组明确对立或历史敌对关系，也至少要有一组复杂关系，如冷战、秘密合作、依附、历史盟友反目。
+
+    每个核心阵营必须包含:
+    - name: 阵营名称
+    - faction_type: 阵营类型
+    - positioning: 阵营在世界结构中的位置
+    - public_stance: 公开立场
+    - core_goal: 真实核心目标
+    - hidden_goal: 隐藏目标，可为空字符串
+    - resources_and_advantages: 1 到 6 项资源或优势
+    - organization_style: 组织气质或行动风格
+    - core_values: 1 到 6 项价值观
+    - conflict_with_mainline: 与主线冲突的关系
+    - is_public: 是否公开存在
+    - influence_scope: 影响范围
+    - expandability: 后续可扩展方向
+    - tags: 阵营标签，可为空数组
+
+    每条阵营关系必须包含:
+    - source_faction_name: 发起方阵营名称，必须来自本次生成的核心阵营名称
+    - target_faction_name: 目标方阵营名称，必须来自本次生成的核心阵营名称
+    - relation_type: 只能使用 hostile/allied/cold_war/dependent/subordinate/trade_partner/secret_cooperation/historical_enemy
+    - current_state: 当前关系状态
+    - core_conflict: 关系中的核心矛盾
+    - hidden_tension: 深层未爆发矛盾，可为空字符串
+    - possible_change: 后续可能变化
+    - intensity: 1 到 5 的关系强度
+    - is_active: 是否当前有效
+
+  create_core_factions_prompt_with_schema_suffix: |
+    请只生成全书核心阵营与阵营关系，不要输出解释、Markdown 或角色信息。
+  create_core_factions_prompt_without_schema_suffix: |
+    请严格输出 JSON，不要输出额外内容:
+    {{
+      "core_factions": [
+        {{
+          "name": "阵营名称",
+          "faction_type": "国家政权/宗门组织/地下势力/商业联盟/宗教组织/异族势力/研究组织/中立组织/秘密结社等",
+          "positioning": "阵营在世界结构中的位置",
+          "public_stance": "公开立场",
+          "core_goal": "真实核心目标",
+          "hidden_goal": "隐藏目标，可为空字符串",
+          "resources_and_advantages": ["资源或优势1", "资源或优势2"],
+          "organization_style": "组织气质或行动风格",
+          "core_values": ["价值观1", "价值观2"],
+          "conflict_with_mainline": "该阵营与主线冲突的关系",
+          "is_public": true,
+          "influence_scope": "全域级/多区域级/区域级",
+          "expandability": "后续可扩展方向",
+          "tags": ["标签1", "标签2"]
+        }}
+      ],
+      "faction_relations": [
+        {{
+          "source_faction_name": "阵营A",
+          "target_faction_name": "阵营B",
+          "relation_type": "hostile",
+          "current_state": "当前关系状态",
+          "core_conflict": "核心矛盾",
+          "hidden_tension": "深层张力",
+          "possible_change": "可能变化",
+          "intensity": 5,
+          "is_active": true
+        }}
+      ]
+    }}

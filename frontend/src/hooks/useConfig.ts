@@ -2,7 +2,12 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { apiGet, apiPut } from "@/lib/api";
-import { normalizeAppConfig, type AppConfig } from "@/types/config";
+import {
+  normalizeAppConfig,
+  type AppConfig,
+  type AppConfigSavePayload,
+  type ProviderRenameOperation,
+} from "@/types/config";
 
 interface ConfigState {
   config: AppConfig | null;
@@ -13,6 +18,7 @@ interface ConfigState {
 }
 
 export function useConfig() {
+  const [pendingProviderRenames, setPendingProviderRenames] = useState<ProviderRenameOperation[]>([]);
   const [state, setState] = useState<ConfigState>({
     config: null,
     loading: true,
@@ -30,6 +36,7 @@ export function useConfig() {
     try {
       const res = await apiGet<{ data: AppConfig }>("/api/config");
       const normalized = normalizeAppConfig(res.data);
+      setPendingProviderRenames([]);
       setState((s) => ({
         ...s,
         config: normalized,
@@ -50,11 +57,18 @@ export function useConfig() {
     async (data: AppConfig, successMsg: string) => {
       setState((s) => ({ ...s, saving: true, error: null, success: null }));
       try {
+        const payload: AppConfigSavePayload = pendingProviderRenames.length > 0
+          ? {
+              ...data,
+              _provider_renames: pendingProviderRenames,
+            }
+          : data;
         const res = await apiPut<{ message: string; data: AppConfig }>(
           "/api/config",
-          data
+          payload
         );
         const normalized = normalizeAppConfig(res.data);
+        setPendingProviderRenames([]);
         setState((s) => ({
           ...s,
           config: normalized,
@@ -71,7 +85,7 @@ export function useConfig() {
         return false;
       }
     },
-    []
+    [pendingProviderRenames]
   );
 
   useEffect(() => {
@@ -82,6 +96,8 @@ export function useConfig() {
     ...state,
     fetchConfig,
     saveConfig,
+    queueProviderRename: (rename: ProviderRenameOperation) =>
+      setPendingProviderRenames((current) => [...current, rename]),
     setConfig: (config: AppConfig) =>
       setState((s) => ({ ...s, config })),
     clearMessages,

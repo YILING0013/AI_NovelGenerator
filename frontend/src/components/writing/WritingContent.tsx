@@ -5,6 +5,7 @@ import type { WritingSidebarItem } from "@/types/novel";
 import WritingSidebar from "./WritingSidebar";
 import WritingPlaceholder from "./WritingPlaceholder";
 import NovelInfoWorkspace from "./novel-info/NovelInfoWorkspace";
+import FactionCardsWorkspace from "./factions/FactionCardsWorkspace";
 
 interface WritingContentProps {
   mode: "create" | "edit";
@@ -18,13 +19,16 @@ export default function WritingContent({ mode, novelId }: WritingContentProps) {
     if (activeItem === "novel-info") {
       return <NovelInfoWorkspace mode={mode} novelId={novelId} />;
     }
+    if (activeItem === "faction-cards") {
+      return <FactionCardsWorkspace mode={mode} novelId={novelId} />;
+    }
     return <WritingPlaceholder moduleKey={activeItem} />;
   };
 
   return (
-    <div className="h-[calc(100vh-3.5rem)] flex">
+    <div className="flex h-[calc(100vh-3.5rem)] flex-col md:flex-row">
       <WritingSidebar activeItem={activeItem} onSelect={setActiveItem} />
-      <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {renderMainArea()}
       </div>
     </div>

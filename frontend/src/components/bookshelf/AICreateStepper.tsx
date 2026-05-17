@@ -1,11 +1,20 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@heroui/react";
 import { apiPostSSE } from "@/lib/api";
+import {
+  clearAICreateCache,
+  hasAICreateCachedSteps,
+  isSameAICreateInput,
+  loadAICreateCache,
+  saveAICreateCache,
+  trimCachedStepsToPrefix,
+  type AICreateCacheInput,
+} from "@/lib/aiCreateCache";
 import { OptionalSliderParam, OptionalNumberParam, OptionalTextParam } from "@/components/shared/OptionalParamControls";
-import type { AICreateResponse, AICreateRequest } from "@/types/novel";
+import type { AICreateCachedSteps, AICreateRequest, AICreateResponse, AICreateStepKey } from "@/types/novel";
 
 interface AICreateStepperProps {
   onComplete: (result: AICreateResponse, chapters: number, wordsPerChapter: number) => void;
@@ -14,18 +23,69 @@ interface AICreateStepperProps {
 type StepStatus = "pending" | "running" | "done" | "error";
 
 interface StepState {
-  key: string;
+  key: AICreateStepKey;
   status: StepStatus;
+  cached?: boolean;
   error?: string;
 }
 
-const STEPS = ["expand_idea", "extract_idea", "core_seed", "novel_meta"] as const;
+const STEPS: AICreateStepKey[] = ["expand_idea", "extract_idea", "core_seed", "novel_meta"];
+
+function isStepKey(value: unknown): value is AICreateStepKey {
+  return typeof value === "string" && STEPS.includes(value as AICreateStepKey);
+}
+
+function buildStepStates(cachedSteps: AICreateCachedSteps, failedStep?: AICreateStepKey): StepState[] {
+  return STEPS.map((key) => {
+    if (cachedSteps[key]) {
+      return { key, status: "done", cached: true };
+    }
+    if (failedStep === key) {
+      return { key, status: "error", error: "" };
+    }
+    return { key, status: "pending" };
+  });
+}
+
+function mergeStepData(
+  current: AICreateCachedSteps,
+  step: AICreateStepKey,
+  data: unknown,
+): AICreateCachedSteps {
+  const next: AICreateCachedSteps = { ...current };
+
+  // 每个 step 的返回结构不同，按明确分支合并，避免把错误字段写入缓存。
+  if (step === "expand_idea") {
+    next.expand_idea = data as AICreateCachedSteps["expand_idea"];
+  } else if (step === "extract_idea") {
+    next.extract_idea = data as AICreateCachedSteps["extract_idea"];
+  } else if (step === "core_seed") {
+    next.core_seed = data as AICreateCachedSteps["core_seed"];
+  } else if (step === "novel_meta") {
+    next.novel_meta = data as AICreateCachedSteps["novel_meta"];
+  }
+
+  return trimCachedStepsToPrefix(next);
+}
+
+function mergePartialResult(current: AICreateCachedSteps, data: unknown): AICreateCachedSteps {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return current;
+  }
+
+  return trimCachedStepsToPrefix({
+    ...current,
+    ...(data as AICreateCachedSteps),
+  });
+}
 
 export default function AICreateStepper({ onComplete }: AICreateStepperProps) {
   const t = useTranslations("create");
-  const [idea, setIdea] = useState("");
-  const [chapters, setChapters] = useState(600);
-  const [wordsPerChapter, setWordsPerChapter] = useState(3000);
+  const [initialCache] = useState(() => loadAICreateCache());
+  const initialSteps = initialCache?.steps ?? {};
+  const [idea, setIdea] = useState(initialCache?.input.user_idea ?? "");
+  const [chapters, setChapters] = useState(initialCache?.input.number_of_chapters ?? 600);
+  const [wordsPerChapter, setWordsPerChapter] = useState(initialCache?.input.words_per_chapter ?? 3000);
   const [showGenParams, setShowGenParams] = useState(false);
   const [temperature, setTemperature] = useState<number | null>(null);
   const [topP, setTopP] = useState<number | null>(null);
@@ -33,32 +93,87 @@ export default function AICreateStepper({ onComplete }: AICreateStepperProps) {
   const [presencePenalty, setPresencePenalty] = useState<number | null>(null);
   const [frequencyPenalty, setFrequencyPenalty] = useState<number | null>(null);
   const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
+  const [cachedSteps, setCachedSteps] = useState<AICreateCachedSteps>(initialSteps);
   const [steps, setSteps] = useState<StepState[]>(
-    STEPS.map((key) => ({ key, status: "pending" }))
+    buildStepStates(initialSteps, initialCache?.failed_step),
   );
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<AICreateResponse | null>(null);
-  const stepsRef = useRef(steps);
-  stepsRef.current = steps;
+  const cachedStepsRef = useRef<AICreateCachedSteps>(initialSteps);
 
-  const stepLabelMap: Record<string, string> = {
+  const stepLabelMap: Record<AICreateStepKey, string> = {
     expand_idea: t("stepExpandIdea"),
     extract_idea: t("stepExtractIdea"),
     core_seed: t("stepCoreSeed"),
     novel_meta: t("stepNovelMeta"),
   };
 
+  const hasFailedStep = steps.some((step) => step.status === "error");
+  const hasCachedSteps = hasAICreateCachedSteps(cachedSteps);
+
+  const getCurrentInput = (
+    nextIdea = idea,
+    nextChapters = chapters,
+    nextWordsPerChapter = wordsPerChapter,
+  ): AICreateCacheInput => ({
+    user_idea: nextIdea.trim(),
+    number_of_chapters: nextChapters,
+    words_per_chapter: nextWordsPerChapter,
+  });
+
+  const setCachedStepsState = (nextSteps: AICreateCachedSteps) => {
+    cachedStepsRef.current = nextSteps;
+    setCachedSteps(nextSteps);
+  };
+
+  const resetGenerationState = () => {
+    clearAICreateCache();
+    setResult(null);
+    setCachedStepsState({});
+    setSteps(buildStepStates({}));
+  };
+
+  const handleIdeaChange = (value: string) => {
+    if (value !== idea) {
+      resetGenerationState();
+    }
+    setIdea(value);
+  };
+
+  const handleChaptersChange = (value: number) => {
+    if (value !== chapters) {
+      resetGenerationState();
+    }
+    setChapters(value);
+  };
+
+  const handleWordsPerChapterChange = (value: number) => {
+    if (value !== wordsPerChapter) {
+      resetGenerationState();
+    }
+    setWordsPerChapter(value);
+  };
+
   const startGeneration = async () => {
-    if (!idea.trim()) return;
+    const input = getCurrentInput();
+    if (!input.user_idea) return;
+
+    const storedCache = loadAICreateCache();
+    const reusableCachedSteps = storedCache && isSameAICreateInput(storedCache, input)
+      ? storedCache.steps
+      : cachedStepsRef.current;
+    const normalizedCachedSteps = trimCachedStepsToPrefix(reusableCachedSteps);
 
     setIsRunning(true);
     setResult(null);
-    setSteps(STEPS.map((key) => ({ key, status: "pending" })));
+    setCachedStepsState(normalizedCachedSteps);
+    setSteps(buildStepStates(normalizedCachedSteps));
 
     const payload: AICreateRequest = {
-      user_idea: idea.trim(),
-      number_of_chapters: chapters,
-      words_per_chapter: wordsPerChapter,
+      user_idea: input.user_idea,
+      number_of_chapters: input.number_of_chapters,
+      words_per_chapter: input.words_per_chapter,
+      ...(hasAICreateCachedSteps(normalizedCachedSteps) && { cached_steps: normalizedCachedSteps }),
       ...(temperature != null && { temperature }),
       ...(topP != null && { top_p: topP }),
       ...(maxTokens != null && { max_tokens: maxTokens }),
@@ -73,41 +188,75 @@ export default function AICreateStepper({ onComplete }: AICreateStepperProps) {
         payload,
         (event, data) => {
           if (event === "step") {
-            const stepName = data.step as string;
+            const stepName = data.step;
             const status = data.status as StepStatus;
-            const error = data.error as string | undefined;
+            if (!isStepKey(stepName)) {
+              return;
+            }
+
+            if (status === "done" && data.data) {
+              const nextCachedSteps = mergeStepData(cachedStepsRef.current, stepName, data.data);
+              setCachedStepsState(nextCachedSteps);
+              saveAICreateCache(input, nextCachedSteps);
+            } else if (status === "error") {
+              saveAICreateCache(input, cachedStepsRef.current, stepName);
+            }
 
             setSteps((prev) =>
-              prev.map((s) =>
-                s.key === stepName ? { ...s, status, error } : s
-              )
+              prev.map((step) =>
+                step.key === stepName
+                  ? {
+                      ...step,
+                      status,
+                      cached: status === "done" ? true : step.cached && status !== "running",
+                      error: typeof data.error === "string" ? data.error : undefined,
+                    }
+                  : step,
+              ),
             );
           } else if (event === "done") {
+            const failedStep = isStepKey(data.failed_step) ? data.failed_step : undefined;
+            if (data.partial_result) {
+              const nextCachedSteps = mergePartialResult(cachedStepsRef.current, data.partial_result);
+              setCachedStepsState(nextCachedSteps);
+              saveAICreateCache(input, nextCachedSteps, failedStep);
+            }
+
             if (data.success && data.result) {
               const res = data.result as AICreateResponse;
               setResult(res);
-              onComplete(res, chapters, wordsPerChapter);
+              onComplete(res, input.number_of_chapters, input.words_per_chapter);
             }
           }
-        }
+        },
       );
     } catch (err) {
-      // 如果发生错误，标记当前正在运行的步骤为 error
+      // 网络或浏览器层异常没有后端 step 事件，只能标记当前第一个未完成步骤。
       setSteps((prev) => {
         const firstPending = prev.findIndex(
-          (s) => s.status === "pending" || s.status === "running"
+          (step) => step.status === "pending" || step.status === "running",
         );
         if (firstPending < 0) return prev;
-        return prev.map((s, i) =>
-          i === firstPending
-            ? { ...s, status: "error" as StepStatus, error: err instanceof Error ? err.message : String(err) }
-            : s
+        const failedStep = prev[firstPending].key;
+        saveAICreateCache(input, cachedStepsRef.current, failedStep);
+        return prev.map((step, index) =>
+          index === firstPending
+            ? { ...step, status: "error", error: err instanceof Error ? err.message : String(err) }
+            : step,
         );
       });
     } finally {
       setIsRunning(false);
     }
   };
+
+  const buttonLabel = isRunning
+    ? t("generating")
+    : hasFailedStep
+      ? t("retryFailedStep")
+      : hasCachedSteps
+        ? t("continueAI")
+        : t("startAI");
 
   return (
     <div className="space-y-6 p-1">
@@ -120,7 +269,7 @@ export default function AICreateStepper({ onComplete }: AICreateStepperProps) {
           className="w-full rounded-lg border border-border bg-background p-3 text-sm text-foreground resize-y min-h-[120px] focus:outline-none focus:ring-2 focus:ring-primary"
           placeholder={t("ideaPlaceholder")}
           value={idea}
-          onChange={(e) => setIdea(e.target.value)}
+          onChange={(e) => handleIdeaChange(e.target.value)}
           disabled={isRunning}
         />
       </div>
@@ -135,7 +284,7 @@ export default function AICreateStepper({ onComplete }: AICreateStepperProps) {
             type="number"
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             value={chapters}
-            onChange={(e) => setChapters(Number(e.target.value) || 1)}
+            onChange={(e) => handleChaptersChange(Number(e.target.value) || 1)}
             min={1}
             max={1000}
             disabled={isRunning}
@@ -149,7 +298,7 @@ export default function AICreateStepper({ onComplete }: AICreateStepperProps) {
             type="number"
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             value={wordsPerChapter}
-            onChange={(e) => setWordsPerChapter(Number(e.target.value) || 1000)}
+            onChange={(e) => handleWordsPerChapterChange(Number(e.target.value) || 1000)}
             min={500}
             max={10000}
             disabled={isRunning}
@@ -226,7 +375,7 @@ export default function AICreateStepper({ onComplete }: AICreateStepperProps) {
       </div>
 
       {/* Step Progress */}
-      {(isRunning || result || steps.some((s) => s.status === "error")) && (
+      {(isRunning || result || hasCachedSteps || steps.some((step) => step.status === "error")) && (
         <div className="space-y-3">
           {steps.map((step, idx) => (
             <div key={step.key} className="flex items-center gap-3">
@@ -236,10 +385,10 @@ export default function AICreateStepper({ onComplete }: AICreateStepperProps) {
                   step.status === "done"
                     ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                     : step.status === "running"
-                    ? "bg-primary/10 text-primary"
-                    : step.status === "error"
-                    ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                    : "bg-muted/30 text-muted"
+                      ? "bg-primary/10 text-primary"
+                      : step.status === "error"
+                        ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                        : "bg-muted/30 text-muted"
                 }`}
               >
                 {step.status === "done" ? (
@@ -262,14 +411,17 @@ export default function AICreateStepper({ onComplete }: AICreateStepperProps) {
                     step.status === "done"
                       ? "text-green-700 dark:text-green-400"
                       : step.status === "running"
-                      ? "text-primary"
-                      : step.status === "error"
-                      ? "text-red-600 dark:text-red-400"
-                      : "text-muted"
+                        ? "text-primary"
+                        : step.status === "error"
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-muted"
                   }`}
                 >
                   {stepLabelMap[step.key]}
                 </p>
+                {step.cached && step.status === "done" && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">{t("stepCached")}</p>
+                )}
                 {step.error && (
                   <p className="text-xs text-red-500 mt-0.5">{step.error}</p>
                 )}
@@ -286,7 +438,7 @@ export default function AICreateStepper({ onComplete }: AICreateStepperProps) {
         isDisabled={isRunning || !idea.trim()}
         onPress={startGeneration}
       >
-        {isRunning ? t("generating") : t("startAI")}
+        {buttonLabel}
       </Button>
     </div>
   );

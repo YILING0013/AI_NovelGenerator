@@ -4,6 +4,7 @@
 
 - [tests/test_volumes.py](tests/test_volumes.py)：卷相关 API 集成测试
 - [tests/test_factions.py](tests/test_factions.py)：阵营相关 API 集成测试
+- [tests/test_mongo_transaction.py](tests/test_mongo_transaction.py)：MongoDB 事务封装单元测试，不依赖真实数据库
 - [tests/test_llm.py](tests/test_llm.py)：LLM 集成测试，仅默认跑 OpenAI 兼容接口
 - [tests/conftest.py](tests/conftest.py)：pytest 公共 fixture
 
@@ -31,7 +32,10 @@ pip install -r requirements.txt
 
 - 不需要手动执行 `python main.py`
 - 但需要 MongoDB 配置可用，并且数据库可连接
+- 后端启动时会执行 MongoDB `ping`，连接不可用时测试会在 TestClient 启动阶段失败
 - 测试会自动创建临时小说数据，并在结束后尝试清理
+
+阵营测试使用新版小说作用域 API：`/api/factions/novel/{novel_id}/...`。旧的非作用域阵营接口已移除，不再维护兼容测试。
 
 ### 运行 volumes 测试
 
@@ -49,6 +53,12 @@ python -m pytest tests/test_factions.py -q
 
 ```powershell
 python -m pytest tests/test_volumes.py tests/test_factions.py -q
+```
+
+### 运行 MongoDB 事务封装单元测试
+
+```powershell
+python -m pytest tests/test_mongo_transaction.py -q
 ```
 
 ### 运行全部 API 测试
@@ -116,6 +126,6 @@ python -m pytest tests -x
 ## 6. 注意事项
 
 - API 测试依赖当前应用配置中的 MongoDB 连接信息
-- LLM 测试优先使用环境变量，不依赖 `application/config/config.yaml` 中的 provider 配置
+- LLM 测试优先使用环境变量，不依赖 `backend/config/config.yaml` 中的 provider 配置
 - 小说硬删除现在会级联删除 factions 数据，避免 API 测试后留下阵营残留
 - 如果测试失败，优先先看数据库连接、环境变量和外部接口连通性

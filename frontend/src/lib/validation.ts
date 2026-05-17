@@ -22,6 +22,12 @@ export function validateConfig(config: AppConfig, t: TFunc): string | null {
   if (config.llm?.default_provider && !providerAliases.includes(config.llm.default_provider)) {
     return t("provider.mustExist");
   }
+  if (
+    config.llm?.format_review_provider &&
+    !providerAliases.includes(config.llm.format_review_provider)
+  ) {
+    return t("validation.providerNotExist") + `: ${config.llm.format_review_provider}`;
+  }
 
   // Provider alias validation
   for (const alias of providerAliases) {
@@ -45,6 +51,9 @@ export function validateConfig(config: AppConfig, t: TFunc): string | null {
         for (const [stepName, step] of Object.entries(wf.steps)) {
           if (step.provider && !providerAliases.includes(step.provider)) {
             return t("workflow.providerNotExist") + `: ${stepName} → ${step.provider}`;
+          }
+          if (step.timeout_seconds != null && step.timeout_seconds <= 0) {
+            return t("workflow.timeoutPositive") + `: ${stepName}`;
           }
         }
       }

@@ -6,8 +6,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { Card, Button } from "@heroui/react";
 import AICreateStepper from "./AICreateStepper";
 import type { AICreateResponse, WritingDraft } from "@/types/novel";
-
-const DRAFT_KEY = "writing_draft";
+import { saveWritingDraft } from "@/lib/writingDraft";
+import { clearAICreateCache } from "@/lib/aiCreateCache";
 
 interface NewNovelPanelProps {
   onCreated: (novelId: string) => void;
@@ -45,9 +45,10 @@ export default function NewNovelPanel({ onCancel }: NewNovelPanelProps) {
       number_of_chapters: chapters,
       words_per_chapter: wordsPerChapter,
     };
-    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    const draftId = saveWritingDraft(draft);
+    clearAICreateCache();
     setRedirecting(true);
-    router.push(`/${locale}/writing/new`);
+    router.push(`/${locale}/writing/new?draft=${encodeURIComponent(draftId)}`);
   };
 
   return (

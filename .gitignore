@@ -1,10 +1,12 @@
 **/__pycache__/
+/static/
+/Developer_Documentation/
+/logs/
+.venv/
+.vscode/
+.pytest_cache/
 *.py[cod]
 *$py.class
-/static
-/Developer_Documentation
-.venv
-.vscode
 config.yaml
 publish-public.ps1
 PUBLIC_RELEASE.md

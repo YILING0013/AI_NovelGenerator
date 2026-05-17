@@ -7,13 +7,26 @@ import { useConfig } from "@/hooks/useConfig";
 import { DatabaseCard } from "@/components/settings/DatabaseCard";
 import { ProviderCard } from "@/components/settings/ProviderCard";
 import { WorkflowCard } from "@/components/settings/WorkflowCard";
+import { ThemeCard } from "@/components/settings/ThemeCard";
 import { validateConfig } from "@/lib/validation";
 import type { AppConfig } from "@/types/config";
 import { useRouter, usePathname } from "next/navigation";
 
-type SettingsSection = "database" | "provider" | "workflow";
+type SettingsSection = "theme" | "database" | "provider" | "workflow";
 
 const NAV_ITEMS: { key: SettingsSection; icon: React.ReactNode }[] = [
+  {
+    key: "theme",
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="13.5" cy="6.5" r="2.5" />
+        <circle cx="17.5" cy="10.5" r="2.5" />
+        <circle cx="8.5" cy="7.5" r="2.5" />
+        <circle cx="6.5" cy="12.5" r="2.5" />
+        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+      </svg>
+    ),
+  },
   {
     key: "database",
     icon: (
@@ -57,7 +70,7 @@ export default function SettingsContent({
   const pathname = usePathname();
   const currentLocale = pathname.startsWith("/en") ? "en" : "zh";
   const isModal = presentation === "modal";
-  const [activeSection, setActiveSection] = useState<SettingsSection>("database");
+  const [activeSection, setActiveSection] = useState<SettingsSection>("theme");
   const {
     config,
     loading,
@@ -66,6 +79,7 @@ export default function SettingsContent({
     success,
     fetchConfig,
     saveConfig,
+    queueProviderRename,
     setConfig,
     clearMessages,
   } = useConfig();
@@ -185,10 +199,18 @@ export default function SettingsContent({
   const renderSectionContent = () => {
     if (!config) return null;
     switch (activeSection) {
+      case "theme":
+        return <ThemeCard />;
       case "database":
         return <DatabaseCard config={config} onChange={updateConfig} />;
       case "provider":
-        return <ProviderCard config={config} onChange={setConfig} />;
+        return (
+          <ProviderCard
+            config={config}
+            onChange={setConfig}
+            onProviderRename={(from, to) => queueProviderRename({ from, to })}
+          />
+        );
       case "workflow":
         return <WorkflowCard config={config} onChange={setConfig} />;
     }
@@ -197,13 +219,13 @@ export default function SettingsContent({
   const sidebar = (
     <nav className={isModal
       ? "flex w-52 shrink-0 flex-col gap-1 border-r border-border bg-surface-secondary/40 px-2 py-3"
-      : "flex w-56 shrink-0 flex-col gap-1 rounded-lg border border-border bg-surface p-3"
+      : "flex w-full shrink-0 gap-1 overflow-x-auto rounded-lg border border-border bg-surface p-2 md:w-56 md:flex-col md:p-3"
     }>
       {NAV_ITEMS.map((item) => (
         <button
           key={item.key}
           onClick={() => setActiveSection(item.key)}
-          className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+          className={`flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors md:shrink ${
             activeSection === item.key
               ? "bg-accent/10 font-medium text-accent"
               : "text-muted hover:bg-surface-secondary hover:text-foreground"
@@ -231,18 +253,18 @@ export default function SettingsContent({
     </>
   );
 
-  const body = loading ? (
+  const body = loading && activeSection !== "theme" ? (
     <div className="flex flex-1 items-center justify-center">
       <div className="text-muted">Loading...</div>
     </div>
-  ) : !config ? (
+  ) : !config && activeSection !== "theme" ? (
     <div className="flex flex-1 items-center justify-center">
       <div className="text-muted">{error || "Failed to load"}</div>
     </div>
   ) : (
-    <div className="flex flex-1 gap-0 overflow-hidden">
+    <div className="flex flex-1 flex-col gap-4 overflow-hidden md:flex-row md:gap-0">
       {sidebar}
-      <div className={isModal ? "flex-1 overflow-y-auto px-4 py-3" : "flex-1 overflow-y-auto pl-6"}>
+      <div className={isModal ? "flex-1 overflow-y-auto px-4 py-3" : "flex-1 overflow-y-auto md:pl-6"}>
         {messages}
         {renderSectionContent()}
       </div>
@@ -272,7 +294,7 @@ export default function SettingsContent({
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="mx-auto max-w-7xl px-4 py-8">
       {header}
       {body}
     </div>

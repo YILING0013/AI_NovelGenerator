@@ -4,46 +4,46 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* 暖色调主题 — 亮色模式 */
-  --background: #faf6f1;
-  --foreground: #2c2418;
-  --color-warm-50: #fdfbf7;
-  --color-warm-100: #faf6f1;
-  --color-warm-200: #f0e6d6;
-  --color-warm-300: #e2d0b8;
-  --color-warm-400: #c9a87c;
-  --color-warm-500: #b08850;
-  --color-warm-600: #96703a;
-  --color-warm-700: #7a5a2e;
-  --color-warm-800: #5c4322;
-  --color-warm-900: #3d2c16;
-  --color-accent: #c2703a;
-  --color-accent-hover: #a85e30;
+  /* 森林主题 — 亮色模式（默认） */
+  --background: #FFF8EC;
+  --foreground: #2d3a24;
+  --color-warm-50: #fffdf7;
+  --color-warm-100: #FFF8EC;
+  --color-warm-200: #f0e8d5;
+  --color-warm-300: #DCCCAC;
+  --color-warm-400: #b8b892;
+  --color-warm-500: #99AD7A;
+  --color-warm-600: #7a9460;
+  --color-warm-700: #546B41;
+  --color-warm-800: #3f5232;
+  --color-warm-900: #2d3a24;
+  --color-accent: #546B41;
+  --color-accent-hover: #465a35;
   --color-surface: #ffffff;
-  --color-surface-secondary: #f7f2eb;
-  --color-border: #e2d6c6;
-  --color-muted: #8c7e6e;
+  --color-surface-secondary: #f7f2e6;
+  --color-border: #DCCCAC;
+  --color-muted: #7d8a6c;
 }
 
 .dark {
-  --background: #1a1510;
-  --foreground: #ede6dc;
-  --color-warm-50: #1a1510;
-  --color-warm-100: #231d15;
-  --color-warm-200: #352a1c;
-  --color-warm-300: #4a3b28;
-  --color-warm-400: #6b5638;
-  --color-warm-500: #8c7248;
-  --color-warm-600: #b08850;
-  --color-warm-700: #c9a87c;
-  --color-warm-800: #e2d0b8;
-  --color-warm-900: #f0e6d6;
-  --color-accent: #d4864a;
-  --color-accent-hover: #e09558;
-  --color-surface: #211b14;
-  --color-surface-secondary: #2a2218;
-  --color-border: #3d3226;
-  --color-muted: #9c8e7e;
+  --background: #1a2015;
+  --foreground: #e4ead6;
+  --color-warm-50: #1a2015;
+  --color-warm-100: #222b1b;
+  --color-warm-200: #303d24;
+  --color-warm-300: #3f5232;
+  --color-warm-400: #546B41;
+  --color-warm-500: #7a9460;
+  --color-warm-600: #99AD7A;
+  --color-warm-700: #b5c89e;
+  --color-warm-800: #DCCCAC;
+  --color-warm-900: #f0e8d5;
+  --color-accent: #99AD7A;
+  --color-accent-hover: #adc08e;
+  --color-surface: #1f281a;
+  --color-surface-secondary: #283320;
+  --color-border: #3f5232;
+  --color-muted: #94a483;
 }
 
 @theme inline {

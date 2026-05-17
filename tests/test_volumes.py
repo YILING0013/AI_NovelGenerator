@@ -153,6 +153,21 @@ def test_soft_delete_and_restore_volume(client: TestClient, create_novel):
     assert restored_detail.status_code == 200
 
 
+def test_soft_delete_then_recreate_same_order_and_restore_conflict(client: TestClient, create_novel):
+    novel_id = create_novel("volumes_partial_unique")
+    original = _create_volume(client, novel_id, title="第一卷", order_index=1)
+    volume_id = original["body"]["id"]
+
+    deleted = client.delete(f"/api/volumes/{volume_id}")
+    recreated = _create_volume(client, novel_id, title="新的第一卷", order_index=1)
+    restore_conflict = client.post(f"/api/volumes/{volume_id}/restore")
+
+    assert original["status_code"] == 200
+    assert deleted.status_code == 200
+    assert recreated["status_code"] == 200
+    assert restore_conflict.status_code == 409
+
+
 def test_hard_delete_volume(client: TestClient, create_novel):
     novel_id = create_novel("volumes_hard_delete")
     created = _create_volume(client, novel_id, title="待硬删卷")

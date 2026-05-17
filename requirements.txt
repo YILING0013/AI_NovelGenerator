@@ -8,7 +8,6 @@ google-genai
 anthropic
 customtkinter
 python-multipart
-motor
-pymongo
+pymongo>=4.16
 httpx
 pytest

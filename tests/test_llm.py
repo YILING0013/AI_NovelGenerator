@@ -13,11 +13,11 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from application.llm.config import LLMProviderConfig
-from application.llm.models import LLMRequest
-from application.llm.openai_client import OpenAICompatibleClient
-from application.services.llm.llm_service import LLMService
-from pydantic_definitions.novel_pydantic import ExtractIdeaSchema, NovelMetaSchema
+from backend.llm.config import LLMProviderConfig
+from backend.llm.models import LLMRequest
+from backend.llm.openai_client import OpenAICompatibleClient
+from backend.services.llm.llm_service import LLMService
+from backend.llm.schemas.novel_pydantic import ExtractIdeaSchema, NovelMetaSchema
 
 
 def _run(coro):
@@ -54,7 +54,7 @@ def openai_client(openai_provider_config: LLMProviderConfig) -> OpenAICompatible
 
 @pytest.fixture
 def llm_service(monkeypatch: pytest.MonkeyPatch, openai_provider_config: LLMProviderConfig) -> LLMService:
-    from application.llm import factory
+    from backend.llm import factory
 
     def _fake_get_provider_config(provider_name: str | None = None) -> LLMProviderConfig:
         return openai_provider_config
