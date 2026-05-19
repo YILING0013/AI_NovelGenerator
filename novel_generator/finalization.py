@@ -5,11 +5,12 @@
 """
 import os
 import logging
+import tempfile
 from llm_adapters import create_llm_adapter
 from embedding_adapters import create_embedding_adapter
 import prompt_definitions
 from novel_generator.common import invoke_with_cleaning
-from utils import read_file, clear_file_content, save_string_to_txt
+from utils import read_file
 from novel_generator.vectorstore_utils import update_vector_store
 logging.basicConfig(
     filename='app.log',      # 日志文件名
@@ -18,6 +19,21 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
+
+def _write_text_atomic(path: str, content: str):
+    """先写临时文件，再原子替换目标文件。"""
+    dir_name = os.path.dirname(os.path.abspath(path))
+    os.makedirs(dir_name, exist_ok=True)
+    fd, temp_path = tempfile.mkstemp(suffix=".tmp", dir=dir_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+        os.replace(temp_path, path)
+    except Exception:
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+        raise
+
 def finalize_chapter(
     novel_number: int,
     word_number: int,
@@ -76,21 +92,23 @@ def finalize_chapter(
     if not new_char_state.strip():
         new_char_state = old_character_state
 
-    clear_file_content(global_summary_file)
-    save_string_to_txt(new_global_summary, global_summary_file)
-    clear_file_content(character_state_file)
-    save_string_to_txt(new_char_state, character_state_file)
+    _write_text_atomic(global_summary_file, new_global_summary)
+    _write_text_atomic(character_state_file, new_char_state)
 
-    update_vector_store(
-        embedding_adapter=create_embedding_adapter(
+    try:
+        embedding_adapter = create_embedding_adapter(
             embedding_interface_format,
             embedding_api_key,
             embedding_url,
             embedding_model_name
-        ),
-        new_chapter=chapter_text,
-        filepath=filepath
-    )
+        )
+        update_vector_store(
+            embedding_adapter=embedding_adapter,
+            new_chapter=chapter_text,
+            filepath=filepath
+        )
+    except Exception as e:
+        logging.warning(f"Vector store update skipped after finalizing chapter {novel_number}: {e}")
 
     logging.info(f"Chapter {novel_number} has been finalized.")
 
