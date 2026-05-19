@@ -1,6 +1,6 @@
 # 📖 Gij Swnjgenh Siujsoz Swjdoengh Sengcwngz Doenghgiuj
 
-[Laix Sawcuengh](./README_zh-CN.md) | [English](./README.md) | Sawcuengh
+[中文文档](./README_zh-CN.md) | [English](./README.md) | [日本語](./README_ja.md) | [Français](./README_fr-FR.md) | Sawcuengh
 
 >- ~~Gyangneix mbouj miz geijlai lijlaeng guenj gij gohyenz neix, gij gohyenz neix mbouj miz gij sauhik maz, caeuq henz byaijdoeg, miz haujlai saehcingz yiet mbouj ndaej banh, hawj gou miz seizgan lai, doengh haujlaiz cungi gig yungh gij gijsuz coengzsin daeuj gaicig.——2025/9/24~~
 >

@@ -1,6 +1,6 @@
 # 📖 自动小说生成工具
 
-中文文档 | [English](./README.md) | [日本語](./README_ja.md)
+中文文档 | [English](./README.md) | [日本語](./README_ja.md) | [Français](./README_fr-FR.md) | [Sawcuengh](./README_sawcuengh.md)
 
 >- ~~当前没有什么精力维护该项目，本身该项目并无任何收益，以及临近毕业，有很多内容要忙，如果后面有时间的话，再考虑基于更新的技术去重构吧。——2025/9/24~~
 >
