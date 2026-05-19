@@ -19,8 +19,8 @@ def load_config(config_file: str) -> dict:
     try:
         with open(config_file, 'r', encoding='utf-8') as f:
             return json.load(f)
-    except:
-            return {}
+    except Exception:
+        return {}
 
 
 # PenBo 增加了创建默认配置文件函数
