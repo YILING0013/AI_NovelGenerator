@@ -110,27 +110,28 @@ class GeminiAdapter(BaseLLMAdapter):
         self._client = genai.Client(api_key=self.api_key)
 
     def invoke(self, prompt: str) -> str:
+        # 使用当前 google-genai SDK 构造生成参数，API 调用异常保留给上层重试逻辑处理。
+        config = types.GenerateContentConfig(
+            max_output_tokens=self.max_tokens,
+            temperature=self.temperature,
+        )
+
+        response = self._client.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+            config=config
+        )
+
         try:
-            # 设置生成配置
-            config = types.GenerateContentConfig(
-                max_output_tokens=self.max_tokens,
-                temperature=self.temperature,
-            )
-            
-            # 生成内容
-            response = self._client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=config
-            )
-            
-            if response and response.text:
-                return response.text
-            else:
-                logging.warning("No text response from Gemini API.")
-                return ""
-        except Exception as e:
-            logging.error(f"Gemini API 调用失败: {e}")
+            text = response.text
+        except (ValueError, AttributeError):
+            logging.warning("Gemini response blocked or empty (safety filter).")
+            return ""
+
+        if text:
+            return text
+        else:
+            logging.warning("No text response from Gemini API.")
             return ""
 
 class AzureOpenAIAdapter(BaseLLMAdapter):
@@ -291,7 +292,7 @@ class VolcanoEngineAIAdapter(BaseLLMAdapter):
         self.timeout = timeout
 
         self._client = OpenAI(
-            base_url=base_url,
+            base_url=self.base_url,
             api_key=api_key,
             timeout=timeout  # 添加超时配置
         )
@@ -303,10 +304,12 @@ class VolcanoEngineAIAdapter(BaseLLMAdapter):
                     {"role": "system", "content": "你是DeepSeek，是一个 AI 人工智能助手"},
                     {"role": "user", "content": prompt},
                 ],
-                timeout=self.timeout  # 添加超时参数
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+                timeout=self.timeout
             )
             if not response:
-                logging.warning("No response from DeepSeekAdapter.")
+                logging.warning("No response from VolcanoEngineAdapter.")
                 return ""
             return response.choices[0].message.content
         except Exception as e:
@@ -323,7 +326,7 @@ class SiliconFlowAdapter(BaseLLMAdapter):
         self.timeout = timeout
 
         self._client = OpenAI(
-            base_url=base_url,
+            base_url=self.base_url,
             api_key=api_key,
             timeout=timeout  # 添加超时配置
         )
@@ -335,10 +338,12 @@ class SiliconFlowAdapter(BaseLLMAdapter):
                     {"role": "system", "content": "你是DeepSeek，是一个 AI 人工智能助手"},
                     {"role": "user", "content": prompt},
                 ],
-                timeout=self.timeout  # 添加超时参数
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+                timeout=self.timeout
             )
             if not response:
-                logging.warning("No response from DeepSeekAdapter.")
+                logging.warning("No response from SiliconFlowAdapter.")
                 return ""
             return response.choices[0].message.content
         except Exception as e:

@@ -274,4 +274,4 @@ class WebDAVClient:
         if not os.path.exists(os.path.join(os.path.dirname(local_path), "backup")):
             os.makedirs(os.path.join(os.path.dirname(local_path), "backup"))
         backup_file_name = f"{base_name}_{timestamp}_bak.{extension}"
-        shutil.copy2(os.path.basename(local_path), os.path.join(os.path.dirname(local_path), "backup", backup_file_name))
+        shutil.copy2(local_path, os.path.join(os.path.dirname(local_path), "backup", backup_file_name))
