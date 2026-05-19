@@ -652,6 +652,8 @@ def generate_batch_ui(self):
             timeout=draft_timeout,
             custom_prompt_text=final_prompt  
         )
+        if not draft_text.strip():
+            raise RuntimeError(f"第{i}章草稿生成失败或无内容，已保留原章节文件")
 
         finalize_interface_format = self.loaded_config["llm_configs"][self.final_chapter_llm_var.get()]["interface_format"]
         finalize_api_key = self.loaded_config["llm_configs"][self.final_chapter_llm_var.get()]["api_key"]
