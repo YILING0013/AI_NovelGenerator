@@ -51,6 +51,7 @@ def build_other_settings_tab(self):
 
     def backup_to_webdav():
         try:
+            save_webdav_settings()
             target_dir = "AI_Novel_Generator"
             client = WebDAVClient(self.webdav_url_var.get().strip(),self.webdav_username_var.get().strip(),self.webdav_password_var.get().strip())
             if not client.ensure_directory_exists(target_dir):
@@ -248,7 +249,7 @@ class WebDAVClient:
         :return: 是否下载成功
         """
         url = self._get_url(remote_path)
-        local_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), local_path)
+        local_path = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), local_path))
         self.backup(local_path)
         try:
             response = requests.get(url, auth=self.auth, headers=self.headers, stream=True)
