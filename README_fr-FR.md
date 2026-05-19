@@ -1,6 +1,6 @@
 # 📖 Outil de Génération Automatique de Romans
 
-[中文文档](./README_zh-CN.md) | [English](./README%20%281%29.md) | Français
+[中文文档](./README_zh-CN.md) | [English](./README.md) | [日本語](./README_ja.md) | Français | [Sawcuengh](./README_sawcuengh.md)
 
 > ~~Actuellement, je n'ai pas beaucoup d'énergie pour maintenir ce projet. Le projet ne génère aucun revenu et, avec l'approche de la remise des diplômes, j'ai beaucoup d'autres priorités. Si le temps le permet à l'avenir, je pourrais envisager une refonte avec des technologies plus récentes. — 24/09/2025~~
 >
