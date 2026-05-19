@@ -2,6 +2,95 @@
 # -*- coding: utf-8 -*-
 import re
 
+
+_CHINESE_HEADER_PATTERN = re.compile(
+    r"^第\s*(\d+)\s*章(?:\s*[-—–:：]\s*|\s+)?(.+?)?$"
+)
+_ENGLISH_HEADER_PATTERN = re.compile(
+    r"^chapter\s+(\d+)(?:\s*[-—–:：]\s*|\s+)?(.+?)?$",
+    re.IGNORECASE
+)
+
+_FIELD_ALIASES = (
+    ("chapter_role", (r"本章定位", r"章节定位", r"chapter\s+role")),
+    ("chapter_purpose", (r"核心作用", r"core\s+function", r"core\s+purpose")),
+    ("suspense_level", (r"悬念密度", r"suspense\s+density")),
+    ("foreshadowing", (r"伏笔操作", r"伏笔设计", r"foreshadowing(?:\s+design)?")),
+    ("plot_twist_level", (r"认知颠覆(?:强度)?", r"转折程度", r"cognitive\s+subversion", r"twist\s+level")),
+    ("chapter_summary", (r"本章简述", r"章节简述", r"chapter\s+summary")),
+)
+_FIELD_PATTERNS = [
+    (
+        key,
+        re.compile(rf"^(?:{'|'.join(aliases)})\s*[:：]\s*(.*)$", re.IGNORECASE)
+    )
+    for key, aliases in _FIELD_ALIASES
+]
+_LINE_PREFIX_PATTERN = re.compile(
+    r"^\s*(?:#{1,6}\s*|>\s*|[-*+]\s+|\d+[.)、]\s*|[├└│╰╭─━┬┴┼]+\s*)+"
+)
+_WRAPPERS = (
+    ("[", "]"),
+    ("【", "】"),
+    ("《", "》"),
+    ("「", "」"),
+    ("『", "』"),
+    ("“", "”"),
+    ('"', '"'),
+    ("'", "'"),
+)
+
+
+def _strip_line_prefix(line: str) -> str:
+    return _LINE_PREFIX_PATTERN.sub("", line.strip()).strip()
+
+
+def _strip_wrapping_punctuation(text: str) -> str:
+    text = text.strip()
+    changed = True
+    while changed and len(text) >= 2:
+        changed = False
+        for left, right in _WRAPPERS:
+            if text.startswith(left) and text.endswith(right):
+                text = text[len(left):-len(right)].strip()
+                changed = True
+                break
+    return text
+
+
+def _new_chapter(chapter_number: int, chapter_title: str) -> dict:
+    return {
+        "chapter_number": chapter_number,
+        "chapter_title": chapter_title,
+        "chapter_role": "",
+        "chapter_purpose": "",
+        "suspense_level": "",
+        "foreshadowing": "",
+        "plot_twist_level": "",
+        "chapter_summary": ""
+    }
+
+
+def _parse_chapter_header(line: str):
+    normalized = _strip_line_prefix(line)
+    for pattern in (_CHINESE_HEADER_PATTERN, _ENGLISH_HEADER_PATTERN):
+        match = pattern.match(normalized)
+        if match:
+            chapter_number = int(match.group(1))
+            chapter_title = _strip_wrapping_punctuation(match.group(2) or "")
+            return chapter_number, chapter_title
+    return None
+
+
+def _parse_field_line(line: str):
+    normalized = _strip_line_prefix(line).replace("**", "").strip()
+    for key, pattern in _FIELD_PATTERNS:
+        match = pattern.match(normalized)
+        if match:
+            return key, _strip_wrapping_punctuation(match.group(1))
+    return None
+
+
 def parse_chapter_blueprint(blueprint_text: str):
     """
     解析整份章节蓝图文本，返回一个列表，每个元素是一个 dict：
@@ -16,94 +105,32 @@ def parse_chapter_blueprint(blueprint_text: str):
       "chapter_summary": str     # 本章简述
     }
     """
-
-    # 先按空行进行分块，以免多章之间混淆
-    chunks = re.split(r'\n\s*\n', blueprint_text.strip())
     results = []
+    current_chapter = None
 
-    # 兼容是否使用方括号包裹章节标题
-    # 例如：
-    #   第1章 - 紫极光下的预兆
-    # 或
-    #   第1章 - [紫极光下的预兆]
-    chapter_number_pattern = re.compile(r'^第\s*(\d+)\s*章\s*-\s*\[?(.*?)\]?$')
-
-    role_pattern     = re.compile(r'^本章定位：\s*\[?(.*)\]?$')
-    purpose_pattern  = re.compile(r'^核心作用：\s*\[?(.*)\]?$')
-    suspense_pattern = re.compile(r'^悬念密度：\s*\[?(.*)\]?$')
-    foreshadow_pattern = re.compile(r'^伏笔操作：\s*\[?(.*)\]?$')
-    twist_pattern       = re.compile(r'^认知颠覆：\s*\[?(.*)\]?$')
-    summary_pattern = re.compile(r'^本章简述：\s*\[?(.*)\]?$')
-
-    for chunk in chunks:
-        lines = chunk.strip().splitlines()
-        if not lines:
+    for raw_line in (blueprint_text or "").splitlines():
+        line = raw_line.strip()
+        if not line:
             continue
 
-        chapter_number   = None
-        chapter_title    = ""
-        chapter_role     = ""
-        chapter_purpose  = ""
-        suspense_level   = ""
-        foreshadowing    = ""
-        plot_twist_level = ""
-        chapter_summary  = ""
-
-        # 先匹配第一行（或前几行），找到章号和标题
-        header_match = chapter_number_pattern.match(lines[0].strip())
-        if not header_match:
-            # 不符合“第X章 - 标题”的格式，跳过
+        header = _parse_chapter_header(line)
+        if header:
+            if current_chapter:
+                results.append(current_chapter)
+            chapter_number, chapter_title = header
+            current_chapter = _new_chapter(chapter_number, chapter_title)
             continue
 
-        chapter_number = int(header_match.group(1))
-        chapter_title  = header_match.group(2).strip()
+        if not current_chapter:
+            continue
 
-        # 从后面的行匹配其他字段
-        for line in lines[1:]:
-            line_stripped = line.strip()
-            if not line_stripped:
-                continue
+        field = _parse_field_line(line)
+        if field:
+            key, value = field
+            current_chapter[key] = value
 
-            m_role = role_pattern.match(line_stripped)
-            if m_role:
-                chapter_role = m_role.group(1).strip()
-                continue
-
-            m_purpose = purpose_pattern.match(line_stripped)
-            if m_purpose:
-                chapter_purpose = m_purpose.group(1).strip()
-                continue
-
-            m_suspense = suspense_pattern.match(line_stripped)
-            if m_suspense:
-                suspense_level = m_suspense.group(1).strip()
-                continue
-
-            m_foreshadow = foreshadow_pattern.match(line_stripped)
-            if m_foreshadow:
-                foreshadowing = m_foreshadow.group(1).strip()
-                continue
-
-            m_twist = twist_pattern.match(line_stripped)
-            if m_twist:
-                plot_twist_level = m_twist.group(1).strip()
-                continue
-
-            m_summary = summary_pattern.match(line_stripped)
-            if m_summary:
-                chapter_summary = m_summary.group(1).strip()
-                continue
-
-        results.append({
-            "chapter_number": chapter_number,
-            "chapter_title": chapter_title,
-            "chapter_role": chapter_role,
-            "chapter_purpose": chapter_purpose,
-            "suspense_level": suspense_level,
-            "foreshadowing": foreshadowing,
-            "plot_twist_level": plot_twist_level,
-            "chapter_summary": chapter_summary
-        })
+    if current_chapter:
+        results.append(current_chapter)
 
     # 按照 chapter_number 排序后返回
     results.sort(key=lambda x: x["chapter_number"])
