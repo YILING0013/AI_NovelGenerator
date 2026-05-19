@@ -1,6 +1,6 @@
 # 📖 Automatic Novel Generation Tool
 
-[中文文档](./README_zh-CN.md) | English
+[中文文档](./README_zh-CN.md) | English | [日本語](./README_ja.md)
 
 > ~~Currently I don't have much energy to maintain this project. The project brings no revenue, and with graduation approaching I have many other priorities. If time permits in the future I may consider a refactor using newer technologies. — 2025/09/24~~
 >
