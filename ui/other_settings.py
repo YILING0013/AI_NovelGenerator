@@ -6,9 +6,14 @@ from config_manager import load_config, save_config
 import requests
 from requests.auth import HTTPBasicAuth
 import os
+import json
+import tempfile
+import threading
 from xml.etree import ElementTree as ET
 import shutil
 import time
+
+REQUEST_TIMEOUT = (5, 30)
 def build_other_settings_tab(self):
     self.other_settings_tab = self.tabview.add("Other Settings")
     self.other_settings_tab.rowconfigure(0, weight=1)
@@ -32,55 +37,81 @@ def build_other_settings_tab(self):
         save_config(self.loaded_config, self.config_file)
 
 
-    def test_webdav_connection(test = True):
-        try:
-            client = WebDAVClient(self.webdav_url_var.get().strip(),self.webdav_username_var.get().strip(),self.webdav_password_var.get().strip())
+    def set_webdav_buttons_state(state):
+        for btn in (test_btn, save_btn, reset_btn):
+            btn.configure(state=state)
+
+    def run_webdav_task(worker, success_message, success_callback=None):
+        set_webdav_buttons_state("disabled")
+
+        def finish(success, result):
+            set_webdav_buttons_state("normal")
+            if success:
+                if success_callback:
+                    success_callback(result)
+                messagebox.showinfo("成功", success_message)
+            else:
+                messagebox.showerror("错误", f"发生未知错误: {result}")
+
+        def task():
+            try:
+                result = worker()
+            except Exception as e:
+                print(e)
+                self.master.after(0, lambda err=e: finish(False, err))
+                return
+            self.master.after(0, lambda res=result: finish(True, res))
+
+        threading.Thread(target=task, daemon=True).start()
+
+    def test_webdav_connection():
+        webdav_url = self.webdav_url_var.get().strip()
+        username = self.webdav_username_var.get().strip()
+        password = self.webdav_password_var.get().strip()
+
+        def worker():
+            client = WebDAVClient(webdav_url, username, password)
             client.list_directory()
-            if not test:
-                save_webdav_settings()
-                return True
-            messagebox.showinfo("成功", "WebDAV 连接成功！")
-            save_webdav_settings()
             return True
 
-        except Exception as e:
-            print(e)
-
-            messagebox.showerror("错误", f"发生未知错误: {e}")
-            return False
+        run_webdav_task(worker, "WebDAV 连接成功！", lambda _result: save_webdav_settings())
 
     def backup_to_webdav():
-        try:
-            save_webdav_settings()
+        save_webdav_settings()
+        webdav_url = self.webdav_url_var.get().strip()
+        username = self.webdav_username_var.get().strip()
+        password = self.webdav_password_var.get().strip()
+        config_file = self.config_file
+
+        def worker():
             target_dir = "AI_Novel_Generator"
-            client = WebDAVClient(self.webdav_url_var.get().strip(),self.webdav_username_var.get().strip(),self.webdav_password_var.get().strip())
+            client = WebDAVClient(webdav_url, username, password)
             if not client.ensure_directory_exists(target_dir):
-                client.create_directory(target_dir)
-            client.upload_file(self.config_file, f"{target_dir}/config.json")
-            messagebox.showinfo("成功", "配置备份成功！")
-        except Exception as e:
-            print(e)
-            messagebox.showerror("错误", f"发生未知错误: {e}")
-            return False
+                if not client.create_directory(target_dir):
+                    raise RuntimeError("创建远程备份目录失败")
+            if not client.upload_file(config_file, f"{target_dir}/config.json"):
+                raise RuntimeError("上传配置文件失败")
+            return True
 
-
-
-
-
-
+        run_webdav_task(worker, "配置备份成功！")
 
     def restore_from_webdav():
-        try:
-            target_dir = "AI_Novel_Generator"
-            client = WebDAVClient(self.webdav_url_var.get().strip(),self.webdav_username_var.get().strip(),self.webdav_password_var.get().strip())
-            client.download_file(f"{target_dir}/config.json", self.config_file)
-            self.loaded_config = load_config(self.config_file)
-            messagebox.showinfo("成功", "配置恢复成功！")
+        webdav_url = self.webdav_url_var.get().strip()
+        username = self.webdav_username_var.get().strip()
+        password = self.webdav_password_var.get().strip()
+        config_file = self.config_file
 
-        except Exception as e:
-            print(e)
-            messagebox.showerror("错误", f"发生未知错误: {e}")
-            return False
+        def worker():
+            target_dir = "AI_Novel_Generator"
+            client = WebDAVClient(webdav_url, username, password)
+            if not client.download_file(f"{target_dir}/config.json", config_file):
+                raise RuntimeError("配置恢复失败，未修改本地配置文件。")
+            return load_config(config_file)
+
+        def on_success(loaded_config):
+            self.loaded_config = loaded_config
+
+        run_webdav_task(worker, "配置恢复成功！", on_success)
 
 
 
@@ -148,6 +179,15 @@ class WebDAVClient:
         """获取完整的资源URL"""
         return self.base_url + path.lstrip('/')
 
+    def list_directory(self, path=""):
+        """列出目录，用于连接测试。"""
+        url = self._get_url(path)
+        headers = self.headers.copy()
+        headers['Depth'] = '1'
+        response = requests.request('PROPFIND', url, headers=headers, auth=self.auth, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+        return response.content
+
     def directory_exists(self, path):
         """
         检查目录是否存在
@@ -160,7 +200,7 @@ class WebDAVClient:
         
         try:
             # 发送PROPFIND请求检查资源是否存在
-            response = requests.request('PROPFIND', url, headers=headers, auth=self.auth)
+            response = requests.request('PROPFIND', url, headers=headers, auth=self.auth, timeout=REQUEST_TIMEOUT)
             
             # 207 Multi-Status表示成功，说明资源存在
             if response.status_code == 207:
@@ -185,7 +225,7 @@ class WebDAVClient:
         url = self._get_url(path)
         
         try:
-            response = requests.request('MKCOL', url, auth=self.auth, headers=self.headers)
+            response = requests.request('MKCOL', url, auth=self.auth, headers=self.headers, timeout=REQUEST_TIMEOUT)
             response.raise_for_status()
             
             print(f"目录创建成功: {path}")
@@ -233,7 +273,7 @@ class WebDAVClient:
         
         try:
             with open(local_path, 'rb') as f:
-                response = requests.put(url, data=f, auth=self.auth, headers=self.headers)
+                response = requests.put(url, data=f, auth=self.auth, headers=self.headers, timeout=REQUEST_TIMEOUT)
                 response.raise_for_status()
             
             print(f"文件上传成功: {local_path} -> {remote_path}")
@@ -251,28 +291,48 @@ class WebDAVClient:
         url = self._get_url(remote_path)
         local_path = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), local_path))
         self.backup(local_path)
+        temp_path = None
         try:
-            response = requests.get(url, auth=self.auth, headers=self.headers, stream=True)
+            response = requests.get(url, auth=self.auth, headers=self.headers, stream=True, timeout=REQUEST_TIMEOUT)
             response.raise_for_status()
             
             # 创建本地目录（如果需要）
-            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+            target_dir = os.path.dirname(local_path)
+            os.makedirs(target_dir, exist_ok=True)
             
-            with open(local_path, 'wb') as f:
+            fd, temp_path = tempfile.mkstemp(suffix=".tmp", dir=target_dir)
+            with os.fdopen(fd, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
+                    if chunk:
+                        f.write(chunk)
+
+            with open(temp_path, 'r', encoding='utf-8') as f:
+                downloaded_config = json.load(f)
+            required_keys = {"llm_configs", "embedding_configs", "other_params", "choose_configs"}
+            if not isinstance(downloaded_config, dict) or not required_keys.issubset(downloaded_config):
+                raise ValueError("下载的配置文件格式不完整")
+
+            os.replace(temp_path, local_path)
+            temp_path = None
             
             print(f"文件下载成功: {remote_path} -> {local_path}")
             return True
-        except requests.exceptions.RequestException as e:
+        except (requests.exceptions.RequestException, OSError, json.JSONDecodeError, ValueError) as e:
             print(f"文件下载失败: {e}")
             return False
+        finally:
+            if temp_path and os.path.exists(temp_path):
+                os.unlink(temp_path)
     def backup(self, local_path):
         name_parts = os.path.basename(local_path).rsplit('.', 1)  # 只分割最后一个点
         base_name = name_parts[0]
         extension = name_parts[1]
         timestamp = time.strftime("%Y%m%d%H%M%S")
+        if not os.path.exists(local_path):
+            return None
         if not os.path.exists(os.path.join(os.path.dirname(local_path), "backup")):
             os.makedirs(os.path.join(os.path.dirname(local_path), "backup"))
         backup_file_name = f"{base_name}_{timestamp}_bak.{extension}"
-        shutil.copy2(os.path.basename(local_path), os.path.join(os.path.dirname(local_path), "backup", backup_file_name))
+        backup_path = os.path.join(os.path.dirname(local_path), "backup", backup_file_name)
+        shutil.copy2(local_path, backup_path)
+        return backup_path

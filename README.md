@@ -1,6 +1,6 @@
 # 📖 Automatic Novel Generation Tool
 
-[中文文档](./README_zh-CN.md) | English
+[中文文档](./README_zh-CN.md) | English | [日本語](./README_ja.md) | [Français](./README_fr-FR.md) | [Sawcuengh](./README_sawcuengh.md)
 
 > ~~Currently I don't have much energy to maintain this project. The project brings no revenue, and with graduation approaching I have many other priorities. If time permits in the future I may consider a refactor using newer technologies. — 2025/09/24~~
 >
@@ -64,6 +64,20 @@ Ensure the environment meets the following requirements:
     - Open a terminal and change to the project directory:
        ```bash
        cd AI_NovelGenerator
+       ```
+    - (Optional) Create and activate virtual environment:
+       ```bash
+       python -m venv .venv
+       # if that doesn't work, try:
+       # python3 -m venv .venv
+       ```
+       ```
+       # On Windows:
+       .venv/Scripts/activate
+       ```
+       ```
+       # On Linux/Mac:
+       source .venv/bin/activate
        ```
     - Install project dependencies:
        ```bash

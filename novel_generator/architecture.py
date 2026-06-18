@@ -9,13 +9,7 @@ import logging
 import traceback
 from novel_generator.common import invoke_with_cleaning
 from llm_adapters import create_llm_adapter
-from prompt_definitions import (
-    core_seed_prompt,
-    character_dynamics_prompt,
-    world_building_prompt,
-    plot_architecture_prompt,
-    create_character_state_prompt
-)
+import prompt_definitions
 logging.basicConfig(
     filename='app.log',      # 日志文件名
     filemode='a',            # 追加模式（'w' 会覆盖）
@@ -95,7 +89,7 @@ def Novel_architecture_generate(
     # Step1: 核心种子
     if "core_seed_result" not in partial_data:
         logging.info("Step1: Generating core_seed_prompt (核心种子) ...")
-        prompt_core = core_seed_prompt.format(
+        prompt_core = prompt_definitions.core_seed_prompt.format(
             topic=topic,
             genre=genre,
             number_of_chapters=number_of_chapters,
@@ -114,7 +108,7 @@ def Novel_architecture_generate(
     # Step2: 角色动力学
     if "character_dynamics_result" not in partial_data:
         logging.info("Step2: Generating character_dynamics_prompt ...")
-        prompt_character = character_dynamics_prompt.format(
+        prompt_character = prompt_definitions.character_dynamics_prompt.format(
             core_seed=partial_data["core_seed_result"].strip(),
             user_guidance=user_guidance
         )
@@ -130,7 +124,7 @@ def Novel_architecture_generate(
     # 生成初始角色状态
     if "character_dynamics_result" in partial_data and "character_state_result" not in partial_data:
         logging.info("Generating initial character state from character dynamics ...")
-        prompt_char_state_init = create_character_state_prompt.format(
+        prompt_char_state_init = prompt_definitions.create_character_state_prompt.format(
             character_dynamics=partial_data["character_dynamics_result"].strip()
         )
         character_state_init = invoke_with_cleaning(llm_adapter, prompt_char_state_init)
@@ -147,7 +141,7 @@ def Novel_architecture_generate(
     # Step3: 世界观
     if "world_building_result" not in partial_data:
         logging.info("Step3: Generating world_building_prompt ...")
-        prompt_world = world_building_prompt.format(
+        prompt_world = prompt_definitions.world_building_prompt.format(
             core_seed=partial_data["core_seed_result"].strip(),
             user_guidance=user_guidance  # 修复：添加用户指导
         )
@@ -163,7 +157,7 @@ def Novel_architecture_generate(
     # Step4: 三幕式情节
     if "plot_arch_result" not in partial_data:
         logging.info("Step4: Generating plot_architecture_prompt ...")
-        prompt_plot = plot_architecture_prompt.format(
+        prompt_plot = prompt_definitions.plot_architecture_prompt.format(
             core_seed=partial_data["core_seed_result"].strip(),
             character_dynamics=partial_data["character_dynamics_result"].strip(),
             world_building=partial_data["world_building_result"].strip(),

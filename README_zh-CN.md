@@ -1,5 +1,7 @@
 # 📖 自动小说生成工具
 
+中文文档 | [English](./README.md) | [日本語](./README_ja.md) | [Français](./README_fr-FR.md) | [Sawcuengh](./README_sawcuengh.md)
+
 >- ~~当前没有什么精力维护该项目，本身该项目并无任何收益，以及临近毕业，有很多内容要忙，如果后面有时间的话，再考虑基于更新的技术去重构吧。——2025/9/24~~
 >
 >- ~~**(2026/03/09)：** 本项目即将在近期开启重构，届时将采用更先进的技术实现与全新的创意。~~
@@ -62,6 +64,20 @@
    - 打开终端，进入项目源文件目录：
      ```bash
      cd AI_NovelGenerator
+     ```
+   - (可选) 创建并激活虚拟环境：
+     ```bash
+     python -m venv .venv
+     # 如果失败，尝试:
+     # python3 -m venv .venv
+     ```
+     ```
+     # Windows系统:
+     .venv/Scripts/activate
+     ```
+     ```
+     # Linux/Mac系统:
+     source .venv/bin/activate
      ```
    - 安装项目依赖：
      ```bash
@@ -152,6 +168,8 @@ python main.py
 
 ### **方式 2：打包为可执行文件**
 如果你想在无 Python 环境的机器上使用本工具，可以使用 **PyInstaller** 进行打包：
+
+首先修改第26行的 `customtkinter_dir` 为你的项目目录，然后执行：
 
 ```bash
 pip install pyinstaller

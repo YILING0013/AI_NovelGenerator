@@ -55,10 +55,9 @@ def invoke_with_cleaning(llm_adapter, prompt: str, max_retries: int = 3) -> str:
     print("-"*50)
     print(prompt)
     print("="*50 + "\n")
-    
-    result = ""
+
     retry_count = 0
-    
+
     while retry_count < max_retries:
         try:
             result = llm_adapter.invoke(prompt)
@@ -67,17 +66,18 @@ def invoke_with_cleaning(llm_adapter, prompt: str, max_retries: int = 3) -> str:
             print("-"*50)
             print(result)
             print("="*50 + "\n")
-            
+
             # 清理结果中的特殊格式标记
             result = result.replace("```", "").strip()
             if result:
                 return result
             retry_count += 1
+            logging.warning(f"LLM 返回空内容，重试 ({retry_count}/{max_retries})")
         except Exception as e:
-            print(f"调用失败 ({retry_count + 1}/{max_retries}): {str(e)}")
             retry_count += 1
+            logging.error(f"调用失败 ({retry_count}/{max_retries}): {str(e)}")
             if retry_count >= max_retries:
-                raise e
-    
-    return result
+                raise
+
+    raise RuntimeError(f"LLM 在 {max_retries} 次重试后仍返回空内容")
 

@@ -8,7 +8,7 @@ import re
 import logging
 from novel_generator.common import invoke_with_cleaning
 from llm_adapters import create_llm_adapter
-from prompt_definitions import chapter_blueprint_prompt, chunked_chapter_blueprint_prompt
+import prompt_definitions
 from utils import read_file, clear_file_content, save_string_to_txt
 logging.basicConfig(
     filename='app.log',      # 日志文件名
@@ -108,7 +108,7 @@ def Chapter_blueprint_generate(
         while current_start <= number_of_chapters:
             current_end = min(current_start + chunk_size - 1, number_of_chapters)
             limited_blueprint = limit_chapter_blueprint(final_blueprint, 100)
-            chunk_prompt = chunked_chapter_blueprint_prompt.format(
+            chunk_prompt = prompt_definitions.chunked_chapter_blueprint_prompt.format(
                 novel_architecture=architecture_text,
                 chapter_list=limited_blueprint,
                 number_of_chapters=number_of_chapters,
@@ -132,7 +132,7 @@ def Chapter_blueprint_generate(
         return
 
     if chunk_size >= number_of_chapters:
-        prompt = chapter_blueprint_prompt.format(
+        prompt = prompt_definitions.chapter_blueprint_prompt.format(
             novel_architecture=architecture_text,
             number_of_chapters=number_of_chapters,
             user_guidance=user_guidance  # 新增参数
@@ -153,7 +153,7 @@ def Chapter_blueprint_generate(
     while current_start <= number_of_chapters:
         current_end = min(current_start + chunk_size - 1, number_of_chapters)
         limited_blueprint = limit_chapter_blueprint(final_blueprint, 100)
-        chunk_prompt = chunked_chapter_blueprint_prompt.format(
+        chunk_prompt = prompt_definitions.chunked_chapter_blueprint_prompt.format(
             novel_architecture=architecture_text,
             chapter_list=limited_blueprint,
             number_of_chapters=number_of_chapters,

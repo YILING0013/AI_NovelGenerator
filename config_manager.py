@@ -2,9 +2,14 @@
 # -*- coding: utf-8 -*-
 import json
 import os
+import logging
+import tempfile
 import threading
 from llm_adapters import create_llm_adapter
 from embedding_adapters import create_embedding_adapter
+
+IS_ENGLISH = False
+_config_lock = threading.RLock()
 
 
 def load_config(config_file: str) -> dict:
@@ -15,10 +20,15 @@ def load_config(config_file: str) -> dict:
         create_config(config_file)
 
     try:
-        with open(config_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except:
-            return {}
+        with _config_lock:
+            with open(config_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        logging.error(f"配置文件格式错误: {e}")
+        return {}
+    except (IOError, OSError) as e:
+        logging.error(f"无法读取配置文件: {e}")
+        return {}
 
 
 # PenBo 增加了创建默认配置文件函数
@@ -46,14 +56,14 @@ def create_config(config_file: str) -> dict:
             "timeout": 600,
             "interface_format": "OpenAI"
         },
-        "Gemini 2.5 Pro": {
+        "Gemini 2.5 Flash": {
             "api_key": "",
-            "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
-            "model_name": "gemini-2.5-pro",
+            "base_url": "https://generativelanguage.googleapis.com/v1beta",
+            "model_name": "gemini-2.5-flash",
             "temperature": 0.7,
             "max_tokens": 32768,
             "timeout": 600,
-            "interface_format": "OpenAI"
+            "interface_format": "Gemini"
         }
     },
     "embedding_configs": {
@@ -63,6 +73,13 @@ def create_config(config_file: str) -> dict:
             "model_name": "text-embedding-ada-002",
             "retrieval_k": 4,
             "interface_format": "OpenAI"
+        },
+        "Gemini": {
+            "api_key": "",
+            "base_url": "https://generativelanguage.googleapis.com/v1beta",
+            "model_name": "gemini-embedding-2",
+            "retrieval_k": 4,
+            "interface_format": "Gemini"
         }
     },
     "other_params": {
@@ -81,7 +98,7 @@ def create_config(config_file: str) -> dict:
     "choose_configs": {
         "prompt_draft_llm": "DeepSeek V3",
         "chapter_outline_llm": "DeepSeek V3",
-        "architecture_llm": "Gemini 2.5 Pro",
+        "architecture_llm": "Gemini 2.0 Flash",
         "final_chapter_llm": "GPT 5",
         "consistency_review_llm": "DeepSeek V3"
     },
@@ -101,12 +118,21 @@ def create_config(config_file: str) -> dict:
 
 
 def save_config(config_data: dict, config_file: str) -> bool:
-    """将 config_data 保存到 config_file 中，返回 True/False 表示是否成功。"""
+    """将 config_data 保存到 config_file 中（原子写入），返回 True/False 表示是否成功。"""
     try:
-        with open(config_file, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, ensure_ascii=False, indent=4)
+        with _config_lock:
+            dir_name = os.path.dirname(os.path.abspath(config_file))
+            fd, temp_path = tempfile.mkstemp(suffix='.json', dir=dir_name)
+            try:
+                with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                    json.dump(config_data, f, ensure_ascii=False, indent=4)
+                os.replace(temp_path, config_file)
+            except Exception:
+                os.unlink(temp_path)
+                raise
         return True
-    except:
+    except (IOError, OSError) as e:
+        logging.error(f"无法保存配置文件: {e}")
         return False
 
 def test_llm_config(interface_format, api_key, base_url, model_name, temperature, max_tokens, timeout, log_func, handle_exception_func):
