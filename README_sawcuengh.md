@@ -120,13 +120,13 @@ novel-generator/
     "api_key": "***",
     "base_url": "https://api.openai.com/v1",
     "interface_format": "OpenAI",
-    "model_name": "gpt-4o-mini",
+    "model_name": "deepseek-v4-flash",
     "temperature": 0.7,
     "max_tokens": 4096,
     "embedding_api_key": "sk-XXX...XXXX",
     "embedding_interface_format": "OpenAI",
     "embedding_url": "https://api.openai.com/v1",
-    "embedding_model_name": "text-embedding-ada-002",
+    "embedding_model_name": "text-embedding-3-small",
     "embedding_retrieval_k": 4,
     "topic": "Singfunghdijdaeuq doenghcaeuq doenghcaeuq doenghcaeuq",
     "genre": "Yenzgenj",
@@ -180,7 +180,7 @@ Gienjgouz doengh, gyaq doengh `dist/` doenghbouh sengcwngz doengh ndaej yungh do
 ## 📘 Sijyungh Dozdoz
 1. **Doengh doengh, caenh doengh gij giekjiz doengh beihci:**  
    - **API Key & Base URL** (doengh `https://api.openai.com/v1`)  
-   - **Moediz** (doengh `gpt-3.5-turbo`, `gpt-4o` doengh)  
+   - **Moediz** (doengh `deepseek-v4-flash`, `gemini-3.5-flash`, `gpt-5.5` doengh)
    - **Temperature** (0~1, gij doengh dauhcingh yiyi)  
    - **Doenghcaeuq (Topic)** (doengh "doengh gij doenghcaeuq AI doengh")  
    - **Gveilwd (Genre)** (doengh "yenzsoij"/"doengh"/"doengh doengh")  

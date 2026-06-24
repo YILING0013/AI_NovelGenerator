@@ -118,13 +118,13 @@ novel-generator/
    "api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
    "base_url": "https://api.openai.com/v1",
    "interface_format": "OpenAI",
-   "model_name": "gpt-4o-mini",
+   "model_name": "deepseek-v4-flash",
    "temperature": 0.7,
    "max_tokens": 4096,
    "embedding_api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
    "embedding_interface_format": "OpenAI",
    "embedding_url": "https://api.openai.com/v1",
-   "embedding_model_name": "text-embedding-ada-002",
+   "embedding_model_name": "text-embedding-3-small",
    "embedding_retrieval_k": 4,
    "topic": "崩壊スターレイルの主人公が原神のテイワット大陸へ転移し、世界を救いながらキャラクターたちと複雑な関係を築いていく物語。",
    "genre": "ファンタジー",
@@ -177,7 +177,7 @@ pyinstaller main.spec
 ## 📘 使い方
 1. **アプリ起動後、基本パラメータを入力します:**
    - **API Key & Base URL**（例: `https://api.openai.com/v1`）
-   - **モデル名**（例: `gpt-3.5-turbo`、`gpt-4o`）
+   - **モデル名**（例: `deepseek-v4-flash`、`gemini-3.5-flash`、`gpt-5.5`）
    - **Temperature**（0–1、創造性のばらつきを制御）
    - **トピック**（例: 「終末世界での AI 蜂起」）
    - **ジャンル**（例: 「SF」/「ファンタジー」/「アーバンファンタジー」）

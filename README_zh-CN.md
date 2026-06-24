@@ -115,24 +115,55 @@ novel-generator/
 
 ## ⚙️ 配置指南
 ### 📌 基础配置（config.json）
+完整示例见 `config.example.json`。当前配置按“模型预设”和“任务选择”分组：
 ```json
 {
-    "api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-    "base_url": "https://api.openai.com/v1",
-    "interface_format": "OpenAI",
-    "model_name": "gpt-4o-mini",
-    "temperature": 0.7,
-    "max_tokens": 4096,
-    "embedding_api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-    "embedding_interface_format": "OpenAI",
-    "embedding_url": "https://api.openai.com/v1",
-    "embedding_model_name": "text-embedding-ada-002",
-    "embedding_retrieval_k": 4,
-    "topic": "星穹铁道主角星穿越到原神提瓦特大陆，拯救提瓦特大陆，并与其中的角色展开爱恨情仇的小说",
-    "genre": "玄幻",
-    "num_chapters": 120,
-    "word_number": 4000,
-    "filepath": "D:/AI_NovelGenerator/filepath"
+    "last_llm_config_name": "DeepSeek V4 Flash",
+    "llm_configs": {
+        "DeepSeek V4 Flash": {
+            "api_key": "",
+            "base_url": "https://api.deepseek.com",
+            "interface_format": "DeepSeek",
+            "model_name": "deepseek-v4-flash",
+            "temperature": 0.7,
+            "max_tokens": 8192,
+            "timeout": 600
+        },
+        "DeepSeek V4 Pro": {
+            "api_key": "",
+            "base_url": "https://api.deepseek.com",
+            "interface_format": "DeepSeek",
+            "model_name": "deepseek-v4-pro",
+            "temperature": 0.7,
+            "max_tokens": 32768,
+            "timeout": 600
+        },
+        "Gemini 3.5 Flash": {
+            "api_key": "",
+            "base_url": "https://generativelanguage.googleapis.com/v1beta",
+            "interface_format": "Gemini",
+            "model_name": "gemini-3.5-flash",
+            "temperature": 0.7,
+            "max_tokens": 32768,
+            "timeout": 600
+        }
+    },
+    "embedding_configs": {
+        "OpenAI": {
+            "api_key": "",
+            "base_url": "https://api.openai.com/v1",
+            "interface_format": "OpenAI",
+            "model_name": "text-embedding-3-small",
+            "retrieval_k": 4
+        }
+    },
+    "choose_configs": {
+        "architecture_llm": "Gemini 3.5 Flash",
+        "chapter_outline_llm": "Gemini 3.5 Flash",
+        "prompt_draft_llm": "DeepSeek V4 Flash",
+        "final_chapter_llm": "DeepSeek V4 Pro",
+        "consistency_review_llm": "DeepSeek V4 Flash"
+    }
 }
 ```
 
@@ -141,12 +172,12 @@ novel-generator/
    - `api_key`: 大模型服务的API密钥
    - `base_url`: API终端地址（本地服务填Ollama等地址）
    - `interface_format`: 接口模式
-   - `model_name`: 主生成模型名称（如gpt-4, claude-3等）
+   - `model_name`: 主生成模型名称（如 `deepseek-v4-flash`、`gemini-3.5-flash`、`gpt-5.5` 等）
    - `temperature`: 创意度参数（0-1，越高越有创造性）
    - `max_tokens`: 模型最大回复长度
 
 2. **Embedding模型配置**
-   - `embedding_model_name`: 模型名称（如Ollama的nomic-embed-text）
+   - `embedding_model_name`: 模型名称（如 `text-embedding-3-small`、`gemini-embedding-2`、Ollama 的 `nomic-embed-text`）
    - `embedding_url`: 服务地址
    - `embedding_retrieval_k`: 
 
@@ -182,7 +213,7 @@ pyinstaller main.spec
 ## 📘 使用教程
 1. **启动后，先完成基本参数设置：**  
    - **API Key & Base URL**（如 `https://api.openai.com/v1`）  
-   - **模型名称**（如 `gpt-3.5-turbo`、`gpt-4o` 等）  
+   - **模型名称**（如 `deepseek-v4-flash`、`gemini-3.5-flash`、`gpt-5.5` 等）
    - **Temperature** (0~1，决定文字创意程度)  
    - **主题(Topic)**（如 “废土世界的 AI 叛乱”）  
    - **类型(Genre)**（如 “科幻”/“魔幻”/“都市幻想”）  

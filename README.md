@@ -116,24 +116,55 @@ novel-generator/
 
 ## ⚙️ Configuration Guide
 ### 📌 Basic configuration (`config.json`)
+See `config.example.json` for a complete example. Current configs are grouped by model presets and task routing:
 ```json
 {
-   "api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-   "base_url": "https://api.openai.com/v1",
-   "interface_format": "OpenAI",
-   "model_name": "gpt-4o-mini",
-   "temperature": 0.7,
-   "max_tokens": 4096,
-   "embedding_api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-   "embedding_interface_format": "OpenAI",
-   "embedding_url": "https://api.openai.com/v1",
-   "embedding_model_name": "text-embedding-ada-002",
-   "embedding_retrieval_k": 4,
-   "topic": "The protagonist of Star Rail travels to Genshin Impact's Teyvat continent, saves it, and develops complex relationships with its characters.",
-   "genre": "Fantasy",
-   "num_chapters": 120,
-   "word_number": 4000,
-   "filepath": "D:/AI_NovelGenerator/filepath"
+   "last_llm_config_name": "DeepSeek V4 Flash",
+   "llm_configs": {
+      "DeepSeek V4 Flash": {
+         "api_key": "",
+         "base_url": "https://api.deepseek.com",
+         "interface_format": "DeepSeek",
+         "model_name": "deepseek-v4-flash",
+         "temperature": 0.7,
+         "max_tokens": 8192,
+         "timeout": 600
+      },
+      "DeepSeek V4 Pro": {
+         "api_key": "",
+         "base_url": "https://api.deepseek.com",
+         "interface_format": "DeepSeek",
+         "model_name": "deepseek-v4-pro",
+         "temperature": 0.7,
+         "max_tokens": 32768,
+         "timeout": 600
+      },
+      "Gemini 3.5 Flash": {
+         "api_key": "",
+         "base_url": "https://generativelanguage.googleapis.com/v1beta",
+         "interface_format": "Gemini",
+         "model_name": "gemini-3.5-flash",
+         "temperature": 0.7,
+         "max_tokens": 32768,
+         "timeout": 600
+      }
+   },
+   "embedding_configs": {
+      "OpenAI": {
+         "api_key": "",
+         "base_url": "https://api.openai.com/v1",
+         "interface_format": "OpenAI",
+         "model_name": "text-embedding-3-small",
+         "retrieval_k": 4
+      }
+   },
+   "choose_configs": {
+      "architecture_llm": "Gemini 3.5 Flash",
+      "chapter_outline_llm": "Gemini 3.5 Flash",
+      "prompt_draft_llm": "DeepSeek V4 Flash",
+      "final_chapter_llm": "DeepSeek V4 Pro",
+      "consistency_review_llm": "DeepSeek V4 Flash"
+   }
 }
 ```
 
@@ -142,12 +173,12 @@ novel-generator/
    - `api_key`: API key for the LLM service
    - `base_url`: API endpoint (for local services use the Ollama address)
    - `interface_format`: Interface mode
-   - `model_name`: Main generation model (e.g., gpt-4, claude-3)
+   - `model_name`: Main generation model (e.g., `deepseek-v4-flash`, `gemini-3.5-flash`, `gpt-5.5`)
    - `temperature`: Creativity parameter (0–1, higher is more creative)
    - `max_tokens`: Maximum model response length
 
 2. **Embedding model configuration**
-   - `embedding_model_name`: Embedding model name (e.g., Ollama's nomic-embed-text)
+   - `embedding_model_name`: Embedding model name (e.g., `text-embedding-3-small`, `gemini-embedding-2`, or Ollama's `nomic-embed-text`)
    - `embedding_url`: Service endpoint
    - `embedding_retrieval_k`: Number of nearest neighbors to retrieve
 
@@ -180,7 +211,7 @@ After packaging an executable (e.g., `main.exe` on Windows) will appear in the `
 ## 📘 User Guide
 1. **After launching the app, fill in the basic parameters:**  
    - **API Key & Base URL** (e.g., `https://api.openai.com/v1`)  
-   - **Model name** (e.g., `gpt-3.5-turbo`, `gpt-4o`)  
+   - **Model name** (e.g., `deepseek-v4-flash`, `gemini-3.5-flash`, `gpt-5.5`)
    - **Temperature** (0–1, controls creative variance)  
    - **Topic** (e.g., "AI uprising in a post-apocalyptic world")  
    - **Genre** (e.g., "Sci-fi" / "Fantasy" / "Urban Fantasy")  
