@@ -55,43 +55,33 @@ class NovelGeneratorGUI:
         self.config_file = "config.json"
         self.loaded_config = load_config(self.config_file)
 
-        if self.loaded_config:
-            last_llm = next(iter(self.loaded_config["llm_configs"].values())).get("interface_format", "OpenAI")
-
-            last_embedding = self.loaded_config.get("last_embedding_interface_format", "OpenAI")
-        else:
-            last_llm = "OpenAI"
-            last_embedding = "OpenAI"
-
-        # if self.loaded_config and "llm_configs" in self.loaded_config and last_llm in self.loaded_config["llm_configs"]:
-        #     llm_conf = next(iter(self.loaded_config["llm_configs"]))
-        # else:
-        #     llm_conf = {
-        #         "api_key": "",
-        #         "base_url": "https://api.openai.com/v1",
-        #         "model_name": "gpt-4o-mini",
-        #         "temperature": 0.7,
-        #         "max_tokens": 8192,
-        #         "timeout": 600
-        #     }
-        llm_conf = next(iter(self.loaded_config["llm_configs"].values()))
+        llm_configs = self.loaded_config.get("llm_configs", {})
+        last_llm_config_name = self.loaded_config.get("last_llm_config_name")
+        if last_llm_config_name not in llm_configs:
+            last_llm_config_name = next(iter(llm_configs), "")
+        llm_conf = llm_configs.get(last_llm_config_name, {})
         choose_configs = self.loaded_config.get("choose_configs", {})
 
+        embedding_configs = self.loaded_config.get("embedding_configs", {})
+        last_embedding = self.loaded_config.get("last_embedding_interface_format", "OpenAI")
+        if last_embedding not in embedding_configs:
+            last_embedding = next(iter(embedding_configs), "OpenAI")
 
-        if self.loaded_config and "embedding_configs" in self.loaded_config and last_embedding in self.loaded_config["embedding_configs"]:
-            emb_conf = self.loaded_config["embedding_configs"][last_embedding]
+        if last_embedding in embedding_configs:
+            emb_conf = embedding_configs[last_embedding]
         else:
             emb_conf = {
                 "api_key": "",
                 "base_url": "https://api.openai.com/v1",
-                "model_name": "text-embedding-ada-002",
+                "model_name": "text-embedding-3-small",
                 "retrieval_k": 4
             }
 
         # PenBo 增加代理功能支持
-        proxy_url = self.loaded_config["proxy_setting"]["proxy_url"]
-        proxy_port = self.loaded_config["proxy_setting"]["proxy_port"]
-        if self.loaded_config["proxy_setting"]["enabled"]:
+        proxy_setting = self.loaded_config.get("proxy_setting", {})
+        proxy_url = proxy_setting.get("proxy_url", "127.0.0.1")
+        proxy_port = proxy_setting.get("proxy_port", "")
+        if proxy_setting.get("enabled", False):
             os.environ['HTTP_PROXY'] = f"http://{proxy_url}:{proxy_port}"
             os.environ['HTTPS_PROXY'] = f"http://{proxy_url}:{proxy_port}"
         else:
@@ -105,11 +95,11 @@ class NovelGeneratorGUI:
         self.api_key_var = ctk.StringVar(value=llm_conf.get("api_key", ""))
         self.base_url_var = ctk.StringVar(value=llm_conf.get("base_url", "https://api.openai.com/v1"))
         self.interface_format_var = ctk.StringVar(value=llm_conf.get("interface_format", "OpenAI"))
-        self.model_name_var = ctk.StringVar(value=llm_conf.get("model_name", "gpt-4o-mini"))
+        self.model_name_var = ctk.StringVar(value=llm_conf.get("model_name", "gpt-5.5"))
         self.temperature_var = ctk.DoubleVar(value=llm_conf.get("temperature", 0.7))
         self.max_tokens_var = ctk.IntVar(value=llm_conf.get("max_tokens", 8192))
         self.timeout_var = ctk.IntVar(value=llm_conf.get("timeout", 600))
-        self.interface_config_var = ctk.StringVar(value=next(iter(self.loaded_config["llm_configs"])))
+        self.interface_config_var = ctk.StringVar(value=last_llm_config_name)
 
 
 
@@ -117,16 +107,22 @@ class NovelGeneratorGUI:
         self.embedding_interface_format_var = ctk.StringVar(value=last_embedding)
         self.embedding_api_key_var = ctk.StringVar(value=emb_conf.get("api_key", ""))
         self.embedding_url_var = ctk.StringVar(value=emb_conf.get("base_url", "https://api.openai.com/v1"))
-        self.embedding_model_name_var = ctk.StringVar(value=emb_conf.get("model_name", "text-embedding-ada-002"))
+        self.embedding_model_name_var = ctk.StringVar(value=emb_conf.get("model_name", "text-embedding-3-small"))
         self.embedding_retrieval_k_var = ctk.StringVar(value=str(emb_conf.get("retrieval_k", 4)))
 
 
         # -- 生成配置相关 --
-        self.architecture_llm_var = ctk.StringVar(value=choose_configs.get("architecture_llm", "DeepSeek"))
-        self.chapter_outline_llm_var = ctk.StringVar(value=choose_configs.get("chapter_outline_llm", "DeepSeek"))
-        self.final_chapter_llm_var = ctk.StringVar(value=choose_configs.get("final_chapter_llm", "DeepSeek"))
-        self.consistency_review_llm_var = ctk.StringVar(value=choose_configs.get("consistency_review_llm", "DeepSeek"))
-        self.prompt_draft_llm_var = ctk.StringVar(value=choose_configs.get("prompt_draft_llm", "DeepSeek"))
+        def choose_llm_config(key):
+            selected = choose_configs.get(key)
+            if selected in llm_configs:
+                return selected
+            return last_llm_config_name
+
+        self.architecture_llm_var = ctk.StringVar(value=choose_llm_config("architecture_llm"))
+        self.chapter_outline_llm_var = ctk.StringVar(value=choose_llm_config("chapter_outline_llm"))
+        self.final_chapter_llm_var = ctk.StringVar(value=choose_llm_config("final_chapter_llm"))
+        self.consistency_review_llm_var = ctk.StringVar(value=choose_llm_config("consistency_review_llm"))
+        self.prompt_draft_llm_var = ctk.StringVar(value=choose_llm_config("prompt_draft_llm"))
 
 
 
@@ -222,7 +218,7 @@ class NovelGeneratorGUI:
     def handle_exception(self, context: str):
         full_message = f"{context}\n{traceback.format_exc()}"
         logging.error(full_message)
-        self.safe_log(full_message)
+        self.safe_log(f"{context}。详情已写入 app.log。")
 
     def show_chapter_in_textbox(self, text: str):
         self.chapter_result.delete("0.0", "end")

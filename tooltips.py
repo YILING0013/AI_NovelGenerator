@@ -8,20 +8,19 @@ tooltips = {
                         "OpenAI 兼容是指的可以通过该标准请求的任何接口，不是只允许使用api.openai.com接口\n"+
                         "例如Ollama接口格式也兼容OpenAI，可以无需修改直接使用\n"+
                         "ML Studio接口格式与OpenAI接口格式也一致。",
-    "model_name": "要使用的模型名称，例如deepseek-reasoner、gpt-4o等。如果是Ollama等，请填写你下载好的本地模型名。",
+    "model_name": "要使用的模型名称，例如deepseek-v4-flash、gemini-3.5-flash、gpt-5.5等。如果是Ollama等，请填写你下载好的本地模型名。",
     "temperature": "生成文本的随机度。数值越大越具有发散性，越小越严谨。",
     "max_tokens": "限制单次生成的最大Token数。范围1~100000，请根据模型上下文及需求填写合适值。\n"+
                   "以下是一些常见模型的最大值：\n"+
-                  "o1：100,000\n"+
-                  "o1-mini：65,536\n"+
-                  "gpt-4o：16384\n"+
-                  "gpt-4o-mini：16384\n"+
-                  "deepseek-reasoner：8192\n"+
-                  "deepseek-chat：4096\n",
+                  "gpt-5.5：128000\n"+
+                  "gpt-5.4-mini：128000\n"+
+                  "gemini-3.5-flash：32768\n"+
+                  "deepseek-v4-flash：8192\n"+
+                  "deepseek-v4-pro：32768\n",
     "embedding_api_key": "调用Embedding模型时所需的API Key。",
     "embedding_interface_format": "Embedding模型接口风格，比如OpenAI或Ollama。",
     "embedding_url": "Embedding模型接口地址。",
-    "embedding_model_name": "Embedding模型名称，如text-embedding-ada-002。",
+    "embedding_model_name": "Embedding模型名称，如text-embedding-3-small、gemini-embedding-2。",
     "embedding_retrieval_k": "向量检索时返回的Top-K结果数量。",
     "topic": "小说的大致主题或主要故事背景描述。",
     "genre": "小说的题材类型，如玄幻、都市、科幻等。",

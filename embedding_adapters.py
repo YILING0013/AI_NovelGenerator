@@ -185,7 +185,7 @@ class GeminiEmbeddingAdapter(BaseEmbeddingAdapter):
     def __init__(self, api_key: str, model_name: str, base_url: str):
         """
         :param api_key: 传入的 Google API Key
-        :param model_name: 这里一般是 "text-embedding-004"
+        :param model_name: 这里一般是 "gemini-embedding-2"
         :param base_url: e.g. https://generativelanguage.googleapis.com/v1beta/models (已弃用，SDK会自动处理)
         """
         self.api_key = api_key
