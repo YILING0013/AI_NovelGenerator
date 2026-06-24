@@ -1,6 +1,7 @@
 # consistency_checker.py
 # -*- coding: utf-8 -*-
 from llm_adapters import create_llm_adapter
+from novel_generator.common import log_llm_io
 
 # ============== 增加对“剧情要点/未解决冲突”进行检查的可选引导 ==============
 CONSISTENCY_PROMPT = """\
@@ -59,14 +60,12 @@ def check_consistency(
         timeout=timeout
     )
 
-    # 调试日志
-    print("\n[ConsistencyChecker] Prompt >>>", prompt)
+    log_llm_io("ConsistencyChecker Prompt", prompt)
 
     response = llm_adapter.invoke(prompt)
     if not response:
         return "审校Agent无回复"
     
-    # 调试日志
-    print("[ConsistencyChecker] Response <<<", response)
+    log_llm_io("ConsistencyChecker Response", response)
 
     return response

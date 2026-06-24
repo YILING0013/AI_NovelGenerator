@@ -4,6 +4,7 @@
 通用重试、清洗、日志工具
 """
 import logging
+import os
 import re
 import time
 import traceback
@@ -40,32 +41,33 @@ def remove_think_tags(text: str) -> str:
     """移除 <think>...</think> 包裹的内容"""
     return re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
 
+def is_llm_io_debug_enabled() -> bool:
+    return os.getenv("AI_NOVEL_DEBUG_LLM_IO", "").strip().lower() in {"1", "true", "yes", "on"}
+
+def log_llm_io(label: str, content: str):
+    """默认只记录长度，避免日志泄露完整提示词、正文或用户私有素材。"""
+    content = content or ""
+    if is_llm_io_debug_enabled():
+        logging.info(
+            f"\n[#########################################  {label}  #########################################]\n{content}\n"
+        )
+    else:
+        logging.info("[LLM IO] %s length=%s", label, len(content))
+
 def debug_log(prompt: str, response_content: str):
-    logging.info(
-        f"\n[#########################################  Prompt  #########################################]\n{prompt}\n"
-    )
-    logging.info(
-        f"\n[######################################### Response #########################################]\n{response_content}\n"
-    )
+    log_llm_io("Prompt", prompt)
+    log_llm_io("Response", response_content)
 
 def invoke_with_cleaning(llm_adapter, prompt: str, max_retries: int = 3) -> str:
     """调用 LLM 并清理返回结果"""
-    print("\n" + "="*50)
-    print("发送到 LLM 的提示词:")
-    print("-"*50)
-    print(prompt)
-    print("="*50 + "\n")
+    log_llm_io("Prompt", prompt)
 
     retry_count = 0
 
     while retry_count < max_retries:
         try:
             result = llm_adapter.invoke(prompt)
-            print("\n" + "="*50)
-            print("LLM 返回的内容:")
-            print("-"*50)
-            print(result)
-            print("="*50 + "\n")
+            log_llm_io("Response", result)
 
             # 清理结果中的特殊格式标记
             result = result.replace("```", "").strip()
@@ -80,4 +82,3 @@ def invoke_with_cleaning(llm_adapter, prompt: str, max_retries: int = 3) -> str:
                 raise
 
     raise RuntimeError(f"LLM 在 {max_retries} 次重试后仍返回空内容")
-

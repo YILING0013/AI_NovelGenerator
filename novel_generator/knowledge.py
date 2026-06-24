@@ -5,12 +5,11 @@
 """
 import os
 import logging
-import re
 import traceback
-import nltk
 import warnings
 from utils import read_file
 from novel_generator.vectorstore_utils import load_vector_store, init_vector_store
+from novel_generator.text_utils import split_sentences
 from langchain_core.documents import Document
 
 # 禁用特定的Torch警告
@@ -25,9 +24,7 @@ logging.basicConfig(
 )
 def advanced_split_content(content: str, similarity_threshold: float = 0.7, max_length: int = 500) -> list:
     """使用基本分段策略"""
-    # nltk.download('punkt', quiet=True)
-    # nltk.download('punkt_tab', quiet=True)
-    sentences = nltk.sent_tokenize(content)
+    sentences = split_sentences(content)
     if not sentences:
         return []
 
