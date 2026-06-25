@@ -121,13 +121,13 @@ novel-generator/
    "api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
    "base_url": "https://api.openai.com/v1",
    "interface_format": "OpenAI",
-   "model_name": "gpt-4o-mini",
+   "model_name": "deepseek-v4-flash",
    "temperature": 0.7,
    "max_tokens": 4096,
    "embedding_api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
    "embedding_interface_format": "OpenAI",
    "embedding_url": "https://api.openai.com/v1",
-   "embedding_model_name": "text-embedding-ada-002",
+   "embedding_model_name": "text-embedding-3-small",
    "embedding_retrieval_k": 4,
    "topic": "Le protagoniste de Star Rail voyage sur le continent de Teyvat de Genshin Impact, le sauve et développe des relations complexes avec ses personnages.",
    "genre": "Fantasy",
@@ -180,7 +180,7 @@ Après l'empaquetage, un exécutable (par exemple, `main.exe` sous Windows) appa
 ## 📘 Guide de l'Utilisateur
 1. **Après le lancement de l'application, remplissez les paramètres de base :**  
    - **Clé API & URL de base** (par exemple, `https://api.openai.com/v1`)  
-   - **Nom du modèle** (par exemple, `gpt-3.5-turbo`, `gpt-4o`)  
+   - **Nom du modèle** (par exemple, `deepseek-v4-flash`, `gemini-3.5-flash`, `gpt-5.5`)
    - **Température** (0–1, contrôle la variance créative)  
    - **Sujet** (par exemple, « Soulèvement de l'IA dans un monde post-apocalyptique »)  
    - **Genre** (par exemple, « Science-fiction » / « Fantasy » / « Fantasy urbaine »)  

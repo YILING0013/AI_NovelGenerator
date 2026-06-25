@@ -6,7 +6,6 @@
 import os
 import logging
 import traceback
-import nltk
 import numpy as np
 import ssl
 import warnings
@@ -25,6 +24,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"  # 禁用tokenizer并行警告
 from chromadb.config import Settings
 from langchain_core.documents import Document
 from .common import call_with_retry
+from .text_utils import split_sentences
 
 def get_vectorstore_dir(filepath: str) -> str:
     """获取 vectorstore 路径"""
@@ -149,9 +149,7 @@ def split_text_for_vectorstore(chapter_text: str, max_length: int = 500, similar
     if not chapter_text.strip():
         return []
     
-    # nltk.download('punkt', quiet=True)
-    # nltk.download('punkt_tab', quiet=True)
-    sentences = nltk.sent_tokenize(chapter_text)
+    sentences = split_sentences(chapter_text)
     if not sentences:
         return []
     

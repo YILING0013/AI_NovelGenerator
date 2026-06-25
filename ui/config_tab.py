@@ -10,6 +10,24 @@ from config_manager import load_config, save_config
 from tooltips import tooltips
 
 import os
+from urllib.parse import urlparse
+
+
+def _first_llm_config_name(config_data):
+    return next(iter(config_data.get("llm_configs", {})), "")
+
+
+def _sync_selected_llm_metadata(config_data, selected_name):
+    if selected_name in config_data.get("llm_configs", {}):
+        config_data["last_llm_config_name"] = selected_name
+        config_data["last_interface_format"] = config_data["llm_configs"][selected_name].get("interface_format", "OpenAI")
+
+
+def _replace_choose_config_references(config_data, old_name, new_name):
+    choose_configs = config_data.get("choose_configs", {})
+    for key, value in list(choose_configs.items()):
+        if value == old_name:
+            choose_configs[key] = new_name
 
 
 def create_label_with_help(self, parent, label_text, tooltip_key, row, column,
@@ -115,20 +133,28 @@ def build_ai_config_tab(self):
             "interface_format": "OpenAI",
             "created_at": datetime.datetime.now().isoformat()
         }
+        _sync_selected_llm_metadata(self.loaded_config, new_name)
         
         refresh_config_dropdown()
         self.interface_config_var.set(new_name)
-        messagebox.showinfo("提示", f"已成功创建新配置: {new_name}")
+        on_config_selected(new_name)
+        if save_config(self.loaded_config, self.config_file):
+            messagebox.showinfo("提示", f"已成功创建新配置: {new_name}")
+        else:
+            messagebox.showerror("错误", "新增配置失败：无法保存配置文件")
 
     def delete_current_config():
         """删除当前选中的配置并保存到JSON文件"""
         selected_config = self.interface_config_var.get()
-        if selected_config in self.loaded_config.get("llm_configs", {}):
-            if len(self.loaded_config["llm_configs"]) <= 1:
-                messagebox.showerror("错误", "至少需要保留一个配置!")
-                return
-                
-            confirm = messagebox.askyesno(
+        if selected_config not in self.loaded_config.get("llm_configs", {}):
+            messagebox.showerror("错误", "未找到选中的配置!")
+            return
+
+        if len(self.loaded_config["llm_configs"]) <= 1:
+            messagebox.showerror("错误", "至少需要保留一个配置!")
+            return
+
+        confirm = messagebox.askyesno(
             "确认删除",
             f"确定要删除配置 '{selected_config}' 吗?\n此操作不可撤销!"
         )
@@ -136,16 +162,17 @@ def build_ai_config_tab(self):
             return
             
         del self.loaded_config["llm_configs"][selected_config]
+        replacement_config = _first_llm_config_name(self.loaded_config)
+        _replace_choose_config_references(self.loaded_config, selected_config, replacement_config)
+        _sync_selected_llm_metadata(self.loaded_config, replacement_config)
         refresh_config_dropdown()
+        on_config_selected(replacement_config)
         
         # 保存到JSON文件
-        try:
-            save_config(self.loaded_config, self.config_file)
+        if save_config(self.loaded_config, self.config_file):
             messagebox.showinfo("提示", f"已删除配置: {selected_config}，并已更新配置文件")
-        except Exception as e:
-            messagebox.showerror("错误", f"保存配置文件失败: {str(e)}")
         else:
-            messagebox.showerror("错误", "未找到选中的配置!")
+            messagebox.showerror("错误", "删除配置失败：无法保存配置文件")
 
     def save_current_config():
         """保存当前配置的修改到JSON文件"""
@@ -165,11 +192,14 @@ def build_ai_config_tab(self):
             "interface_format": self.interface_format_var.get(),
             "updated_at": datetime.datetime.now().isoformat()
         })
+        _sync_selected_llm_metadata(self.loaded_config, config_name)
         
         # 如果修改了配置名称
         new_name = self.interface_config_var.get()
         if new_name != config_name:
             self.loaded_config["llm_configs"][new_name] = self.loaded_config["llm_configs"].pop(config_name)
+            _replace_choose_config_references(self.loaded_config, config_name, new_name)
+            _sync_selected_llm_metadata(self.loaded_config, new_name)
             refresh_config_dropdown()
         embedding_config = {
         "api_key": self.embedding_api_key_var.get(),
@@ -193,6 +223,7 @@ def build_ai_config_tab(self):
             "time_constraint": self.time_constraint_var.get()
         }
         self.loaded_config["embedding_configs"][self.embedding_interface_format_var.get().strip()] = embedding_config
+        self.loaded_config["last_embedding_interface_format"] = self.embedding_interface_format_var.get().strip()
         self.loaded_config["other_params"] = other_params
 
 
@@ -230,10 +261,15 @@ def build_ai_config_tab(self):
             
         # 更新配置名称
         self.loaded_config["llm_configs"][new_name] = self.loaded_config["llm_configs"].pop(old_name)
+        _replace_choose_config_references(self.loaded_config, old_name, new_name)
+        _sync_selected_llm_metadata(self.loaded_config, new_name)
         self.interface_config_var.set(new_name)
         refresh_config_dropdown()
 
-        messagebox.showinfo("提示", f"配置已从 '{old_name}' 重命名为 '{new_name}'")
+        if save_config(self.loaded_config, self.config_file):
+            messagebox.showinfo("提示", f"配置已从 '{old_name}' 重命名为 '{new_name}'")
+        else:
+            messagebox.showerror("错误", "重命名配置失败：无法保存配置文件")
 
     # 初始化UI布局
     for i in range(10):
@@ -250,18 +286,21 @@ def build_ai_config_tab(self):
             "默认配置": {
                 "id": str(uuid.uuid4()),
                 "api_key": "",
-                "base_url": "https://api.openai.com/v1",
-                "model_name": "gpt-4",
+                "base_url": "https://api.deepseek.com",
+                "model_name": "deepseek-v4-flash",
                 "temperature": 0.7,
                 "max_tokens": 8192,
                 "timeout": 600,
-                "interface_format": "OpenAI",
+                "interface_format": "DeepSeek",
                 "created_at": datetime.datetime.now().isoformat()
             }
         }
         config_names = ["默认配置"]
     
-    self.interface_config_var = ctk.StringVar(value=config_names[0])
+    selected_config_name = self.interface_config_var.get()
+    if selected_config_name not in config_names:
+        selected_config_name = config_names[0]
+    self.interface_config_var = ctk.StringVar(value=selected_config_name)
 
     interface_config_dropdown = ctk.CTkOptionMenu(
         self.ai_config_tab, 
@@ -438,12 +477,14 @@ def build_ai_config_tab(self):
     test_btn.grid(row=row_start+7, column=0, columnspan=3, padx=5, pady=5, sticky="ew")
 
     # 初始化当前配置
-    on_config_selected(config_names[0])
+    on_config_selected(selected_config_name)
 
 
 def build_embeddings_config_tab(self):
     def on_embedding_interface_changed(new_value):
         self.embedding_interface_format_var.set(new_value)
+        if self.loaded_config is not None:
+            self.loaded_config["last_embedding_interface_format"] = new_value
         config_data = load_config(self.config_file)
         if config_data:
             config_data["last_embedding_interface_format"] = new_value
@@ -461,14 +502,12 @@ def build_embeddings_config_tab(self):
                 self.embedding_url_var.set("http://localhost:1234/v1")
             elif new_value == "OpenAI":
                 self.embedding_url_var.set("https://api.openai.com/v1")
-                self.embedding_model_name_var.set("text-embedding-ada-002")
+                self.embedding_model_name_var.set("text-embedding-3-small")
             elif new_value == "Azure OpenAI":
                 self.embedding_url_var.set("https://[az].openai.azure.com/openai/deployments/[model]/embeddings?api-version=2023-05-15")
-            elif new_value == "DeepSeek":
-                self.embedding_url_var.set("https://api.deepseek.com/v1")
             elif new_value == "Gemini":
                 self.embedding_url_var.set("https://generativelanguage.googleapis.com/v1beta/")
-                self.embedding_model_name_var.set("models/text-embedding-004")
+                self.embedding_model_name_var.set("gemini-embedding-2")
             elif new_value == "SiliconFlow":
                 self.embedding_url_var.set("https://api.siliconflow.cn/v1/embeddings")
                 self.embedding_model_name_var.set("BAAI/bge-m3")
@@ -485,9 +524,9 @@ def build_embeddings_config_tab(self):
     emb_api_key_entry.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
 
     # 2) Embedding 接口格式
-    create_label_with_help(self, parent=self.embeddings_config_tab, label_text="Embedding 接口格式:", tooltip_key="embedding_intexrface_format", row=1, column=0, font=("Microsoft YaHei", 12))
+    create_label_with_help(self, parent=self.embeddings_config_tab, label_text="Embedding 接口格式:", tooltip_key="embedding_interface_format", row=1, column=0, font=("Microsoft YaHei", 12))
 
-    emb_interface_options = ["DeepSeek", "OpenAI", "Azure OpenAI", "Gemini", "Ollama", "ML Studio","SiliconFlow"]
+    emb_interface_options = ["OpenAI", "Azure OpenAI", "Gemini", "Ollama", "ML Studio", "SiliconFlow"]
 
     emb_interface_dropdown = ctk.CTkOptionMenu(self.embeddings_config_tab, values=emb_interface_options, variable=self.embedding_interface_format_var, command=on_embedding_interface_changed, font=("Microsoft YaHei", 12))
     emb_interface_dropdown.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
@@ -538,29 +577,50 @@ def build_config_choose_tab(self):
     consistency_review_dropdown = ctk.CTkOptionMenu(self.config_choose, values=config_choose_options, variable=self.consistency_review_llm_var, font=("Microsoft YaHei", 12))
     consistency_review_dropdown.grid(row=4, column=1, padx=5, pady=5, sticky="nsew")
 
+    config_dropdown_pairs = [
+        (architecture_dropdown, self.architecture_llm_var),
+        (chapter_outline_dropdown, self.chapter_outline_llm_var),
+        (prompt_draft_dropdown, self.prompt_draft_llm_var),
+        (final_chapter_dropdown, self.final_chapter_llm_var),
+        (consistency_review_dropdown, self.consistency_review_llm_var),
+    ]
+
     def save_config_choose():
-        config_data = load_config(self.config_file)["choose_configs"]
-        if not config_data:
-            config_data = {}
+        config_data_full = load_config(self.config_file)
+        config_names = set(config_data_full.get("llm_configs", {}).keys())
+        selected_values = {
+            "architecture_llm": self.architecture_llm_var.get(),
+            "chapter_outline_llm": self.chapter_outline_llm_var.get(),
+            "prompt_draft_llm": self.prompt_draft_llm_var.get(),
+            "final_chapter_llm": self.final_chapter_llm_var.get(),
+            "consistency_review_llm": self.consistency_review_llm_var.get(),
+        }
+        missing_values = [value for value in selected_values.values() if value not in config_names]
+        if missing_values:
+            messagebox.showerror("错误", f"以下配置不存在，无法保存: {', '.join(sorted(set(missing_values)))}")
+            return
+
+        config_data = config_data_full.get("choose_configs", {})
         config_data["architecture_llm"] = self.architecture_llm_var.get()
         config_data["chapter_outline_llm"] = self.chapter_outline_llm_var.get()
         config_data["prompt_draft_llm"] = self.prompt_draft_llm_var.get()
         config_data["final_chapter_llm"] = self.final_chapter_llm_var.get()
         config_data["consistency_review_llm"] = self.consistency_review_llm_var.get()
 
-
-        config_data_full = load_config(self.config_file)
         config_data_full["choose_configs"] = config_data
-        save_config(config_data_full, self.config_file)
-        messagebox.showinfo("提示", "配置已保存。")
+        if save_config(config_data_full, self.config_file):
+            self.loaded_config = config_data_full
+            messagebox.showinfo("提示", "配置已保存。")
+        else:
+            messagebox.showerror("错误", "保存配置失败。")
 
     def refresh_config_dropdowns():
         """刷新所有配置下拉菜单"""
         config_names = list(self.loaded_config.get("llm_configs", {}).keys())
-        for dropdown in [architecture_dropdown, chapter_outline_dropdown, prompt_draft_dropdown, final_chapter_dropdown, consistency_review_dropdown]:
+        for dropdown, variable in config_dropdown_pairs:
             dropdown.configure(values=config_names)
-            if config_names and dropdown.cget("variable").get() not in config_names:
-                dropdown.cget("variable").set(config_names[0])
+            if config_names and variable.get() not in config_names:
+                variable.set(config_names[0])
 
     save_btn = ctk.CTkButton(
         self.config_choose, 
@@ -665,17 +725,19 @@ def build_proxy_setting_tab(self):
 def load_config_btn(self):
     cfg = load_config(self.config_file)
     if cfg:
-        last_llm = cfg.get("last_interface_format", "OpenAI")
+        last_llm = cfg.get("last_llm_config_name", "")
         last_embedding = cfg.get("last_embedding_interface_format", "OpenAI")
-        self.interface_format_var.set(last_llm)
         self.embedding_interface_format_var.set(last_embedding)
         llm_configs = cfg.get("llm_configs", {})
+        if last_llm not in llm_configs:
+            last_llm = _first_llm_config_name(cfg)
         if last_llm in llm_configs:
             llm_conf = llm_configs[last_llm]
+            self.interface_config_var.set(last_llm)
             self.interface_format_var.set(llm_conf.get("interface_format", "OpenAI"))
             self.api_key_var.set(llm_conf.get("api_key", ""))
             self.base_url_var.set(llm_conf.get("base_url", "https://api.openai.com/v1"))
-            self.model_name_var.set(llm_conf.get("model_name", "gpt-4o-mini"))
+            self.model_name_var.set(llm_conf.get("model_name", "gpt-5.5"))
             self.temperature_var.set(llm_conf.get("temperature", 0.7))
             self.max_tokens_var.set(llm_conf.get("max_tokens", 8192))
             self.timeout_var.set(llm_conf.get("timeout", 600))
@@ -684,8 +746,19 @@ def load_config_btn(self):
             emb_conf = embedding_configs[last_embedding]
             self.embedding_api_key_var.set(emb_conf.get("api_key", ""))
             self.embedding_url_var.set(emb_conf.get("base_url", "https://api.openai.com/v1"))
-            self.embedding_model_name_var.set(emb_conf.get("model_name", "text-embedding-ada-002"))
+            self.embedding_model_name_var.set(emb_conf.get("model_name", "text-embedding-3-small"))
             self.embedding_retrieval_k_var.set(str(emb_conf.get("retrieval_k", 4)))
+        choose_configs = cfg.get("choose_configs", {})
+        if choose_configs.get("architecture_llm") in llm_configs:
+            self.architecture_llm_var.set(choose_configs["architecture_llm"])
+        if choose_configs.get("chapter_outline_llm") in llm_configs:
+            self.chapter_outline_llm_var.set(choose_configs["chapter_outline_llm"])
+        if choose_configs.get("prompt_draft_llm") in llm_configs:
+            self.prompt_draft_llm_var.set(choose_configs["prompt_draft_llm"])
+        if choose_configs.get("final_chapter_llm") in llm_configs:
+            self.final_chapter_llm_var.set(choose_configs["final_chapter_llm"])
+        if choose_configs.get("consistency_review_llm") in llm_configs:
+            self.consistency_review_llm_var.set(choose_configs["consistency_review_llm"])
         other_params = cfg.get("other_params", {})
         self.topic_text.delete("0.0", "end")
         self.topic_text.insert("0.0", other_params.get("topic", ""))
@@ -737,7 +810,10 @@ def save_config_btn(self):
         "scene_location": self.scene_location_var.get(),
         "time_constraint": self.time_constraint_var.get()
     }
-    llm_config_name = self.base_url_var.get().split("/")[2] + " " + self.model_name_var.get()
+    parsed_url = urlparse(self.base_url_var.get().strip())
+    provider_label = parsed_url.netloc or parsed_url.path.strip("/") or current_llm_interface
+    model_label = self.model_name_var.get().strip() or "unnamed-model"
+    llm_config_name = f"{provider_label} {model_label}"
 
     existing_config = load_config(self.config_file)
     if not existing_config:
@@ -749,6 +825,8 @@ def save_config_btn(self):
     llm_config["config_name"] = llm_config_name
 
     existing_config["llm_configs"][llm_config_name] = llm_config
+    existing_config["last_llm_config_name"] = llm_config_name
+    existing_config["last_interface_format"] = current_llm_interface
 
     if "embedding_configs" not in existing_config:
         existing_config["embedding_configs"] = {}
@@ -757,6 +835,8 @@ def save_config_btn(self):
     existing_config["other_params"] = other_params
 
     if save_config(existing_config, self.config_file):
+        self.loaded_config = existing_config
+        self.interface_config_var.set(llm_config_name)
         messagebox.showinfo("提示", "配置已保存至 config.json")
         self.log("配置已保存。")
     else:

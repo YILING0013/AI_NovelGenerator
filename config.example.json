@@ -1,40 +1,59 @@
 {
-    "last_interface_format": "OpenAI",
+    "last_llm_config_name": "DeepSeek V4 Flash",
+    "last_interface_format": "DeepSeek",
     "last_embedding_interface_format": "OpenAI",
     "llm_configs": {
-        "DeepSeek V3": {
+        "DeepSeek V4 Flash": {
             "api_key": "",
-            "base_url": "https://api.deepseek.com/v1",
-            "model_name": "deepseek-chat",
+            "base_url": "https://api.deepseek.com",
+            "model_name": "deepseek-v4-flash",
             "temperature": 0.7,
             "max_tokens": 8192,
             "timeout": 600,
-            "interface_format": "OpenAI"
+            "interface_format": "DeepSeek"
         },
-        "GPT 5": {
+        "DeepSeek V4 Pro": {
             "api_key": "",
-            "base_url": "https://api.openai.com/v1",
-            "model_name": "gpt-5",
+            "base_url": "https://api.deepseek.com",
+            "model_name": "deepseek-v4-pro",
             "temperature": 0.7,
             "max_tokens": 32768,
             "timeout": 600,
-            "interface_format": "OpenAI"
+            "interface_format": "DeepSeek"
         },
-        "Gemini 2.5 Flash": {
+        "Gemini 3.5 Flash": {
             "api_key": "",
             "base_url": "https://generativelanguage.googleapis.com/v1beta",
-            "model_name": "gemini-2.5-flash",
+            "model_name": "gemini-3.5-flash",
             "temperature": 0.7,
             "max_tokens": 32768,
             "timeout": 600,
             "interface_format": "Gemini"
+        },
+        "Gemini 3.1 Pro Preview": {
+            "api_key": "",
+            "base_url": "https://generativelanguage.googleapis.com/v1beta",
+            "model_name": "gemini-3.1-pro-preview",
+            "temperature": 0.7,
+            "max_tokens": 32768,
+            "timeout": 600,
+            "interface_format": "Gemini"
+        },
+        "OpenAI GPT 5.5": {
+            "api_key": "",
+            "base_url": "https://api.openai.com/v1",
+            "model_name": "gpt-5.5",
+            "temperature": 0.7,
+            "max_tokens": 32768,
+            "timeout": 600,
+            "interface_format": "OpenAI"
         }
     },
     "embedding_configs": {
         "OpenAI": {
             "api_key": "",
             "base_url": "https://api.openai.com/v1",
-            "model_name": "text-embedding-ada-002",
+            "model_name": "text-embedding-3-small",
             "retrieval_k": 4,
             "interface_format": "OpenAI"
         },
@@ -60,11 +79,11 @@
         "time_constraint": ""
     },
     "choose_configs": {
-        "prompt_draft_llm": "DeepSeek V3",
-        "chapter_outline_llm": "DeepSeek V3",
-        "architecture_llm": "Gemini 2.5 Pro",
-        "final_chapter_llm": "GPT 5",
-        "consistency_review_llm": "DeepSeek V3"
+        "prompt_draft_llm": "DeepSeek V4 Flash",
+        "chapter_outline_llm": "Gemini 3.5 Flash",
+        "architecture_llm": "Gemini 3.5 Flash",
+        "final_chapter_llm": "DeepSeek V4 Pro",
+        "consistency_review_llm": "DeepSeek V4 Flash"
     },
     "proxy_setting": {
         "proxy_url": "127.0.0.1",
