@@ -77,6 +77,7 @@ def build_other_settings_tab(self):
         run_webdav_task(worker, "WebDAV 连接成功！", lambda _result: save_webdav_settings())
 
     def backup_to_webdav():
+        save_webdav_settings()
         webdav_url = self.webdav_url_var.get().strip()
         username = self.webdav_username_var.get().strip()
         password = self.webdav_password_var.get().strip()
@@ -288,7 +289,7 @@ class WebDAVClient:
         :return: 是否下载成功
         """
         url = self._get_url(remote_path)
-        local_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), local_path)
+        local_path = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), local_path))
         self.backup(local_path)
         temp_path = None
         try:
