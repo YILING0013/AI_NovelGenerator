@@ -68,7 +68,7 @@ def invoke_with_cleaning(llm_adapter, prompt: str, max_retries: int = 3) -> str:
             print("="*50 + "\n")
 
             # 清理结果中的特殊格式标记
-            result = result.replace("```", "").strip()
+            result = remove_think_tags(result).replace("```", "").strip()
             if result:
                 return result
             retry_count += 1
