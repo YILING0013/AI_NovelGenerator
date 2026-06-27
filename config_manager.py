@@ -7,6 +7,8 @@ import tempfile
 import threading
 from copy import deepcopy
 
+from llm_output_cleaning import remove_think_tags
+
 IS_ENGLISH = False
 _config_lock = threading.RLock()
 
@@ -278,6 +280,8 @@ def test_llm_config(interface_format, api_key, base_url, model_name, temperature
 
             test_prompt = "Please reply 'OK'"
             response = llm_adapter.invoke(test_prompt)
+            if response:
+                response = remove_think_tags(response).strip()
             if response:
                 log_func("✅ LLM配置测试成功！")
                 log_func(f"测试回复: {response}")
