@@ -28,6 +28,11 @@ class CommonCleaningTest(unittest.TestCase):
 
         self.assertEqual("prefixbody", remove_think_tags(text))
 
+    def test_remove_think_tags_strips_multiline_and_multiple_blocks(self):
+        text = "A<think>line 1\nline 2</think>B<think>another</think>C"
+
+        self.assertEqual("ABC", remove_think_tags(text))
+
     def test_invoke_with_cleaning_removes_think_tags_from_llm_output(self):
         adapter = FakeLLMAdapter(
             "```<think>internal reasoning should be hidden</think>\nChapter text```"

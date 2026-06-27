@@ -1,11 +1,23 @@
 import json
 import pathlib
+import sys
+import types
 import unittest
+from unittest import mock
 
+import config_manager
 from config_manager import get_default_config, normalize_config, validate_choose_configs
 
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+class ImmediateThread:
+    def __init__(self, target, daemon=False):
+        self.target = target
+
+    def start(self):
+        self.target()
 
 
 class ConfigManagerTest(unittest.TestCase):
@@ -62,6 +74,39 @@ class ConfigManagerTest(unittest.TestCase):
 
         self.assertIn('emb_interface_options = ["OpenAI", "Azure OpenAI", "Gemini", "Ollama", "ML Studio", "SiliconFlow"]', config_tab_source)
         self.assertNotIn('emb_interface_options = ["DeepSeek"', config_tab_source)
+
+    def test_llm_config_test_cleans_think_tags_from_visible_reply(self):
+        class FakeAdapter:
+            def invoke(self, prompt):
+                return "<think>internal reasoning</think>OK"
+
+        fake_llm_adapters = types.ModuleType("llm_adapters")
+        fake_llm_adapters.create_llm_adapter = lambda **kwargs: FakeAdapter()
+        logs = []
+        errors = []
+
+        with (
+            mock.patch.dict(sys.modules, {"llm_adapters": fake_llm_adapters}),
+            mock.patch.object(config_manager.threading, "Thread", ImmediateThread),
+        ):
+            config_manager.test_llm_config(
+                interface_format="OpenAI",
+                api_key="key",
+                base_url="https://example.com",
+                model_name="model",
+                temperature=0.7,
+                max_tokens=100,
+                timeout=30,
+                log_func=logs.append,
+                handle_exception_func=errors.append,
+            )
+
+        visible_log = "\n".join(logs)
+        self.assertIn("测试回复: OK", visible_log)
+        self.assertNotIn("<think>", visible_log)
+        self.assertNotIn("</think>", visible_log)
+        self.assertNotIn("internal reasoning", visible_log)
+        self.assertEqual(errors, [])
 
 
 if __name__ == "__main__":

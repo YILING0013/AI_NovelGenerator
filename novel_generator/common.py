@@ -5,9 +5,10 @@
 """
 import logging
 import os
-import re
 import time
 import traceback
+
+from llm_output_cleaning import remove_think_tags
 logging.basicConfig(
     filename='app.log',      # 日志文件名
     filemode='a',            # 追加模式（'w' 会覆盖）
@@ -36,10 +37,6 @@ def call_with_retry(func, max_retries=3, sleep_time=2, fallback_return=None, **k
             else:
                 logging.error("Max retries reached, returning fallback_return.")
                 return fallback_return
-
-def remove_think_tags(text: str) -> str:
-    """移除 <think>...</think> 包裹的内容"""
-    return re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
 
 def is_llm_io_debug_enabled() -> bool:
     return os.getenv("AI_NOVEL_DEBUG_LLM_IO", "").strip().lower() in {"1", "true", "yes", "on"}

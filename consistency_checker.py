@@ -1,6 +1,7 @@
 # consistency_checker.py
 # -*- coding: utf-8 -*-
 from llm_adapters import create_llm_adapter
+from llm_output_cleaning import remove_think_tags
 from novel_generator.common import log_llm_io
 
 # ============== 增加对“剧情要点/未解决冲突”进行检查的可选引导 ==============
@@ -65,7 +66,11 @@ def check_consistency(
     response = llm_adapter.invoke(prompt)
     if not response:
         return "审校Agent无回复"
-    
+
+    response = remove_think_tags(response).strip()
+    if not response:
+        return "审校Agent无回复"
+
     log_llm_io("ConsistencyChecker Response", response)
 
     return response
