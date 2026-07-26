@@ -10,7 +10,13 @@ from tkinter import filedialog, messagebox
 from .role_library import RoleLibrary
 from llm_adapters import create_llm_adapter
 
-from config_manager import load_config, save_config, test_llm_config, test_embedding_config
+from config_manager import (
+    load_config,
+    save_config,
+    test_llm_config,
+    test_embedding_config,
+    get_choose_config_display,
+)
 from utils import read_file, save_string_to_txt, clear_file_content
 from tooltips import tooltips
 
@@ -113,10 +119,8 @@ class NovelGeneratorGUI:
 
         # -- 生成配置相关 --
         def choose_llm_config(key):
-            selected = choose_configs.get(key)
-            if selected in llm_configs:
-                return selected
-            return last_llm_config_name
+            selected = choose_configs.get(key, "")
+            return get_choose_config_display(selected)
 
         self.architecture_llm_var = ctk.StringVar(value=choose_llm_config("architecture_llm"))
         self.chapter_outline_llm_var = ctk.StringVar(value=choose_llm_config("chapter_outline_llm"))

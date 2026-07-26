@@ -79,11 +79,11 @@
         "time_constraint": ""
     },
     "choose_configs": {
-        "prompt_draft_llm": "DeepSeek V4 Flash",
-        "chapter_outline_llm": "Gemini 3.5 Flash",
-        "architecture_llm": "Gemini 3.5 Flash",
-        "final_chapter_llm": "DeepSeek V4 Pro",
-        "consistency_review_llm": "DeepSeek V4 Flash"
+        "prompt_draft_llm": "",
+        "chapter_outline_llm": "",
+        "architecture_llm": "",
+        "final_chapter_llm": "",
+        "consistency_review_llm": ""
     },
     "proxy_setting": {
         "proxy_url": "127.0.0.1",

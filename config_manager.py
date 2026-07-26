@@ -12,6 +12,8 @@ _config_lock = threading.RLock()
 
 DEFAULT_LLM_CONFIG_NAME = "DeepSeek V4 Flash"
 DEFAULT_EMBEDDING_CONFIG_NAME = "OpenAI"
+DEFAULT_CHOOSE_CONFIG_DISPLAY = "未选择"
+DEFAULT_CHOOSE_CONFIG_VALUE = ""
 
 GENERATION_CONFIG_KEYS = (
     "prompt_draft_llm",
@@ -110,11 +112,11 @@ DEFAULT_CONFIG = {
         "time_constraint": ""
     },
     "choose_configs": {
-        "prompt_draft_llm": "DeepSeek V4 Flash",
-        "chapter_outline_llm": "Gemini 3.5 Flash",
-        "architecture_llm": "Gemini 3.5 Flash",
-        "final_chapter_llm": "DeepSeek V4 Pro",
-        "consistency_review_llm": "DeepSeek V4 Flash"
+        "prompt_draft_llm": "",
+        "chapter_outline_llm": "",
+        "architecture_llm": "",
+        "final_chapter_llm": "",
+        "consistency_review_llm": ""
     },
     "proxy_setting": {
         "proxy_url": "127.0.0.1",
@@ -132,6 +134,24 @@ DEFAULT_CONFIG = {
 def get_default_config() -> dict:
     """返回新的默认配置副本，避免调用方意外修改全局模板。"""
     return deepcopy(DEFAULT_CONFIG)
+
+
+def get_choose_config_display(actual_value: str) -> str:
+    """把配置文件中的实际值转成 UI 显示文字。
+    空字符串表示用户尚未选择，UI 上显示为「未选择」。
+    """
+    if actual_value in (None, ""):
+        return DEFAULT_CHOOSE_CONFIG_DISPLAY
+    return actual_value
+
+
+def get_choose_config_value(display_value: str) -> str:
+    """把 UI 显示文字转回配置文件中的实际值。
+    UI 上「未选择」对应空字符串。
+    """
+    if display_value == DEFAULT_CHOOSE_CONFIG_DISPLAY:
+        return DEFAULT_CHOOSE_CONFIG_VALUE
+    return display_value
 
 
 def _merge_missing_values(target: dict, defaults: dict) -> dict:
@@ -190,26 +210,34 @@ def normalize_config(config_data: dict) -> dict:
         config_data["choose_configs"] = {}
     choose_configs = config_data["choose_configs"]
     for key in GENERATION_CONFIG_KEYS:
-        selected_name = choose_configs.get(key)
+        selected_name = choose_configs.get(key, "")
         selected_name = LEGACY_LLM_CONFIG_NAME_MAP.get(selected_name, selected_name)
-        if selected_name not in llm_configs:
-            selected_name = defaults["choose_configs"].get(key, last_llm_config_name)
-        if selected_name not in llm_configs:
-            selected_name = last_llm_config_name
+        if selected_name and selected_name not in llm_configs:
+            selected_name = defaults["choose_configs"].get(key, "")
+        if selected_name and selected_name not in llm_configs:
+            selected_name = ""
         choose_configs[key] = selected_name
 
     return config_data
 
 
 def validate_choose_configs(config_data: dict) -> list[str]:
-    """返回任务模型选择中指向不存在配置的错误列表。"""
+    """返回任务模型选择中的错误列表。
+    错误包括：未选择、指向不存在配置、未配置 API Key。
+    """
     errors = []
     llm_configs = config_data.get("llm_configs", {})
     choose_configs = config_data.get("choose_configs", {})
     for key in GENERATION_CONFIG_KEYS:
-        selected_name = choose_configs.get(key)
+        selected_name = choose_configs.get(key, "")
+        if not selected_name:
+            errors.append(f"{key}: 未选择模型")
+            continue
         if selected_name not in llm_configs:
-            errors.append(f"{key} 指向不存在的 LLM 配置: {selected_name}")
+            errors.append(f"{key}: 所选模型不存在: {selected_name}")
+            continue
+        if not llm_configs[selected_name].get("api_key", "").strip():
+            errors.append(f"{key}: 所选模型 {selected_name} 未配置 API Key")
     return errors
 
 

@@ -6,7 +6,14 @@ import datetime
 
 import customtkinter as ctk
 
-from config_manager import load_config, save_config
+from config_manager import (
+    load_config,
+    save_config,
+    DEFAULT_CHOOSE_CONFIG_DISPLAY,
+    GENERATION_CONFIG_KEYS,
+    get_choose_config_value,
+    get_choose_config_display,
+)
 from tooltips import tooltips
 
 import os
@@ -467,14 +474,52 @@ def build_ai_config_tab(self):
     )
     self.timeout_value_label.grid(row=row_start+6, column=2, padx=5, pady=5, sticky="w")
     
-    # 测试按钮
+    # 测试按钮 与 应用到全部任务按钮
     test_btn = ctk.CTkButton(
-        self.ai_config_tab, 
-        text="测试配置", 
+        self.ai_config_tab,
+        text="测试配置",
         command=self.test_llm_config,
         font=("Microsoft YaHei", 12)
     )
-    test_btn.grid(row=row_start+7, column=0, columnspan=3, padx=5, pady=5, sticky="ew")
+    test_btn.grid(row=row_start+7, column=0, columnspan=1, padx=5, pady=5, sticky="ew")
+
+    def apply_current_config_to_all_tasks():
+        """把 LLM Model settings 当前选中的模型应用到所有生成任务。"""
+        current_name = self.interface_config_var.get()
+        if current_name not in self.loaded_config.get("llm_configs", {}):
+            messagebox.showerror("错误", "当前配置不存在")
+            return
+
+        for key in GENERATION_CONFIG_KEYS:
+            self.loaded_config["choose_configs"][key] = current_name
+
+        # 同步 Config choose 页的 UI 变量
+        self.architecture_llm_var.set(current_name)
+        self.chapter_outline_llm_var.set(current_name)
+        self.prompt_draft_llm_var.set(current_name)
+        self.final_chapter_llm_var.set(current_name)
+        self.consistency_review_llm_var.set(current_name)
+
+        # 刷新状态标签
+        if hasattr(self, "_refresh_config_choose_status_labels"):
+            self._refresh_config_choose_status_labels()
+
+        if save_config(self.loaded_config, self.config_file):
+            messagebox.showinfo(
+                "提示",
+                f"已将 {current_name} 应用到全部任务\n可在「Config choose」中单独选择模型"
+            )
+        else:
+            messagebox.showerror("错误", "应用失败：无法保存配置文件")
+
+    apply_all_btn = ctk.CTkButton(
+        self.ai_config_tab,
+        text="应用到全部任务",
+        command=apply_current_config_to_all_tasks,
+        font=("Microsoft YaHei", 12),
+        width=120
+    )
+    apply_all_btn.grid(row=row_start+7, column=1, columnspan=2, padx=5, pady=5, sticky="ew")
 
     # 初始化当前配置
     on_config_selected(selected_config_name)
@@ -551,62 +596,109 @@ def build_embeddings_config_tab(self):
     test_btn.grid(row=5, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
 
 def build_config_choose_tab(self):
-
-
     self.config_choose.grid_rowconfigure(0, weight=0)
     self.config_choose.grid_columnconfigure(0, weight=0)
     self.config_choose.grid_columnconfigure(1, weight=1)
-    config_choose_options = list(self.loaded_config.get("llm_configs", {}).keys())
+    self.config_choose.grid_columnconfigure(2, weight=0)
+
+    def get_config_choose_options():
+        return [DEFAULT_CHOOSE_CONFIG_DISPLAY] + list(
+            self.loaded_config.get("llm_configs", {}).keys()
+        )
+
+    def create_status_label(row):
+        label = ctk.CTkLabel(
+            self.config_choose,
+            text="",
+            font=("Microsoft YaHei", 12),
+            width=70  # 固定宽度，避免下拉框随「未配置」显示/隐藏而缩放
+        )
+        label.grid(row=row, column=2, padx=5, pady=5, sticky="w")
+        return label
+
+    def update_status_label(variable, label):
+        display_value = variable.get()
+        actual_value = get_choose_config_value(display_value)
+        if not actual_value:
+            label.configure(text="未选择", text_color="red")
+            return
+        llm_config = self.loaded_config.get("llm_configs", {}).get(actual_value)
+        if not llm_config:
+            label.configure(text="未配置", text_color="red")
+            return
+        if not llm_config.get("api_key", "").strip():
+            label.configure(text="未配置", text_color="red")
+        else:
+            label.configure(text="")
+
+    config_choose_options = get_config_choose_options()
+
     create_label_with_help(self, parent=self.config_choose, label_text="生成架构所用大模型", tooltip_key="architecture_llm_config", row=0, column=0, font=("Microsoft YaHei", 12))
     architecture_dropdown = ctk.CTkOptionMenu(self.config_choose, values=config_choose_options, variable=self.architecture_llm_var, font=("Microsoft YaHei", 12))
     architecture_dropdown.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
+    architecture_status_label = create_status_label(0)
 
     create_label_with_help(self, parent=self.config_choose, label_text="生成大目录所用大模型", tooltip_key="chapter_outline_llm_config", row=1, column=0, font=("Microsoft YaHei", 12))
     chapter_outline_dropdown = ctk.CTkOptionMenu(self.config_choose, values=config_choose_options, variable=self.chapter_outline_llm_var, font=("Microsoft YaHei", 12))
     chapter_outline_dropdown.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
+    chapter_outline_status_label = create_status_label(1)
 
     create_label_with_help(self, parent=self.config_choose, label_text="生成草稿所用大模型", tooltip_key="prompt_draft_llm_config", row=2, column=0, font=("Microsoft YaHei", 12))
     prompt_draft_dropdown = ctk.CTkOptionMenu(self.config_choose, values=config_choose_options, variable=self.prompt_draft_llm_var, font=("Microsoft YaHei", 12))
     prompt_draft_dropdown.grid(row=2, column=1, padx=5, pady=5, sticky="nsew")
+    prompt_draft_status_label = create_status_label(2)
 
     create_label_with_help(self, parent=self.config_choose, label_text="定稿章节所用大模型", tooltip_key="final_chapter_llm_config", row=3, column=0, font=("Microsoft YaHei", 12))
     final_chapter_dropdown = ctk.CTkOptionMenu(self.config_choose, values=config_choose_options, variable=self.final_chapter_llm_var, font=("Microsoft YaHei", 12))
     final_chapter_dropdown.grid(row=3, column=1, padx=5, pady=5, sticky="nsew")
+    final_chapter_status_label = create_status_label(3)
 
     create_label_with_help(self, parent=self.config_choose, label_text="一致性审校所用大模型", tooltip_key="consistency_review_llm_config", row=4, column=0, font=("Microsoft YaHei", 12))
     consistency_review_dropdown = ctk.CTkOptionMenu(self.config_choose, values=config_choose_options, variable=self.consistency_review_llm_var, font=("Microsoft YaHei", 12))
     consistency_review_dropdown.grid(row=4, column=1, padx=5, pady=5, sticky="nsew")
+    consistency_review_status_label = create_status_label(4)
 
     config_dropdown_pairs = [
-        (architecture_dropdown, self.architecture_llm_var),
-        (chapter_outline_dropdown, self.chapter_outline_llm_var),
-        (prompt_draft_dropdown, self.prompt_draft_llm_var),
-        (final_chapter_dropdown, self.final_chapter_llm_var),
-        (consistency_review_dropdown, self.consistency_review_llm_var),
+        (architecture_dropdown, self.architecture_llm_var, architecture_status_label),
+        (chapter_outline_dropdown, self.chapter_outline_llm_var, chapter_outline_status_label),
+        (prompt_draft_dropdown, self.prompt_draft_llm_var, prompt_draft_status_label),
+        (final_chapter_dropdown, self.final_chapter_llm_var, final_chapter_status_label),
+        (consistency_review_dropdown, self.consistency_review_llm_var, consistency_review_status_label),
     ]
+
+    def on_dropdown_changed(var, label, _new_value):
+        update_status_label(var, label)
+
+    for dropdown, variable, label in config_dropdown_pairs:
+        dropdown.configure(command=lambda value, v=variable, l=label: on_dropdown_changed(v, l, value))
+        update_status_label(variable, label)
+
+    def refresh_config_dropdowns():
+        """刷新所有配置下拉菜单"""
+        config_names = get_config_choose_options()
+        for dropdown, variable, label in config_dropdown_pairs:
+            dropdown.configure(values=config_names)
+            if variable.get() not in config_names:
+                variable.set(DEFAULT_CHOOSE_CONFIG_DISPLAY)
+            update_status_label(variable, label)
 
     def save_config_choose():
         config_data_full = load_config(self.config_file)
         config_names = set(config_data_full.get("llm_configs", {}).keys())
         selected_values = {
-            "architecture_llm": self.architecture_llm_var.get(),
-            "chapter_outline_llm": self.chapter_outline_llm_var.get(),
-            "prompt_draft_llm": self.prompt_draft_llm_var.get(),
-            "final_chapter_llm": self.final_chapter_llm_var.get(),
-            "consistency_review_llm": self.consistency_review_llm_var.get(),
+            "architecture_llm": get_choose_config_value(self.architecture_llm_var.get()),
+            "chapter_outline_llm": get_choose_config_value(self.chapter_outline_llm_var.get()),
+            "prompt_draft_llm": get_choose_config_value(self.prompt_draft_llm_var.get()),
+            "final_chapter_llm": get_choose_config_value(self.final_chapter_llm_var.get()),
+            "consistency_review_llm": get_choose_config_value(self.consistency_review_llm_var.get()),
         }
-        missing_values = [value for value in selected_values.values() if value not in config_names]
+        missing_values = [value for value in selected_values.values() if value and value not in config_names]
         if missing_values:
             messagebox.showerror("错误", f"以下配置不存在，无法保存: {', '.join(sorted(set(missing_values)))}")
             return
 
         config_data = config_data_full.get("choose_configs", {})
-        config_data["architecture_llm"] = self.architecture_llm_var.get()
-        config_data["chapter_outline_llm"] = self.chapter_outline_llm_var.get()
-        config_data["prompt_draft_llm"] = self.prompt_draft_llm_var.get()
-        config_data["final_chapter_llm"] = self.final_chapter_llm_var.get()
-        config_data["consistency_review_llm"] = self.consistency_review_llm_var.get()
-
+        config_data.update(selected_values)
         config_data_full["choose_configs"] = config_data
         if save_config(config_data_full, self.config_file):
             self.loaded_config = config_data_full
@@ -614,25 +706,24 @@ def build_config_choose_tab(self):
         else:
             messagebox.showerror("错误", "保存配置失败。")
 
-    def refresh_config_dropdowns():
-        """刷新所有配置下拉菜单"""
-        config_names = list(self.loaded_config.get("llm_configs", {}).keys())
-        for dropdown, variable in config_dropdown_pairs:
-            dropdown.configure(values=config_names)
-            if config_names and variable.get() not in config_names:
-                variable.set(config_names[0])
+    def refresh_config_choose_status_labels():
+        """刷新所有状态标签，供外部调用（如应用到全部任务后）。"""
+        for _, variable, label in config_dropdown_pairs:
+            update_status_label(variable, label)
+
+    self._refresh_config_choose_status_labels = refresh_config_choose_status_labels
 
     save_btn = ctk.CTkButton(
-        self.config_choose, 
-        text="保存配置", 
+        self.config_choose,
+        text="保存配置",
         command=save_config_choose,
         font=("Microsoft YaHei", 12)
     )
-    save_btn.grid(row=10, column=0,padx=2, pady=2, sticky="ew")
+    save_btn.grid(row=10, column=0, padx=2, pady=2, sticky="ew")
 
     refresh_btn = ctk.CTkButton(
-        self.config_choose, 
-        text="刷新配置", 
+        self.config_choose,
+        text="刷新配置",
         command=refresh_config_dropdowns,
         font=("Microsoft YaHei", 12)
     )
@@ -749,16 +840,18 @@ def load_config_btn(self):
             self.embedding_model_name_var.set(emb_conf.get("model_name", "text-embedding-3-small"))
             self.embedding_retrieval_k_var.set(str(emb_conf.get("retrieval_k", 4)))
         choose_configs = cfg.get("choose_configs", {})
-        if choose_configs.get("architecture_llm") in llm_configs:
-            self.architecture_llm_var.set(choose_configs["architecture_llm"])
-        if choose_configs.get("chapter_outline_llm") in llm_configs:
-            self.chapter_outline_llm_var.set(choose_configs["chapter_outline_llm"])
-        if choose_configs.get("prompt_draft_llm") in llm_configs:
-            self.prompt_draft_llm_var.set(choose_configs["prompt_draft_llm"])
-        if choose_configs.get("final_chapter_llm") in llm_configs:
-            self.final_chapter_llm_var.set(choose_configs["final_chapter_llm"])
-        if choose_configs.get("consistency_review_llm") in llm_configs:
-            self.consistency_review_llm_var.set(choose_configs["consistency_review_llm"])
+        if "architecture_llm" in choose_configs:
+            self.architecture_llm_var.set(get_choose_config_display(choose_configs["architecture_llm"]))
+        if "chapter_outline_llm" in choose_configs:
+            self.chapter_outline_llm_var.set(get_choose_config_display(choose_configs["chapter_outline_llm"]))
+        if "prompt_draft_llm" in choose_configs:
+            self.prompt_draft_llm_var.set(get_choose_config_display(choose_configs["prompt_draft_llm"]))
+        if "final_chapter_llm" in choose_configs:
+            self.final_chapter_llm_var.set(get_choose_config_display(choose_configs["final_chapter_llm"]))
+        if "consistency_review_llm" in choose_configs:
+            self.consistency_review_llm_var.set(get_choose_config_display(choose_configs["consistency_review_llm"]))
+        if hasattr(self, "_refresh_config_choose_status_labels"):
+            self._refresh_config_choose_status_labels()
         other_params = cfg.get("other_params", {})
         self.topic_text.delete("0.0", "end")
         self.topic_text.insert("0.0", other_params.get("topic", ""))
