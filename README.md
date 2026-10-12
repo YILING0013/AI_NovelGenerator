@@ -2,137 +2,119 @@
 
 # AI Novel Generator
 
-### Turn an idea into a story, one chapter at a time.
-
-Story planning · Characters & worlds · Chapter writing · Editable AI workflows
-
 **English** · [简体中文](README.zh-CN.md)
 
-[Take a look](#a-tour-of-the-workspace) · [Workflows & custom nodes](#make-the-ai-workflow-your-own) · [Run locally](#run-locally) · [Report an issue](https://github.com/YILING0013/AI_NovelGenerator/issues/new/choose)
+[Features](#features) · [AI workflows](#ai-workflows) · [Installation](#installation-and-startup) · [Report an issue](https://github.com/YILING0013/AI_NovelGenerator/issues/new/choose)
 
 </div>
 
-![Chapter workspace with a scene and chapter directory beside the manuscript editor](.github/assets/readme/writing.png)
+AI Novel Generator is a locally hosted application for fiction planning and writing. It provides story settings, hierarchical planning, chapter editing, entity management, and configurable AI generation workflows. Generated candidates can be reviewed and edited before saving.
 
-Starting a novel is one thing. Keeping its plot, characters, and world consistent as it grows is another.
+The frontend uses Next.js, the backend uses FastAPI, and project data is stored in MongoDB. AI operations use model services configured by the user.
 
-AI Novel Generator brings that work into a local writing application. Develop the story, break it into volumes, arcs, scenes, and chapters, and keep your characters, locations, factions, items, and world rules nearby. AI can help with ideas, planning, and drafts. You can edit its candidates before deciding what to save.
+![Chapter editor](.github/assets/readme/writing.png)
 
-**Built for writers who want to shape a story as they go, with control over how AI takes part.**
+Current `main` contains the rewritten application. The previous version is preserved on [`old`](https://github.com/YILING0013/AI_NovelGenerator/tree/old). Their data structures differ. Back up legacy data and use a separate database for this version.
 
-> Current `main` contains the rewritten application. The previous version is preserved on [`old`](https://github.com/YILING0013/AI_NovelGenerator/tree/old) for reference. Their data structures differ: back up legacy data and use a separate database for this version.
+The screenshots show the running application with the fictional demo novel *Letters from the Fog Harbor*, captured at a desktop 16:10 ratio. The application supports responsive mobile layouts, Chinese and English, and light and dark themes. Screenshots use the Chinese interface.
 
-All screenshots show the running application with a fictional demo novel, *Letters from the Fog Harbor*, captured at a desktop **16:10** ratio. They illustrate the interface, not model output quality. The interface also adapts to mobile screens. Screenshots use Chinese; the application supports English too.
+## Features
 
-## A tour of the workspace
+### Novel management
 
-Start with the built-in workflows, then change the parts that matter to your writing.
+The bookshelf supports creating, viewing, and managing projects. The novel information page stores the title, core idea, main plot, introduction, worldbuilding, writing style, narrative point of view, and intended length. These fields support manual editing; selected fields also support AI creation or revision.
 
-| What you want to do | Where to start |
-| --- | --- |
-| Develop a loose idea | Create a novel and work out its core, plot, tone, and world |
-| Expand an existing outline | Volumes → arcs → scenes → chapter plans |
-| Keep a growing cast straight | Character cards, factions, relationship graphs, and chapter records |
-| Control how AI writes | Task workflows, node prompts, source material, and model settings |
-| Get straight to writing | Use a built-in workflow and edit in the chapter workspace |
+![Novel information](.github/assets/readme/story.png)
 
-### 01 / Give the story a clear direction
+### Story planning and the Snowflake Method
 
-The bookshelf keeps your projects together. Inside a novel, the information page holds its core idea, main plot, introduction, worldbuilding, style, point of view, and intended length.
+The application develops a story from its core into progressively more detailed plans. The built-in novel creation workflow expands an idea into a compressed story, extracts the core idea and seed, and generates the novel information. The core-seed prompt uses the first step of the Snowflake Method to describe the protagonist, conflict, action, and consequences.
 
-Write these yourself or ask AI to create or revise them. Establishing what the protagonist wants, what stands in the way, and where the story is heading gives later planning a shared direction.
+Subsequent content is organized as **volumes → arcs → scenes → chapter plans → prose**. Each level can be edited independently.
 
-![Novel information, including the story premise, plot, world, and writing style](.github/assets/readme/story.png)
-
-### 02 / Expand the story with a Snowflake-inspired approach
-
-The project borrows the Snowflake Method's idea of expanding a story from a clear core. The built-in novel creation workflow first expands an idea into a compressed story, then extracts the premise and core seed and develops the novel information. Its core-seed prompt explicitly uses the first step of the Snowflake Method.
-
-From there, move through **volumes → arcs → scenes → chapter plans → prose**, stopping to revise at any level.
-
-| Level | The question it answers | Example from the demo novel |
+| Level | Planning content | Demo example |
 | --- | --- | --- |
-| Story core | Who faces what problem, and what must they do? | A restorer receives a letter from her missing mother and investigates a ship that carries memories |
-| Volume | What major change should this part achieve? | Find the ship's route and evidence that her mother may still be alive |
-| Arc | Which conflicts move that change forward? | Investigate disappearances and connect the letters to the harbor bells |
-| Scene | Where does something happen, and what do people do? | A letter slips under the workshop door on a rainy night |
-| Chapter plan | Where should this chapter end, and what must it contain? | Recognize the handwriting, notice the old postmark, end with a distant bell |
-| Prose | How will the reader experience those events? | Begin with a stopped clock, rain, and paper that is strangely warm |
+| Story core | Main character, central event, objective, and consequences | A restorer receives a letter from her missing mother and investigates a ship that carries memories |
+| Volume | Stage objective, conflict, turning points, and starting and ending states | Investigate the ship's route and find evidence that her mother is alive |
+| Arc | Related events and their progression | Investigate disappearances and establish the connection between letters and harbor bells |
+| Scene | A specific event, participants, and change | An old letter arrives at the workshop on a rainy night |
+| Chapter plan | Chapter objective, beats, length, and content requirements | Identify the handwriting, examine the postmark, and end with a bell |
+| Prose | Chapter text based on the plan | Describe the letter's arrival at the workshop |
 
-![Volume planning with goals, conflicts, turning points, and starting and ending states](.github/assets/readme/volumes.png)
+![Volume planning](.github/assets/readme/volumes.png)
 
-Volume planning also organizes the characters, factions, and locations that will be used in that part of the book. Arcs and scenes carry the higher-level goals forward, giving each generation step something concrete to build on.
+Volume planning also manages the characters, factions, and locations used in that volume. Arc, scene, and chapter generation use higher-level plans and related material as inputs.
 
-### 03 / Write, revise, and keep earlier drafts
+### Chapter editing
 
-The chapter workspace keeps the directory, plan, manuscript, and chapter records together. Select a chapter, review its goals and beats, then write it yourself or request an AI draft.
+The chapter editor includes the directory, chapter plan, manuscript, and chapter records. Manuscripts support manual editing and AI generation.
 
-- **Chapter plans** hold goals, starting and ending states, key beats, and things to include or avoid.
-- **The manuscript editor** lets you edit, save, check the word count, and export the current draft.
-- **Revision history** lets you inspect earlier drafts, compare changes, and restore a saved version.
-- **Chapter records** help check character psychology, relationships, item ownership, and world rules before you confirm relevant changes.
+- **Chapter plans** store objectives, starting and ending states, key beats, target length, and required or excluded content.
+- **The manuscript editor** supports editing, saving, word counts, and draft export.
+- **Revision history** supports viewing, comparing, and restoring saved versions.
+- **Chapter records** check character psychology, relationships, item ownership, and world rules, and save changes confirmed by the user.
 
-Review and edit generated candidates before saving them. As the manuscript grows, confirmed records help track what has actually happened at a particular point in the story.
+Generated candidates are saved after confirmation. Chapter records provide access to confirmed character and world states at specific story positions.
 
-### 04 / Keep your cast and world within reach
+### Entities and relationships
 
-Character cards go beyond names and appearances. They hold desires, fears, conflicts with the main plot, growth directions, and story roles. Character information can be confirmed and read at the beginning of the story, the start of a volume, or before and after a chapter.
+Character cards store profiles, desires, fears, conflicts with the main plot, growth directions, and story roles. Character information can be confirmed and read at the beginning of the story, the start of a volume, or before and after a chapter.
 
-![Character management with a cast list, character design, and information tied to story positions](.github/assets/readme/characters.png)
+![Character management](.github/assets/readme/characters.png)
 
-| Area | What it helps you organize |
+| Module | Managed content |
 | --- | --- |
-| Characters | Profiles, growth plans, information at different story positions, and relationships |
+| Characters | Profiles, growth plans, information at story positions, and relationships |
 | Factions | Goals, public stances, hidden motives, resources, and character membership |
-| Locations | Places and the locations used in a particular volume |
-| Items | Important objects, their owners, and transfers during the story |
-| World rules | What is possible, what is restricted, and what it costs |
-| Foreshadowing | Clues, related story records, and their later payoff |
-| Relationship graph | Visual connections among characters and factions |
-| Novel assistant | Finding material in the current book, discussing questions, and reviewing proposed edits |
+| Locations | Place information and the locations used in each volume |
+| Items | Item profiles, owners, and transfer records |
+| World rules | Rules, applicable scope, restrictions, and costs |
+| Foreshadowing | Clues, related story records, and payoff status |
+| Relationship graph | Visual representation of characters, factions, and their relationships |
+| Novel assistant | Queries against the current project, discussion, and review of proposed changes |
 
-## Make the AI workflow your own
+## AI workflows
 
-Writing a chapter can involve several steps: collect the current plan and related material, prepare the context, then generate a candidate manuscript. These steps are available on an editable workflow canvas.
+AI operations consist of nodes and connections. Nodes read project data, prepare context, call models, or return results. Connections define data transfer and execution order.
 
-Open the workflow for an AI action to see what it reads, which step runs next, and which results pass between nodes. Built-in workflows cover novel creation, characters and factions, volume planning, arcs, scenes, chapters, and post-chapter checks.
+Built-in schemes cover novel creation, character and faction generation, volume planning, arcs, scenes, chapter prose, and post-chapter checks. Each task's workflow can be edited on the canvas.
 
-![Workflow canvas with a node library, generation steps, and data connections](.github/assets/readme/workflow.png)
+![AI workflow editor](.github/assets/readme/workflow.png)
 
-### What can you customize?
+### Node types
 
-Add nodes, change connections, edit prompts, define input and output fields, and choose model settings. Different AI nodes in the same workflow can use different models.
-
-| Node | What it does |
+| Node | Function |
 | --- | --- |
-| Input / Page context | Accept the current request or read material from the novel and writing position |
-| Constant / Text template | Supply reusable instructions or insert earlier results into a prompt |
-| Compose fields | Assemble several inputs into the fields needed by the next step |
-| AI generation | Call a selected model for text or structured output |
-| AI context preparation | Look up and select material from the current novel for later steps |
-| Condition / Merge | Choose a path based on an input, then collect branch results |
-| Subflow / For each | Reuse a group of steps or run them for each item in a collection |
-| Output | Return the final candidate to the original page for review and saving |
+| Input / Page context | Accept operation parameters or read data from the current novel and writing position |
+| Constant / Text template | Supply fixed content or insert input fields into a template |
+| Compose fields | Organize multiple inputs into specified fields |
+| AI generation | Call a model for text or structured output |
+| AI context preparation | Query and select related material from the current novel |
+| Condition / Merge | Select an execution path or collect branch results |
+| Subflow / For each | Call reusable steps or execute a workflow for each array item |
+| Output | Return the final candidate to the application page for review and saving |
 
-Customization means combining these node types into your own generation process. More involved workflows still require understanding fields and JSON structures.
+Custom workflows combine these node types. Inputs and outputs are defined by fields and types; more complex configurations involve JSON structures.
 
-### An example: change how the story core is written
+### Node configuration
 
-The built-in core-seed node reads the plot, genre, tone, audience, and intended length, then condenses them into a clear story premise. You could ask it to make the conflict come from a character's choice, preserve a gentler tone, or use a different model just for this step.
+Nodes support editing names, prompts, input and output fields, model settings, and generation parameters. Different AI nodes within a workflow can use different models.
 
-![Node prompt editor with input-field tokens and the Snowflake core-seed prompt](.github/assets/readme/node.png)
+Prompts support input-field tokens. For example, the core-seed node reads the plot, genre, tone, audience, and intended length, then generates the story core according to its prompt. Changes to prompts and model settings apply to subsequent executions.
 
-A practical starting point:
+![Node prompt configuration](.github/assets/readme/node.png)
 
-1. Copy an existing workflow in the scheme panel and give it a name.
-2. Add a node from the library or select an existing one.
-3. Use **data connections** to pass values and **execution connections** to set order and branches.
-4. Adjust prompts, fields, models, and generation parameters.
-5. Validate and save the workflow, then use it from the original AI action.
+### Workflow editing
 
-The editor also supports undo, redo, scheme revisions, and context previews that do not call a model. Previews help check inputs and connections; actual generation quality still depends on the model and context.
+1. Copy and name an existing workflow in the scheme panel.
+2. Add nodes or edit existing nodes.
+3. Use data connections to pass fields and execution connections to define order and branches.
+4. Configure prompts, fields, models, and generation parameters.
+5. Validate and save the scheme, then select it in the corresponding AI operation.
 
-## Run locally
+The editor supports undo, redo, scheme revisions, and context previews. Context previews check inputs and connections without calling a model.
+
+## Installation and startup
 
 The application has a browser interface, a Python backend, and MongoDB storage. Windows users can manage the services with the desktop launcher, or start them in separate terminals.
 
@@ -146,9 +128,9 @@ The application has a browser interface, a Python backend, and MongoDB storage. 
 | Docker | Needed for the bundled MongoDB setup; optional with an existing replica set |
 | Model service | Your own API key, endpoint, and model name |
 
-Some writing operations update multiple records in a transaction. A standalone MongoDB instance does not meet the requirements of the complete writing workflow.
+Saving arcs and chapters requires MongoDB multi-document transactions and a replica set.
 
-### 1. Download and install
+### 1. Install dependencies
 
 Run these commands in PowerShell:
 
@@ -197,7 +179,7 @@ mongo_transaction_mode: "required"
 
 The bundled configuration uses named volumes, publishes its port only on `127.0.0.1`, and has no database password. Restart the backend after changing its database connection.
 
-### 3. Start the application
+### 3. Start services
 
 On Windows, double-click **`start.bat`**, then start the services in the desktop launcher. The launcher manages ports, logs, and service shutdown. Production mode builds the frontend on first use and after relevant source or configuration changes.
 
@@ -209,11 +191,11 @@ On Windows, double-click **`start.bat`**, then start the services in the desktop
 
 Closing the launcher stops the services it started. Stop services before changing ports. If a port is occupied, identify the existing process before starting another instance.
 
-### 4. Configure a model and write a first chapter
+### 4. Model configuration and usage
 
 Open **Settings**, enter your provider's API key, endpoint, and model name, and enable that configuration. The project includes adapters for OpenAI, DeepSeek, Gemini, Claude, and corresponding compatible endpoints. Supported parameters depend on the adapter and provider.
 
-For a first try, use a small demo project:
+Basic usage:
 
 1. Create a novel, enter the idea and intended length, and confirm its information.
 2. Prepare core factions, characters, relationships, and world rules, following the progress panel.
@@ -221,7 +203,7 @@ For a first try, use a small demo project:
 4. Break it into arcs, scenes, and chapter plans, then generate or write the first chapter.
 5. Edit and save the manuscript, then review relevant post-chapter changes.
 
-The default workflows provide a starting point; you do not need to configure every node before writing. No API keys are included, and model usage is billed by your configured provider.
+The application includes built-in workflows. API keys are configured by the user, and model usage is billed by the selected provider.
 
 ### Manual startup
 
@@ -245,7 +227,7 @@ For a custom backend address, set `NEXT_PUBLIC_API_BASE` before building. In Pow
 
 ## Data, backups, and upgrades
 
-Novel data lives in your configured MongoDB database and local files. AI actions send relevant context to the model provider you choose. Running the application locally does not mean model inference also happens on your computer.
+Novel data is stored in the configured MongoDB database and local files. AI actions send relevant context to the configured model service, which performs inference.
 
 | What to back up | Location |
 | --- | --- |
@@ -254,22 +236,22 @@ Novel data lives in your configured MongoDB database and local files. AI actions
 | Custom workflows and other runtime state | `data/` |
 | Uploaded assets, including covers | `static/` |
 
-Back up and stop services before updating code, reinstalling dependencies, and rebuilding the frontend. Keep the legacy and rewritten versions on different databases; direct migration of legacy data is not promised.
+Back up and stop services before updating code, reinstalling dependencies, and rebuilding the frontend. The legacy and rewritten versions use different data structures and should use separate databases.
 
 The application is intended for local use and has no public-facing user authentication. Do not directly expose it or an unauthenticated MongoDB deployment to the internet. Remove credentials, personal paths, and private manuscripts from public reports.
 
 <details>
 <summary><strong>Common questions</strong></summary>
 
-**The page opens, but saving an arc or chapter fails.** Check that MongoDB is initialized as a writable replica set, then verify `mongodb_url` and `mongo_transaction_mode`. Restart the backend after configuration changes.
+**Arc or chapter save failures**: Check that MongoDB is initialized as a writable replica set, then verify `mongodb_url` and `mongo_transaction_mode`. Restart the backend after configuration changes.
 
-**Why is an AI action unavailable?** Follow the prerequisites shown on the page. Changes to higher-level plans, plot, or related material may need to be reviewed and confirmed first.
+**AI operation prerequisites**: The page lists the required steps. Changes to higher-level plans, plot, or related material may require review and confirmation.
 
-**Can I use a custom API endpoint?** Yes, but it must support the request format required by the selected adapter. Models differ in supported output formats and parameters.
+**Custom model endpoints**: Endpoint addresses and model names are configurable. The endpoint must support the selected adapter's request format. Output formats and parameters depend on the model service.
 
-**Does it support mobile, dark mode, or English?** Yes: responsive layouts, light and dark themes, and Chinese and English are included. This guide focuses on the desktop workspace.
+**Interface support**: Responsive mobile layouts, light and dark themes, and Chinese and English are supported. This guide shows the desktop interface.
 
-**Where is the previous version?** On [`old`](https://github.com/YILING0013/AI_NovelGenerator/tree/old). Earlier issues and PRs were closed for the version transition; this does not mean every historical report was individually fixed.
+**Legacy code and discussions**: The previous version is preserved on [`old`](https://github.com/YILING0013/AI_NovelGenerator/tree/old). Earlier issues and PRs were closed for the rewrite. Closure does not indicate that every historical report was resolved.
 
 </details>
 
@@ -295,4 +277,6 @@ Use the [Issue forms](https://github.com/YILING0013/AI_NovelGenerator/issues/new
 
 Read the [contribution guide](.github/CONTRIBUTING.md) before opening a PR. Work from current `main`, explain the problem you are solving, and describe your validation. If a legacy issue still applies, open a current-version report and link the earlier discussion.
 
-Licensed under the **GNU Affero General Public License v3.0**. See [LICENSE](LICENSE) for the full text.
+## License
+
+Licensed under the GNU Affero General Public License v3.0. See [LICENSE](LICENSE) for the full text.
