@@ -1,0 +1,16 @@
+azure-ai-inference==1.0.0b9
+azure-core==1.35.0
+chromadb==1.0.20
+customtkinter==5.2.2
+google-auth==2.49.0
+google-genai==1.73.1
+googleapis-common-protos==1.70.0
+langchain==0.3.27
+langchain-chroma==0.2.5
+langchain-openai==0.3.32
+nltk==3.9.1
+numpy==2.3.2
+openai==1.106.1
+protobuf==5.29.5
+requests==2.32.5
+wheel==0.45.1
