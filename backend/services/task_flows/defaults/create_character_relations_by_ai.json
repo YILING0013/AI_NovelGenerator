@@ -1,0 +1,618 @@
+{
+  "format_version": 1,
+  "id": "default_create_character_relations_by_ai",
+  "task": "create_character_relations_by_ai",
+  "revision": 1,
+  "name": "默认流程",
+  "default_provider": "",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "input",
+      "label": "开始",
+      "inputs": {},
+      "outputs": {
+        "character_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 2,
+          "title": "Character Ids",
+          "type": "array",
+          "required": true
+        },
+        "allow_isolated_characters": {
+          "default": false,
+          "title": "Allow Isolated Characters",
+          "type": "boolean",
+          "required": false
+        },
+        "relation_count_limit": {
+          "anyOf": [
+            {
+              "maximum": 500,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Relation Count Limit",
+          "required": false
+        },
+        "user_guidance": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User Guidance",
+          "required": false
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "context",
+      "type": "context",
+      "label": "读取任务资料",
+      "inputs": {
+        "character_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 2,
+          "title": "Character Ids",
+          "type": "array",
+          "required": true
+        },
+        "allow_isolated_characters": {
+          "default": false,
+          "title": "Allow Isolated Characters",
+          "type": "boolean",
+          "required": false
+        },
+        "relation_count_limit": {
+          "anyOf": [
+            {
+              "maximum": 500,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Relation Count Limit",
+          "required": false
+        },
+        "user_guidance": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User Guidance",
+          "required": false
+        }
+      },
+      "outputs": {
+        "allow_isolated_characters": {
+          "type": "string"
+        },
+        "characters_json": {
+          "type": "string"
+        },
+        "existing_relations_json": {
+          "type": "string"
+        },
+        "faction_bindings_json": {
+          "type": "string"
+        },
+        "novel_profile_json": {
+          "type": "string"
+        },
+        "relation_count_limit": {
+          "type": "integer"
+        },
+        "user_guidance": {
+          "type": "string"
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "create_character_relations",
+      "type": "llm",
+      "label": "create_character_relations",
+      "inputs": {
+        "allow_isolated_characters": {
+          "type": "string"
+        },
+        "characters_json": {
+          "type": "string"
+        },
+        "existing_relations_json": {
+          "type": "string"
+        },
+        "faction_bindings_json": {
+          "type": "string"
+        },
+        "novel_profile_json": {
+          "type": "string"
+        },
+        "relation_count_limit": {
+          "type": "integer"
+        },
+        "user_guidance": {
+          "type": "string"
+        }
+      },
+      "outputs": {
+        "relations": {
+          "description": "仅追加到当前小说的全书级角色关系候选列表。",
+          "items": {
+            "$ref": "#/$defs/CharacterRelationCandidateV1"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "title": "Relations",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "CharacterRelationCandidateV1": {
+              "additionalProperties": false,
+              "description": "模型输出或用户编辑后的单条角色关系候选。",
+              "properties": {
+                "relation_ref": {
+                  "description": "仅在本次候选中使用的稳定引用，如 relation_001。",
+                  "pattern": "^relation_[0-9]{3}$",
+                  "title": "Relation Ref",
+                  "type": "string"
+                },
+                "source_character_id": {
+                  "description": "关系源角色业务 ID，必须来自本次输入角色。",
+                  "pattern": "^char_[0-9]{6,}$",
+                  "title": "Source Character Id",
+                  "type": "string"
+                },
+                "target_character_id": {
+                  "description": "关系目标角色业务 ID，必须来自本次输入角色。",
+                  "pattern": "^char_[0-9]{6,}$",
+                  "title": "Target Character Id",
+                  "type": "string"
+                },
+                "relation_type": {
+                  "description": "关系类型。",
+                  "enum": [
+                    "friend",
+                    "romantic",
+                    "ally",
+                    "rival",
+                    "enemy",
+                    "parent_of",
+                    "mentor_of",
+                    "superior_of",
+                    "protector_of",
+                    "debtor_to"
+                  ],
+                  "title": "Relation Type",
+                  "type": "string"
+                },
+                "current_state": {
+                  "description": "故事开始时双方关系的当前状态。",
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Current State",
+                  "type": "string"
+                },
+                "core_conflict": {
+                  "description": "关系中的核心矛盾。",
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Core Conflict",
+                  "type": "string"
+                },
+                "hidden_tension": {
+                  "description": "未公开或尚未爆发的深层张力。",
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Hidden Tension",
+                  "type": "string"
+                },
+                "possible_change": {
+                  "description": "跨全书可能发生的关系变化。",
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Possible Change",
+                  "type": "string"
+                },
+                "story_value": {
+                  "description": "该关系推动主线的叙事价值。",
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Story Value",
+                  "type": "string"
+                },
+                "intensity": {
+                  "description": "关系强度，1 至 5。",
+                  "maximum": 5,
+                  "minimum": 1,
+                  "title": "Intensity",
+                  "type": "integer"
+                },
+                "is_active": {
+                  "description": "新生成关系固定为 true。",
+                  "title": "Is Active",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "relation_ref",
+                "source_character_id",
+                "target_character_id",
+                "relation_type",
+                "current_state",
+                "core_conflict",
+                "hidden_tension",
+                "possible_change",
+                "story_value",
+                "intensity",
+                "is_active"
+              ],
+              "title": "CharacterRelationCandidateV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "values": {},
+      "config": {
+        "mode": "json",
+        "provider": "",
+        "model": "",
+        "parameters": {},
+        "prompt_separator": "\n\n",
+        "prompt_file": "create_character_relations_prompt.md",
+        "schema_prompt_file": "create_character_relations_schema_prompt.md",
+        "text_prompt_file": "create_character_relations_text_prompt.md",
+        "force_text_prompt": true
+      }
+    },
+    {
+      "id": "result",
+      "type": "output",
+      "label": "任务结果",
+      "inputs": {
+        "relations": {
+          "description": "仅追加到当前小说的全书级角色关系候选列表。",
+          "items": {
+            "$ref": "#/$defs/CharacterRelationCandidateV1"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "title": "Relations",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "CharacterRelationCandidateV1": {
+              "additionalProperties": false,
+              "description": "模型输出或用户编辑后的单条角色关系候选。",
+              "properties": {
+                "relation_ref": {
+                  "description": "仅在本次候选中使用的稳定引用，如 relation_001。",
+                  "pattern": "^relation_[0-9]{3}$",
+                  "title": "Relation Ref",
+                  "type": "string"
+                },
+                "source_character_id": {
+                  "description": "关系源角色业务 ID，必须来自本次输入角色。",
+                  "pattern": "^char_[0-9]{6,}$",
+                  "title": "Source Character Id",
+                  "type": "string"
+                },
+                "target_character_id": {
+                  "description": "关系目标角色业务 ID，必须来自本次输入角色。",
+                  "pattern": "^char_[0-9]{6,}$",
+                  "title": "Target Character Id",
+                  "type": "string"
+                },
+                "relation_type": {
+                  "description": "关系类型。",
+                  "enum": [
+                    "friend",
+                    "romantic",
+                    "ally",
+                    "rival",
+                    "enemy",
+                    "parent_of",
+                    "mentor_of",
+                    "superior_of",
+                    "protector_of",
+                    "debtor_to"
+                  ],
+                  "title": "Relation Type",
+                  "type": "string"
+                },
+                "current_state": {
+                  "description": "故事开始时双方关系的当前状态。",
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Current State",
+                  "type": "string"
+                },
+                "core_conflict": {
+                  "description": "关系中的核心矛盾。",
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Core Conflict",
+                  "type": "string"
+                },
+                "hidden_tension": {
+                  "description": "未公开或尚未爆发的深层张力。",
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Hidden Tension",
+                  "type": "string"
+                },
+                "possible_change": {
+                  "description": "跨全书可能发生的关系变化。",
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Possible Change",
+                  "type": "string"
+                },
+                "story_value": {
+                  "description": "该关系推动主线的叙事价值。",
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Story Value",
+                  "type": "string"
+                },
+                "intensity": {
+                  "description": "关系强度，1 至 5。",
+                  "maximum": 5,
+                  "minimum": 1,
+                  "title": "Intensity",
+                  "type": "integer"
+                },
+                "is_active": {
+                  "description": "新生成关系固定为 true。",
+                  "title": "Is Active",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "relation_ref",
+                "source_character_id",
+                "target_character_id",
+                "relation_type",
+                "current_state",
+                "core_conflict",
+                "hidden_tension",
+                "possible_change",
+                "story_value",
+                "intensity",
+                "is_active"
+              ],
+              "title": "CharacterRelationCandidateV1",
+              "type": "object"
+            }
+          }
+        },
+        "param_character_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 2,
+          "title": "Character Ids",
+          "type": "array",
+          "required": true
+        },
+        "param_allow_isolated_characters": {
+          "default": false,
+          "title": "Allow Isolated Characters",
+          "type": "boolean",
+          "required": false
+        },
+        "param_relation_count_limit": {
+          "anyOf": [
+            {
+              "maximum": 500,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Relation Count Limit",
+          "required": false
+        },
+        "param_user_guidance": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User Guidance",
+          "required": false
+        }
+      },
+      "outputs": {},
+      "values": {},
+      "config": {
+        "candidate_fields": {
+          "relations": "relations"
+        },
+        "parameter_fields": {
+          "character_ids": "param_character_ids",
+          "allow_isolated_characters": "param_allow_isolated_characters",
+          "relation_count_limit": "param_relation_count_limit",
+          "user_guidance": "param_user_guidance"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "start-character_ids-context-character_ids",
+      "source": "start",
+      "source_port": "character_ids",
+      "target": "context",
+      "target_port": "character_ids"
+    },
+    {
+      "id": "start-allow_isolated_characters-context-allow_isolated_characters",
+      "source": "start",
+      "source_port": "allow_isolated_characters",
+      "target": "context",
+      "target_port": "allow_isolated_characters"
+    },
+    {
+      "id": "start-relation_count_limit-context-relation_count_limit",
+      "source": "start",
+      "source_port": "relation_count_limit",
+      "target": "context",
+      "target_port": "relation_count_limit"
+    },
+    {
+      "id": "start-user_guidance-context-user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "context",
+      "target_port": "user_guidance"
+    },
+    {
+      "id": "context-allow_isolated_characters-create_character_relations-allow_isolated_characters",
+      "source": "context",
+      "source_port": "allow_isolated_characters",
+      "target": "create_character_relations",
+      "target_port": "allow_isolated_characters"
+    },
+    {
+      "id": "context-characters_json-create_character_relations-characters_json",
+      "source": "context",
+      "source_port": "characters_json",
+      "target": "create_character_relations",
+      "target_port": "characters_json"
+    },
+    {
+      "id": "context-existing_relations_json-create_character_relations-existing_relations_json",
+      "source": "context",
+      "source_port": "existing_relations_json",
+      "target": "create_character_relations",
+      "target_port": "existing_relations_json"
+    },
+    {
+      "id": "context-faction_bindings_json-create_character_relations-faction_bindings_json",
+      "source": "context",
+      "source_port": "faction_bindings_json",
+      "target": "create_character_relations",
+      "target_port": "faction_bindings_json"
+    },
+    {
+      "id": "context-novel_profile_json-create_character_relations-novel_profile_json",
+      "source": "context",
+      "source_port": "novel_profile_json",
+      "target": "create_character_relations",
+      "target_port": "novel_profile_json"
+    },
+    {
+      "id": "context-relation_count_limit-create_character_relations-relation_count_limit",
+      "source": "context",
+      "source_port": "relation_count_limit",
+      "target": "create_character_relations",
+      "target_port": "relation_count_limit"
+    },
+    {
+      "id": "context-user_guidance-create_character_relations-user_guidance",
+      "source": "context",
+      "source_port": "user_guidance",
+      "target": "create_character_relations",
+      "target_port": "user_guidance"
+    },
+    {
+      "id": "create_character_relations-relations-result-relations",
+      "source": "create_character_relations",
+      "source_port": "relations",
+      "target": "result",
+      "target_port": "relations"
+    },
+    {
+      "id": "start-character_ids-result-param_character_ids",
+      "source": "start",
+      "source_port": "character_ids",
+      "target": "result",
+      "target_port": "param_character_ids"
+    },
+    {
+      "id": "start-allow_isolated_characters-result-param_allow_isolated_characters",
+      "source": "start",
+      "source_port": "allow_isolated_characters",
+      "target": "result",
+      "target_port": "param_allow_isolated_characters"
+    },
+    {
+      "id": "start-relation_count_limit-result-param_relation_count_limit",
+      "source": "start",
+      "source_port": "relation_count_limit",
+      "target": "result",
+      "target_port": "param_relation_count_limit"
+    },
+    {
+      "id": "start-user_guidance-result-param_user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "result",
+      "target_port": "param_user_guidance"
+    }
+  ],
+  "control_edges": [],
+  "subflows": {},
+  "editor": {
+    "positions": {
+      "start": {
+        "x": 0,
+        "y": 80
+      },
+      "context": {
+        "x": 340,
+        "y": 80
+      },
+      "create_character_relations": {
+        "x": 680,
+        "y": 80
+      },
+      "result": {
+        "x": 1020,
+        "y": 80
+      }
+    }
+  },
+  "max_node_executions": 1000
+}

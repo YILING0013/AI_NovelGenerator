@@ -1,0 +1,335 @@
+{
+  "format_version": 1,
+  "id": "default_check_chapter_item_owner_by_ai",
+  "task": "check_chapter_item_owner_by_ai",
+  "revision": 1,
+  "name": "默认流程",
+  "default_provider": "",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "input",
+      "label": "开始",
+      "inputs": {},
+      "outputs": {
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "title": "Provider",
+          "required": true
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "context",
+      "type": "context",
+      "label": "读取章正文和持有人",
+      "inputs": {},
+      "outputs": {
+        "chapter_content": {
+          "type": "string"
+        },
+        "item_context": {
+          "type": "string"
+        },
+        "from_character_context": {
+          "type": "string"
+        },
+        "to_character_context": {
+          "type": "string"
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "check_chapter_item_owner",
+      "type": "llm",
+      "label": "检查物品持有人",
+      "inputs": {
+        "chapter_content": {
+          "type": "string"
+        },
+        "item_context": {
+          "type": "string"
+        },
+        "from_character_context": {
+          "type": "string"
+        },
+        "to_character_context": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "title": "Provider",
+          "required": true
+        }
+      },
+      "outputs": {
+        "issues": {
+          "items": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Issues",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "ChapterItemOwnerCheckSuggestionV1": {
+              "additionalProperties": false,
+              "description": "物品建议只带原文位置，不允许模型指定身份、版本或修改字段。",
+              "properties": {
+                "start": {
+                  "description": "从零开始的 Unicode 码点位置。",
+                  "maximum": 2147483647,
+                  "minimum": 0,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "quote": {
+                  "maxLength": 10000,
+                  "minLength": 1,
+                  "title": "Quote",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start",
+                "quote"
+              ],
+              "title": "ChapterItemOwnerCheckSuggestionV1",
+              "type": "object"
+            }
+          }
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ChapterItemOwnerCheckSuggestionV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "required": true,
+          "$defs": {
+            "ChapterItemOwnerCheckSuggestionV1": {
+              "additionalProperties": false,
+              "description": "物品建议只带原文位置，不允许模型指定身份、版本或修改字段。",
+              "properties": {
+                "start": {
+                  "description": "从零开始的 Unicode 码点位置。",
+                  "maximum": 2147483647,
+                  "minimum": 0,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "quote": {
+                  "maxLength": 10000,
+                  "minLength": 1,
+                  "title": "Quote",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start",
+                "quote"
+              ],
+              "title": "ChapterItemOwnerCheckSuggestionV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "values": {},
+      "config": {
+        "mode": "json",
+        "provider": "",
+        "model": "",
+        "parameters": {},
+        "provider_input": "provider",
+        "prompt_file": "check_chapter_item_owner_prompt.md",
+        "preserve_prompt_whitespace": true
+      }
+    },
+    {
+      "id": "result",
+      "type": "output",
+      "label": "检查结果",
+      "inputs": {
+        "issues": {
+          "items": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Issues",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "ChapterItemOwnerCheckSuggestionV1": {
+              "additionalProperties": false,
+              "description": "物品建议只带原文位置，不允许模型指定身份、版本或修改字段。",
+              "properties": {
+                "start": {
+                  "description": "从零开始的 Unicode 码点位置。",
+                  "maximum": 2147483647,
+                  "minimum": 0,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "quote": {
+                  "maxLength": 10000,
+                  "minLength": 1,
+                  "title": "Quote",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start",
+                "quote"
+              ],
+              "title": "ChapterItemOwnerCheckSuggestionV1",
+              "type": "object"
+            }
+          }
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ChapterItemOwnerCheckSuggestionV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "required": true,
+          "$defs": {
+            "ChapterItemOwnerCheckSuggestionV1": {
+              "additionalProperties": false,
+              "description": "物品建议只带原文位置，不允许模型指定身份、版本或修改字段。",
+              "properties": {
+                "start": {
+                  "description": "从零开始的 Unicode 码点位置。",
+                  "maximum": 2147483647,
+                  "minimum": 0,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "quote": {
+                  "maxLength": 10000,
+                  "minLength": 1,
+                  "title": "Quote",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start",
+                "quote"
+              ],
+              "title": "ChapterItemOwnerCheckSuggestionV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "outputs": {},
+      "values": {},
+      "config": {
+        "candidate_fields": {
+          "issues": "issues",
+          "suggestion": "suggestion"
+        },
+        "parameter_fields": {}
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "context-chapter_content-check",
+      "source": "context",
+      "source_port": "chapter_content",
+      "target": "check_chapter_item_owner",
+      "target_port": "chapter_content"
+    },
+    {
+      "id": "context-item_context-check",
+      "source": "context",
+      "source_port": "item_context",
+      "target": "check_chapter_item_owner",
+      "target_port": "item_context"
+    },
+    {
+      "id": "context-from_character_context-check",
+      "source": "context",
+      "source_port": "from_character_context",
+      "target": "check_chapter_item_owner",
+      "target_port": "from_character_context"
+    },
+    {
+      "id": "context-to_character_context-check",
+      "source": "context",
+      "source_port": "to_character_context",
+      "target": "check_chapter_item_owner",
+      "target_port": "to_character_context"
+    },
+    {
+      "id": "start-provider-check",
+      "source": "start",
+      "source_port": "provider",
+      "target": "check_chapter_item_owner",
+      "target_port": "provider"
+    },
+    {
+      "id": "check-issues-result",
+      "source": "check_chapter_item_owner",
+      "source_port": "issues",
+      "target": "result",
+      "target_port": "issues"
+    },
+    {
+      "id": "check-suggestion-result",
+      "source": "check_chapter_item_owner",
+      "source_port": "suggestion",
+      "target": "result",
+      "target_port": "suggestion"
+    }
+  ],
+  "control_edges": [
+    {
+      "id": "start-context",
+      "source": "start",
+      "target": "context"
+    }
+  ],
+  "subflows": {},
+  "editor": {
+    "positions": {
+      "start": {
+        "x": 0,
+        "y": 80
+      },
+      "context": {
+        "x": 340,
+        "y": 80
+      },
+      "result": {
+        "x": 1020,
+        "y": 80
+      },
+      "check_chapter_item_owner": {
+        "x": 680,
+        "y": 80
+      }
+    }
+  },
+  "max_node_executions": 1000
+}

@@ -1,0 +1,15 @@
+# 任务：检查当前 LLM Provider 是否支持文本、流式、JSON Schema 和工具调用。
+# 输入：大多数探测提示词没有业务输入；工具结果复述会传入 tool_result 和 probe_token。
+# 输出：固定文本标记、{code, message} 结构化结果，或 report_provider_probe 工具调用参数。
+llm_provider_test:
+  text_probe_prompt: |
+    请只回复：PROVIDER_TEXT_OK
+  stream_probe_prompt: |
+    请用尽量短的内容回复：PROVIDER_STREAM_OK
+  json_schema_probe_prompt: |
+    请按结构化输出返回 code 等于 ok，message 等于 ready。不要添加额外解释。
+  function_call_probe_prompt: |
+    请调用可用工具 report_provider_probe，并把 token 设为 probe-token-73、status 设为 ok。不要直接回答。
+  function_result_probe_prompt: |
+    工具执行结果如下：{tool_result}
+    请只回复：PROVIDER_FUNCTION_OK {probe_token}

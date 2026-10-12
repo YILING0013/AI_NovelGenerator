@@ -1,0 +1,50 @@
+name: 问题反馈 / Bug report
+description: 报告当前 main 版本中可复现的问题 / Report a reproducible issue in current main
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认 / Before submitting
+      options:
+        - label: 我已在当前 main 版本复现并搜索已有 Issue / Reproduced on current main and searched existing issues
+          required: true
+        - label: 内容不包含密钥、个人资料、小说内容或未脱敏日志 / No secrets, private content or unredacted logs
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: 版本 / Version
+      description: 填写提交号或下载日期 / Commit or download date
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 运行环境 / Environment
+      description: 操作系统、Python、Node.js、MongoDB 版本和启动方式 / OS, Python, Node.js, MongoDB and startup method
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤 / Steps to reproduce
+      description: 从启动开始列出最少步骤，使用虚构数据 / Minimal steps using fictional data
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: 预期与实际结果 / Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 脱敏错误信息或截图 / Redacted errors or screenshots
+      description: 移除 API Key、数据库连接凭据、Cookie、个人路径和小说正文 / Remove keys, credentials, cookies, personal paths and novel text
+  - type: input
+    id: previous
+    attributes:
+      label: 相关旧讨论 / Related legacy discussion

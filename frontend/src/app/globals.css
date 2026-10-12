@@ -1,0 +1,315 @@
+@import "tailwindcss";
+@import "@heroui/react/styles";
+
+@custom-variant dark (&:is(.dark *));
+
+/* 流程节点和 React Flow 控件共用应用的明暗表面。 */
+.task-flow-canvas {
+  --xy-background-color: var(--color-surface-secondary);
+  --xy-node-color: var(--foreground);
+  --xy-node-background-color: var(--color-surface);
+  --xy-node-border: 1px solid var(--color-border);
+  --xy-controls-button-background-color: var(--color-surface-raised);
+  --xy-controls-button-background-color-hover: var(--color-selected);
+  --xy-controls-button-color: var(--foreground);
+  --xy-controls-button-border-color: var(--color-border);
+  --xy-edge-label-background-color: var(--color-surface-raised);
+  --xy-edge-label-color: var(--foreground);
+  --xy-attribution-background-color: var(--color-surface-raised);
+}
+
+.task-flow-canvas .react-flow {
+  background: var(--color-surface-secondary);
+}
+.task-flow-canvas .react-flow__edge-text { fill: var(--foreground); }
+.task-flow-canvas .react-flow__edge-textbg { fill: var(--color-surface-raised); }
+.task-flow-canvas .react-flow__controls-button { min-width: 36px; min-height: 36px; }
+.task-flow-canvas .react-flow__attribution { color: var(--color-muted); }
+
+:root {
+  --app-font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  --app-font-mono: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  /* 雾蓝亮色：在客户端载入前也保持同一套默认配色。 */
+  --background: #f1f3f5;
+  --foreground: #303844;
+  --color-warm-50: #f7f9fb;
+  --color-warm-100: #edf2f7;
+  --color-warm-200: #dce5ee;
+  --color-warm-300: #c2d1df;
+  --color-warm-400: #9bb1c6;
+  --color-warm-500: #7995af;
+  --color-warm-600: #5d7e9b;
+  --color-warm-700: #456783;
+  --color-warm-800: #344f68;
+  --color-warm-900: #263b50;
+  --color-accent: #456783;
+  --color-accent-foreground: #f8fafc;
+  --color-accent-hover: #3a5973;
+  --color-surface: #fafaf9;
+  --color-surface-secondary: #e9edf1;
+  --color-surface-raised: #fdfdfc;
+  --color-selected: #e2eaf2;
+  --color-border: #d6dce3;
+  --color-muted: #5b6877;
+}
+
+.dark {
+  --background: #171b22;
+  --foreground: #d9dfe7;
+  --color-warm-50: #1b232e;
+  --color-warm-100: #222d3a;
+  --color-warm-200: #2c3b4d;
+  --color-warm-300: #3b5068;
+  --color-warm-400: #536f8e;
+  --color-warm-500: #7392b2;
+  --color-warm-600: #90adc9;
+  --color-warm-700: #aac3df;
+  --color-warm-800: #c6d7e9;
+  --color-warm-900: #e0e9f2;
+  --color-accent: #aac3df;
+  --color-accent-foreground: #1c2a39;
+  --color-accent-hover: #bed1e8;
+  --color-surface: #20252e;
+  --color-surface-secondary: #272e38;
+  --color-surface-raised: #2a303b;
+  --color-selected: #2c3b4d;
+  --color-border: #3b4655;
+  --color-muted: #a4b0bf;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-accent: var(--color-accent);
+  --color-accent-foreground: var(--color-accent-foreground);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-surface: var(--color-surface);
+  --color-surface-secondary: var(--color-surface-secondary);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-selected: var(--color-selected);
+  --color-border: var(--color-border);
+  --color-muted: var(--color-muted);
+  --color-warm-50: var(--color-warm-50);
+  --color-warm-100: var(--color-warm-100);
+  --color-warm-200: var(--color-warm-200);
+  --color-warm-300: var(--color-warm-300);
+  --color-warm-400: var(--color-warm-400);
+  --color-warm-500: var(--color-warm-500);
+  --color-warm-600: var(--color-warm-600);
+  --color-warm-700: var(--color-warm-700);
+  --color-warm-800: var(--color-warm-800);
+  --color-warm-900: var(--color-warm-900);
+  --font-sans: var(--app-font-sans);
+  --font-mono: var(--app-font-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--app-font-sans);
+  font-size: 14px;
+  line-height: 1.6;
+  text-rendering: optimizeLegibility;
+}
+
+/* 设置页沿用资料编辑区的扁平字段外观，并保留 Modal、Popover 的独立浮层阴影。 */
+.settings-workspace {
+  --field-background: color-mix(in srgb, var(--background) 80%, transparent);
+  --field-foreground: var(--foreground);
+  --field-placeholder: var(--color-muted);
+  --field-border: var(--color-border);
+  --field-border-width: 1px;
+  --field-radius: 0.625rem;
+  --field-shadow: 0 0 0 0 transparent;
+  --color-field-placeholder: var(--color-muted);
+  --color-field-border: var(--color-border);
+  --border-width-field: 1px;
+  --shadow-field: 0 0 0 0 transparent;
+  --color-field-focus: color-mix(in srgb, var(--background) 80%, transparent);
+  --color-field-border-focus: var(--color-accent);
+}
+
+.settings-workspace :is(
+  [data-slot="input"],
+  [data-slot="input-group"],
+  [data-slot="select-trigger"],
+  [data-slot="number-field-group"]
+) {
+  min-height: 2.75rem;
+  --focus: color-mix(in srgb, var(--color-accent) 15%, transparent);
+}
+
+/* 工作台名册与详情保留独立滚动能力，静止时弱化滚动条，悬停或键盘聚焦时再显示。 */
+.workspace-scrollbar {
+  overscroll-behavior: contain;
+  scrollbar-color: transparent transparent;
+  scrollbar-width: thin;
+}
+
+.workspace-scrollbar:hover,
+.workspace-scrollbar:focus-within {
+  scrollbar-color: color-mix(in srgb, var(--color-muted) 42%, transparent) transparent;
+}
+
+.workspace-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.workspace-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.workspace-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+}
+
+.workspace-scrollbar:hover::-webkit-scrollbar-thumb,
+.workspace-scrollbar:focus-within::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-muted) 42%, transparent);
+}
+
+/* HeroUI 与普通表单共用颜色，弹窗挂到 body 后仍继承同一套主题。 */
+:root {
+  --accent: var(--color-accent);
+  --accent-foreground: var(--color-accent-foreground);
+  --surface: var(--color-surface);
+  --surface-foreground: var(--foreground);
+  --surface-secondary: var(--color-surface-secondary);
+  --surface-secondary-foreground: var(--foreground);
+  --surface-tertiary: var(--color-surface-raised);
+  --surface-tertiary-foreground: var(--foreground);
+  --overlay: var(--color-surface-raised);
+  --overlay-foreground: var(--foreground);
+  --muted: var(--color-muted);
+  --default: var(--color-surface-secondary);
+  --default-foreground: var(--foreground);
+  --border: var(--color-border);
+  --separator: var(--color-border);
+  --focus: var(--color-accent);
+  --link: var(--color-accent);
+  --segment: var(--color-surface-raised);
+  --segment-foreground: var(--foreground);
+  --field-background: var(--color-surface);
+  --field-foreground: var(--foreground);
+  --field-border: var(--color-border);
+  --field-placeholder: var(--color-muted);
+  --field-border-width: 1px;
+  --field-radius: 0.625rem;
+  --field-shadow: 0 0 0 0 transparent;
+  --surface-shadow: 0 0 0 0 transparent;
+  --overlay-shadow: 0 16px 56px -16px rgb(0 0 0 / 0.24), 0 2px 8px rgb(0 0 0 / 0.06);
+}
+
+/* 暗色浮层依靠更亮的表面和轻边界建立层次，避免厚重发白的描边。 */
+.dark {
+  --overlay-shadow: 0 20px 64px -16px rgb(0 0 0 / 0.5), 0 4px 12px rgb(0 0 0 / 0.18);
+}
+
+@theme inline {
+  --color-canvas: color-mix(in srgb, var(--background) 78%, var(--color-surface-secondary));
+  --color-canvas-grid: color-mix(in srgb, var(--color-border) 65%, transparent);
+  --color-border-subtle: color-mix(in srgb, var(--color-border) 60%, transparent);
+  --color-field-border-focus: var(--color-accent);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+/* 工具按钮保持紧凑，表单和触屏操作保留足够的点击高度。 */
+.button {
+  min-height: 2.5rem;
+  border-radius: 0.5rem;
+}
+
+.button--sm {
+  min-height: 2.25rem;
+}
+
+/* 搜索、筛选和操作按钮共用高度；只作用于工具栏，不改变编辑表单和弹窗。 */
+.workspace-toolbar {
+  --workspace-toolbar-height: 2.5rem;
+}
+
+@media (min-width: 48rem) {
+  /* 两侧同时预留滚动条宽度，折叠导航不会因右侧滚动槽偏离中线。 */
+  [data-sidebar-state="icons"] .workspace-scrollbar {
+    scrollbar-gutter: stable both-edges;
+  }
+}
+
+.workspace-toolbar :is(input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), select, .button) {
+  height: var(--workspace-toolbar-height);
+  min-height: var(--workspace-toolbar-height);
+  padding-block: 0;
+}
+
+@media (max-width: 639px) {
+  .workspace-toolbar {
+    --workspace-toolbar-height: 2.75rem;
+  }
+}
+
+/* 隐藏输入框必须跟随开关定位，避免撑开外层滚动区并在聚焦时带动页面。 */
+.switch {
+  position: relative;
+}
+
+.modal__dialog {
+  padding: 0;
+  border: 1px solid var(--color-border);
+  background: var(--overlay);
+  color: var(--foreground);
+  box-shadow: var(--overlay-shadow);
+}
+
+/* 标题、正文和按钮区各自管理内边距，关闭按钮与标题同一行，避免盖住操作。 */
+.modal__header {
+  flex-direction: row;
+}
+
+.modal__header,
+.modal__footer {
+  flex-shrink: 0;
+}
+
+.modal__header .modal__close-trigger {
+  position: static;
+  flex-shrink: 0;
+}
+
+.modal__header + .modal__body,
+.modal__header + .modal__footer,
+.modal__body + .modal__footer {
+  margin-top: 0;
+}
+
+@media (min-width: 640px) {
+  .modal__dialog {
+    border-radius: 1rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .button {
+    min-height: 2.75rem;
+  }
+}
+
+/* 详情按自身剩余宽度分栏，避免 1024px 屏幕下被侧栏挤成两条窄长文。 */
+.detail-fields {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+}
+
+/* 文字只负责排版；宽度由所在详情栏决定，避免重复限宽留下大片空白。 */
+.reading-copy {
+  font-size: 0.9375rem;
+  line-height: 1.85;
+  overflow-wrap: anywhere;
+}
+
+.workspace-scrollbar {
+  scrollbar-gutter: stable;
+}

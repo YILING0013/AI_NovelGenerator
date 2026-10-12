@@ -1,0 +1,21 @@
+# 前端专用产物；通用依赖、日志、配置和测试缓存由根目录规则处理
+# Yarn
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Next.js
+/.next/
+/out/
+/build
+next-env.d.ts
+
+# 本地证书
+*.pem
+
+# Vercel
+.vercel

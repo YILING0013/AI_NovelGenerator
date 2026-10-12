@@ -1,0 +1,573 @@
+{
+  "format_version": 1,
+  "id": "default_create_faction_relations_by_ai",
+  "task": "create_faction_relations_by_ai",
+  "revision": 1,
+  "name": "默认流程",
+  "default_provider": "",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "input",
+      "label": "开始",
+      "inputs": {},
+      "outputs": {
+        "faction_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 2,
+          "title": "Faction Ids",
+          "type": "array",
+          "required": true
+        },
+        "allow_isolated_factions": {
+          "default": false,
+          "title": "Allow Isolated Factions",
+          "type": "boolean",
+          "required": false
+        },
+        "relation_count_limit": {
+          "anyOf": [
+            {
+              "maximum": 500,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Relation Count Limit",
+          "required": false
+        },
+        "user_guidance": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User Guidance",
+          "required": false
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "context",
+      "type": "context",
+      "label": "读取任务资料",
+      "inputs": {
+        "faction_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 2,
+          "title": "Faction Ids",
+          "type": "array",
+          "required": true
+        },
+        "allow_isolated_factions": {
+          "default": false,
+          "title": "Allow Isolated Factions",
+          "type": "boolean",
+          "required": false
+        },
+        "relation_count_limit": {
+          "anyOf": [
+            {
+              "maximum": 500,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Relation Count Limit",
+          "required": false
+        },
+        "user_guidance": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User Guidance",
+          "required": false
+        }
+      },
+      "outputs": {
+        "allow_isolated_factions": {
+          "type": "string"
+        },
+        "existing_relations_json": {
+          "type": "string"
+        },
+        "factions_json": {
+          "type": "string"
+        },
+        "novel_profile_json": {
+          "type": "string"
+        },
+        "relation_count_limit": {
+          "type": "integer"
+        },
+        "user_guidance": {
+          "type": "string"
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "create_faction_relations",
+      "type": "llm",
+      "label": "create_faction_relations",
+      "inputs": {
+        "allow_isolated_factions": {
+          "type": "string"
+        },
+        "existing_relations_json": {
+          "type": "string"
+        },
+        "factions_json": {
+          "type": "string"
+        },
+        "novel_profile_json": {
+          "type": "string"
+        },
+        "relation_count_limit": {
+          "type": "integer"
+        },
+        "user_guidance": {
+          "type": "string"
+        }
+      },
+      "outputs": {
+        "relations": {
+          "description": "仅追加到当前小说的阵营关系候选列表。",
+          "items": {
+            "$ref": "#/$defs/FactionRelationCandidateV1"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "title": "Relations",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "FactionRelationCandidateV1": {
+              "additionalProperties": false,
+              "description": "模型输出或用户编辑后的单条阵营关系候选。",
+              "properties": {
+                "relation_ref": {
+                  "description": "仅在本次候选中使用的稳定引用，例如 relation_001。",
+                  "pattern": "^relation_[0-9]{3}$",
+                  "title": "Relation Ref",
+                  "type": "string"
+                },
+                "source_faction_id": {
+                  "description": "关系来源阵营业务 ID，必须来自本次输入阵营。",
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Source Faction Id",
+                  "type": "string"
+                },
+                "target_faction_id": {
+                  "description": "关系目标阵营业务 ID，必须来自本次输入阵营。",
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Target Faction Id",
+                  "type": "string"
+                },
+                "relation_type": {
+                  "description": "阵营关系类型。",
+                  "enum": [
+                    "hostile",
+                    "allied",
+                    "cold_war",
+                    "dependent",
+                    "subordinate",
+                    "trade_partner",
+                    "secret_cooperation",
+                    "historical_enemy"
+                  ],
+                  "title": "Relation Type",
+                  "type": "string"
+                },
+                "current_state": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Current State",
+                  "type": "string"
+                },
+                "core_conflict": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Core Conflict",
+                  "type": "string"
+                },
+                "hidden_tension": {
+                  "maxLength": 2000,
+                  "title": "Hidden Tension",
+                  "type": "string"
+                },
+                "possible_change": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Possible Change",
+                  "type": "string"
+                },
+                "intensity": {
+                  "maximum": 5,
+                  "minimum": 1,
+                  "title": "Intensity",
+                  "type": "integer"
+                },
+                "is_active": {
+                  "description": "新生成关系固定为 true。",
+                  "title": "Is Active",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "relation_ref",
+                "source_faction_id",
+                "target_faction_id",
+                "relation_type",
+                "current_state",
+                "core_conflict",
+                "hidden_tension",
+                "possible_change",
+                "intensity",
+                "is_active"
+              ],
+              "title": "FactionRelationCandidateV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "values": {},
+      "config": {
+        "mode": "json",
+        "provider": "",
+        "model": "",
+        "parameters": {},
+        "prompt_separator": "\n\n",
+        "prompt_file": "create_faction_relations_prompt.md",
+        "schema_prompt_file": "create_faction_relations_schema_prompt.md",
+        "text_prompt_file": "create_faction_relations_text_prompt.md",
+        "force_text_prompt": true
+      }
+    },
+    {
+      "id": "result",
+      "type": "output",
+      "label": "任务结果",
+      "inputs": {
+        "relations": {
+          "description": "仅追加到当前小说的阵营关系候选列表。",
+          "items": {
+            "$ref": "#/$defs/FactionRelationCandidateV1"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "title": "Relations",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "FactionRelationCandidateV1": {
+              "additionalProperties": false,
+              "description": "模型输出或用户编辑后的单条阵营关系候选。",
+              "properties": {
+                "relation_ref": {
+                  "description": "仅在本次候选中使用的稳定引用，例如 relation_001。",
+                  "pattern": "^relation_[0-9]{3}$",
+                  "title": "Relation Ref",
+                  "type": "string"
+                },
+                "source_faction_id": {
+                  "description": "关系来源阵营业务 ID，必须来自本次输入阵营。",
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Source Faction Id",
+                  "type": "string"
+                },
+                "target_faction_id": {
+                  "description": "关系目标阵营业务 ID，必须来自本次输入阵营。",
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Target Faction Id",
+                  "type": "string"
+                },
+                "relation_type": {
+                  "description": "阵营关系类型。",
+                  "enum": [
+                    "hostile",
+                    "allied",
+                    "cold_war",
+                    "dependent",
+                    "subordinate",
+                    "trade_partner",
+                    "secret_cooperation",
+                    "historical_enemy"
+                  ],
+                  "title": "Relation Type",
+                  "type": "string"
+                },
+                "current_state": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Current State",
+                  "type": "string"
+                },
+                "core_conflict": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Core Conflict",
+                  "type": "string"
+                },
+                "hidden_tension": {
+                  "maxLength": 2000,
+                  "title": "Hidden Tension",
+                  "type": "string"
+                },
+                "possible_change": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Possible Change",
+                  "type": "string"
+                },
+                "intensity": {
+                  "maximum": 5,
+                  "minimum": 1,
+                  "title": "Intensity",
+                  "type": "integer"
+                },
+                "is_active": {
+                  "description": "新生成关系固定为 true。",
+                  "title": "Is Active",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "relation_ref",
+                "source_faction_id",
+                "target_faction_id",
+                "relation_type",
+                "current_state",
+                "core_conflict",
+                "hidden_tension",
+                "possible_change",
+                "intensity",
+                "is_active"
+              ],
+              "title": "FactionRelationCandidateV1",
+              "type": "object"
+            }
+          }
+        },
+        "param_faction_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 2,
+          "title": "Faction Ids",
+          "type": "array",
+          "required": true
+        },
+        "param_allow_isolated_factions": {
+          "default": false,
+          "title": "Allow Isolated Factions",
+          "type": "boolean",
+          "required": false
+        },
+        "param_relation_count_limit": {
+          "anyOf": [
+            {
+              "maximum": 500,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Relation Count Limit",
+          "required": false
+        },
+        "param_user_guidance": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User Guidance",
+          "required": false
+        }
+      },
+      "outputs": {},
+      "values": {},
+      "config": {
+        "candidate_fields": {
+          "relations": "relations"
+        },
+        "parameter_fields": {
+          "faction_ids": "param_faction_ids",
+          "allow_isolated_factions": "param_allow_isolated_factions",
+          "relation_count_limit": "param_relation_count_limit",
+          "user_guidance": "param_user_guidance"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "start-faction_ids-context-faction_ids",
+      "source": "start",
+      "source_port": "faction_ids",
+      "target": "context",
+      "target_port": "faction_ids"
+    },
+    {
+      "id": "start-allow_isolated_factions-context-allow_isolated_factions",
+      "source": "start",
+      "source_port": "allow_isolated_factions",
+      "target": "context",
+      "target_port": "allow_isolated_factions"
+    },
+    {
+      "id": "start-relation_count_limit-context-relation_count_limit",
+      "source": "start",
+      "source_port": "relation_count_limit",
+      "target": "context",
+      "target_port": "relation_count_limit"
+    },
+    {
+      "id": "start-user_guidance-context-user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "context",
+      "target_port": "user_guidance"
+    },
+    {
+      "id": "context-allow_isolated_factions-create_faction_relations-allow_isolated_factions",
+      "source": "context",
+      "source_port": "allow_isolated_factions",
+      "target": "create_faction_relations",
+      "target_port": "allow_isolated_factions"
+    },
+    {
+      "id": "context-existing_relations_json-create_faction_relations-existing_relations_json",
+      "source": "context",
+      "source_port": "existing_relations_json",
+      "target": "create_faction_relations",
+      "target_port": "existing_relations_json"
+    },
+    {
+      "id": "context-factions_json-create_faction_relations-factions_json",
+      "source": "context",
+      "source_port": "factions_json",
+      "target": "create_faction_relations",
+      "target_port": "factions_json"
+    },
+    {
+      "id": "context-novel_profile_json-create_faction_relations-novel_profile_json",
+      "source": "context",
+      "source_port": "novel_profile_json",
+      "target": "create_faction_relations",
+      "target_port": "novel_profile_json"
+    },
+    {
+      "id": "context-relation_count_limit-create_faction_relations-relation_count_limit",
+      "source": "context",
+      "source_port": "relation_count_limit",
+      "target": "create_faction_relations",
+      "target_port": "relation_count_limit"
+    },
+    {
+      "id": "context-user_guidance-create_faction_relations-user_guidance",
+      "source": "context",
+      "source_port": "user_guidance",
+      "target": "create_faction_relations",
+      "target_port": "user_guidance"
+    },
+    {
+      "id": "create_faction_relations-relations-result-relations",
+      "source": "create_faction_relations",
+      "source_port": "relations",
+      "target": "result",
+      "target_port": "relations"
+    },
+    {
+      "id": "start-faction_ids-result-param_faction_ids",
+      "source": "start",
+      "source_port": "faction_ids",
+      "target": "result",
+      "target_port": "param_faction_ids"
+    },
+    {
+      "id": "start-allow_isolated_factions-result-param_allow_isolated_factions",
+      "source": "start",
+      "source_port": "allow_isolated_factions",
+      "target": "result",
+      "target_port": "param_allow_isolated_factions"
+    },
+    {
+      "id": "start-relation_count_limit-result-param_relation_count_limit",
+      "source": "start",
+      "source_port": "relation_count_limit",
+      "target": "result",
+      "target_port": "param_relation_count_limit"
+    },
+    {
+      "id": "start-user_guidance-result-param_user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "result",
+      "target_port": "param_user_guidance"
+    }
+  ],
+  "control_edges": [],
+  "subflows": {},
+  "editor": {
+    "positions": {
+      "start": {
+        "x": 0,
+        "y": 80
+      },
+      "context": {
+        "x": 340,
+        "y": 80
+      },
+      "create_faction_relations": {
+        "x": 680,
+        "y": 80
+      },
+      "result": {
+        "x": 1020,
+        "y": 80
+      }
+    }
+  },
+  "max_node_executions": 1000
+}

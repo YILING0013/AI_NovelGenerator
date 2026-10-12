@@ -1,0 +1,31 @@
+name: 功能建议 / Feature request
+description: 说明当前版本中的使用场景与预期改进 / Suggest an improvement for the current version
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认 / Before submitting
+      options:
+        - label: 已搜索已有建议，并确认建议针对当前 main 版本 / Searched existing requests and checked current main
+          required: true
+        - label: 不包含密钥、个人资料或小说私密内容 / No secrets or private content
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: 使用场景与问题 / Use case and problem
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 预期行为 / Proposed behavior
+      description: 说明完成后用户能做什么 / Explain what users should be able to do
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 已尝试的办法与补充资料 / Alternatives and context

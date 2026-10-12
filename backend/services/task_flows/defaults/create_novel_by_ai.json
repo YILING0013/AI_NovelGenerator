@@ -1,0 +1,836 @@
+{
+  "format_version": 1,
+  "id": "default_create_novel_by_ai",
+  "task": "create_novel_by_ai",
+  "revision": 1,
+  "name": "默认流程",
+  "default_provider": "",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "input",
+      "label": "开始",
+      "inputs": {},
+      "outputs": {
+        "user_idea": {
+          "maxLength": 20000,
+          "minLength": 1,
+          "title": "User Idea",
+          "type": "string",
+          "required": true
+        },
+        "number_of_chapters": {
+          "default": 600,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Number Of Chapters",
+          "type": "integer",
+          "required": false
+        },
+        "words_per_chapter": {
+          "default": 3000,
+          "maximum": 100000,
+          "minimum": 1,
+          "title": "Words Per Chapter",
+          "type": "integer",
+          "required": false
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "expand_idea_to_full_novel_story",
+      "type": "llm",
+      "label": "expand_idea_to_full_novel_story",
+      "inputs": {
+        "user_idea": {
+          "maxLength": 20000,
+          "minLength": 1,
+          "title": "User Idea",
+          "type": "string",
+          "required": true
+        }
+      },
+      "outputs": {
+        "plot": {
+          "description": "完整的约3000字长篇压缩故事正文",
+          "maxLength": 5000,
+          "minLength": 200,
+          "title": "Plot",
+          "type": "string",
+          "required": true
+        }
+      },
+      "values": {},
+      "config": {
+        "mode": "json",
+        "provider": "",
+        "model": "",
+        "parameters": {},
+        "prompt_separator": "\n",
+        "prompt_file": "expand_idea_to_full_novel_story_prompt.md",
+        "schema_prompt_file": "expand_idea_to_full_novel_story_schema_prompt.md",
+        "text_prompt_file": "expand_idea_to_full_novel_story_text_prompt.md",
+        "force_text_prompt": true,
+        "format_suffix": false,
+        "preserve_prompt_whitespace": true
+      }
+    },
+    {
+      "id": "extract_idea",
+      "type": "llm",
+      "label": "extract_idea",
+      "inputs": {
+        "plot": {
+          "description": "完整的约3000字长篇压缩故事正文",
+          "maxLength": 5000,
+          "minLength": 200,
+          "title": "Plot",
+          "type": "string",
+          "required": true
+        }
+      },
+      "outputs": {
+        "genre": {
+          "description": "小说类型，如玄幻、科幻、都市、悬疑、历史、仙侠等",
+          "maxLength": 30,
+          "minLength": 1,
+          "title": "Genre",
+          "type": "string",
+          "required": true
+        },
+        "tone": {
+          "description": "整体基调，如热血、黑暗、轻松、搞笑、治愈、压抑等",
+          "maxLength": 30,
+          "minLength": 1,
+          "title": "Tone",
+          "type": "string",
+          "required": true
+        },
+        "target_audience": {
+          "description": "目标读者群体，如男频、女频、青少年、泛幻想读者等",
+          "maxLength": 30,
+          "minLength": 1,
+          "title": "Target Audience",
+          "type": "string",
+          "required": true
+        },
+        "core_idea": {
+          "description": "用1-2句话描述故事的核心设想",
+          "maxLength": 300,
+          "minLength": 10,
+          "title": "Core Idea",
+          "type": "string",
+          "required": true
+        }
+      },
+      "values": {},
+      "config": {
+        "mode": "json",
+        "provider": "",
+        "model": "",
+        "parameters": {},
+        "prompt_separator": "\n",
+        "prompt_file": "extract_idea_prompt.md",
+        "schema_prompt_file": "extract_idea_schema_prompt.md",
+        "text_prompt_file": "extract_idea_text_prompt.md",
+        "force_text_prompt": true,
+        "format_suffix": false,
+        "preserve_prompt_whitespace": true
+      }
+    },
+    {
+      "id": "core_seed",
+      "type": "llm",
+      "label": "core_seed",
+      "inputs": {
+        "core_idea": {
+          "description": "用1-2句话描述故事的核心设想",
+          "maxLength": 300,
+          "minLength": 10,
+          "title": "Core Idea",
+          "type": "string",
+          "required": true
+        },
+        "genre": {
+          "description": "小说类型，如玄幻、科幻、都市、悬疑、历史、仙侠等",
+          "maxLength": 30,
+          "minLength": 1,
+          "title": "Genre",
+          "type": "string",
+          "required": true
+        },
+        "number_of_chapters": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Number Of Chapters",
+          "type": "integer",
+          "required": false
+        },
+        "plot": {
+          "description": "完整的约3000字长篇压缩故事正文",
+          "maxLength": 5000,
+          "minLength": 200,
+          "title": "Plot",
+          "type": "string",
+          "required": true
+        },
+        "target_audience": {
+          "description": "目标读者群体，如男频、女频、青少年、泛幻想读者等",
+          "maxLength": 30,
+          "minLength": 1,
+          "title": "Target Audience",
+          "type": "string",
+          "required": true
+        },
+        "tone": {
+          "description": "整体基调，如热血、黑暗、轻松、搞笑、治愈、压抑等",
+          "maxLength": 30,
+          "minLength": 1,
+          "title": "Tone",
+          "type": "string",
+          "required": true
+        },
+        "words_per_chapter": {
+          "default": 3000,
+          "maximum": 100000,
+          "minimum": 1,
+          "title": "Words Per Chapter",
+          "type": "integer",
+          "required": false
+        }
+      },
+      "outputs": {
+        "core_seed": {
+          "description": "故事核心公式，需包含显性冲突、潜在危机、人物核心驱动力与世界观关键矛盾暗示，长度30-100字",
+          "maxLength": 150,
+          "minLength": 30,
+          "title": "Core Seed",
+          "type": "string",
+          "required": true
+        }
+      },
+      "values": {},
+      "config": {
+        "mode": "json",
+        "provider": "",
+        "model": "",
+        "parameters": {},
+        "prompt_separator": "\n",
+        "prompt_file": "core_seed_prompt.md",
+        "schema_prompt_file": "core_seed_schema_prompt.md",
+        "text_prompt_file": "core_seed_text_prompt.md",
+        "force_text_prompt": true,
+        "format_suffix": false,
+        "preserve_prompt_whitespace": true
+      }
+    },
+    {
+      "id": "novel_meta",
+      "type": "llm",
+      "label": "novel_meta",
+      "inputs": {
+        "core_idea": {
+          "description": "用1-2句话描述故事的核心设想",
+          "maxLength": 300,
+          "minLength": 10,
+          "title": "Core Idea",
+          "type": "string",
+          "required": true
+        },
+        "core_seed": {
+          "description": "故事核心公式，需包含显性冲突、潜在危机、人物核心驱动力与世界观关键矛盾暗示，长度30-100字",
+          "maxLength": 150,
+          "minLength": 30,
+          "title": "Core Seed",
+          "type": "string",
+          "required": true
+        },
+        "genre": {
+          "description": "小说类型，如玄幻、科幻、都市、悬疑、历史、仙侠等",
+          "maxLength": 30,
+          "minLength": 1,
+          "title": "Genre",
+          "type": "string",
+          "required": true
+        },
+        "number_of_chapters": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Number Of Chapters",
+          "type": "integer",
+          "required": false
+        },
+        "plot": {
+          "description": "完整的约3000字长篇压缩故事正文",
+          "maxLength": 5000,
+          "minLength": 200,
+          "title": "Plot",
+          "type": "string",
+          "required": true
+        },
+        "target_audience": {
+          "description": "目标读者群体，如男频、女频、青少年、泛幻想读者等",
+          "maxLength": 30,
+          "minLength": 1,
+          "title": "Target Audience",
+          "type": "string",
+          "required": true
+        },
+        "tone": {
+          "description": "整体基调，如热血、黑暗、轻松、搞笑、治愈、压抑等",
+          "maxLength": 30,
+          "minLength": 1,
+          "title": "Tone",
+          "type": "string",
+          "required": true
+        },
+        "words_per_chapter": {
+          "default": 3000,
+          "maximum": 100000,
+          "minimum": 1,
+          "title": "Words Per Chapter",
+          "type": "integer",
+          "required": false
+        }
+      },
+      "outputs": {
+        "title": {
+          "description": "小说主标题，具有吸引力和传播性，符合类型读者审美",
+          "maxLength": 30,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string",
+          "required": true
+        },
+        "subtitle": {
+          "description": "副标题，补充核心冲突或主题，具有一定文学感或商业感",
+          "maxLength": 50,
+          "minLength": 1,
+          "title": "Subtitle",
+          "type": "string",
+          "required": true
+        },
+        "introduction": {
+          "description": "小说引言，100-300字，引入故事，吸引读者阅读兴趣",
+          "maxLength": 300,
+          "minLength": 100,
+          "title": "Introduction",
+          "type": "string",
+          "required": true
+        },
+        "summary": {
+          "description": "小说简介，100-500字，需清晰呈现主线冲突与悬念",
+          "maxLength": 500,
+          "minLength": 100,
+          "title": "Summary",
+          "type": "string",
+          "required": true
+        },
+        "worldview": {
+          "description": "世界观设定，说明世界规则、力量体系、社会结构等，不少于100字",
+          "maxLength": 800,
+          "minLength": 100,
+          "title": "Worldview",
+          "type": "string",
+          "required": true
+        },
+        "writing_style": {
+          "description": "创作风格，如偏黑暗现实、轻快幽默、史诗宏大等",
+          "maxLength": 50,
+          "minLength": 2,
+          "title": "Writing Style",
+          "type": "string",
+          "required": true
+        },
+        "narrative_pov": {
+          "description": "叙事视角，只能为第一人称、第三人称有限视角、全知视角之一",
+          "enum": [
+            "第一人称",
+            "第三人称有限视角",
+            "全知视角"
+          ],
+          "title": "Narrative Pov",
+          "type": "string",
+          "required": true
+        },
+        "era_background": {
+          "description": "时代背景，如架空古代、未来星际、现代都市、末世废土等",
+          "maxLength": 50,
+          "minLength": 2,
+          "title": "Era Background",
+          "type": "string",
+          "required": true
+        },
+        "tags": {
+          "description": "小说标签，3-5个，概括小说核心元素，如硬科幻、冒险、爱情等",
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array",
+          "required": false
+        }
+      },
+      "values": {},
+      "config": {
+        "mode": "json",
+        "provider": "",
+        "model": "",
+        "parameters": {},
+        "prompt_separator": "\n",
+        "prompt_file": "novel_meta_prompt.md",
+        "schema_prompt_file": "novel_meta_schema_prompt.md",
+        "text_prompt_file": "novel_meta_text_prompt.md",
+        "force_text_prompt": true,
+        "format_suffix": false,
+        "preserve_prompt_whitespace": true
+      }
+    },
+    {
+      "id": "result",
+      "type": "output",
+      "label": "任务结果",
+      "inputs": {
+        "title": {
+          "description": "小说主标题，具有吸引力和传播性，符合类型读者审美",
+          "maxLength": 30,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string",
+          "required": true
+        },
+        "subtitle": {
+          "description": "副标题，补充核心冲突或主题，具有一定文学感或商业感",
+          "maxLength": 50,
+          "minLength": 1,
+          "title": "Subtitle",
+          "type": "string",
+          "required": true
+        },
+        "genre": {
+          "description": "小说类型，如玄幻、科幻、都市、悬疑、历史、仙侠等",
+          "maxLength": 30,
+          "minLength": 1,
+          "title": "Genre",
+          "type": "string",
+          "required": true
+        },
+        "tags": {
+          "description": "小说标签，3-5个，概括小说核心元素，如硬科幻、冒险、爱情等",
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array",
+          "required": false
+        },
+        "introduction": {
+          "description": "小说引言，100-300字，引入故事，吸引读者阅读兴趣",
+          "maxLength": 300,
+          "minLength": 100,
+          "title": "Introduction",
+          "type": "string",
+          "required": true
+        },
+        "summary": {
+          "description": "小说简介，100-500字，需清晰呈现主线冲突与悬念",
+          "maxLength": 500,
+          "minLength": 100,
+          "title": "Summary",
+          "type": "string",
+          "required": true
+        },
+        "core_seed": {
+          "description": "故事核心公式，需包含显性冲突、潜在危机、人物核心驱动力与世界观关键矛盾暗示，长度30-100字",
+          "maxLength": 150,
+          "minLength": 30,
+          "title": "Core Seed",
+          "type": "string",
+          "required": true
+        },
+        "worldview": {
+          "description": "世界观设定，说明世界规则、力量体系、社会结构等，不少于100字",
+          "maxLength": 800,
+          "minLength": 100,
+          "title": "Worldview",
+          "type": "string",
+          "required": true
+        },
+        "writing_style": {
+          "description": "创作风格，如偏黑暗现实、轻快幽默、史诗宏大等",
+          "maxLength": 50,
+          "minLength": 2,
+          "title": "Writing Style",
+          "type": "string",
+          "required": true
+        },
+        "narrative_pov": {
+          "description": "叙事视角，只能为第一人称、第三人称有限视角、全知视角之一",
+          "enum": [
+            "第一人称",
+            "第三人称有限视角",
+            "全知视角"
+          ],
+          "title": "Narrative Pov",
+          "type": "string",
+          "required": true
+        },
+        "era_background": {
+          "description": "时代背景，如架空古代、未来星际、现代都市、末世废土等",
+          "maxLength": 50,
+          "minLength": 2,
+          "title": "Era Background",
+          "type": "string",
+          "required": true
+        },
+        "plot": {
+          "description": "完整的约3000字长篇压缩故事正文",
+          "maxLength": 5000,
+          "minLength": 200,
+          "title": "Plot",
+          "type": "string",
+          "required": true
+        },
+        "tone": {
+          "description": "整体基调，如热血、黑暗、轻松、搞笑、治愈、压抑等",
+          "maxLength": 30,
+          "minLength": 1,
+          "title": "Tone",
+          "type": "string",
+          "required": true
+        },
+        "target_audience": {
+          "description": "目标读者群体，如男频、女频、青少年、泛幻想读者等",
+          "maxLength": 30,
+          "minLength": 1,
+          "title": "Target Audience",
+          "type": "string",
+          "required": true
+        },
+        "core_idea": {
+          "description": "用1-2句话描述故事的核心设想",
+          "maxLength": 300,
+          "minLength": 10,
+          "title": "Core Idea",
+          "type": "string",
+          "required": true
+        },
+        "number_of_chapters": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Number Of Chapters",
+          "type": "integer",
+          "required": false
+        },
+        "words_per_chapter": {
+          "default": 3000,
+          "maximum": 100000,
+          "minimum": 1,
+          "title": "Words Per Chapter",
+          "type": "integer",
+          "required": false
+        }
+      },
+      "outputs": {},
+      "values": {},
+      "config": {
+        "candidate_fields": {
+          "title": "title",
+          "subtitle": "subtitle",
+          "genre": "genre",
+          "tags": "tags",
+          "introduction": "introduction",
+          "summary": "summary",
+          "core_seed": "core_seed",
+          "worldview": "worldview",
+          "writing_style": "writing_style",
+          "narrative_pov": "narrative_pov",
+          "era_background": "era_background",
+          "plot": "plot",
+          "tone": "tone",
+          "target_audience": "target_audience",
+          "core_idea": "core_idea",
+          "number_of_chapters": "number_of_chapters",
+          "words_per_chapter": "words_per_chapter"
+        },
+        "parameter_fields": {}
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "start-user_idea-expand_idea_to_full_novel_story-user_idea",
+      "source": "start",
+      "source_port": "user_idea",
+      "target": "expand_idea_to_full_novel_story",
+      "target_port": "user_idea"
+    },
+    {
+      "id": "expand_idea_to_full_novel_story-plot-extract_idea-plot",
+      "source": "expand_idea_to_full_novel_story",
+      "source_port": "plot",
+      "target": "extract_idea",
+      "target_port": "plot"
+    },
+    {
+      "id": "extract_idea-core_idea-core_seed-core_idea",
+      "source": "extract_idea",
+      "source_port": "core_idea",
+      "target": "core_seed",
+      "target_port": "core_idea"
+    },
+    {
+      "id": "extract_idea-genre-core_seed-genre",
+      "source": "extract_idea",
+      "source_port": "genre",
+      "target": "core_seed",
+      "target_port": "genre"
+    },
+    {
+      "id": "start-number_of_chapters-core_seed-number_of_chapters",
+      "source": "start",
+      "source_port": "number_of_chapters",
+      "target": "core_seed",
+      "target_port": "number_of_chapters"
+    },
+    {
+      "id": "expand_idea_to_full_novel_story-plot-core_seed-plot",
+      "source": "expand_idea_to_full_novel_story",
+      "source_port": "plot",
+      "target": "core_seed",
+      "target_port": "plot"
+    },
+    {
+      "id": "extract_idea-target_audience-core_seed-target_audience",
+      "source": "extract_idea",
+      "source_port": "target_audience",
+      "target": "core_seed",
+      "target_port": "target_audience"
+    },
+    {
+      "id": "extract_idea-tone-core_seed-tone",
+      "source": "extract_idea",
+      "source_port": "tone",
+      "target": "core_seed",
+      "target_port": "tone"
+    },
+    {
+      "id": "start-words_per_chapter-core_seed-words_per_chapter",
+      "source": "start",
+      "source_port": "words_per_chapter",
+      "target": "core_seed",
+      "target_port": "words_per_chapter"
+    },
+    {
+      "id": "extract_idea-core_idea-novel_meta-core_idea",
+      "source": "extract_idea",
+      "source_port": "core_idea",
+      "target": "novel_meta",
+      "target_port": "core_idea"
+    },
+    {
+      "id": "core_seed-core_seed-novel_meta-core_seed",
+      "source": "core_seed",
+      "source_port": "core_seed",
+      "target": "novel_meta",
+      "target_port": "core_seed"
+    },
+    {
+      "id": "extract_idea-genre-novel_meta-genre",
+      "source": "extract_idea",
+      "source_port": "genre",
+      "target": "novel_meta",
+      "target_port": "genre"
+    },
+    {
+      "id": "start-number_of_chapters-novel_meta-number_of_chapters",
+      "source": "start",
+      "source_port": "number_of_chapters",
+      "target": "novel_meta",
+      "target_port": "number_of_chapters"
+    },
+    {
+      "id": "expand_idea_to_full_novel_story-plot-novel_meta-plot",
+      "source": "expand_idea_to_full_novel_story",
+      "source_port": "plot",
+      "target": "novel_meta",
+      "target_port": "plot"
+    },
+    {
+      "id": "extract_idea-target_audience-novel_meta-target_audience",
+      "source": "extract_idea",
+      "source_port": "target_audience",
+      "target": "novel_meta",
+      "target_port": "target_audience"
+    },
+    {
+      "id": "extract_idea-tone-novel_meta-tone",
+      "source": "extract_idea",
+      "source_port": "tone",
+      "target": "novel_meta",
+      "target_port": "tone"
+    },
+    {
+      "id": "start-words_per_chapter-novel_meta-words_per_chapter",
+      "source": "start",
+      "source_port": "words_per_chapter",
+      "target": "novel_meta",
+      "target_port": "words_per_chapter"
+    },
+    {
+      "id": "novel_meta-title-result-title",
+      "source": "novel_meta",
+      "source_port": "title",
+      "target": "result",
+      "target_port": "title"
+    },
+    {
+      "id": "novel_meta-subtitle-result-subtitle",
+      "source": "novel_meta",
+      "source_port": "subtitle",
+      "target": "result",
+      "target_port": "subtitle"
+    },
+    {
+      "id": "extract_idea-genre-result-genre",
+      "source": "extract_idea",
+      "source_port": "genre",
+      "target": "result",
+      "target_port": "genre"
+    },
+    {
+      "id": "novel_meta-tags-result-tags",
+      "source": "novel_meta",
+      "source_port": "tags",
+      "target": "result",
+      "target_port": "tags"
+    },
+    {
+      "id": "novel_meta-introduction-result-introduction",
+      "source": "novel_meta",
+      "source_port": "introduction",
+      "target": "result",
+      "target_port": "introduction"
+    },
+    {
+      "id": "novel_meta-summary-result-summary",
+      "source": "novel_meta",
+      "source_port": "summary",
+      "target": "result",
+      "target_port": "summary"
+    },
+    {
+      "id": "core_seed-core_seed-result-core_seed",
+      "source": "core_seed",
+      "source_port": "core_seed",
+      "target": "result",
+      "target_port": "core_seed"
+    },
+    {
+      "id": "novel_meta-worldview-result-worldview",
+      "source": "novel_meta",
+      "source_port": "worldview",
+      "target": "result",
+      "target_port": "worldview"
+    },
+    {
+      "id": "novel_meta-writing_style-result-writing_style",
+      "source": "novel_meta",
+      "source_port": "writing_style",
+      "target": "result",
+      "target_port": "writing_style"
+    },
+    {
+      "id": "novel_meta-narrative_pov-result-narrative_pov",
+      "source": "novel_meta",
+      "source_port": "narrative_pov",
+      "target": "result",
+      "target_port": "narrative_pov"
+    },
+    {
+      "id": "novel_meta-era_background-result-era_background",
+      "source": "novel_meta",
+      "source_port": "era_background",
+      "target": "result",
+      "target_port": "era_background"
+    },
+    {
+      "id": "expand_idea_to_full_novel_story-plot-result-plot",
+      "source": "expand_idea_to_full_novel_story",
+      "source_port": "plot",
+      "target": "result",
+      "target_port": "plot"
+    },
+    {
+      "id": "extract_idea-tone-result-tone",
+      "source": "extract_idea",
+      "source_port": "tone",
+      "target": "result",
+      "target_port": "tone"
+    },
+    {
+      "id": "extract_idea-target_audience-result-target_audience",
+      "source": "extract_idea",
+      "source_port": "target_audience",
+      "target": "result",
+      "target_port": "target_audience"
+    },
+    {
+      "id": "extract_idea-core_idea-result-core_idea",
+      "source": "extract_idea",
+      "source_port": "core_idea",
+      "target": "result",
+      "target_port": "core_idea"
+    },
+    {
+      "id": "start-number_of_chapters-result-number_of_chapters",
+      "source": "start",
+      "source_port": "number_of_chapters",
+      "target": "result",
+      "target_port": "number_of_chapters"
+    },
+    {
+      "id": "start-words_per_chapter-result-words_per_chapter",
+      "source": "start",
+      "source_port": "words_per_chapter",
+      "target": "result",
+      "target_port": "words_per_chapter"
+    }
+  ],
+  "control_edges": [],
+  "subflows": {},
+  "editor": {
+    "positions": {
+      "start": {
+        "x": 0,
+        "y": 80
+      },
+      "expand_idea_to_full_novel_story": {
+        "x": 340,
+        "y": 80
+      },
+      "extract_idea": {
+        "x": 680,
+        "y": 80
+      },
+      "core_seed": {
+        "x": 1020,
+        "y": 80
+      },
+      "novel_meta": {
+        "x": 1360,
+        "y": 80
+      },
+      "result": {
+        "x": 1700,
+        "y": 80
+      }
+    }
+  },
+  "max_node_executions": 1000
+}

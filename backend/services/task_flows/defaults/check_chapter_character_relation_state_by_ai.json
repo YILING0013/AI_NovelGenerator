@@ -1,0 +1,359 @@
+{
+  "format_version": 1,
+  "id": "default_check_chapter_character_relation_state_by_ai",
+  "task": "check_chapter_character_relation_state_by_ai",
+  "revision": 1,
+  "name": "默认流程",
+  "default_provider": "",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "input",
+      "label": "开始",
+      "inputs": {},
+      "outputs": {
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "title": "Provider",
+          "required": true
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "context",
+      "type": "context",
+      "label": "读取章正文和人物关系",
+      "inputs": {},
+      "outputs": {
+        "chapter_content": {
+          "type": "string"
+        },
+        "relation_context": {
+          "type": "string"
+        },
+        "source_character_context": {
+          "type": "string"
+        },
+        "target_character_context": {
+          "type": "string"
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "check_chapter_character_relation_state",
+      "type": "llm",
+      "label": "检查人物关系当前状态",
+      "inputs": {
+        "chapter_content": {
+          "type": "string"
+        },
+        "relation_context": {
+          "type": "string"
+        },
+        "source_character_context": {
+          "type": "string"
+        },
+        "target_character_context": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "title": "Provider",
+          "required": true
+        }
+      },
+      "outputs": {
+        "issues": {
+          "items": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Issues",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "ChapterCharacterRelationStateCheckSuggestionV1": {
+              "additionalProperties": false,
+              "description": "只建议当前关系状态和原文，不允许模型决定身份或其他字段。",
+              "properties": {
+                "current_state": {
+                  "minLength": 1,
+                  "title": "Current State",
+                  "type": "string"
+                },
+                "start": {
+                  "description": "从零开始的 Unicode 码点位置。",
+                  "maximum": 2147483647,
+                  "minimum": 0,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "quote": {
+                  "maxLength": 10000,
+                  "minLength": 1,
+                  "title": "Quote",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "current_state",
+                "start",
+                "quote"
+              ],
+              "title": "ChapterCharacterRelationStateCheckSuggestionV1",
+              "type": "object"
+            }
+          }
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ChapterCharacterRelationStateCheckSuggestionV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "required": true,
+          "$defs": {
+            "ChapterCharacterRelationStateCheckSuggestionV1": {
+              "additionalProperties": false,
+              "description": "只建议当前关系状态和原文，不允许模型决定身份或其他字段。",
+              "properties": {
+                "current_state": {
+                  "minLength": 1,
+                  "title": "Current State",
+                  "type": "string"
+                },
+                "start": {
+                  "description": "从零开始的 Unicode 码点位置。",
+                  "maximum": 2147483647,
+                  "minimum": 0,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "quote": {
+                  "maxLength": 10000,
+                  "minLength": 1,
+                  "title": "Quote",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "current_state",
+                "start",
+                "quote"
+              ],
+              "title": "ChapterCharacterRelationStateCheckSuggestionV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "values": {},
+      "config": {
+        "mode": "json",
+        "provider": "",
+        "model": "",
+        "parameters": {},
+        "provider_input": "provider",
+        "prompt_file": "check_chapter_character_relation_state_prompt.md",
+        "preserve_prompt_whitespace": true
+      }
+    },
+    {
+      "id": "result",
+      "type": "output",
+      "label": "检查结果",
+      "inputs": {
+        "issues": {
+          "items": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Issues",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "ChapterCharacterRelationStateCheckSuggestionV1": {
+              "additionalProperties": false,
+              "description": "只建议当前关系状态和原文，不允许模型决定身份或其他字段。",
+              "properties": {
+                "current_state": {
+                  "minLength": 1,
+                  "title": "Current State",
+                  "type": "string"
+                },
+                "start": {
+                  "description": "从零开始的 Unicode 码点位置。",
+                  "maximum": 2147483647,
+                  "minimum": 0,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "quote": {
+                  "maxLength": 10000,
+                  "minLength": 1,
+                  "title": "Quote",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "current_state",
+                "start",
+                "quote"
+              ],
+              "title": "ChapterCharacterRelationStateCheckSuggestionV1",
+              "type": "object"
+            }
+          }
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ChapterCharacterRelationStateCheckSuggestionV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "required": true,
+          "$defs": {
+            "ChapterCharacterRelationStateCheckSuggestionV1": {
+              "additionalProperties": false,
+              "description": "只建议当前关系状态和原文，不允许模型决定身份或其他字段。",
+              "properties": {
+                "current_state": {
+                  "minLength": 1,
+                  "title": "Current State",
+                  "type": "string"
+                },
+                "start": {
+                  "description": "从零开始的 Unicode 码点位置。",
+                  "maximum": 2147483647,
+                  "minimum": 0,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "quote": {
+                  "maxLength": 10000,
+                  "minLength": 1,
+                  "title": "Quote",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "current_state",
+                "start",
+                "quote"
+              ],
+              "title": "ChapterCharacterRelationStateCheckSuggestionV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "outputs": {},
+      "values": {},
+      "config": {
+        "candidate_fields": {
+          "issues": "issues",
+          "suggestion": "suggestion"
+        },
+        "parameter_fields": {}
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "context-chapter_content-check",
+      "source": "context",
+      "source_port": "chapter_content",
+      "target": "check_chapter_character_relation_state",
+      "target_port": "chapter_content"
+    },
+    {
+      "id": "context-relation_context-check",
+      "source": "context",
+      "source_port": "relation_context",
+      "target": "check_chapter_character_relation_state",
+      "target_port": "relation_context"
+    },
+    {
+      "id": "context-source_character_context-check",
+      "source": "context",
+      "source_port": "source_character_context",
+      "target": "check_chapter_character_relation_state",
+      "target_port": "source_character_context"
+    },
+    {
+      "id": "context-target_character_context-check",
+      "source": "context",
+      "source_port": "target_character_context",
+      "target": "check_chapter_character_relation_state",
+      "target_port": "target_character_context"
+    },
+    {
+      "id": "start-provider-check",
+      "source": "start",
+      "source_port": "provider",
+      "target": "check_chapter_character_relation_state",
+      "target_port": "provider"
+    },
+    {
+      "id": "check-issues-result",
+      "source": "check_chapter_character_relation_state",
+      "source_port": "issues",
+      "target": "result",
+      "target_port": "issues"
+    },
+    {
+      "id": "check-suggestion-result",
+      "source": "check_chapter_character_relation_state",
+      "source_port": "suggestion",
+      "target": "result",
+      "target_port": "suggestion"
+    }
+  ],
+  "control_edges": [
+    {
+      "id": "start-context",
+      "source": "start",
+      "target": "context"
+    }
+  ],
+  "subflows": {},
+  "editor": {
+    "positions": {
+      "start": {
+        "x": 0,
+        "y": 80
+      },
+      "context": {
+        "x": 340,
+        "y": 80
+      },
+      "result": {
+        "x": 1020,
+        "y": 80
+      },
+      "check_chapter_character_relation_state": {
+        "x": 680,
+        "y": 80
+      }
+    }
+  },
+  "max_node_executions": 1000
+}

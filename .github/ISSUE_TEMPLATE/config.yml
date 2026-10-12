@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 旧版备份 / Legacy version
+    url: https://github.com/YILING0013/AI_NovelGenerator/tree/old
+    about: main 为重构后的版本；旧版代码保留在 old。Current version is on main; legacy code is on old.

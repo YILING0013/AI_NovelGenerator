@@ -1,0 +1,1611 @@
+{
+  "format_version": 1,
+  "id": "default_create_characters_by_ai",
+  "task": "create_characters_by_ai",
+  "revision": 1,
+  "name": "默认流程",
+  "default_provider": "",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "input",
+      "label": "开始",
+      "inputs": {},
+      "outputs": {
+        "character_count": {
+          "maximum": 50,
+          "minimum": 1,
+          "title": "Character Count",
+          "type": "integer",
+          "required": true,
+          "default": 3
+        },
+        "user_guidance": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User Guidance",
+          "required": false
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "context",
+      "type": "context",
+      "label": "读取任务资料",
+      "inputs": {
+        "character_count": {
+          "maximum": 50,
+          "minimum": 1,
+          "title": "Character Count",
+          "type": "integer",
+          "required": true
+        },
+        "user_guidance": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User Guidance",
+          "required": false
+        }
+      },
+      "outputs": {
+        "character_count": {
+          "type": "integer"
+        },
+        "core_factions_json": {
+          "type": "string"
+        },
+        "existing_core_characters_json": {
+          "type": "string"
+        },
+        "novel_profile_json": {
+          "type": "string"
+        },
+        "user_guidance": {
+          "type": "string"
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "create_core_characters",
+      "type": "llm",
+      "label": "create_core_characters",
+      "inputs": {
+        "character_count": {
+          "type": "integer"
+        },
+        "core_factions_json": {
+          "type": "string"
+        },
+        "existing_core_characters_json": {
+          "type": "string"
+        },
+        "novel_profile_json": {
+          "type": "string"
+        },
+        "user_guidance": {
+          "type": "string"
+        }
+      },
+      "outputs": {
+        "core_characters": {
+          "description": "全书级核心角色候选列表。",
+          "items": {
+            "$ref": "#/$defs/CoreCharacterCandidateV1"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "title": "Core Characters",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "CharacterFactionBindingCandidateV1": {
+              "additionalProperties": false,
+              "description": "核心角色候选对应的全书级势力绑定候选。",
+              "properties": {
+                "character_ref": {
+                  "description": "必须引用 core_characters 中恰好一个 character_ref。",
+                  "pattern": "^character_[0-9]{2,3}$",
+                  "title": "Character Ref",
+                  "type": "string"
+                },
+                "faction_id": {
+                  "anyOf": [
+                    {
+                      "maxLength": 100,
+                      "minLength": 5,
+                      "pattern": "^fac_[0-9]{6,}$",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "核心势力业务 ID；角色无势力归属时必须为 null。",
+                  "title": "Faction Id"
+                },
+                "membership_type": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "primary",
+                        "secondary",
+                        "covert"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "成员关系；faction_id 非空时必填，否则必须为 null。",
+                  "title": "Membership Type"
+                },
+                "role_title": {
+                  "anyOf": [
+                    {
+                      "maxLength": 100,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "角色在势力中的称谓；允许为 null。",
+                  "title": "Role Title"
+                },
+                "public_status": {
+                  "anyOf": [
+                    {
+                      "maxLength": 200,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "公开身份；faction_id 非空时必填，否则必须为 null。",
+                  "title": "Public Status"
+                },
+                "loyalty_level": {
+                  "anyOf": [
+                    {
+                      "maximum": 5,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "忠诚度 1 至 5；faction_id 非空时必填，否则必须为 null。",
+                  "title": "Loyalty Level"
+                },
+                "reason": {
+                  "anyOf": [
+                    {
+                      "maxLength": 1000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "归属原因；faction_id 非空时必填，否则必须为 null。",
+                  "title": "Reason"
+                }
+              },
+              "required": [
+                "character_ref",
+                "faction_id",
+                "membership_type",
+                "role_title",
+                "public_status",
+                "loyalty_level",
+                "reason"
+              ],
+              "title": "CharacterFactionBindingCandidateV1",
+              "type": "object"
+            },
+            "CoreCharacterCandidateV1": {
+              "additionalProperties": false,
+              "description": "模型输出的单个全书核心角色候选。",
+              "properties": {
+                "character_ref": {
+                  "description": "仅在本次候选中使用的稳定引用，如 character_01。",
+                  "pattern": "^character_[0-9]{2,3}$",
+                  "title": "Character Ref",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "角色正式显示名。",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Name",
+                  "type": "string"
+                },
+                "aliases": {
+                  "description": "角色别名数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 10,
+                  "title": "Aliases",
+                  "type": "array"
+                },
+                "role_type": {
+                  "description": "角色在全书叙事中的类型。",
+                  "enum": [
+                    "protagonist",
+                    "deuteragonist",
+                    "antagonist",
+                    "supporting",
+                    "minor"
+                  ],
+                  "title": "Role Type",
+                  "type": "string"
+                },
+                "importance_level": {
+                  "description": "角色的重要程度。",
+                  "enum": [
+                    "core",
+                    "major",
+                    "supporting",
+                    "background"
+                  ],
+                  "title": "Importance Level",
+                  "type": "string"
+                },
+                "gender": {
+                  "description": "角色性别描述。",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Gender",
+                  "type": "string"
+                },
+                "age_group": {
+                  "description": "角色年龄阶段。",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Age Group",
+                  "type": "string"
+                },
+                "race": {
+                  "description": "角色种族或物种。",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Race",
+                  "type": "string"
+                },
+                "identity": {
+                  "description": "角色身份与社会位置。",
+                  "maxLength": 500,
+                  "minLength": 1,
+                  "title": "Identity",
+                  "type": "string"
+                },
+                "appearance": {
+                  "description": "角色外貌特征。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Appearance",
+                  "type": "string"
+                },
+                "personality": {
+                  "description": "角色核心性格。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Personality",
+                  "type": "string"
+                },
+                "core_desire": {
+                  "description": "角色核心欲望。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Core Desire",
+                  "type": "string"
+                },
+                "core_fear": {
+                  "description": "角色核心恐惧。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Core Fear",
+                  "type": "string"
+                },
+                "strengths": {
+                  "description": "角色优势数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 12,
+                  "title": "Strengths",
+                  "type": "array"
+                },
+                "weaknesses": {
+                  "description": "角色弱点数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 12,
+                  "title": "Weaknesses",
+                  "type": "array"
+                },
+                "abilities": {
+                  "description": "角色能力数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 12,
+                  "title": "Abilities",
+                  "type": "array"
+                },
+                "conflict_with_mainline": {
+                  "description": "角色与全书主线的核心冲突。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Conflict With Mainline",
+                  "type": "string"
+                },
+                "relationship_with_protagonist": {
+                  "description": "角色与主角的初始关系。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Relationship With Protagonist",
+                  "type": "string"
+                },
+                "initial_state": {
+                  "description": "故事开始时的角色状态。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Initial State",
+                  "type": "string"
+                },
+                "growth_direction": {
+                  "description": "跨全书的成长或堕落方向。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Growth Direction",
+                  "type": "string"
+                },
+                "story_function": {
+                  "description": "角色推动主线的叙事功能。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Story Function",
+                  "type": "string"
+                },
+                "arc_seed": {
+                  "description": "可跨卷展开的角色弧种子。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Arc Seed",
+                  "type": "string"
+                },
+                "tags": {
+                  "description": "角色标签数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 10,
+                  "title": "Tags",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "character_ref",
+                "name",
+                "aliases",
+                "role_type",
+                "importance_level",
+                "gender",
+                "age_group",
+                "race",
+                "identity",
+                "appearance",
+                "personality",
+                "core_desire",
+                "core_fear",
+                "strengths",
+                "weaknesses",
+                "abilities",
+                "conflict_with_mainline",
+                "relationship_with_protagonist",
+                "initial_state",
+                "growth_direction",
+                "story_function",
+                "arc_seed",
+                "tags"
+              ],
+              "title": "CoreCharacterCandidateV1",
+              "type": "object"
+            }
+          }
+        },
+        "binding_candidates": {
+          "description": "与核心角色候选一一对应的势力绑定决策列表。",
+          "items": {
+            "$ref": "#/$defs/CharacterFactionBindingCandidateV1"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "title": "Binding Candidates",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "CharacterFactionBindingCandidateV1": {
+              "additionalProperties": false,
+              "description": "核心角色候选对应的全书级势力绑定候选。",
+              "properties": {
+                "character_ref": {
+                  "description": "必须引用 core_characters 中恰好一个 character_ref。",
+                  "pattern": "^character_[0-9]{2,3}$",
+                  "title": "Character Ref",
+                  "type": "string"
+                },
+                "faction_id": {
+                  "anyOf": [
+                    {
+                      "maxLength": 100,
+                      "minLength": 5,
+                      "pattern": "^fac_[0-9]{6,}$",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "核心势力业务 ID；角色无势力归属时必须为 null。",
+                  "title": "Faction Id"
+                },
+                "membership_type": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "primary",
+                        "secondary",
+                        "covert"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "成员关系；faction_id 非空时必填，否则必须为 null。",
+                  "title": "Membership Type"
+                },
+                "role_title": {
+                  "anyOf": [
+                    {
+                      "maxLength": 100,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "角色在势力中的称谓；允许为 null。",
+                  "title": "Role Title"
+                },
+                "public_status": {
+                  "anyOf": [
+                    {
+                      "maxLength": 200,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "公开身份；faction_id 非空时必填，否则必须为 null。",
+                  "title": "Public Status"
+                },
+                "loyalty_level": {
+                  "anyOf": [
+                    {
+                      "maximum": 5,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "忠诚度 1 至 5；faction_id 非空时必填，否则必须为 null。",
+                  "title": "Loyalty Level"
+                },
+                "reason": {
+                  "anyOf": [
+                    {
+                      "maxLength": 1000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "归属原因；faction_id 非空时必填，否则必须为 null。",
+                  "title": "Reason"
+                }
+              },
+              "required": [
+                "character_ref",
+                "faction_id",
+                "membership_type",
+                "role_title",
+                "public_status",
+                "loyalty_level",
+                "reason"
+              ],
+              "title": "CharacterFactionBindingCandidateV1",
+              "type": "object"
+            },
+            "CoreCharacterCandidateV1": {
+              "additionalProperties": false,
+              "description": "模型输出的单个全书核心角色候选。",
+              "properties": {
+                "character_ref": {
+                  "description": "仅在本次候选中使用的稳定引用，如 character_01。",
+                  "pattern": "^character_[0-9]{2,3}$",
+                  "title": "Character Ref",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "角色正式显示名。",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Name",
+                  "type": "string"
+                },
+                "aliases": {
+                  "description": "角色别名数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 10,
+                  "title": "Aliases",
+                  "type": "array"
+                },
+                "role_type": {
+                  "description": "角色在全书叙事中的类型。",
+                  "enum": [
+                    "protagonist",
+                    "deuteragonist",
+                    "antagonist",
+                    "supporting",
+                    "minor"
+                  ],
+                  "title": "Role Type",
+                  "type": "string"
+                },
+                "importance_level": {
+                  "description": "角色的重要程度。",
+                  "enum": [
+                    "core",
+                    "major",
+                    "supporting",
+                    "background"
+                  ],
+                  "title": "Importance Level",
+                  "type": "string"
+                },
+                "gender": {
+                  "description": "角色性别描述。",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Gender",
+                  "type": "string"
+                },
+                "age_group": {
+                  "description": "角色年龄阶段。",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Age Group",
+                  "type": "string"
+                },
+                "race": {
+                  "description": "角色种族或物种。",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Race",
+                  "type": "string"
+                },
+                "identity": {
+                  "description": "角色身份与社会位置。",
+                  "maxLength": 500,
+                  "minLength": 1,
+                  "title": "Identity",
+                  "type": "string"
+                },
+                "appearance": {
+                  "description": "角色外貌特征。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Appearance",
+                  "type": "string"
+                },
+                "personality": {
+                  "description": "角色核心性格。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Personality",
+                  "type": "string"
+                },
+                "core_desire": {
+                  "description": "角色核心欲望。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Core Desire",
+                  "type": "string"
+                },
+                "core_fear": {
+                  "description": "角色核心恐惧。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Core Fear",
+                  "type": "string"
+                },
+                "strengths": {
+                  "description": "角色优势数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 12,
+                  "title": "Strengths",
+                  "type": "array"
+                },
+                "weaknesses": {
+                  "description": "角色弱点数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 12,
+                  "title": "Weaknesses",
+                  "type": "array"
+                },
+                "abilities": {
+                  "description": "角色能力数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 12,
+                  "title": "Abilities",
+                  "type": "array"
+                },
+                "conflict_with_mainline": {
+                  "description": "角色与全书主线的核心冲突。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Conflict With Mainline",
+                  "type": "string"
+                },
+                "relationship_with_protagonist": {
+                  "description": "角色与主角的初始关系。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Relationship With Protagonist",
+                  "type": "string"
+                },
+                "initial_state": {
+                  "description": "故事开始时的角色状态。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Initial State",
+                  "type": "string"
+                },
+                "growth_direction": {
+                  "description": "跨全书的成长或堕落方向。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Growth Direction",
+                  "type": "string"
+                },
+                "story_function": {
+                  "description": "角色推动主线的叙事功能。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Story Function",
+                  "type": "string"
+                },
+                "arc_seed": {
+                  "description": "可跨卷展开的角色弧种子。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Arc Seed",
+                  "type": "string"
+                },
+                "tags": {
+                  "description": "角色标签数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 10,
+                  "title": "Tags",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "character_ref",
+                "name",
+                "aliases",
+                "role_type",
+                "importance_level",
+                "gender",
+                "age_group",
+                "race",
+                "identity",
+                "appearance",
+                "personality",
+                "core_desire",
+                "core_fear",
+                "strengths",
+                "weaknesses",
+                "abilities",
+                "conflict_with_mainline",
+                "relationship_with_protagonist",
+                "initial_state",
+                "growth_direction",
+                "story_function",
+                "arc_seed",
+                "tags"
+              ],
+              "title": "CoreCharacterCandidateV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "values": {},
+      "config": {
+        "mode": "json",
+        "provider": "",
+        "model": "",
+        "parameters": {},
+        "prompt_separator": "\n\n",
+        "prompt_file": "create_core_characters_prompt.md",
+        "schema_prompt_file": "create_core_characters_schema_prompt.md",
+        "text_prompt_file": "create_core_characters_text_prompt.md",
+        "force_text_prompt": true
+      }
+    },
+    {
+      "id": "result",
+      "type": "output",
+      "label": "任务结果",
+      "inputs": {
+        "core_characters": {
+          "description": "全书级核心角色候选列表。",
+          "items": {
+            "$ref": "#/$defs/CoreCharacterCandidateV1"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "title": "Core Characters",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "CharacterFactionBindingCandidateV1": {
+              "additionalProperties": false,
+              "description": "核心角色候选对应的全书级势力绑定候选。",
+              "properties": {
+                "character_ref": {
+                  "description": "必须引用 core_characters 中恰好一个 character_ref。",
+                  "pattern": "^character_[0-9]{2,3}$",
+                  "title": "Character Ref",
+                  "type": "string"
+                },
+                "faction_id": {
+                  "anyOf": [
+                    {
+                      "maxLength": 100,
+                      "minLength": 5,
+                      "pattern": "^fac_[0-9]{6,}$",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "核心势力业务 ID；角色无势力归属时必须为 null。",
+                  "title": "Faction Id"
+                },
+                "membership_type": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "primary",
+                        "secondary",
+                        "covert"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "成员关系；faction_id 非空时必填，否则必须为 null。",
+                  "title": "Membership Type"
+                },
+                "role_title": {
+                  "anyOf": [
+                    {
+                      "maxLength": 100,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "角色在势力中的称谓；允许为 null。",
+                  "title": "Role Title"
+                },
+                "public_status": {
+                  "anyOf": [
+                    {
+                      "maxLength": 200,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "公开身份；faction_id 非空时必填，否则必须为 null。",
+                  "title": "Public Status"
+                },
+                "loyalty_level": {
+                  "anyOf": [
+                    {
+                      "maximum": 5,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "忠诚度 1 至 5；faction_id 非空时必填，否则必须为 null。",
+                  "title": "Loyalty Level"
+                },
+                "reason": {
+                  "anyOf": [
+                    {
+                      "maxLength": 1000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "归属原因；faction_id 非空时必填，否则必须为 null。",
+                  "title": "Reason"
+                }
+              },
+              "required": [
+                "character_ref",
+                "faction_id",
+                "membership_type",
+                "role_title",
+                "public_status",
+                "loyalty_level",
+                "reason"
+              ],
+              "title": "CharacterFactionBindingCandidateV1",
+              "type": "object"
+            },
+            "CoreCharacterCandidateV1": {
+              "additionalProperties": false,
+              "description": "模型输出的单个全书核心角色候选。",
+              "properties": {
+                "character_ref": {
+                  "description": "仅在本次候选中使用的稳定引用，如 character_01。",
+                  "pattern": "^character_[0-9]{2,3}$",
+                  "title": "Character Ref",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "角色正式显示名。",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Name",
+                  "type": "string"
+                },
+                "aliases": {
+                  "description": "角色别名数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 10,
+                  "title": "Aliases",
+                  "type": "array"
+                },
+                "role_type": {
+                  "description": "角色在全书叙事中的类型。",
+                  "enum": [
+                    "protagonist",
+                    "deuteragonist",
+                    "antagonist",
+                    "supporting",
+                    "minor"
+                  ],
+                  "title": "Role Type",
+                  "type": "string"
+                },
+                "importance_level": {
+                  "description": "角色的重要程度。",
+                  "enum": [
+                    "core",
+                    "major",
+                    "supporting",
+                    "background"
+                  ],
+                  "title": "Importance Level",
+                  "type": "string"
+                },
+                "gender": {
+                  "description": "角色性别描述。",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Gender",
+                  "type": "string"
+                },
+                "age_group": {
+                  "description": "角色年龄阶段。",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Age Group",
+                  "type": "string"
+                },
+                "race": {
+                  "description": "角色种族或物种。",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Race",
+                  "type": "string"
+                },
+                "identity": {
+                  "description": "角色身份与社会位置。",
+                  "maxLength": 500,
+                  "minLength": 1,
+                  "title": "Identity",
+                  "type": "string"
+                },
+                "appearance": {
+                  "description": "角色外貌特征。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Appearance",
+                  "type": "string"
+                },
+                "personality": {
+                  "description": "角色核心性格。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Personality",
+                  "type": "string"
+                },
+                "core_desire": {
+                  "description": "角色核心欲望。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Core Desire",
+                  "type": "string"
+                },
+                "core_fear": {
+                  "description": "角色核心恐惧。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Core Fear",
+                  "type": "string"
+                },
+                "strengths": {
+                  "description": "角色优势数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 12,
+                  "title": "Strengths",
+                  "type": "array"
+                },
+                "weaknesses": {
+                  "description": "角色弱点数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 12,
+                  "title": "Weaknesses",
+                  "type": "array"
+                },
+                "abilities": {
+                  "description": "角色能力数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 12,
+                  "title": "Abilities",
+                  "type": "array"
+                },
+                "conflict_with_mainline": {
+                  "description": "角色与全书主线的核心冲突。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Conflict With Mainline",
+                  "type": "string"
+                },
+                "relationship_with_protagonist": {
+                  "description": "角色与主角的初始关系。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Relationship With Protagonist",
+                  "type": "string"
+                },
+                "initial_state": {
+                  "description": "故事开始时的角色状态。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Initial State",
+                  "type": "string"
+                },
+                "growth_direction": {
+                  "description": "跨全书的成长或堕落方向。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Growth Direction",
+                  "type": "string"
+                },
+                "story_function": {
+                  "description": "角色推动主线的叙事功能。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Story Function",
+                  "type": "string"
+                },
+                "arc_seed": {
+                  "description": "可跨卷展开的角色弧种子。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Arc Seed",
+                  "type": "string"
+                },
+                "tags": {
+                  "description": "角色标签数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 10,
+                  "title": "Tags",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "character_ref",
+                "name",
+                "aliases",
+                "role_type",
+                "importance_level",
+                "gender",
+                "age_group",
+                "race",
+                "identity",
+                "appearance",
+                "personality",
+                "core_desire",
+                "core_fear",
+                "strengths",
+                "weaknesses",
+                "abilities",
+                "conflict_with_mainline",
+                "relationship_with_protagonist",
+                "initial_state",
+                "growth_direction",
+                "story_function",
+                "arc_seed",
+                "tags"
+              ],
+              "title": "CoreCharacterCandidateV1",
+              "type": "object"
+            }
+          }
+        },
+        "binding_candidates": {
+          "description": "与核心角色候选一一对应的势力绑定决策列表。",
+          "items": {
+            "$ref": "#/$defs/CharacterFactionBindingCandidateV1"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "title": "Binding Candidates",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "CharacterFactionBindingCandidateV1": {
+              "additionalProperties": false,
+              "description": "核心角色候选对应的全书级势力绑定候选。",
+              "properties": {
+                "character_ref": {
+                  "description": "必须引用 core_characters 中恰好一个 character_ref。",
+                  "pattern": "^character_[0-9]{2,3}$",
+                  "title": "Character Ref",
+                  "type": "string"
+                },
+                "faction_id": {
+                  "anyOf": [
+                    {
+                      "maxLength": 100,
+                      "minLength": 5,
+                      "pattern": "^fac_[0-9]{6,}$",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "核心势力业务 ID；角色无势力归属时必须为 null。",
+                  "title": "Faction Id"
+                },
+                "membership_type": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "primary",
+                        "secondary",
+                        "covert"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "成员关系；faction_id 非空时必填，否则必须为 null。",
+                  "title": "Membership Type"
+                },
+                "role_title": {
+                  "anyOf": [
+                    {
+                      "maxLength": 100,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "角色在势力中的称谓；允许为 null。",
+                  "title": "Role Title"
+                },
+                "public_status": {
+                  "anyOf": [
+                    {
+                      "maxLength": 200,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "公开身份；faction_id 非空时必填，否则必须为 null。",
+                  "title": "Public Status"
+                },
+                "loyalty_level": {
+                  "anyOf": [
+                    {
+                      "maximum": 5,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "忠诚度 1 至 5；faction_id 非空时必填，否则必须为 null。",
+                  "title": "Loyalty Level"
+                },
+                "reason": {
+                  "anyOf": [
+                    {
+                      "maxLength": 1000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "归属原因；faction_id 非空时必填，否则必须为 null。",
+                  "title": "Reason"
+                }
+              },
+              "required": [
+                "character_ref",
+                "faction_id",
+                "membership_type",
+                "role_title",
+                "public_status",
+                "loyalty_level",
+                "reason"
+              ],
+              "title": "CharacterFactionBindingCandidateV1",
+              "type": "object"
+            },
+            "CoreCharacterCandidateV1": {
+              "additionalProperties": false,
+              "description": "模型输出的单个全书核心角色候选。",
+              "properties": {
+                "character_ref": {
+                  "description": "仅在本次候选中使用的稳定引用，如 character_01。",
+                  "pattern": "^character_[0-9]{2,3}$",
+                  "title": "Character Ref",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "角色正式显示名。",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Name",
+                  "type": "string"
+                },
+                "aliases": {
+                  "description": "角色别名数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 10,
+                  "title": "Aliases",
+                  "type": "array"
+                },
+                "role_type": {
+                  "description": "角色在全书叙事中的类型。",
+                  "enum": [
+                    "protagonist",
+                    "deuteragonist",
+                    "antagonist",
+                    "supporting",
+                    "minor"
+                  ],
+                  "title": "Role Type",
+                  "type": "string"
+                },
+                "importance_level": {
+                  "description": "角色的重要程度。",
+                  "enum": [
+                    "core",
+                    "major",
+                    "supporting",
+                    "background"
+                  ],
+                  "title": "Importance Level",
+                  "type": "string"
+                },
+                "gender": {
+                  "description": "角色性别描述。",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Gender",
+                  "type": "string"
+                },
+                "age_group": {
+                  "description": "角色年龄阶段。",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Age Group",
+                  "type": "string"
+                },
+                "race": {
+                  "description": "角色种族或物种。",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Race",
+                  "type": "string"
+                },
+                "identity": {
+                  "description": "角色身份与社会位置。",
+                  "maxLength": 500,
+                  "minLength": 1,
+                  "title": "Identity",
+                  "type": "string"
+                },
+                "appearance": {
+                  "description": "角色外貌特征。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Appearance",
+                  "type": "string"
+                },
+                "personality": {
+                  "description": "角色核心性格。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Personality",
+                  "type": "string"
+                },
+                "core_desire": {
+                  "description": "角色核心欲望。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Core Desire",
+                  "type": "string"
+                },
+                "core_fear": {
+                  "description": "角色核心恐惧。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Core Fear",
+                  "type": "string"
+                },
+                "strengths": {
+                  "description": "角色优势数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 12,
+                  "title": "Strengths",
+                  "type": "array"
+                },
+                "weaknesses": {
+                  "description": "角色弱点数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 12,
+                  "title": "Weaknesses",
+                  "type": "array"
+                },
+                "abilities": {
+                  "description": "角色能力数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 12,
+                  "title": "Abilities",
+                  "type": "array"
+                },
+                "conflict_with_mainline": {
+                  "description": "角色与全书主线的核心冲突。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Conflict With Mainline",
+                  "type": "string"
+                },
+                "relationship_with_protagonist": {
+                  "description": "角色与主角的初始关系。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Relationship With Protagonist",
+                  "type": "string"
+                },
+                "initial_state": {
+                  "description": "故事开始时的角色状态。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Initial State",
+                  "type": "string"
+                },
+                "growth_direction": {
+                  "description": "跨全书的成长或堕落方向。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Growth Direction",
+                  "type": "string"
+                },
+                "story_function": {
+                  "description": "角色推动主线的叙事功能。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Story Function",
+                  "type": "string"
+                },
+                "arc_seed": {
+                  "description": "可跨卷展开的角色弧种子。",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Arc Seed",
+                  "type": "string"
+                },
+                "tags": {
+                  "description": "角色标签数组，可为空数组。",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 10,
+                  "title": "Tags",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "character_ref",
+                "name",
+                "aliases",
+                "role_type",
+                "importance_level",
+                "gender",
+                "age_group",
+                "race",
+                "identity",
+                "appearance",
+                "personality",
+                "core_desire",
+                "core_fear",
+                "strengths",
+                "weaknesses",
+                "abilities",
+                "conflict_with_mainline",
+                "relationship_with_protagonist",
+                "initial_state",
+                "growth_direction",
+                "story_function",
+                "arc_seed",
+                "tags"
+              ],
+              "title": "CoreCharacterCandidateV1",
+              "type": "object"
+            }
+          }
+        },
+        "param_character_count": {
+          "maximum": 50,
+          "minimum": 1,
+          "title": "Character Count",
+          "type": "integer",
+          "required": true
+        },
+        "param_user_guidance": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User Guidance",
+          "required": false
+        }
+      },
+      "outputs": {},
+      "values": {},
+      "config": {
+        "candidate_fields": {
+          "core_characters": "core_characters",
+          "binding_candidates": "binding_candidates"
+        },
+        "parameter_fields": {
+          "character_count": "param_character_count",
+          "user_guidance": "param_user_guidance"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "start-character_count-context-character_count",
+      "source": "start",
+      "source_port": "character_count",
+      "target": "context",
+      "target_port": "character_count"
+    },
+    {
+      "id": "start-user_guidance-context-user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "context",
+      "target_port": "user_guidance"
+    },
+    {
+      "id": "context-character_count-create_core_characters-character_count",
+      "source": "context",
+      "source_port": "character_count",
+      "target": "create_core_characters",
+      "target_port": "character_count"
+    },
+    {
+      "id": "context-core_factions_json-create_core_characters-core_factions_json",
+      "source": "context",
+      "source_port": "core_factions_json",
+      "target": "create_core_characters",
+      "target_port": "core_factions_json"
+    },
+    {
+      "id": "context-existing_core_characters_json-create_core_characters-existing_core_characters_json",
+      "source": "context",
+      "source_port": "existing_core_characters_json",
+      "target": "create_core_characters",
+      "target_port": "existing_core_characters_json"
+    },
+    {
+      "id": "context-novel_profile_json-create_core_characters-novel_profile_json",
+      "source": "context",
+      "source_port": "novel_profile_json",
+      "target": "create_core_characters",
+      "target_port": "novel_profile_json"
+    },
+    {
+      "id": "context-user_guidance-create_core_characters-user_guidance",
+      "source": "context",
+      "source_port": "user_guidance",
+      "target": "create_core_characters",
+      "target_port": "user_guidance"
+    },
+    {
+      "id": "create_core_characters-core_characters-result-core_characters",
+      "source": "create_core_characters",
+      "source_port": "core_characters",
+      "target": "result",
+      "target_port": "core_characters"
+    },
+    {
+      "id": "create_core_characters-binding_candidates-result-binding_candidates",
+      "source": "create_core_characters",
+      "source_port": "binding_candidates",
+      "target": "result",
+      "target_port": "binding_candidates"
+    },
+    {
+      "id": "start-character_count-result-param_character_count",
+      "source": "start",
+      "source_port": "character_count",
+      "target": "result",
+      "target_port": "param_character_count"
+    },
+    {
+      "id": "start-user_guidance-result-param_user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "result",
+      "target_port": "param_user_guidance"
+    }
+  ],
+  "control_edges": [],
+  "subflows": {},
+  "editor": {
+    "positions": {
+      "start": {
+        "x": 0,
+        "y": 80
+      },
+      "context": {
+        "x": 340,
+        "y": 80
+      },
+      "create_core_characters": {
+        "x": 680,
+        "y": 80
+      },
+      "result": {
+        "x": 1020,
+        "y": 80
+      }
+    }
+  },
+  "max_node_executions": 1000
+}

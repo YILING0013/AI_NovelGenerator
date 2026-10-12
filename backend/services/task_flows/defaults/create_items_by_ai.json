@@ -1,0 +1,668 @@
+{
+  "format_version": 1,
+  "id": "default_create_items_by_ai",
+  "task": "create_items_by_ai",
+  "revision": 1,
+  "name": "默认流程",
+  "default_provider": "",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "input",
+      "label": "开始",
+      "inputs": {},
+      "outputs": {
+        "item_count": {
+          "default": 6,
+          "maximum": 20,
+          "minimum": 1,
+          "title": "Item Count",
+          "type": "integer",
+          "required": false
+        },
+        "allow_incremental": {
+          "default": true,
+          "title": "Allow Incremental",
+          "type": "boolean",
+          "required": false
+        },
+        "user_guidance": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "User Guidance",
+          "type": "string",
+          "required": false
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "context",
+      "type": "context",
+      "label": "读取任务资料",
+      "inputs": {
+        "item_count": {
+          "default": 6,
+          "maximum": 20,
+          "minimum": 1,
+          "title": "Item Count",
+          "type": "integer",
+          "required": false
+        },
+        "allow_incremental": {
+          "default": true,
+          "title": "Allow Incremental",
+          "type": "boolean",
+          "required": false
+        },
+        "user_guidance": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "User Guidance",
+          "type": "string",
+          "required": false
+        }
+      },
+      "outputs": {
+        "active_world_rules_json": {
+          "type": "string"
+        },
+        "allow_incremental": {
+          "type": "string"
+        },
+        "characters_json": {
+          "type": "string"
+        },
+        "existing_items_json": {
+          "type": "string"
+        },
+        "factions_json": {
+          "type": "string"
+        },
+        "item_count": {
+          "type": "integer"
+        },
+        "locations_json": {
+          "type": "string"
+        },
+        "novel_profile_json": {
+          "type": "string"
+        },
+        "user_guidance": {
+          "type": "string"
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "create_items",
+      "type": "llm",
+      "label": "create_items",
+      "inputs": {
+        "active_world_rules_json": {
+          "type": "string"
+        },
+        "allow_incremental": {
+          "type": "string"
+        },
+        "characters_json": {
+          "type": "string"
+        },
+        "existing_items_json": {
+          "type": "string"
+        },
+        "factions_json": {
+          "type": "string"
+        },
+        "item_count": {
+          "type": "integer"
+        },
+        "locations_json": {
+          "type": "string"
+        },
+        "novel_profile_json": {
+          "type": "string"
+        },
+        "user_guidance": {
+          "type": "string"
+        }
+      },
+      "outputs": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ItemCandidateV1"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Items",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "ItemCandidateV1": {
+              "additionalProperties": false,
+              "description": "模型输出且用户可编辑的一条物品候选。",
+              "properties": {
+                "candidate_ref": {
+                  "pattern": "^item_candidate_[0-9]+$",
+                  "title": "Candidate Ref",
+                  "type": "string"
+                },
+                "name": {
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Name",
+                  "type": "string"
+                },
+                "aliases": {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 10,
+                  "title": "Aliases",
+                  "type": "array"
+                },
+                "item_type": {
+                  "maxLength": 40,
+                  "minLength": 1,
+                  "title": "Item Type",
+                  "type": "string"
+                },
+                "description": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Description",
+                  "type": "string"
+                },
+                "appearance": {
+                  "maxLength": 1000,
+                  "title": "Appearance",
+                  "type": "string"
+                },
+                "origin": {
+                  "maxLength": 1000,
+                  "title": "Origin",
+                  "type": "string"
+                },
+                "abilities": {
+                  "items": {
+                    "maxLength": 500,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "title": "Abilities",
+                  "type": "array"
+                },
+                "limitations": {
+                  "items": {
+                    "maxLength": 500,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "title": "Limitations",
+                  "type": "array"
+                },
+                "costs": {
+                  "items": {
+                    "maxLength": 500,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "title": "Costs",
+                  "type": "array"
+                },
+                "owner_character_id": {
+                  "anyOf": [
+                    {
+                      "pattern": "^char_[0-9]{6,}$",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Owner Character Id"
+                },
+                "controlling_faction_id": {
+                  "anyOf": [
+                    {
+                      "pattern": "^fac_[0-9]{6,}$",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Controlling Faction Id"
+                },
+                "current_location_id": {
+                  "anyOf": [
+                    {
+                      "pattern": "^loc_[0-9]{6,}$",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Current Location Id"
+                },
+                "lifecycle_status": {
+                  "enum": [
+                    "available",
+                    "held",
+                    "lost",
+                    "destroyed",
+                    "consumed"
+                  ],
+                  "title": "Lifecycle Status",
+                  "type": "string"
+                },
+                "story_function": {
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Story Function",
+                  "type": "string"
+                },
+                "tags": {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "title": "Tags",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "candidate_ref",
+                "name",
+                "aliases",
+                "item_type",
+                "description",
+                "appearance",
+                "origin",
+                "abilities",
+                "limitations",
+                "costs",
+                "owner_character_id",
+                "controlling_faction_id",
+                "current_location_id",
+                "lifecycle_status",
+                "story_function",
+                "tags"
+              ],
+              "title": "ItemCandidateV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "values": {},
+      "config": {
+        "mode": "json",
+        "provider": "",
+        "model": "",
+        "parameters": {},
+        "prompt_separator": "\n\n",
+        "prompt_file": "create_items_prompt.md",
+        "schema_prompt_file": "create_items_schema_prompt.md",
+        "text_prompt_file": "create_items_text_prompt.md"
+      }
+    },
+    {
+      "id": "result",
+      "type": "output",
+      "label": "任务结果",
+      "inputs": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ItemCandidateV1"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Items",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "ItemCandidateV1": {
+              "additionalProperties": false,
+              "description": "模型输出且用户可编辑的一条物品候选。",
+              "properties": {
+                "candidate_ref": {
+                  "pattern": "^item_candidate_[0-9]+$",
+                  "title": "Candidate Ref",
+                  "type": "string"
+                },
+                "name": {
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Name",
+                  "type": "string"
+                },
+                "aliases": {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 10,
+                  "title": "Aliases",
+                  "type": "array"
+                },
+                "item_type": {
+                  "maxLength": 40,
+                  "minLength": 1,
+                  "title": "Item Type",
+                  "type": "string"
+                },
+                "description": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Description",
+                  "type": "string"
+                },
+                "appearance": {
+                  "maxLength": 1000,
+                  "title": "Appearance",
+                  "type": "string"
+                },
+                "origin": {
+                  "maxLength": 1000,
+                  "title": "Origin",
+                  "type": "string"
+                },
+                "abilities": {
+                  "items": {
+                    "maxLength": 500,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "title": "Abilities",
+                  "type": "array"
+                },
+                "limitations": {
+                  "items": {
+                    "maxLength": 500,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "title": "Limitations",
+                  "type": "array"
+                },
+                "costs": {
+                  "items": {
+                    "maxLength": 500,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "title": "Costs",
+                  "type": "array"
+                },
+                "owner_character_id": {
+                  "anyOf": [
+                    {
+                      "pattern": "^char_[0-9]{6,}$",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Owner Character Id"
+                },
+                "controlling_faction_id": {
+                  "anyOf": [
+                    {
+                      "pattern": "^fac_[0-9]{6,}$",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Controlling Faction Id"
+                },
+                "current_location_id": {
+                  "anyOf": [
+                    {
+                      "pattern": "^loc_[0-9]{6,}$",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Current Location Id"
+                },
+                "lifecycle_status": {
+                  "enum": [
+                    "available",
+                    "held",
+                    "lost",
+                    "destroyed",
+                    "consumed"
+                  ],
+                  "title": "Lifecycle Status",
+                  "type": "string"
+                },
+                "story_function": {
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "title": "Story Function",
+                  "type": "string"
+                },
+                "tags": {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "title": "Tags",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "candidate_ref",
+                "name",
+                "aliases",
+                "item_type",
+                "description",
+                "appearance",
+                "origin",
+                "abilities",
+                "limitations",
+                "costs",
+                "owner_character_id",
+                "controlling_faction_id",
+                "current_location_id",
+                "lifecycle_status",
+                "story_function",
+                "tags"
+              ],
+              "title": "ItemCandidateV1",
+              "type": "object"
+            }
+          }
+        },
+        "param_item_count": {
+          "default": 6,
+          "maximum": 20,
+          "minimum": 1,
+          "title": "Item Count",
+          "type": "integer",
+          "required": false
+        },
+        "param_allow_incremental": {
+          "default": true,
+          "title": "Allow Incremental",
+          "type": "boolean",
+          "required": false
+        },
+        "param_user_guidance": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "User Guidance",
+          "type": "string",
+          "required": false
+        }
+      },
+      "outputs": {},
+      "values": {},
+      "config": {
+        "candidate_fields": {
+          "items": "items"
+        },
+        "parameter_fields": {
+          "item_count": "param_item_count",
+          "allow_incremental": "param_allow_incremental",
+          "user_guidance": "param_user_guidance"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "start-item_count-context-item_count",
+      "source": "start",
+      "source_port": "item_count",
+      "target": "context",
+      "target_port": "item_count"
+    },
+    {
+      "id": "start-allow_incremental-context-allow_incremental",
+      "source": "start",
+      "source_port": "allow_incremental",
+      "target": "context",
+      "target_port": "allow_incremental"
+    },
+    {
+      "id": "start-user_guidance-context-user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "context",
+      "target_port": "user_guidance"
+    },
+    {
+      "id": "context-active_world_rules_json-create_items-active_world_rules_json",
+      "source": "context",
+      "source_port": "active_world_rules_json",
+      "target": "create_items",
+      "target_port": "active_world_rules_json"
+    },
+    {
+      "id": "context-allow_incremental-create_items-allow_incremental",
+      "source": "context",
+      "source_port": "allow_incremental",
+      "target": "create_items",
+      "target_port": "allow_incremental"
+    },
+    {
+      "id": "context-characters_json-create_items-characters_json",
+      "source": "context",
+      "source_port": "characters_json",
+      "target": "create_items",
+      "target_port": "characters_json"
+    },
+    {
+      "id": "context-existing_items_json-create_items-existing_items_json",
+      "source": "context",
+      "source_port": "existing_items_json",
+      "target": "create_items",
+      "target_port": "existing_items_json"
+    },
+    {
+      "id": "context-factions_json-create_items-factions_json",
+      "source": "context",
+      "source_port": "factions_json",
+      "target": "create_items",
+      "target_port": "factions_json"
+    },
+    {
+      "id": "context-item_count-create_items-item_count",
+      "source": "context",
+      "source_port": "item_count",
+      "target": "create_items",
+      "target_port": "item_count"
+    },
+    {
+      "id": "context-locations_json-create_items-locations_json",
+      "source": "context",
+      "source_port": "locations_json",
+      "target": "create_items",
+      "target_port": "locations_json"
+    },
+    {
+      "id": "context-novel_profile_json-create_items-novel_profile_json",
+      "source": "context",
+      "source_port": "novel_profile_json",
+      "target": "create_items",
+      "target_port": "novel_profile_json"
+    },
+    {
+      "id": "context-user_guidance-create_items-user_guidance",
+      "source": "context",
+      "source_port": "user_guidance",
+      "target": "create_items",
+      "target_port": "user_guidance"
+    },
+    {
+      "id": "create_items-items-result-items",
+      "source": "create_items",
+      "source_port": "items",
+      "target": "result",
+      "target_port": "items"
+    },
+    {
+      "id": "start-item_count-result-param_item_count",
+      "source": "start",
+      "source_port": "item_count",
+      "target": "result",
+      "target_port": "param_item_count"
+    },
+    {
+      "id": "start-allow_incremental-result-param_allow_incremental",
+      "source": "start",
+      "source_port": "allow_incremental",
+      "target": "result",
+      "target_port": "param_allow_incremental"
+    },
+    {
+      "id": "start-user_guidance-result-param_user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "result",
+      "target_port": "param_user_guidance"
+    }
+  ],
+  "control_edges": [],
+  "subflows": {},
+  "editor": {
+    "positions": {
+      "start": {
+        "x": 0,
+        "y": 80
+      },
+      "context": {
+        "x": 340,
+        "y": 80
+      },
+      "create_items": {
+        "x": 680,
+        "y": 80
+      },
+      "result": {
+        "x": 1020,
+        "y": 80
+      }
+    }
+  },
+  "max_node_executions": 1000
+}

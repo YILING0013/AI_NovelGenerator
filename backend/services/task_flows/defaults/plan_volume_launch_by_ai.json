@@ -1,0 +1,627 @@
+{
+  "format_version": 1,
+  "id": "default_plan_volume_launch_by_ai",
+  "task": "plan_volume_launch_by_ai",
+  "revision": 1,
+  "name": "默认流程",
+  "default_provider": "",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "input",
+      "label": "开始",
+      "inputs": {},
+      "outputs": {
+        "target_chapter_count": {
+          "anyOf": [
+            {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Chapter Count",
+          "required": false
+        },
+        "target_word_count": {
+          "anyOf": [
+            {
+              "maximum": 10000000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Word Count",
+          "required": false
+        },
+        "user_guidance": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "User Guidance",
+          "type": "string",
+          "required": false
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "context",
+      "type": "context",
+      "label": "读取任务资料",
+      "inputs": {
+        "target_chapter_count": {
+          "anyOf": [
+            {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Chapter Count",
+          "required": false
+        },
+        "target_word_count": {
+          "anyOf": [
+            {
+              "maximum": 10000000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Word Count",
+          "required": false
+        },
+        "user_guidance": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "User Guidance",
+          "type": "string",
+          "required": false
+        }
+      },
+      "outputs": {
+        "active_world_rules": {
+          "type": "string"
+        },
+        "characters": {
+          "type": "string"
+        },
+        "factions_and_relations": {
+          "type": "string"
+        },
+        "next_volume": {
+          "type": "string"
+        },
+        "novel_profile": {
+          "type": "string"
+        },
+        "previous_volume": {
+          "type": "string"
+        },
+        "protagonists": {
+          "type": "string"
+        },
+        "target_chapter_count": {
+          "type": "integer"
+        },
+        "target_volume": {
+          "type": "string"
+        },
+        "target_word_count": {
+          "type": "integer"
+        },
+        "user_guidance": {
+          "type": "string"
+        },
+        "worldview_summary": {
+          "type": "string"
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "create_volume_launch_package",
+      "type": "llm",
+      "label": "create_volume_launch_package",
+      "inputs": {
+        "active_world_rules": {
+          "type": "string"
+        },
+        "characters": {
+          "type": "string"
+        },
+        "factions_and_relations": {
+          "type": "string"
+        },
+        "next_volume": {
+          "type": "string"
+        },
+        "novel_profile": {
+          "type": "string"
+        },
+        "previous_volume": {
+          "type": "string"
+        },
+        "protagonists": {
+          "type": "string"
+        },
+        "target_chapter_count": {
+          "type": "integer"
+        },
+        "target_volume": {
+          "type": "string"
+        },
+        "target_word_count": {
+          "type": "integer"
+        },
+        "user_guidance": {
+          "type": "string"
+        },
+        "worldview_summary": {
+          "type": "string"
+        }
+      },
+      "outputs": {
+        "launch_package": {
+          "$ref": "#/$defs/VolumeLaunchPackageV1",
+          "required": true,
+          "$defs": {
+            "VolumeLaunchPackageV1": {
+              "additionalProperties": false,
+              "description": "模型可输出且用户可编辑的单卷启动包。",
+              "properties": {
+                "title": {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "title": "Title",
+                  "type": "string"
+                },
+                "subtitle": {
+                  "maxLength": 120,
+                  "title": "Subtitle",
+                  "type": "string"
+                },
+                "summary": {
+                  "maxLength": 2000,
+                  "title": "Summary",
+                  "type": "string"
+                },
+                "goal": {
+                  "maxLength": 1000,
+                  "title": "Goal",
+                  "type": "string"
+                },
+                "theme": {
+                  "maxLength": 500,
+                  "title": "Theme",
+                  "type": "string"
+                },
+                "planning": {
+                  "$ref": "#/$defs/VolumePlanningV1"
+                }
+              },
+              "required": [
+                "title",
+                "subtitle",
+                "summary",
+                "goal",
+                "theme",
+                "planning"
+              ],
+              "title": "VolumeLaunchPackageV1",
+              "type": "object"
+            },
+            "VolumePlanningV1": {
+              "additionalProperties": false,
+              "description": "一卷唯一正式规划或启动包字段。",
+              "properties": {
+                "premise": {
+                  "maxLength": 1000,
+                  "title": "Premise",
+                  "type": "string"
+                },
+                "major_conflict": {
+                  "maxLength": 2000,
+                  "title": "Major Conflict",
+                  "type": "string"
+                },
+                "key_turning_points": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "title": "Key Turning Points",
+                  "type": "array"
+                },
+                "start_state": {
+                  "maxLength": 2000,
+                  "title": "Start State",
+                  "type": "string"
+                },
+                "end_state": {
+                  "maxLength": 2000,
+                  "title": "End State",
+                  "type": "string"
+                },
+                "target_chapter_count": {
+                  "maximum": 1000,
+                  "minimum": 1,
+                  "title": "Target Chapter Count",
+                  "type": "integer"
+                },
+                "target_word_count": {
+                  "maximum": 10000000,
+                  "minimum": 1,
+                  "title": "Target Word Count",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "premise",
+                "major_conflict",
+                "key_turning_points",
+                "start_state",
+                "end_state",
+                "target_chapter_count",
+                "target_word_count"
+              ],
+              "title": "VolumePlanningV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "values": {},
+      "config": {
+        "mode": "json",
+        "provider": "",
+        "model": "",
+        "parameters": {},
+        "prompt_separator": "\n\n",
+        "prompt_file": "create_volume_launch_package_prompt.md",
+        "schema_prompt_file": "create_volume_launch_package_schema_prompt.md",
+        "text_prompt_file": "create_volume_launch_package_text_prompt.md"
+      }
+    },
+    {
+      "id": "result",
+      "type": "output",
+      "label": "任务结果",
+      "inputs": {
+        "launch_package": {
+          "$ref": "#/$defs/VolumeLaunchPackageV1",
+          "required": true,
+          "$defs": {
+            "VolumeLaunchPackageV1": {
+              "additionalProperties": false,
+              "description": "模型可输出且用户可编辑的单卷启动包。",
+              "properties": {
+                "title": {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "title": "Title",
+                  "type": "string"
+                },
+                "subtitle": {
+                  "maxLength": 120,
+                  "title": "Subtitle",
+                  "type": "string"
+                },
+                "summary": {
+                  "maxLength": 2000,
+                  "title": "Summary",
+                  "type": "string"
+                },
+                "goal": {
+                  "maxLength": 1000,
+                  "title": "Goal",
+                  "type": "string"
+                },
+                "theme": {
+                  "maxLength": 500,
+                  "title": "Theme",
+                  "type": "string"
+                },
+                "planning": {
+                  "$ref": "#/$defs/VolumePlanningV1"
+                }
+              },
+              "required": [
+                "title",
+                "subtitle",
+                "summary",
+                "goal",
+                "theme",
+                "planning"
+              ],
+              "title": "VolumeLaunchPackageV1",
+              "type": "object"
+            },
+            "VolumePlanningV1": {
+              "additionalProperties": false,
+              "description": "一卷唯一正式规划或启动包字段。",
+              "properties": {
+                "premise": {
+                  "maxLength": 1000,
+                  "title": "Premise",
+                  "type": "string"
+                },
+                "major_conflict": {
+                  "maxLength": 2000,
+                  "title": "Major Conflict",
+                  "type": "string"
+                },
+                "key_turning_points": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "title": "Key Turning Points",
+                  "type": "array"
+                },
+                "start_state": {
+                  "maxLength": 2000,
+                  "title": "Start State",
+                  "type": "string"
+                },
+                "end_state": {
+                  "maxLength": 2000,
+                  "title": "End State",
+                  "type": "string"
+                },
+                "target_chapter_count": {
+                  "maximum": 1000,
+                  "minimum": 1,
+                  "title": "Target Chapter Count",
+                  "type": "integer"
+                },
+                "target_word_count": {
+                  "maximum": 10000000,
+                  "minimum": 1,
+                  "title": "Target Word Count",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "premise",
+                "major_conflict",
+                "key_turning_points",
+                "start_state",
+                "end_state",
+                "target_chapter_count",
+                "target_word_count"
+              ],
+              "title": "VolumePlanningV1",
+              "type": "object"
+            }
+          }
+        },
+        "param_target_chapter_count": {
+          "anyOf": [
+            {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Chapter Count",
+          "required": false
+        },
+        "param_target_word_count": {
+          "anyOf": [
+            {
+              "maximum": 10000000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Word Count",
+          "required": false
+        },
+        "param_user_guidance": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "User Guidance",
+          "type": "string",
+          "required": false
+        }
+      },
+      "outputs": {},
+      "values": {},
+      "config": {
+        "candidate_fields": {
+          "launch_package": "launch_package"
+        },
+        "parameter_fields": {
+          "target_chapter_count": "param_target_chapter_count",
+          "target_word_count": "param_target_word_count",
+          "user_guidance": "param_user_guidance"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "start-target_chapter_count-context-target_chapter_count",
+      "source": "start",
+      "source_port": "target_chapter_count",
+      "target": "context",
+      "target_port": "target_chapter_count"
+    },
+    {
+      "id": "start-target_word_count-context-target_word_count",
+      "source": "start",
+      "source_port": "target_word_count",
+      "target": "context",
+      "target_port": "target_word_count"
+    },
+    {
+      "id": "start-user_guidance-context-user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "context",
+      "target_port": "user_guidance"
+    },
+    {
+      "id": "context-active_world_rules-create_volume_launch_package-active_world_rules",
+      "source": "context",
+      "source_port": "active_world_rules",
+      "target": "create_volume_launch_package",
+      "target_port": "active_world_rules"
+    },
+    {
+      "id": "context-characters-create_volume_launch_package-characters",
+      "source": "context",
+      "source_port": "characters",
+      "target": "create_volume_launch_package",
+      "target_port": "characters"
+    },
+    {
+      "id": "context-factions_and_relations-create_volume_launch_package-factions_and_relations",
+      "source": "context",
+      "source_port": "factions_and_relations",
+      "target": "create_volume_launch_package",
+      "target_port": "factions_and_relations"
+    },
+    {
+      "id": "context-next_volume-create_volume_launch_package-next_volume",
+      "source": "context",
+      "source_port": "next_volume",
+      "target": "create_volume_launch_package",
+      "target_port": "next_volume"
+    },
+    {
+      "id": "context-novel_profile-create_volume_launch_package-novel_profile",
+      "source": "context",
+      "source_port": "novel_profile",
+      "target": "create_volume_launch_package",
+      "target_port": "novel_profile"
+    },
+    {
+      "id": "context-previous_volume-create_volume_launch_package-previous_volume",
+      "source": "context",
+      "source_port": "previous_volume",
+      "target": "create_volume_launch_package",
+      "target_port": "previous_volume"
+    },
+    {
+      "id": "context-protagonists-create_volume_launch_package-protagonists",
+      "source": "context",
+      "source_port": "protagonists",
+      "target": "create_volume_launch_package",
+      "target_port": "protagonists"
+    },
+    {
+      "id": "context-target_chapter_count-create_volume_launch_package-target_chapter_count",
+      "source": "context",
+      "source_port": "target_chapter_count",
+      "target": "create_volume_launch_package",
+      "target_port": "target_chapter_count"
+    },
+    {
+      "id": "context-target_volume-create_volume_launch_package-target_volume",
+      "source": "context",
+      "source_port": "target_volume",
+      "target": "create_volume_launch_package",
+      "target_port": "target_volume"
+    },
+    {
+      "id": "context-target_word_count-create_volume_launch_package-target_word_count",
+      "source": "context",
+      "source_port": "target_word_count",
+      "target": "create_volume_launch_package",
+      "target_port": "target_word_count"
+    },
+    {
+      "id": "context-user_guidance-create_volume_launch_package-user_guidance",
+      "source": "context",
+      "source_port": "user_guidance",
+      "target": "create_volume_launch_package",
+      "target_port": "user_guidance"
+    },
+    {
+      "id": "context-worldview_summary-create_volume_launch_package-worldview_summary",
+      "source": "context",
+      "source_port": "worldview_summary",
+      "target": "create_volume_launch_package",
+      "target_port": "worldview_summary"
+    },
+    {
+      "id": "create_volume_launch_package-launch_package-result-launch_package",
+      "source": "create_volume_launch_package",
+      "source_port": "launch_package",
+      "target": "result",
+      "target_port": "launch_package"
+    },
+    {
+      "id": "start-target_chapter_count-result-param_target_chapter_count",
+      "source": "start",
+      "source_port": "target_chapter_count",
+      "target": "result",
+      "target_port": "param_target_chapter_count"
+    },
+    {
+      "id": "start-target_word_count-result-param_target_word_count",
+      "source": "start",
+      "source_port": "target_word_count",
+      "target": "result",
+      "target_port": "param_target_word_count"
+    },
+    {
+      "id": "start-user_guidance-result-param_user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "result",
+      "target_port": "param_user_guidance"
+    }
+  ],
+  "control_edges": [],
+  "subflows": {},
+  "editor": {
+    "positions": {
+      "start": {
+        "x": 0,
+        "y": 80
+      },
+      "context": {
+        "x": 340,
+        "y": 80
+      },
+      "create_volume_launch_package": {
+        "x": 680,
+        "y": 80
+      },
+      "result": {
+        "x": 1020,
+        "y": 80
+      }
+    }
+  },
+  "max_node_executions": 1000
+}

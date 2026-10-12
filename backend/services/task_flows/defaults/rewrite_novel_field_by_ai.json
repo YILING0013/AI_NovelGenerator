@@ -1,0 +1,546 @@
+{
+  "format_version": 1,
+  "id": "default_rewrite_novel_field_by_ai",
+  "task": "rewrite_novel_field_by_ai",
+  "revision": 1,
+  "name": "默认流程",
+  "default_provider": "",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "input",
+      "label": "开始",
+      "inputs": {},
+      "outputs": {
+        "provider": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Provider",
+          "type": "string",
+          "required": true,
+          "$defs": {
+            "NovelRewriteChatMessageV1": {
+              "additionalProperties": false,
+              "description": "字段改写的一条浏览器本地对话消息。",
+              "properties": {
+                "role": {
+                  "enum": [
+                    "user",
+                    "assistant"
+                  ],
+                  "title": "Role",
+                  "type": "string"
+                },
+                "content": {
+                  "maxLength": 8000,
+                  "minLength": 1,
+                  "title": "Content",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "role",
+                "content"
+              ],
+              "title": "NovelRewriteChatMessageV1",
+              "type": "object"
+            }
+          }
+        },
+        "instruction": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Instruction",
+          "type": "string",
+          "required": true,
+          "$defs": {
+            "NovelRewriteChatMessageV1": {
+              "additionalProperties": false,
+              "description": "字段改写的一条浏览器本地对话消息。",
+              "properties": {
+                "role": {
+                  "enum": [
+                    "user",
+                    "assistant"
+                  ],
+                  "title": "Role",
+                  "type": "string"
+                },
+                "content": {
+                  "maxLength": 8000,
+                  "minLength": 1,
+                  "title": "Content",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "role",
+                "content"
+              ],
+              "title": "NovelRewriteChatMessageV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "context",
+      "type": "context",
+      "label": "读取任务资料",
+      "inputs": {
+        "provider": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Provider",
+          "type": "string",
+          "required": true,
+          "$defs": {
+            "NovelRewriteChatMessageV1": {
+              "additionalProperties": false,
+              "description": "字段改写的一条浏览器本地对话消息。",
+              "properties": {
+                "role": {
+                  "enum": [
+                    "user",
+                    "assistant"
+                  ],
+                  "title": "Role",
+                  "type": "string"
+                },
+                "content": {
+                  "maxLength": 8000,
+                  "minLength": 1,
+                  "title": "Content",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "role",
+                "content"
+              ],
+              "title": "NovelRewriteChatMessageV1",
+              "type": "object"
+            }
+          }
+        },
+        "instruction": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Instruction",
+          "type": "string",
+          "required": true,
+          "$defs": {
+            "NovelRewriteChatMessageV1": {
+              "additionalProperties": false,
+              "description": "字段改写的一条浏览器本地对话消息。",
+              "properties": {
+                "role": {
+                  "enum": [
+                    "user",
+                    "assistant"
+                  ],
+                  "title": "Role",
+                  "type": "string"
+                },
+                "content": {
+                  "maxLength": 8000,
+                  "minLength": 1,
+                  "title": "Content",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "role",
+                "content"
+              ],
+              "title": "NovelRewriteChatMessageV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "outputs": {
+        "context_json": {
+          "type": "string"
+        },
+        "current_value": {
+          "type": "string"
+        },
+        "history_text": {
+          "type": "string"
+        },
+        "instruction": {
+          "type": "string"
+        },
+        "target_field": {
+          "type": "string"
+        },
+        "target_field_label": {
+          "type": "string"
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "rewrite_novel_field",
+      "type": "llm",
+      "label": "rewrite_novel_field",
+      "inputs": {
+        "context_json": {
+          "type": "string"
+        },
+        "current_value": {
+          "type": "string"
+        },
+        "history_text": {
+          "type": "string"
+        },
+        "instruction": {
+          "type": "string"
+        },
+        "target_field": {
+          "type": "string"
+        },
+        "target_field_label": {
+          "type": "string"
+        },
+        "provider": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Provider",
+          "type": "string",
+          "required": true,
+          "$defs": {
+            "NovelRewriteChatMessageV1": {
+              "additionalProperties": false,
+              "description": "字段改写的一条浏览器本地对话消息。",
+              "properties": {
+                "role": {
+                  "enum": [
+                    "user",
+                    "assistant"
+                  ],
+                  "title": "Role",
+                  "type": "string"
+                },
+                "content": {
+                  "maxLength": 8000,
+                  "minLength": 1,
+                  "title": "Content",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "role",
+                "content"
+              ],
+              "title": "NovelRewriteChatMessageV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "outputs": {
+        "target_field": {
+          "enum": [
+            "title",
+            "subtitle",
+            "genre",
+            "tags",
+            "plot",
+            "core_idea",
+            "tone",
+            "target_audience",
+            "introduction",
+            "summary",
+            "core_seed",
+            "worldview",
+            "writing_style",
+            "narrative_pov",
+            "era_background"
+          ],
+          "title": "Target Field",
+          "type": "string",
+          "required": true
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Value",
+          "required": true
+        }
+      },
+      "values": {},
+      "config": {
+        "mode": "json",
+        "provider": "",
+        "model": "",
+        "parameters": {},
+        "prompt_separator": "\n",
+        "provider_input": "provider",
+        "force_text_prompt": true,
+        "prompt_file": "rewrite_novel_field_prompt.md",
+        "schema_prompt_file": "rewrite_novel_field_schema_prompt.md",
+        "text_prompt_file": "rewrite_novel_field_text_prompt.md",
+        "preserve_prompt_whitespace": true,
+        "strip_prompt": true,
+        "format_suffix": true
+      }
+    },
+    {
+      "id": "result",
+      "type": "output",
+      "label": "任务结果",
+      "inputs": {
+        "target_field": {
+          "enum": [
+            "title",
+            "subtitle",
+            "genre",
+            "tags",
+            "plot",
+            "core_idea",
+            "tone",
+            "target_audience",
+            "introduction",
+            "summary",
+            "core_seed",
+            "worldview",
+            "writing_style",
+            "narrative_pov",
+            "era_background"
+          ],
+          "title": "Target Field",
+          "type": "string",
+          "required": true
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Value",
+          "required": true
+        },
+        "param_provider": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Provider",
+          "type": "string",
+          "required": true,
+          "$defs": {
+            "NovelRewriteChatMessageV1": {
+              "additionalProperties": false,
+              "description": "字段改写的一条浏览器本地对话消息。",
+              "properties": {
+                "role": {
+                  "enum": [
+                    "user",
+                    "assistant"
+                  ],
+                  "title": "Role",
+                  "type": "string"
+                },
+                "content": {
+                  "maxLength": 8000,
+                  "minLength": 1,
+                  "title": "Content",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "role",
+                "content"
+              ],
+              "title": "NovelRewriteChatMessageV1",
+              "type": "object"
+            }
+          }
+        },
+        "param_instruction": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Instruction",
+          "type": "string",
+          "required": true,
+          "$defs": {
+            "NovelRewriteChatMessageV1": {
+              "additionalProperties": false,
+              "description": "字段改写的一条浏览器本地对话消息。",
+              "properties": {
+                "role": {
+                  "enum": [
+                    "user",
+                    "assistant"
+                  ],
+                  "title": "Role",
+                  "type": "string"
+                },
+                "content": {
+                  "maxLength": 8000,
+                  "minLength": 1,
+                  "title": "Content",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "role",
+                "content"
+              ],
+              "title": "NovelRewriteChatMessageV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "outputs": {},
+      "values": {},
+      "config": {
+        "candidate_fields": {
+          "target_field": "target_field",
+          "value": "value"
+        },
+        "parameter_fields": {
+          "provider": "param_provider",
+          "instruction": "param_instruction"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "start-provider-context-provider",
+      "source": "start",
+      "source_port": "provider",
+      "target": "context",
+      "target_port": "provider"
+    },
+    {
+      "id": "start-instruction-context-instruction",
+      "source": "start",
+      "source_port": "instruction",
+      "target": "context",
+      "target_port": "instruction"
+    },
+    {
+      "id": "context-context_json-rewrite_novel_field-context_json",
+      "source": "context",
+      "source_port": "context_json",
+      "target": "rewrite_novel_field",
+      "target_port": "context_json"
+    },
+    {
+      "id": "context-current_value-rewrite_novel_field-current_value",
+      "source": "context",
+      "source_port": "current_value",
+      "target": "rewrite_novel_field",
+      "target_port": "current_value"
+    },
+    {
+      "id": "context-history_text-rewrite_novel_field-history_text",
+      "source": "context",
+      "source_port": "history_text",
+      "target": "rewrite_novel_field",
+      "target_port": "history_text"
+    },
+    {
+      "id": "context-instruction-rewrite_novel_field-instruction",
+      "source": "context",
+      "source_port": "instruction",
+      "target": "rewrite_novel_field",
+      "target_port": "instruction"
+    },
+    {
+      "id": "context-target_field-rewrite_novel_field-target_field",
+      "source": "context",
+      "source_port": "target_field",
+      "target": "rewrite_novel_field",
+      "target_port": "target_field"
+    },
+    {
+      "id": "context-target_field_label-rewrite_novel_field-target_field_label",
+      "source": "context",
+      "source_port": "target_field_label",
+      "target": "rewrite_novel_field",
+      "target_port": "target_field_label"
+    },
+    {
+      "id": "start-provider-rewrite_novel_field-provider",
+      "source": "start",
+      "source_port": "provider",
+      "target": "rewrite_novel_field",
+      "target_port": "provider"
+    },
+    {
+      "id": "rewrite_novel_field-target_field-result-target_field",
+      "source": "rewrite_novel_field",
+      "source_port": "target_field",
+      "target": "result",
+      "target_port": "target_field"
+    },
+    {
+      "id": "rewrite_novel_field-value-result-value",
+      "source": "rewrite_novel_field",
+      "source_port": "value",
+      "target": "result",
+      "target_port": "value"
+    },
+    {
+      "id": "start-provider-result-param_provider",
+      "source": "start",
+      "source_port": "provider",
+      "target": "result",
+      "target_port": "param_provider"
+    },
+    {
+      "id": "start-instruction-result-param_instruction",
+      "source": "start",
+      "source_port": "instruction",
+      "target": "result",
+      "target_port": "param_instruction"
+    }
+  ],
+  "control_edges": [],
+  "subflows": {},
+  "editor": {
+    "positions": {
+      "start": {
+        "x": 0,
+        "y": 80
+      },
+      "context": {
+        "x": 340,
+        "y": 80
+      },
+      "rewrite_novel_field": {
+        "x": 680,
+        "y": 80
+      },
+      "result": {
+        "x": 1020,
+        "y": 80
+      }
+    }
+  },
+  "max_node_executions": 1000
+}

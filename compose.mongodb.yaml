@@ -1,0 +1,25 @@
+name: novel-generator-local
+
+services:
+  mongodb:
+    image: mongo:8.0
+    container_name: novel-generator-mongodb
+    restart: unless-stopped
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--oplogSize", "128"]
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "quit(db.hello().isWritablePrimary ? 0 : 1)"]
+      interval: 5s
+      timeout: 5s
+      start_period: 15s
+      retries: 12
+
+volumes:
+  mongodb_data:
+    name: novel-generator-mongodb-data
+  mongodb_config:
+    name: novel-generator-mongodb-config

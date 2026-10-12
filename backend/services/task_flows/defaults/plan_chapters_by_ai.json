@@ -1,0 +1,3441 @@
+{
+  "format_version": 1,
+  "id": "default_plan_chapters_by_ai",
+  "task": "plan_chapters_by_ai",
+  "revision": 1,
+  "name": "逐级生成章计划",
+  "default_provider": "",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "input",
+      "label": "开始",
+      "inputs": {},
+      "outputs": {
+        "count": {
+          "default": 2,
+          "maximum": 20,
+          "minimum": 1,
+          "title": "生成数量",
+          "type": "integer",
+          "required": false
+        },
+        "user_guidance": {
+          "default": "",
+          "maxLength": 5000,
+          "title": "作者要求",
+          "type": "string",
+          "required": false
+        },
+        "target_word_count": {
+          "anyOf": [
+            {
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "目标字数",
+          "required": false
+        },
+        "count_mode": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "fixed"
+          ],
+          "title": "数量方式",
+          "type": "string"
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "context",
+      "type": "context",
+      "label": "读取当前部分",
+      "inputs": {
+        "count": {
+          "default": 2,
+          "maximum": 20,
+          "minimum": 1,
+          "title": "生成数量",
+          "type": "integer",
+          "required": false
+        },
+        "user_guidance": {
+          "default": "",
+          "maxLength": 5000,
+          "title": "作者要求",
+          "type": "string",
+          "required": false
+        },
+        "target_word_count": {
+          "anyOf": [
+            {
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "目标字数",
+          "required": false
+        },
+        "search_text": {
+          "default": "",
+          "maxLength": 100,
+          "title": "检索文字",
+          "type": "string",
+          "required": false
+        },
+        "search_scope": {
+          "default": "current_part",
+          "enum": [
+            "novel",
+            "current_part"
+          ],
+          "title": "检索范围",
+          "type": "string",
+          "required": false
+        },
+        "count_mode": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "fixed"
+          ],
+          "title": "数量方式",
+          "type": "string"
+        }
+      },
+      "outputs": {
+        "writing_context": {
+          "type": "string"
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "prepare",
+      "type": "agent",
+      "label": "AI 整理资料",
+      "inputs": {
+        "writing_context": {
+          "type": "string"
+        },
+        "count": {
+          "default": 2,
+          "maximum": 20,
+          "minimum": 1,
+          "title": "生成数量",
+          "type": "integer",
+          "required": false
+        },
+        "user_guidance": {
+          "default": "",
+          "maxLength": 5000,
+          "title": "作者要求",
+          "type": "string",
+          "required": false
+        },
+        "target_word_count": {
+          "anyOf": [
+            {
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "目标字数",
+          "required": false
+        },
+        "count_mode": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "fixed"
+          ],
+          "title": "数量方式",
+          "type": "string"
+        }
+      },
+      "outputs": {
+        "prepared_context": {
+          "additionalProperties": false,
+          "description": "下一步生成需要的固定资料报告；正式详情由服务端填入。",
+          "properties": {
+            "schema_version": {
+              "const": 1,
+              "default": 1,
+              "title": "Schema Version",
+              "type": "integer"
+            },
+            "target": {
+              "additionalProperties": false,
+              "description": "由服务端固定的小说和操作位置。",
+              "properties": {
+                "novel_id": {
+                  "maxLength": 24,
+                  "minLength": 24,
+                  "pattern": "^[0-9a-fA-F]{24}$",
+                  "title": "Novel Id",
+                  "type": "string"
+                },
+                "target_type": {
+                  "enum": [
+                    "volume",
+                    "arc",
+                    "scene",
+                    "chapter"
+                  ],
+                  "title": "Target Type",
+                  "type": "string"
+                },
+                "target_id": {
+                  "maxLength": 24,
+                  "minLength": 24,
+                  "pattern": "^[0-9a-fA-F]{24}$",
+                  "title": "Target Id",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "novel_id",
+                "target_type",
+                "target_id"
+              ],
+              "title": "PreparedTargetV1",
+              "type": "object"
+            },
+            "boundaries": {
+              "maxLength": 12000,
+              "minLength": 1,
+              "title": "Boundaries",
+              "type": "string"
+            },
+            "selected_entities": {
+              "additionalProperties": false,
+              "description": "作者选中的资料；不提供任意数据库读取参数。",
+              "properties": {
+                "character_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Character Ids",
+                  "type": "array"
+                },
+                "faction_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Faction Ids",
+                  "type": "array"
+                },
+                "location_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Location Ids",
+                  "type": "array"
+                },
+                "item_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Item Ids",
+                  "type": "array"
+                },
+                "rule_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Rule Ids",
+                  "type": "array"
+                }
+              },
+              "title": "WritingSelectionV1",
+              "type": "object"
+            },
+            "selection_reasons": {
+              "items": {
+                "additionalProperties": false,
+                "description": "采用已读实体的具体原因。",
+                "properties": {
+                  "resource_type": {
+                    "enum": [
+                      "character",
+                      "faction",
+                      "location",
+                      "item",
+                      "world_rule"
+                    ],
+                    "title": "Resource Type",
+                    "type": "string"
+                  },
+                  "id": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "title": "Id",
+                    "type": "string"
+                  },
+                  "reason": {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "title": "Reason",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "resource_type",
+                  "id",
+                  "reason"
+                ],
+                "title": "EntitySelectionReasonV1",
+                "type": "object"
+              },
+              "maxItems": 250,
+              "title": "Selection Reasons",
+              "type": "array"
+            },
+            "entity_needs": {
+              "items": {
+                "additionalProperties": false,
+                "description": "当前资料无法承担的一项剧情职责。",
+                "properties": {
+                  "resource_type": {
+                    "enum": [
+                      "character",
+                      "faction",
+                      "location",
+                      "item",
+                      "world_rule"
+                    ],
+                    "title": "Resource Type",
+                    "type": "string"
+                  },
+                  "role": {
+                    "maxLength": 1000,
+                    "minLength": 1,
+                    "title": "Role",
+                    "type": "string"
+                  },
+                  "reason": {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "title": "Reason",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "resource_type",
+                  "role",
+                  "reason"
+                ],
+                "title": "EntityNeedV1",
+                "type": "object"
+              },
+              "maxItems": 150,
+              "title": "Entity Needs",
+              "type": "array"
+            },
+            "new_counts": {
+              "additionalProperties": false,
+              "description": "各类新实体建议数量，最终仍由相应领域上限校验。",
+              "properties": {
+                "character": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Character",
+                  "type": "integer"
+                },
+                "faction": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Faction",
+                  "type": "integer"
+                },
+                "location": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Location",
+                  "type": "integer"
+                },
+                "item": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Item",
+                  "type": "integer"
+                },
+                "world_rule": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "World Rule",
+                  "type": "integer"
+                }
+              },
+              "title": "EntityNewCountsV1",
+              "type": "object"
+            },
+            "suggested_count": {
+              "description": "本次应新增的下级数量。仍有未覆盖剧情时为1至20；全部剧情已被现有下级覆盖时必须为0。遵守本次输入明确给定的固定数量，auto时自主估计。",
+              "maximum": 20,
+              "minimum": 0,
+              "title": "Suggested Count",
+              "type": "integer"
+            },
+            "coverage": {
+              "description": "分别说明已有下级已覆盖什么、还剩什么；当前没有下级时不能声称剧情已经覆盖。",
+              "maxLength": 12000,
+              "minLength": 1,
+              "title": "Coverage",
+              "type": "string"
+            },
+            "remaining": {
+              "description": "是否还有需要本次生成的未覆盖内容。true表示仍需生成，suggested_count必须大于0；false表示已有内容完整覆盖、无需新增，suggested_count必须为0。不是‘资料是否还需补齐’。",
+              "title": "Remaining",
+              "type": "boolean"
+            },
+            "missing_required": {
+              "items": {
+                "additionalProperties": false,
+                "description": "作者需要在指定位置补齐的内容。",
+                "properties": {
+                  "field": {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "title": "Field",
+                    "type": "string"
+                  },
+                  "message": {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "title": "Message",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "field",
+                  "message"
+                ],
+                "title": "PreparationMissingV1",
+                "type": "object"
+              },
+              "maxItems": 100,
+              "title": "Missing Required",
+              "type": "array"
+            },
+            "entity_details": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 250,
+              "title": "Entity Details",
+              "type": "array"
+            },
+            "volume_states": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 500,
+              "title": "Volume States",
+              "type": "array"
+            },
+            "relations": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 500,
+              "title": "Relations",
+              "type": "array"
+            },
+            "previous_text": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 100,
+              "title": "Previous Text",
+              "type": "array"
+            }
+          },
+          "required": [
+            "target",
+            "boundaries",
+            "suggested_count",
+            "coverage",
+            "remaining"
+          ],
+          "title": "PreparedContextV1",
+          "type": "object"
+        }
+      },
+      "values": {},
+      "config": {
+        "prompt": "当前任务：plan_chapters_by_ai。先使用工具核对本次资料，再给出可直接执行的整理报告。已有对象先读取详情，只有缺少职责时才建议新增。\n本次资料和作者参数见下方“实际输入”。",
+        "provider": "",
+        "model": "",
+        "parameters": {},
+        "max_rounds": 8,
+        "max_tool_calls": 24,
+        "deduplicate_tool_budget": true,
+        "reference_unchanged_entities": true,
+        "index_structural_context": true,
+        "tools": [
+          "get_scope",
+          "list_directory",
+          "search_book",
+          "search_entities",
+          "read_entity",
+          "read_volume_state",
+          "read_previous",
+          "load_skill"
+        ],
+        "skills": [
+          {
+            "id": "story_boundaries",
+            "name": "剧情边界",
+            "description": "核对主线、当前位置、上下部分与已保存下级。",
+            "instructions": "先读取当前范围和目录。卷剧情承接全书剧情，篇章剧情承接本卷剧情；保留相邻已定起止。下级只补尚未覆盖的剧情，不重复已保存内容。末卷给出收束，不虚构下一卷。"
+          },
+          {
+            "id": "people_factions",
+            "name": "人物与势力",
+            "description": "查找可复用人物、势力以及当前卷状态。",
+            "instructions": "先查找再读详情，按动机和冲突选择实际需要的角色与势力。当前卷状态优先于全书介绍。每项选择说明作用；已有资料不能承担的职责才提出新增，未读详情的 ID 不得采用。"
+          },
+          {
+            "id": "places_rules",
+            "name": "地点与设定",
+            "description": "核对场所、物品和世界规则。",
+            "instructions": "查找并读取支撑行动的已有地点、物品与规则，核对距离、功能和限制；没有合适地点才建议新增。篇章及以下需要缺失实体时明确报告补齐位置，不在正文中暗中建档。"
+          },
+          {
+            "id": "continuity",
+            "name": "前文衔接",
+            "description": "读取当前位置以前的正文并检查衔接。",
+            "instructions": "阅读已写前文，区分正式正文和规划；保持已发生事件、人物状态和因果。工具没有返回的正文不要编造。说明尚未覆盖的剧情与拆分建议。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "prepared_data",
+      "type": "context",
+      "label": "读取本次采用的资料",
+      "inputs": {
+        "count": {
+          "default": 2,
+          "maximum": 20,
+          "minimum": 1,
+          "title": "生成数量",
+          "type": "integer",
+          "required": false
+        },
+        "user_guidance": {
+          "default": "",
+          "maxLength": 5000,
+          "title": "作者要求",
+          "type": "string",
+          "required": false
+        },
+        "target_word_count": {
+          "anyOf": [
+            {
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "目标字数",
+          "required": false
+        },
+        "search_text": {
+          "default": "",
+          "maxLength": 100,
+          "title": "检索文字",
+          "type": "string",
+          "required": false
+        },
+        "search_scope": {
+          "default": "current_part",
+          "enum": [
+            "novel",
+            "current_part"
+          ],
+          "title": "检索范围",
+          "type": "string",
+          "required": false
+        },
+        "count_mode": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "fixed"
+          ],
+          "title": "数量方式",
+          "type": "string"
+        },
+        "prepared_context": {
+          "additionalProperties": false,
+          "description": "下一步生成需要的固定资料报告；正式详情由服务端填入。",
+          "properties": {
+            "schema_version": {
+              "const": 1,
+              "default": 1,
+              "title": "Schema Version",
+              "type": "integer"
+            },
+            "target": {
+              "additionalProperties": false,
+              "description": "由服务端固定的小说和操作位置。",
+              "properties": {
+                "novel_id": {
+                  "maxLength": 24,
+                  "minLength": 24,
+                  "pattern": "^[0-9a-fA-F]{24}$",
+                  "title": "Novel Id",
+                  "type": "string"
+                },
+                "target_type": {
+                  "enum": [
+                    "volume",
+                    "arc",
+                    "scene",
+                    "chapter"
+                  ],
+                  "title": "Target Type",
+                  "type": "string"
+                },
+                "target_id": {
+                  "maxLength": 24,
+                  "minLength": 24,
+                  "pattern": "^[0-9a-fA-F]{24}$",
+                  "title": "Target Id",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "novel_id",
+                "target_type",
+                "target_id"
+              ],
+              "title": "PreparedTargetV1",
+              "type": "object"
+            },
+            "boundaries": {
+              "maxLength": 12000,
+              "minLength": 1,
+              "title": "Boundaries",
+              "type": "string"
+            },
+            "selected_entities": {
+              "additionalProperties": false,
+              "description": "作者选中的资料；不提供任意数据库读取参数。",
+              "properties": {
+                "character_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Character Ids",
+                  "type": "array"
+                },
+                "faction_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Faction Ids",
+                  "type": "array"
+                },
+                "location_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Location Ids",
+                  "type": "array"
+                },
+                "item_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Item Ids",
+                  "type": "array"
+                },
+                "rule_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Rule Ids",
+                  "type": "array"
+                }
+              },
+              "title": "WritingSelectionV1",
+              "type": "object"
+            },
+            "selection_reasons": {
+              "items": {
+                "additionalProperties": false,
+                "description": "采用已读实体的具体原因。",
+                "properties": {
+                  "resource_type": {
+                    "enum": [
+                      "character",
+                      "faction",
+                      "location",
+                      "item",
+                      "world_rule"
+                    ],
+                    "title": "Resource Type",
+                    "type": "string"
+                  },
+                  "id": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "title": "Id",
+                    "type": "string"
+                  },
+                  "reason": {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "title": "Reason",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "resource_type",
+                  "id",
+                  "reason"
+                ],
+                "title": "EntitySelectionReasonV1",
+                "type": "object"
+              },
+              "maxItems": 250,
+              "title": "Selection Reasons",
+              "type": "array"
+            },
+            "entity_needs": {
+              "items": {
+                "additionalProperties": false,
+                "description": "当前资料无法承担的一项剧情职责。",
+                "properties": {
+                  "resource_type": {
+                    "enum": [
+                      "character",
+                      "faction",
+                      "location",
+                      "item",
+                      "world_rule"
+                    ],
+                    "title": "Resource Type",
+                    "type": "string"
+                  },
+                  "role": {
+                    "maxLength": 1000,
+                    "minLength": 1,
+                    "title": "Role",
+                    "type": "string"
+                  },
+                  "reason": {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "title": "Reason",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "resource_type",
+                  "role",
+                  "reason"
+                ],
+                "title": "EntityNeedV1",
+                "type": "object"
+              },
+              "maxItems": 150,
+              "title": "Entity Needs",
+              "type": "array"
+            },
+            "new_counts": {
+              "additionalProperties": false,
+              "description": "各类新实体建议数量，最终仍由相应领域上限校验。",
+              "properties": {
+                "character": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Character",
+                  "type": "integer"
+                },
+                "faction": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Faction",
+                  "type": "integer"
+                },
+                "location": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Location",
+                  "type": "integer"
+                },
+                "item": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Item",
+                  "type": "integer"
+                },
+                "world_rule": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "World Rule",
+                  "type": "integer"
+                }
+              },
+              "title": "EntityNewCountsV1",
+              "type": "object"
+            },
+            "suggested_count": {
+              "description": "本次应新增的下级数量。仍有未覆盖剧情时为1至20；全部剧情已被现有下级覆盖时必须为0。遵守本次输入明确给定的固定数量，auto时自主估计。",
+              "maximum": 20,
+              "minimum": 0,
+              "title": "Suggested Count",
+              "type": "integer"
+            },
+            "coverage": {
+              "description": "分别说明已有下级已覆盖什么、还剩什么；当前没有下级时不能声称剧情已经覆盖。",
+              "maxLength": 12000,
+              "minLength": 1,
+              "title": "Coverage",
+              "type": "string"
+            },
+            "remaining": {
+              "description": "是否还有需要本次生成的未覆盖内容。true表示仍需生成，suggested_count必须大于0；false表示已有内容完整覆盖、无需新增，suggested_count必须为0。不是‘资料是否还需补齐’。",
+              "title": "Remaining",
+              "type": "boolean"
+            },
+            "missing_required": {
+              "items": {
+                "additionalProperties": false,
+                "description": "作者需要在指定位置补齐的内容。",
+                "properties": {
+                  "field": {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "title": "Field",
+                    "type": "string"
+                  },
+                  "message": {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "title": "Message",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "field",
+                  "message"
+                ],
+                "title": "PreparationMissingV1",
+                "type": "object"
+              },
+              "maxItems": 100,
+              "title": "Missing Required",
+              "type": "array"
+            },
+            "entity_details": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 250,
+              "title": "Entity Details",
+              "type": "array"
+            },
+            "volume_states": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 500,
+              "title": "Volume States",
+              "type": "array"
+            },
+            "relations": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 500,
+              "title": "Relations",
+              "type": "array"
+            },
+            "previous_text": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 100,
+              "title": "Previous Text",
+              "type": "array"
+            }
+          },
+          "required": [
+            "target",
+            "boundaries",
+            "suggested_count",
+            "coverage",
+            "remaining"
+          ],
+          "title": "PreparedContextV1",
+          "type": "object"
+        }
+      },
+      "outputs": {
+        "writing_context": {
+          "type": "string"
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "generate",
+      "type": "llm",
+      "label": "生成章计划",
+      "inputs": {
+        "writing_context": {
+          "type": "string"
+        },
+        "prepared_context": {
+          "additionalProperties": false,
+          "description": "下一步生成需要的固定资料报告；正式详情由服务端填入。",
+          "properties": {
+            "schema_version": {
+              "const": 1,
+              "default": 1,
+              "title": "Schema Version",
+              "type": "integer"
+            },
+            "target": {
+              "additionalProperties": false,
+              "description": "由服务端固定的小说和操作位置。",
+              "properties": {
+                "novel_id": {
+                  "maxLength": 24,
+                  "minLength": 24,
+                  "pattern": "^[0-9a-fA-F]{24}$",
+                  "title": "Novel Id",
+                  "type": "string"
+                },
+                "target_type": {
+                  "enum": [
+                    "volume",
+                    "arc",
+                    "scene",
+                    "chapter"
+                  ],
+                  "title": "Target Type",
+                  "type": "string"
+                },
+                "target_id": {
+                  "maxLength": 24,
+                  "minLength": 24,
+                  "pattern": "^[0-9a-fA-F]{24}$",
+                  "title": "Target Id",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "novel_id",
+                "target_type",
+                "target_id"
+              ],
+              "title": "PreparedTargetV1",
+              "type": "object"
+            },
+            "boundaries": {
+              "maxLength": 12000,
+              "minLength": 1,
+              "title": "Boundaries",
+              "type": "string"
+            },
+            "selected_entities": {
+              "additionalProperties": false,
+              "description": "作者选中的资料；不提供任意数据库读取参数。",
+              "properties": {
+                "character_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Character Ids",
+                  "type": "array"
+                },
+                "faction_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Faction Ids",
+                  "type": "array"
+                },
+                "location_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Location Ids",
+                  "type": "array"
+                },
+                "item_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Item Ids",
+                  "type": "array"
+                },
+                "rule_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Rule Ids",
+                  "type": "array"
+                }
+              },
+              "title": "WritingSelectionV1",
+              "type": "object"
+            },
+            "selection_reasons": {
+              "items": {
+                "additionalProperties": false,
+                "description": "采用已读实体的具体原因。",
+                "properties": {
+                  "resource_type": {
+                    "enum": [
+                      "character",
+                      "faction",
+                      "location",
+                      "item",
+                      "world_rule"
+                    ],
+                    "title": "Resource Type",
+                    "type": "string"
+                  },
+                  "id": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "title": "Id",
+                    "type": "string"
+                  },
+                  "reason": {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "title": "Reason",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "resource_type",
+                  "id",
+                  "reason"
+                ],
+                "title": "EntitySelectionReasonV1",
+                "type": "object"
+              },
+              "maxItems": 250,
+              "title": "Selection Reasons",
+              "type": "array"
+            },
+            "entity_needs": {
+              "items": {
+                "additionalProperties": false,
+                "description": "当前资料无法承担的一项剧情职责。",
+                "properties": {
+                  "resource_type": {
+                    "enum": [
+                      "character",
+                      "faction",
+                      "location",
+                      "item",
+                      "world_rule"
+                    ],
+                    "title": "Resource Type",
+                    "type": "string"
+                  },
+                  "role": {
+                    "maxLength": 1000,
+                    "minLength": 1,
+                    "title": "Role",
+                    "type": "string"
+                  },
+                  "reason": {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "title": "Reason",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "resource_type",
+                  "role",
+                  "reason"
+                ],
+                "title": "EntityNeedV1",
+                "type": "object"
+              },
+              "maxItems": 150,
+              "title": "Entity Needs",
+              "type": "array"
+            },
+            "new_counts": {
+              "additionalProperties": false,
+              "description": "各类新实体建议数量，最终仍由相应领域上限校验。",
+              "properties": {
+                "character": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Character",
+                  "type": "integer"
+                },
+                "faction": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Faction",
+                  "type": "integer"
+                },
+                "location": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Location",
+                  "type": "integer"
+                },
+                "item": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Item",
+                  "type": "integer"
+                },
+                "world_rule": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "World Rule",
+                  "type": "integer"
+                }
+              },
+              "title": "EntityNewCountsV1",
+              "type": "object"
+            },
+            "suggested_count": {
+              "description": "本次应新增的下级数量。仍有未覆盖剧情时为1至20；全部剧情已被现有下级覆盖时必须为0。遵守本次输入明确给定的固定数量，auto时自主估计。",
+              "maximum": 20,
+              "minimum": 0,
+              "title": "Suggested Count",
+              "type": "integer"
+            },
+            "coverage": {
+              "description": "分别说明已有下级已覆盖什么、还剩什么；当前没有下级时不能声称剧情已经覆盖。",
+              "maxLength": 12000,
+              "minLength": 1,
+              "title": "Coverage",
+              "type": "string"
+            },
+            "remaining": {
+              "description": "是否还有需要本次生成的未覆盖内容。true表示仍需生成，suggested_count必须大于0；false表示已有内容完整覆盖、无需新增，suggested_count必须为0。不是‘资料是否还需补齐’。",
+              "title": "Remaining",
+              "type": "boolean"
+            },
+            "missing_required": {
+              "items": {
+                "additionalProperties": false,
+                "description": "作者需要在指定位置补齐的内容。",
+                "properties": {
+                  "field": {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "title": "Field",
+                    "type": "string"
+                  },
+                  "message": {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "title": "Message",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "field",
+                  "message"
+                ],
+                "title": "PreparationMissingV1",
+                "type": "object"
+              },
+              "maxItems": 100,
+              "title": "Missing Required",
+              "type": "array"
+            },
+            "entity_details": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 250,
+              "title": "Entity Details",
+              "type": "array"
+            },
+            "volume_states": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 500,
+              "title": "Volume States",
+              "type": "array"
+            },
+            "relations": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 500,
+              "title": "Relations",
+              "type": "array"
+            },
+            "previous_text": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 100,
+              "title": "Previous Text",
+              "type": "array"
+            }
+          },
+          "required": [
+            "target",
+            "boundaries",
+            "suggested_count",
+            "coverage",
+            "remaining"
+          ],
+          "title": "PreparedContextV1",
+          "type": "object"
+        }
+      },
+      "outputs": {
+        "chapters": {
+          "items": {
+            "additionalProperties": false,
+            "description": "章计划生成只提供规划，正式新章正文由服务置空。",
+            "properties": {
+              "title": {
+                "maxLength": 120,
+                "minLength": 1,
+                "title": "Title",
+                "type": "string"
+              },
+              "summary": {
+                "default": "",
+                "maxLength": 2000,
+                "title": "Summary",
+                "type": "string"
+              },
+              "planning": {
+                "additionalProperties": false,
+                "description": "当前章节计划；正文单独保存，人物视角可暂不选择。",
+                "properties": {
+                  "goal": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "Goal",
+                    "type": "string"
+                  },
+                  "start_state": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "Start State",
+                    "type": "string"
+                  },
+                  "end_state": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "End State",
+                    "type": "string"
+                  },
+                  "beats": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Beats",
+                    "type": "array"
+                  },
+                  "pov_character_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Pov Character Id"
+                  },
+                  "must_include": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Must Include",
+                    "type": "array"
+                  },
+                  "must_avoid": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Must Avoid",
+                    "type": "array"
+                  },
+                  "target_word_count": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Target Word Count"
+                  }
+                },
+                "title": "ChapterPlanV2",
+                "type": "object"
+              }
+            },
+            "required": [
+              "title"
+            ],
+            "title": "ChapterPlanCandidateV1",
+            "type": "object"
+          },
+          "maxItems": 20,
+          "title": "Chapters",
+          "type": "array"
+        }
+      },
+      "values": {},
+      "config": {
+        "mode": "json",
+        "provider": "",
+        "model": "",
+        "parameters": {},
+        "prompt_file": "plan_chapters_by_ai_story_prompt.md",
+        "schema_prompt_file": "plan_chapters_by_ai_output.md",
+        "text_prompt_file": "plan_chapters_by_ai_output.md"
+      }
+    },
+    {
+      "id": "remaining",
+      "type": "condition",
+      "label": "还有未规划剧情",
+      "inputs": {
+        "remaining": {
+          "type": "boolean"
+        }
+      },
+      "outputs": {},
+      "values": {},
+      "config": {
+        "cases": [
+          {
+            "input": "remaining",
+            "operator": "truthy",
+            "port": "yes"
+          }
+        ],
+        "else_port": "no"
+      }
+    },
+    {
+      "id": "covered",
+      "type": "constant",
+      "label": "当前剧情已覆盖",
+      "inputs": {},
+      "outputs": {
+        "chapters": {
+          "items": {
+            "additionalProperties": false,
+            "description": "章计划生成只提供规划，正式新章正文由服务置空。",
+            "properties": {
+              "title": {
+                "maxLength": 120,
+                "minLength": 1,
+                "title": "Title",
+                "type": "string"
+              },
+              "summary": {
+                "default": "",
+                "maxLength": 2000,
+                "title": "Summary",
+                "type": "string"
+              },
+              "planning": {
+                "additionalProperties": false,
+                "description": "当前章节计划；正文单独保存，人物视角可暂不选择。",
+                "properties": {
+                  "goal": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "Goal",
+                    "type": "string"
+                  },
+                  "start_state": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "Start State",
+                    "type": "string"
+                  },
+                  "end_state": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "End State",
+                    "type": "string"
+                  },
+                  "beats": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Beats",
+                    "type": "array"
+                  },
+                  "pov_character_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Pov Character Id"
+                  },
+                  "must_include": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Must Include",
+                    "type": "array"
+                  },
+                  "must_avoid": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Must Avoid",
+                    "type": "array"
+                  },
+                  "target_word_count": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Target Word Count"
+                  }
+                },
+                "title": "ChapterPlanV2",
+                "type": "object"
+              }
+            },
+            "required": [
+              "title"
+            ],
+            "title": "ChapterPlanCandidateV1",
+            "type": "object"
+          },
+          "maxItems": 20,
+          "title": "Chapters",
+          "type": "array"
+        }
+      },
+      "values": {
+        "chapters": []
+      },
+      "config": {}
+    },
+    {
+      "id": "candidates",
+      "type": "merge",
+      "label": "本次规划候选",
+      "inputs": {
+        "generated": {
+          "items": {
+            "additionalProperties": false,
+            "description": "章计划生成只提供规划，正式新章正文由服务置空。",
+            "properties": {
+              "title": {
+                "maxLength": 120,
+                "minLength": 1,
+                "title": "Title",
+                "type": "string"
+              },
+              "summary": {
+                "default": "",
+                "maxLength": 2000,
+                "title": "Summary",
+                "type": "string"
+              },
+              "planning": {
+                "additionalProperties": false,
+                "description": "当前章节计划；正文单独保存，人物视角可暂不选择。",
+                "properties": {
+                  "goal": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "Goal",
+                    "type": "string"
+                  },
+                  "start_state": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "Start State",
+                    "type": "string"
+                  },
+                  "end_state": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "End State",
+                    "type": "string"
+                  },
+                  "beats": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Beats",
+                    "type": "array"
+                  },
+                  "pov_character_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Pov Character Id"
+                  },
+                  "must_include": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Must Include",
+                    "type": "array"
+                  },
+                  "must_avoid": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Must Avoid",
+                    "type": "array"
+                  },
+                  "target_word_count": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Target Word Count"
+                  }
+                },
+                "title": "ChapterPlanV2",
+                "type": "object"
+              }
+            },
+            "required": [
+              "title"
+            ],
+            "title": "ChapterPlanCandidateV1",
+            "type": "object"
+          },
+          "maxItems": 20,
+          "title": "Chapters",
+          "type": "array"
+        },
+        "covered": {
+          "items": {
+            "additionalProperties": false,
+            "description": "章计划生成只提供规划，正式新章正文由服务置空。",
+            "properties": {
+              "title": {
+                "maxLength": 120,
+                "minLength": 1,
+                "title": "Title",
+                "type": "string"
+              },
+              "summary": {
+                "default": "",
+                "maxLength": 2000,
+                "title": "Summary",
+                "type": "string"
+              },
+              "planning": {
+                "additionalProperties": false,
+                "description": "当前章节计划；正文单独保存，人物视角可暂不选择。",
+                "properties": {
+                  "goal": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "Goal",
+                    "type": "string"
+                  },
+                  "start_state": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "Start State",
+                    "type": "string"
+                  },
+                  "end_state": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "End State",
+                    "type": "string"
+                  },
+                  "beats": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Beats",
+                    "type": "array"
+                  },
+                  "pov_character_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Pov Character Id"
+                  },
+                  "must_include": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Must Include",
+                    "type": "array"
+                  },
+                  "must_avoid": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Must Avoid",
+                    "type": "array"
+                  },
+                  "target_word_count": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Target Word Count"
+                  }
+                },
+                "title": "ChapterPlanV2",
+                "type": "object"
+              }
+            },
+            "required": [
+              "title"
+            ],
+            "title": "ChapterPlanCandidateV1",
+            "type": "object"
+          },
+          "maxItems": 20,
+          "title": "Chapters",
+          "type": "array"
+        }
+      },
+      "outputs": {
+        "chapters": {
+          "items": {
+            "additionalProperties": false,
+            "description": "章计划生成只提供规划，正式新章正文由服务置空。",
+            "properties": {
+              "title": {
+                "maxLength": 120,
+                "minLength": 1,
+                "title": "Title",
+                "type": "string"
+              },
+              "summary": {
+                "default": "",
+                "maxLength": 2000,
+                "title": "Summary",
+                "type": "string"
+              },
+              "planning": {
+                "additionalProperties": false,
+                "description": "当前章节计划；正文单独保存，人物视角可暂不选择。",
+                "properties": {
+                  "goal": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "Goal",
+                    "type": "string"
+                  },
+                  "start_state": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "Start State",
+                    "type": "string"
+                  },
+                  "end_state": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "End State",
+                    "type": "string"
+                  },
+                  "beats": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Beats",
+                    "type": "array"
+                  },
+                  "pov_character_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Pov Character Id"
+                  },
+                  "must_include": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Must Include",
+                    "type": "array"
+                  },
+                  "must_avoid": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Must Avoid",
+                    "type": "array"
+                  },
+                  "target_word_count": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Target Word Count"
+                  }
+                },
+                "title": "ChapterPlanV2",
+                "type": "object"
+              }
+            },
+            "required": [
+              "title"
+            ],
+            "title": "ChapterPlanCandidateV1",
+            "type": "object"
+          },
+          "maxItems": 20,
+          "title": "Chapters",
+          "type": "array"
+        }
+      },
+      "values": {},
+      "config": {
+        "mode": "selected",
+        "output_port": "chapters"
+      }
+    },
+    {
+      "id": "review_coverage",
+      "type": "llm",
+      "label": "检查覆盖与衔接",
+      "inputs": {
+        "chapters": {
+          "items": {
+            "additionalProperties": false,
+            "description": "章计划生成只提供规划，正式新章正文由服务置空。",
+            "properties": {
+              "title": {
+                "maxLength": 120,
+                "minLength": 1,
+                "title": "Title",
+                "type": "string"
+              },
+              "summary": {
+                "default": "",
+                "maxLength": 2000,
+                "title": "Summary",
+                "type": "string"
+              },
+              "planning": {
+                "additionalProperties": false,
+                "description": "当前章节计划；正文单独保存，人物视角可暂不选择。",
+                "properties": {
+                  "goal": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "Goal",
+                    "type": "string"
+                  },
+                  "start_state": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "Start State",
+                    "type": "string"
+                  },
+                  "end_state": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "End State",
+                    "type": "string"
+                  },
+                  "beats": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Beats",
+                    "type": "array"
+                  },
+                  "pov_character_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Pov Character Id"
+                  },
+                  "must_include": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Must Include",
+                    "type": "array"
+                  },
+                  "must_avoid": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Must Avoid",
+                    "type": "array"
+                  },
+                  "target_word_count": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Target Word Count"
+                  }
+                },
+                "title": "ChapterPlanV2",
+                "type": "object"
+              }
+            },
+            "required": [
+              "title"
+            ],
+            "title": "ChapterPlanCandidateV1",
+            "type": "object"
+          },
+          "maxItems": 20,
+          "title": "Chapters",
+          "type": "array"
+        },
+        "prepared_context": {
+          "additionalProperties": false,
+          "description": "下一步生成需要的固定资料报告；正式详情由服务端填入。",
+          "properties": {
+            "schema_version": {
+              "const": 1,
+              "default": 1,
+              "title": "Schema Version",
+              "type": "integer"
+            },
+            "target": {
+              "additionalProperties": false,
+              "description": "由服务端固定的小说和操作位置。",
+              "properties": {
+                "novel_id": {
+                  "maxLength": 24,
+                  "minLength": 24,
+                  "pattern": "^[0-9a-fA-F]{24}$",
+                  "title": "Novel Id",
+                  "type": "string"
+                },
+                "target_type": {
+                  "enum": [
+                    "volume",
+                    "arc",
+                    "scene",
+                    "chapter"
+                  ],
+                  "title": "Target Type",
+                  "type": "string"
+                },
+                "target_id": {
+                  "maxLength": 24,
+                  "minLength": 24,
+                  "pattern": "^[0-9a-fA-F]{24}$",
+                  "title": "Target Id",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "novel_id",
+                "target_type",
+                "target_id"
+              ],
+              "title": "PreparedTargetV1",
+              "type": "object"
+            },
+            "boundaries": {
+              "maxLength": 12000,
+              "minLength": 1,
+              "title": "Boundaries",
+              "type": "string"
+            },
+            "selected_entities": {
+              "additionalProperties": false,
+              "description": "作者选中的资料；不提供任意数据库读取参数。",
+              "properties": {
+                "character_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Character Ids",
+                  "type": "array"
+                },
+                "faction_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Faction Ids",
+                  "type": "array"
+                },
+                "location_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Location Ids",
+                  "type": "array"
+                },
+                "item_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Item Ids",
+                  "type": "array"
+                },
+                "rule_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Rule Ids",
+                  "type": "array"
+                }
+              },
+              "title": "WritingSelectionV1",
+              "type": "object"
+            },
+            "selection_reasons": {
+              "items": {
+                "additionalProperties": false,
+                "description": "采用已读实体的具体原因。",
+                "properties": {
+                  "resource_type": {
+                    "enum": [
+                      "character",
+                      "faction",
+                      "location",
+                      "item",
+                      "world_rule"
+                    ],
+                    "title": "Resource Type",
+                    "type": "string"
+                  },
+                  "id": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "title": "Id",
+                    "type": "string"
+                  },
+                  "reason": {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "title": "Reason",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "resource_type",
+                  "id",
+                  "reason"
+                ],
+                "title": "EntitySelectionReasonV1",
+                "type": "object"
+              },
+              "maxItems": 250,
+              "title": "Selection Reasons",
+              "type": "array"
+            },
+            "entity_needs": {
+              "items": {
+                "additionalProperties": false,
+                "description": "当前资料无法承担的一项剧情职责。",
+                "properties": {
+                  "resource_type": {
+                    "enum": [
+                      "character",
+                      "faction",
+                      "location",
+                      "item",
+                      "world_rule"
+                    ],
+                    "title": "Resource Type",
+                    "type": "string"
+                  },
+                  "role": {
+                    "maxLength": 1000,
+                    "minLength": 1,
+                    "title": "Role",
+                    "type": "string"
+                  },
+                  "reason": {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "title": "Reason",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "resource_type",
+                  "role",
+                  "reason"
+                ],
+                "title": "EntityNeedV1",
+                "type": "object"
+              },
+              "maxItems": 150,
+              "title": "Entity Needs",
+              "type": "array"
+            },
+            "new_counts": {
+              "additionalProperties": false,
+              "description": "各类新实体建议数量，最终仍由相应领域上限校验。",
+              "properties": {
+                "character": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Character",
+                  "type": "integer"
+                },
+                "faction": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Faction",
+                  "type": "integer"
+                },
+                "location": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Location",
+                  "type": "integer"
+                },
+                "item": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Item",
+                  "type": "integer"
+                },
+                "world_rule": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "World Rule",
+                  "type": "integer"
+                }
+              },
+              "title": "EntityNewCountsV1",
+              "type": "object"
+            },
+            "suggested_count": {
+              "description": "本次应新增的下级数量。仍有未覆盖剧情时为1至20；全部剧情已被现有下级覆盖时必须为0。遵守本次输入明确给定的固定数量，auto时自主估计。",
+              "maximum": 20,
+              "minimum": 0,
+              "title": "Suggested Count",
+              "type": "integer"
+            },
+            "coverage": {
+              "description": "分别说明已有下级已覆盖什么、还剩什么；当前没有下级时不能声称剧情已经覆盖。",
+              "maxLength": 12000,
+              "minLength": 1,
+              "title": "Coverage",
+              "type": "string"
+            },
+            "remaining": {
+              "description": "是否还有需要本次生成的未覆盖内容。true表示仍需生成，suggested_count必须大于0；false表示已有内容完整覆盖、无需新增，suggested_count必须为0。不是‘资料是否还需补齐’。",
+              "title": "Remaining",
+              "type": "boolean"
+            },
+            "missing_required": {
+              "items": {
+                "additionalProperties": false,
+                "description": "作者需要在指定位置补齐的内容。",
+                "properties": {
+                  "field": {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "title": "Field",
+                    "type": "string"
+                  },
+                  "message": {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "title": "Message",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "field",
+                  "message"
+                ],
+                "title": "PreparationMissingV1",
+                "type": "object"
+              },
+              "maxItems": 100,
+              "title": "Missing Required",
+              "type": "array"
+            },
+            "entity_details": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 250,
+              "title": "Entity Details",
+              "type": "array"
+            },
+            "volume_states": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 500,
+              "title": "Volume States",
+              "type": "array"
+            },
+            "relations": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 500,
+              "title": "Relations",
+              "type": "array"
+            },
+            "previous_text": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 100,
+              "title": "Previous Text",
+              "type": "array"
+            }
+          },
+          "required": [
+            "target",
+            "boundaries",
+            "suggested_count",
+            "coverage",
+            "remaining"
+          ],
+          "title": "PreparedContextV1",
+          "type": "object"
+        },
+        "writing_context": {
+          "type": "string"
+        },
+        "param_count": {
+          "default": 2,
+          "maximum": 20,
+          "minimum": 1,
+          "title": "生成数量",
+          "type": "integer",
+          "required": false
+        },
+        "param_user_guidance": {
+          "default": "",
+          "maxLength": 5000,
+          "title": "作者要求",
+          "type": "string",
+          "required": false
+        },
+        "param_target_word_count": {
+          "anyOf": [
+            {
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "目标字数",
+          "required": false
+        },
+        "param_search_text": {
+          "default": "",
+          "maxLength": 100,
+          "title": "检索文字",
+          "type": "string",
+          "required": false
+        },
+        "param_search_scope": {
+          "default": "current_part",
+          "enum": [
+            "novel",
+            "current_part"
+          ],
+          "title": "检索范围",
+          "type": "string",
+          "required": false
+        },
+        "param_count_mode": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "fixed"
+          ],
+          "title": "数量方式",
+          "type": "string"
+        },
+        "review_material": {
+          "type": "object",
+          "additionalProperties": true,
+          "default": {}
+        }
+      },
+      "outputs": {
+        "review": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "schema_version": {
+                  "type": "integer",
+                  "const": 1
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "issues": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "candidate_index": {
+                        "type": "integer"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "candidate_field": {
+                        "type": "string"
+                      },
+                      "candidate_quote": {
+                        "type": "string"
+                      },
+                      "source": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "resource_type": {
+                                "type": "string"
+                              },
+                              "id": {
+                                "type": "string"
+                              },
+                              "field": {
+                                "type": "string"
+                              },
+                              "quote": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "resource_type",
+                              "id",
+                              "field",
+                              "quote"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "verification": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "candidate": {
+                                "type": "string"
+                              },
+                              "source": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string"
+                              },
+                              "semantic_check": {
+                                "type": "string"
+                              },
+                              "source_truncated": {
+                                "anyOf": [
+                                  {
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "candidate_index",
+                      "message",
+                      "candidate_field",
+                      "candidate_quote",
+                      "source"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "schema_version",
+                "summary",
+                "issues"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "values": {},
+      "config": {
+        "mode": "json",
+        "prompt": "只检查这批候选的覆盖、重复、因果、起止状态和前后矛盾，不改写候选。数量、预算和实体引用已由代码检查通过，不重新裁定预算。facts中的候选数量、字段是否有值和数组长度是代码统计，直接采用这些统计值，不自行估计或扩大数量；已填字段不能报为缺失。每条意见用从1开始的candidate_index定位，candidate_field为候选内点分隔路径，数组下标从0开始（例如planning.key_beats.0），candidate_quote逐字引用该字符串字段。引用来源时填写source的resource_type、id、field和quote，只能引用sources实际提供的字段原文；没有来源时source为null。不要跨字段拼接引文，也不要把数字或整个数组当成原句。无可引用原句时仍可给出意见，空引文会显示未核实。原句存在只能证明文字匹配，不能证明意见结论正确；verification可填null，核验状态由服务端重新计算，你填写的状态不会被采信。preparation只是AI整理意见，选择理由和总结不是事实原文。已选实体不等于实际读过的实体，read_entity_refs记录本次实际读取过的详情。sources只是本次提供的资料，不是全书或完整阅读账本；没有出现在这里不能推出整书不存在或从未读取。正文excerpt可能截断，须保留truncated和truncation的限制，未给出的全文不能推断。sources_omitted大于0时还有资料未提供给本次审核。无候选且remaining为false时说明已覆盖。输出schema_version为1。\n审核原文、代码事实与整理意见：{review_material}\n候选：{chapters}",
+        "schema_prompt_file": "story_json_output.md",
+        "text_prompt_file": "story_json_output.md",
+        "candidate_check": "writing_planning_v1",
+        "review_evidence": "writing_review_v1"
+      }
+    },
+    {
+      "id": "result",
+      "type": "output",
+      "label": "审核候选",
+      "inputs": {
+        "chapters": {
+          "items": {
+            "additionalProperties": false,
+            "description": "章计划生成只提供规划，正式新章正文由服务置空。",
+            "properties": {
+              "title": {
+                "maxLength": 120,
+                "minLength": 1,
+                "title": "Title",
+                "type": "string"
+              },
+              "summary": {
+                "default": "",
+                "maxLength": 2000,
+                "title": "Summary",
+                "type": "string"
+              },
+              "planning": {
+                "additionalProperties": false,
+                "description": "当前章节计划；正文单独保存，人物视角可暂不选择。",
+                "properties": {
+                  "goal": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "Goal",
+                    "type": "string"
+                  },
+                  "start_state": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "Start State",
+                    "type": "string"
+                  },
+                  "end_state": {
+                    "default": "",
+                    "maxLength": 2000,
+                    "title": "End State",
+                    "type": "string"
+                  },
+                  "beats": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Beats",
+                    "type": "array"
+                  },
+                  "pov_character_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Pov Character Id"
+                  },
+                  "must_include": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Must Include",
+                    "type": "array"
+                  },
+                  "must_avoid": {
+                    "items": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "maxItems": 30,
+                    "title": "Must Avoid",
+                    "type": "array"
+                  },
+                  "target_word_count": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Target Word Count"
+                  }
+                },
+                "title": "ChapterPlanV2",
+                "type": "object"
+              }
+            },
+            "required": [
+              "title"
+            ],
+            "title": "ChapterPlanCandidateV1",
+            "type": "object"
+          },
+          "maxItems": 20,
+          "title": "Chapters",
+          "type": "array"
+        },
+        "param_count": {
+          "default": 2,
+          "maximum": 20,
+          "minimum": 1,
+          "title": "生成数量",
+          "type": "integer",
+          "required": false
+        },
+        "param_user_guidance": {
+          "default": "",
+          "maxLength": 5000,
+          "title": "作者要求",
+          "type": "string",
+          "required": false
+        },
+        "param_target_word_count": {
+          "anyOf": [
+            {
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "目标字数",
+          "required": false
+        },
+        "param_search_text": {
+          "default": "",
+          "maxLength": 100,
+          "title": "检索文字",
+          "type": "string",
+          "required": false
+        },
+        "param_search_scope": {
+          "default": "current_part",
+          "enum": [
+            "novel",
+            "current_part"
+          ],
+          "title": "检索范围",
+          "type": "string",
+          "required": false
+        },
+        "param_count_mode": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "fixed"
+          ],
+          "title": "数量方式",
+          "type": "string"
+        },
+        "prepared_context": {
+          "additionalProperties": false,
+          "description": "下一步生成需要的固定资料报告；正式详情由服务端填入。",
+          "properties": {
+            "schema_version": {
+              "const": 1,
+              "default": 1,
+              "title": "Schema Version",
+              "type": "integer"
+            },
+            "target": {
+              "additionalProperties": false,
+              "description": "由服务端固定的小说和操作位置。",
+              "properties": {
+                "novel_id": {
+                  "maxLength": 24,
+                  "minLength": 24,
+                  "pattern": "^[0-9a-fA-F]{24}$",
+                  "title": "Novel Id",
+                  "type": "string"
+                },
+                "target_type": {
+                  "enum": [
+                    "volume",
+                    "arc",
+                    "scene",
+                    "chapter"
+                  ],
+                  "title": "Target Type",
+                  "type": "string"
+                },
+                "target_id": {
+                  "maxLength": 24,
+                  "minLength": 24,
+                  "pattern": "^[0-9a-fA-F]{24}$",
+                  "title": "Target Id",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "novel_id",
+                "target_type",
+                "target_id"
+              ],
+              "title": "PreparedTargetV1",
+              "type": "object"
+            },
+            "boundaries": {
+              "maxLength": 12000,
+              "minLength": 1,
+              "title": "Boundaries",
+              "type": "string"
+            },
+            "selected_entities": {
+              "additionalProperties": false,
+              "description": "作者选中的资料；不提供任意数据库读取参数。",
+              "properties": {
+                "character_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Character Ids",
+                  "type": "array"
+                },
+                "faction_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Faction Ids",
+                  "type": "array"
+                },
+                "location_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Location Ids",
+                  "type": "array"
+                },
+                "item_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Item Ids",
+                  "type": "array"
+                },
+                "rule_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "title": "Rule Ids",
+                  "type": "array"
+                }
+              },
+              "title": "WritingSelectionV1",
+              "type": "object"
+            },
+            "selection_reasons": {
+              "items": {
+                "additionalProperties": false,
+                "description": "采用已读实体的具体原因。",
+                "properties": {
+                  "resource_type": {
+                    "enum": [
+                      "character",
+                      "faction",
+                      "location",
+                      "item",
+                      "world_rule"
+                    ],
+                    "title": "Resource Type",
+                    "type": "string"
+                  },
+                  "id": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "title": "Id",
+                    "type": "string"
+                  },
+                  "reason": {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "title": "Reason",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "resource_type",
+                  "id",
+                  "reason"
+                ],
+                "title": "EntitySelectionReasonV1",
+                "type": "object"
+              },
+              "maxItems": 250,
+              "title": "Selection Reasons",
+              "type": "array"
+            },
+            "entity_needs": {
+              "items": {
+                "additionalProperties": false,
+                "description": "当前资料无法承担的一项剧情职责。",
+                "properties": {
+                  "resource_type": {
+                    "enum": [
+                      "character",
+                      "faction",
+                      "location",
+                      "item",
+                      "world_rule"
+                    ],
+                    "title": "Resource Type",
+                    "type": "string"
+                  },
+                  "role": {
+                    "maxLength": 1000,
+                    "minLength": 1,
+                    "title": "Role",
+                    "type": "string"
+                  },
+                  "reason": {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "title": "Reason",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "resource_type",
+                  "role",
+                  "reason"
+                ],
+                "title": "EntityNeedV1",
+                "type": "object"
+              },
+              "maxItems": 150,
+              "title": "Entity Needs",
+              "type": "array"
+            },
+            "new_counts": {
+              "additionalProperties": false,
+              "description": "各类新实体建议数量，最终仍由相应领域上限校验。",
+              "properties": {
+                "character": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Character",
+                  "type": "integer"
+                },
+                "faction": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Faction",
+                  "type": "integer"
+                },
+                "location": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Location",
+                  "type": "integer"
+                },
+                "item": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "Item",
+                  "type": "integer"
+                },
+                "world_rule": {
+                  "default": 0,
+                  "maximum": 30,
+                  "minimum": 0,
+                  "title": "World Rule",
+                  "type": "integer"
+                }
+              },
+              "title": "EntityNewCountsV1",
+              "type": "object"
+            },
+            "suggested_count": {
+              "description": "本次应新增的下级数量。仍有未覆盖剧情时为1至20；全部剧情已被现有下级覆盖时必须为0。遵守本次输入明确给定的固定数量，auto时自主估计。",
+              "maximum": 20,
+              "minimum": 0,
+              "title": "Suggested Count",
+              "type": "integer"
+            },
+            "coverage": {
+              "description": "分别说明已有下级已覆盖什么、还剩什么；当前没有下级时不能声称剧情已经覆盖。",
+              "maxLength": 12000,
+              "minLength": 1,
+              "title": "Coverage",
+              "type": "string"
+            },
+            "remaining": {
+              "description": "是否还有需要本次生成的未覆盖内容。true表示仍需生成，suggested_count必须大于0；false表示已有内容完整覆盖、无需新增，suggested_count必须为0。不是‘资料是否还需补齐’。",
+              "title": "Remaining",
+              "type": "boolean"
+            },
+            "missing_required": {
+              "items": {
+                "additionalProperties": false,
+                "description": "作者需要在指定位置补齐的内容。",
+                "properties": {
+                  "field": {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "title": "Field",
+                    "type": "string"
+                  },
+                  "message": {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "title": "Message",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "field",
+                  "message"
+                ],
+                "title": "PreparationMissingV1",
+                "type": "object"
+              },
+              "maxItems": 100,
+              "title": "Missing Required",
+              "type": "array"
+            },
+            "entity_details": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 250,
+              "title": "Entity Details",
+              "type": "array"
+            },
+            "volume_states": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 500,
+              "title": "Volume States",
+              "type": "array"
+            },
+            "relations": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 500,
+              "title": "Relations",
+              "type": "array"
+            },
+            "previous_text": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 100,
+              "title": "Previous Text",
+              "type": "array"
+            }
+          },
+          "required": [
+            "target",
+            "boundaries",
+            "suggested_count",
+            "coverage",
+            "remaining"
+          ],
+          "title": "PreparedContextV1",
+          "type": "object"
+        },
+        "review": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "schema_version": {
+                  "type": "integer",
+                  "const": 1
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "issues": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "candidate_index": {
+                        "type": "integer"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "candidate_field": {
+                        "type": "string"
+                      },
+                      "candidate_quote": {
+                        "type": "string"
+                      },
+                      "source": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "resource_type": {
+                                "type": "string"
+                              },
+                              "id": {
+                                "type": "string"
+                              },
+                              "field": {
+                                "type": "string"
+                              },
+                              "quote": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "resource_type",
+                              "id",
+                              "field",
+                              "quote"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "verification": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "candidate": {
+                                "type": "string"
+                              },
+                              "source": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string"
+                              },
+                              "semantic_check": {
+                                "type": "string"
+                              },
+                              "source_truncated": {
+                                "anyOf": [
+                                  {
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "candidate_index",
+                      "message",
+                      "candidate_field",
+                      "candidate_quote",
+                      "source"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "schema_version",
+                "summary",
+                "issues"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "outputs": {},
+      "values": {},
+      "config": {
+        "candidate_fields": {
+          "chapters": "chapters"
+        },
+        "parameter_fields": {
+          "count": "param_count",
+          "user_guidance": "param_user_guidance",
+          "target_word_count": "param_target_word_count",
+          "search_text": "param_search_text",
+          "search_scope": "param_search_scope",
+          "count_mode": "param_count_mode"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "start-count-context-count",
+      "source": "start",
+      "source_port": "count",
+      "target": "context",
+      "target_port": "count",
+      "source_path": []
+    },
+    {
+      "id": "start-count-result-param_count",
+      "source": "start",
+      "source_port": "count",
+      "target": "result",
+      "target_port": "param_count",
+      "source_path": []
+    },
+    {
+      "id": "start-user_guidance-context-user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "context",
+      "target_port": "user_guidance",
+      "source_path": []
+    },
+    {
+      "id": "start-user_guidance-result-param_user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "result",
+      "target_port": "param_user_guidance",
+      "source_path": []
+    },
+    {
+      "id": "start-target_word_count-context-target_word_count",
+      "source": "start",
+      "source_port": "target_word_count",
+      "target": "context",
+      "target_port": "target_word_count",
+      "source_path": []
+    },
+    {
+      "id": "start-target_word_count-result-param_target_word_count",
+      "source": "start",
+      "source_port": "target_word_count",
+      "target": "result",
+      "target_port": "param_target_word_count",
+      "source_path": []
+    },
+    {
+      "id": "prepared-context-writing_context-generate-writing_context",
+      "source": "prepared_data",
+      "source_port": "writing_context",
+      "target": "generate",
+      "target_port": "writing_context",
+      "source_path": []
+    },
+    {
+      "id": "start-count_mode-context-count_mode",
+      "source": "start",
+      "source_port": "count_mode",
+      "target": "context",
+      "target_port": "count_mode",
+      "source_path": []
+    },
+    {
+      "id": "start-count_mode-result-param_count_mode",
+      "source": "start",
+      "source_port": "count_mode",
+      "target": "result",
+      "target_port": "param_count_mode",
+      "source_path": []
+    },
+    {
+      "id": "start-count-prepare-count",
+      "source": "start",
+      "source_port": "count",
+      "target": "prepare",
+      "target_port": "count",
+      "source_path": []
+    },
+    {
+      "id": "start-user_guidance-prepare-user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "prepare",
+      "target_port": "user_guidance",
+      "source_path": []
+    },
+    {
+      "id": "start-target_word_count-prepare-target_word_count",
+      "source": "start",
+      "source_port": "target_word_count",
+      "target": "prepare",
+      "target_port": "target_word_count",
+      "source_path": []
+    },
+    {
+      "id": "start-count_mode-prepare-count_mode",
+      "source": "start",
+      "source_port": "count_mode",
+      "target": "prepare",
+      "target_port": "count_mode",
+      "source_path": []
+    },
+    {
+      "id": "context-writing_context-prepare-writing_context",
+      "source": "context",
+      "source_port": "writing_context",
+      "target": "prepare",
+      "target_port": "writing_context",
+      "source_path": []
+    },
+    {
+      "id": "start-count-prepared_data-count",
+      "source": "start",
+      "source_port": "count",
+      "target": "prepared_data",
+      "target_port": "count",
+      "source_path": []
+    },
+    {
+      "id": "start-user_guidance-prepared_data-user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "prepared_data",
+      "target_port": "user_guidance",
+      "source_path": []
+    },
+    {
+      "id": "start-target_word_count-prepared_data-target_word_count",
+      "source": "start",
+      "source_port": "target_word_count",
+      "target": "prepared_data",
+      "target_port": "target_word_count",
+      "source_path": []
+    },
+    {
+      "id": "start-count_mode-prepared_data-count_mode",
+      "source": "start",
+      "source_port": "count_mode",
+      "target": "prepared_data",
+      "target_port": "count_mode",
+      "source_path": []
+    },
+    {
+      "id": "prepare-prepared_context-prepared_data-prepared_context",
+      "source": "prepare",
+      "source_port": "prepared_context",
+      "target": "prepared_data",
+      "target_port": "prepared_context",
+      "source_path": []
+    },
+    {
+      "id": "prepare-prepared_context-generate-prepared_context",
+      "source": "prepare",
+      "source_port": "prepared_context",
+      "target": "generate",
+      "target_port": "prepared_context",
+      "source_path": []
+    },
+    {
+      "id": "prepare-prepared_context-result-prepared_context",
+      "source": "prepare",
+      "source_port": "prepared_context",
+      "target": "result",
+      "target_port": "prepared_context",
+      "source_path": []
+    },
+    {
+      "id": "prepare-prepared_context-remaining-remaining",
+      "source": "prepare",
+      "source_port": "prepared_context",
+      "target": "remaining",
+      "target_port": "remaining",
+      "source_path": [
+        "remaining"
+      ]
+    },
+    {
+      "id": "generate-chapters-candidates-generated",
+      "source": "generate",
+      "source_port": "chapters",
+      "target": "candidates",
+      "target_port": "generated",
+      "source_path": []
+    },
+    {
+      "id": "covered-chapters-candidates-covered",
+      "source": "covered",
+      "source_port": "chapters",
+      "target": "candidates",
+      "target_port": "covered",
+      "source_path": []
+    },
+    {
+      "id": "candidates-chapters-result-chapters",
+      "source": "candidates",
+      "source_port": "chapters",
+      "target": "result",
+      "target_port": "chapters",
+      "source_path": []
+    },
+    {
+      "id": "candidates-chapters-review_coverage-chapters",
+      "source": "candidates",
+      "source_port": "chapters",
+      "target": "review_coverage",
+      "target_port": "chapters",
+      "source_path": []
+    },
+    {
+      "id": "prepare-prepared_context-review_coverage-prepared_context",
+      "source": "prepare",
+      "source_port": "prepared_context",
+      "target": "review_coverage",
+      "target_port": "prepared_context",
+      "source_path": []
+    },
+    {
+      "id": "review_coverage-review-result-review",
+      "source": "review_coverage",
+      "source_port": "review",
+      "target": "result",
+      "target_port": "review",
+      "source_path": []
+    },
+    {
+      "id": "prepared_data-writing_context-review_coverage-writing_context",
+      "source": "prepared_data",
+      "source_port": "writing_context",
+      "target": "review_coverage",
+      "target_port": "writing_context",
+      "source_path": []
+    },
+    {
+      "id": "start-count-review_coverage-param_count",
+      "source": "start",
+      "source_port": "count",
+      "target": "review_coverage",
+      "target_port": "param_count",
+      "source_path": []
+    },
+    {
+      "id": "start-user_guidance-review_coverage-param_user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "review_coverage",
+      "target_port": "param_user_guidance",
+      "source_path": []
+    },
+    {
+      "id": "start-target_word_count-review_coverage-param_target_word_count",
+      "source": "start",
+      "source_port": "target_word_count",
+      "target": "review_coverage",
+      "target_port": "param_target_word_count",
+      "source_path": []
+    },
+    {
+      "id": "start-count_mode-review_coverage-param_count_mode",
+      "source": "start",
+      "source_port": "count_mode",
+      "target": "review_coverage",
+      "target_port": "param_count_mode",
+      "source_path": []
+    }
+  ],
+  "control_edges": [
+    {
+      "id": "remaining-generate",
+      "source": "remaining",
+      "source_port": "yes",
+      "target": "generate"
+    },
+    {
+      "id": "remaining-covered",
+      "source": "remaining",
+      "source_port": "no",
+      "target": "covered"
+    }
+  ],
+  "subflows": {},
+  "editor": {
+    "positions": {
+      "start": {
+        "x": 0,
+        "y": 0
+      },
+      "context": {
+        "x": 360,
+        "y": 0
+      },
+      "prepare": {
+        "x": 720,
+        "y": 0
+      },
+      "prepared_data": {
+        "x": 1080,
+        "y": 0
+      },
+      "generate": {
+        "x": 0,
+        "y": 340
+      },
+      "remaining": {
+        "x": 360,
+        "y": 340
+      },
+      "covered": {
+        "x": 720,
+        "y": 340
+      },
+      "candidates": {
+        "x": 1080,
+        "y": 340
+      },
+      "review_coverage": {
+        "x": 0,
+        "y": 680
+      },
+      "result": {
+        "x": 360,
+        "y": 680
+      }
+    }
+  },
+  "max_node_executions": 1000
+}

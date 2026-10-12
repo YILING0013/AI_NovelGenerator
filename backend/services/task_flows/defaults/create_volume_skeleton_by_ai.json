@@ -1,0 +1,1199 @@
+{
+  "format_version": 1,
+  "id": "default_create_volume_skeleton_by_ai",
+  "task": "create_volume_skeleton_by_ai",
+  "revision": 1,
+  "name": "默认流程",
+  "default_provider": "",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "input",
+      "label": "开始",
+      "inputs": {},
+      "outputs": {
+        "target_volume_count": {
+          "maximum": 30,
+          "minimum": 1,
+          "title": "Target Volume Count",
+          "type": "integer",
+          "required": true,
+          "$defs": {
+            "VolumeOrderRangeV1": {
+              "additionalProperties": false,
+              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "properties": {
+                "start": {
+                  "minimum": 1,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "end": {
+                  "minimum": 1,
+                  "title": "End",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "title": "VolumeOrderRangeV1",
+              "type": "object"
+            }
+          },
+          "default": 3
+        },
+        "total_chapter_budget": {
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Total Chapter Budget",
+          "type": "integer",
+          "required": true,
+          "$defs": {
+            "VolumeOrderRangeV1": {
+              "additionalProperties": false,
+              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "properties": {
+                "start": {
+                  "minimum": 1,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "end": {
+                  "minimum": 1,
+                  "title": "End",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "title": "VolumeOrderRangeV1",
+              "type": "object"
+            }
+          },
+          "default": 60
+        },
+        "total_word_budget": {
+          "maximum": 10000000,
+          "minimum": 1,
+          "title": "Total Word Budget",
+          "type": "integer",
+          "required": true,
+          "$defs": {
+            "VolumeOrderRangeV1": {
+              "additionalProperties": false,
+              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "properties": {
+                "start": {
+                  "minimum": 1,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "end": {
+                  "minimum": 1,
+                  "title": "End",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "title": "VolumeOrderRangeV1",
+              "type": "object"
+            }
+          },
+          "default": 240000
+        },
+        "mode": {
+          "enum": [
+            "create",
+            "append",
+            "replan"
+          ],
+          "title": "Mode",
+          "type": "string",
+          "required": true,
+          "$defs": {
+            "VolumeOrderRangeV1": {
+              "additionalProperties": false,
+              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "properties": {
+                "start": {
+                  "minimum": 1,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "end": {
+                  "minimum": 1,
+                  "title": "End",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "title": "VolumeOrderRangeV1",
+              "type": "object"
+            }
+          }
+        },
+        "target_order_range": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VolumeOrderRangeV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "required": false,
+          "$defs": {
+            "VolumeOrderRangeV1": {
+              "additionalProperties": false,
+              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "properties": {
+                "start": {
+                  "minimum": 1,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "end": {
+                  "minimum": 1,
+                  "title": "End",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "title": "VolumeOrderRangeV1",
+              "type": "object"
+            }
+          }
+        },
+        "user_guidance": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "User Guidance",
+          "type": "string",
+          "required": false,
+          "$defs": {
+            "VolumeOrderRangeV1": {
+              "additionalProperties": false,
+              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "properties": {
+                "start": {
+                  "minimum": 1,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "end": {
+                  "minimum": 1,
+                  "title": "End",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "title": "VolumeOrderRangeV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "context",
+      "type": "context",
+      "label": "读取任务资料",
+      "inputs": {
+        "target_volume_count": {
+          "maximum": 30,
+          "minimum": 1,
+          "title": "Target Volume Count",
+          "type": "integer",
+          "required": true,
+          "$defs": {
+            "VolumeOrderRangeV1": {
+              "additionalProperties": false,
+              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "properties": {
+                "start": {
+                  "minimum": 1,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "end": {
+                  "minimum": 1,
+                  "title": "End",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "title": "VolumeOrderRangeV1",
+              "type": "object"
+            }
+          }
+        },
+        "total_chapter_budget": {
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Total Chapter Budget",
+          "type": "integer",
+          "required": true,
+          "$defs": {
+            "VolumeOrderRangeV1": {
+              "additionalProperties": false,
+              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "properties": {
+                "start": {
+                  "minimum": 1,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "end": {
+                  "minimum": 1,
+                  "title": "End",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "title": "VolumeOrderRangeV1",
+              "type": "object"
+            }
+          }
+        },
+        "total_word_budget": {
+          "maximum": 10000000,
+          "minimum": 1,
+          "title": "Total Word Budget",
+          "type": "integer",
+          "required": true,
+          "$defs": {
+            "VolumeOrderRangeV1": {
+              "additionalProperties": false,
+              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "properties": {
+                "start": {
+                  "minimum": 1,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "end": {
+                  "minimum": 1,
+                  "title": "End",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "title": "VolumeOrderRangeV1",
+              "type": "object"
+            }
+          }
+        },
+        "mode": {
+          "enum": [
+            "create",
+            "append",
+            "replan"
+          ],
+          "title": "Mode",
+          "type": "string",
+          "required": true,
+          "$defs": {
+            "VolumeOrderRangeV1": {
+              "additionalProperties": false,
+              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "properties": {
+                "start": {
+                  "minimum": 1,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "end": {
+                  "minimum": 1,
+                  "title": "End",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "title": "VolumeOrderRangeV1",
+              "type": "object"
+            }
+          }
+        },
+        "target_order_range": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VolumeOrderRangeV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "required": false,
+          "$defs": {
+            "VolumeOrderRangeV1": {
+              "additionalProperties": false,
+              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "properties": {
+                "start": {
+                  "minimum": 1,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "end": {
+                  "minimum": 1,
+                  "title": "End",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "title": "VolumeOrderRangeV1",
+              "type": "object"
+            }
+          }
+        },
+        "user_guidance": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "User Guidance",
+          "type": "string",
+          "required": false,
+          "$defs": {
+            "VolumeOrderRangeV1": {
+              "additionalProperties": false,
+              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "properties": {
+                "start": {
+                  "minimum": 1,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "end": {
+                  "minimum": 1,
+                  "title": "End",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "title": "VolumeOrderRangeV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "outputs": {
+        "active_world_rules": {
+          "type": "string"
+        },
+        "characters": {
+          "type": "string"
+        },
+        "existing_volumes": {
+          "type": "string"
+        },
+        "factions_and_relations": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "novel_profile": {
+          "type": "string"
+        },
+        "protagonists": {
+          "type": "string"
+        },
+        "target_order_range": {
+          "type": "string"
+        },
+        "target_volume_count": {
+          "type": "integer"
+        },
+        "total_chapter_budget": {
+          "type": "integer"
+        },
+        "total_word_budget": {
+          "type": "integer"
+        },
+        "user_guidance": {
+          "type": "string"
+        },
+        "worldview_summary": {
+          "type": "string"
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "create_volume_skeleton",
+      "type": "llm",
+      "label": "create_volume_skeleton",
+      "inputs": {
+        "active_world_rules": {
+          "type": "string"
+        },
+        "characters": {
+          "type": "string"
+        },
+        "existing_volumes": {
+          "type": "string"
+        },
+        "factions_and_relations": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "novel_profile": {
+          "type": "string"
+        },
+        "protagonists": {
+          "type": "string"
+        },
+        "target_order_range": {
+          "type": "string"
+        },
+        "target_volume_count": {
+          "type": "integer"
+        },
+        "total_chapter_budget": {
+          "type": "integer"
+        },
+        "total_word_budget": {
+          "type": "integer"
+        },
+        "user_guidance": {
+          "type": "string"
+        },
+        "worldview_summary": {
+          "type": "string"
+        }
+      },
+      "outputs": {
+        "volumes": {
+          "items": {
+            "$ref": "#/$defs/VolumeSkeletonCandidateV1"
+          },
+          "maxItems": 30,
+          "minItems": 1,
+          "title": "Volumes",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "VolumePlanningV1": {
+              "additionalProperties": false,
+              "description": "一卷唯一正式规划或启动包字段。",
+              "properties": {
+                "premise": {
+                  "maxLength": 1000,
+                  "title": "Premise",
+                  "type": "string"
+                },
+                "major_conflict": {
+                  "maxLength": 2000,
+                  "title": "Major Conflict",
+                  "type": "string"
+                },
+                "key_turning_points": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "title": "Key Turning Points",
+                  "type": "array"
+                },
+                "start_state": {
+                  "maxLength": 2000,
+                  "title": "Start State",
+                  "type": "string"
+                },
+                "end_state": {
+                  "maxLength": 2000,
+                  "title": "End State",
+                  "type": "string"
+                },
+                "target_chapter_count": {
+                  "maximum": 1000,
+                  "minimum": 1,
+                  "title": "Target Chapter Count",
+                  "type": "integer"
+                },
+                "target_word_count": {
+                  "maximum": 10000000,
+                  "minimum": 1,
+                  "title": "Target Word Count",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "premise",
+                "major_conflict",
+                "key_turning_points",
+                "start_state",
+                "end_state",
+                "target_chapter_count",
+                "target_word_count"
+              ],
+              "title": "VolumePlanningV1",
+              "type": "object"
+            },
+            "VolumeSkeletonCandidateV1": {
+              "additionalProperties": false,
+              "description": "模型可输出且用户可编辑的一条卷骨架候选。",
+              "properties": {
+                "candidate_ref": {
+                  "maxLength": 100,
+                  "minLength": 3,
+                  "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+){1,5}$",
+                  "title": "Candidate Ref",
+                  "type": "string"
+                },
+                "title": {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "title": "Title",
+                  "type": "string"
+                },
+                "subtitle": {
+                  "maxLength": 120,
+                  "title": "Subtitle",
+                  "type": "string"
+                },
+                "order_index": {
+                  "minimum": 1,
+                  "title": "Order Index",
+                  "type": "integer"
+                },
+                "summary": {
+                  "maxLength": 2000,
+                  "title": "Summary",
+                  "type": "string"
+                },
+                "goal": {
+                  "maxLength": 1000,
+                  "title": "Goal",
+                  "type": "string"
+                },
+                "theme": {
+                  "maxLength": 500,
+                  "title": "Theme",
+                  "type": "string"
+                },
+                "planning": {
+                  "$ref": "#/$defs/VolumePlanningV1"
+                }
+              },
+              "required": [
+                "candidate_ref",
+                "title",
+                "subtitle",
+                "order_index",
+                "summary",
+                "goal",
+                "theme",
+                "planning"
+              ],
+              "title": "VolumeSkeletonCandidateV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "values": {},
+      "config": {
+        "mode": "json",
+        "provider": "",
+        "model": "",
+        "parameters": {},
+        "prompt_separator": "\n\n",
+        "prompt_file": "create_volume_skeleton_prompt.md",
+        "schema_prompt_file": "create_volume_skeleton_schema_prompt.md",
+        "text_prompt_file": "create_volume_skeleton_text_prompt.md"
+      }
+    },
+    {
+      "id": "result",
+      "type": "output",
+      "label": "任务结果",
+      "inputs": {
+        "volumes": {
+          "items": {
+            "$ref": "#/$defs/VolumeSkeletonCandidateV1"
+          },
+          "maxItems": 30,
+          "minItems": 1,
+          "title": "Volumes",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "VolumePlanningV1": {
+              "additionalProperties": false,
+              "description": "一卷唯一正式规划或启动包字段。",
+              "properties": {
+                "premise": {
+                  "maxLength": 1000,
+                  "title": "Premise",
+                  "type": "string"
+                },
+                "major_conflict": {
+                  "maxLength": 2000,
+                  "title": "Major Conflict",
+                  "type": "string"
+                },
+                "key_turning_points": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "title": "Key Turning Points",
+                  "type": "array"
+                },
+                "start_state": {
+                  "maxLength": 2000,
+                  "title": "Start State",
+                  "type": "string"
+                },
+                "end_state": {
+                  "maxLength": 2000,
+                  "title": "End State",
+                  "type": "string"
+                },
+                "target_chapter_count": {
+                  "maximum": 1000,
+                  "minimum": 1,
+                  "title": "Target Chapter Count",
+                  "type": "integer"
+                },
+                "target_word_count": {
+                  "maximum": 10000000,
+                  "minimum": 1,
+                  "title": "Target Word Count",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "premise",
+                "major_conflict",
+                "key_turning_points",
+                "start_state",
+                "end_state",
+                "target_chapter_count",
+                "target_word_count"
+              ],
+              "title": "VolumePlanningV1",
+              "type": "object"
+            },
+            "VolumeSkeletonCandidateV1": {
+              "additionalProperties": false,
+              "description": "模型可输出且用户可编辑的一条卷骨架候选。",
+              "properties": {
+                "candidate_ref": {
+                  "maxLength": 100,
+                  "minLength": 3,
+                  "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+){1,5}$",
+                  "title": "Candidate Ref",
+                  "type": "string"
+                },
+                "title": {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "title": "Title",
+                  "type": "string"
+                },
+                "subtitle": {
+                  "maxLength": 120,
+                  "title": "Subtitle",
+                  "type": "string"
+                },
+                "order_index": {
+                  "minimum": 1,
+                  "title": "Order Index",
+                  "type": "integer"
+                },
+                "summary": {
+                  "maxLength": 2000,
+                  "title": "Summary",
+                  "type": "string"
+                },
+                "goal": {
+                  "maxLength": 1000,
+                  "title": "Goal",
+                  "type": "string"
+                },
+                "theme": {
+                  "maxLength": 500,
+                  "title": "Theme",
+                  "type": "string"
+                },
+                "planning": {
+                  "$ref": "#/$defs/VolumePlanningV1"
+                }
+              },
+              "required": [
+                "candidate_ref",
+                "title",
+                "subtitle",
+                "order_index",
+                "summary",
+                "goal",
+                "theme",
+                "planning"
+              ],
+              "title": "VolumeSkeletonCandidateV1",
+              "type": "object"
+            }
+          }
+        },
+        "param_target_volume_count": {
+          "maximum": 30,
+          "minimum": 1,
+          "title": "Target Volume Count",
+          "type": "integer",
+          "required": true,
+          "$defs": {
+            "VolumeOrderRangeV1": {
+              "additionalProperties": false,
+              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "properties": {
+                "start": {
+                  "minimum": 1,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "end": {
+                  "minimum": 1,
+                  "title": "End",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "title": "VolumeOrderRangeV1",
+              "type": "object"
+            }
+          }
+        },
+        "param_total_chapter_budget": {
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Total Chapter Budget",
+          "type": "integer",
+          "required": true,
+          "$defs": {
+            "VolumeOrderRangeV1": {
+              "additionalProperties": false,
+              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "properties": {
+                "start": {
+                  "minimum": 1,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "end": {
+                  "minimum": 1,
+                  "title": "End",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "title": "VolumeOrderRangeV1",
+              "type": "object"
+            }
+          }
+        },
+        "param_total_word_budget": {
+          "maximum": 10000000,
+          "minimum": 1,
+          "title": "Total Word Budget",
+          "type": "integer",
+          "required": true,
+          "$defs": {
+            "VolumeOrderRangeV1": {
+              "additionalProperties": false,
+              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "properties": {
+                "start": {
+                  "minimum": 1,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "end": {
+                  "minimum": 1,
+                  "title": "End",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "title": "VolumeOrderRangeV1",
+              "type": "object"
+            }
+          }
+        },
+        "param_mode": {
+          "enum": [
+            "create",
+            "append",
+            "replan"
+          ],
+          "title": "Mode",
+          "type": "string",
+          "required": true,
+          "$defs": {
+            "VolumeOrderRangeV1": {
+              "additionalProperties": false,
+              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "properties": {
+                "start": {
+                  "minimum": 1,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "end": {
+                  "minimum": 1,
+                  "title": "End",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "title": "VolumeOrderRangeV1",
+              "type": "object"
+            }
+          }
+        },
+        "param_target_order_range": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VolumeOrderRangeV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "required": false,
+          "$defs": {
+            "VolumeOrderRangeV1": {
+              "additionalProperties": false,
+              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "properties": {
+                "start": {
+                  "minimum": 1,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "end": {
+                  "minimum": 1,
+                  "title": "End",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "title": "VolumeOrderRangeV1",
+              "type": "object"
+            }
+          }
+        },
+        "param_user_guidance": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "User Guidance",
+          "type": "string",
+          "required": false,
+          "$defs": {
+            "VolumeOrderRangeV1": {
+              "additionalProperties": false,
+              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "properties": {
+                "start": {
+                  "minimum": 1,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "end": {
+                  "minimum": 1,
+                  "title": "End",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "title": "VolumeOrderRangeV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "outputs": {},
+      "values": {},
+      "config": {
+        "candidate_fields": {
+          "volumes": "volumes"
+        },
+        "parameter_fields": {
+          "target_volume_count": "param_target_volume_count",
+          "total_chapter_budget": "param_total_chapter_budget",
+          "total_word_budget": "param_total_word_budget",
+          "mode": "param_mode",
+          "target_order_range": "param_target_order_range",
+          "user_guidance": "param_user_guidance"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "start-target_volume_count-context-target_volume_count",
+      "source": "start",
+      "source_port": "target_volume_count",
+      "target": "context",
+      "target_port": "target_volume_count"
+    },
+    {
+      "id": "start-total_chapter_budget-context-total_chapter_budget",
+      "source": "start",
+      "source_port": "total_chapter_budget",
+      "target": "context",
+      "target_port": "total_chapter_budget"
+    },
+    {
+      "id": "start-total_word_budget-context-total_word_budget",
+      "source": "start",
+      "source_port": "total_word_budget",
+      "target": "context",
+      "target_port": "total_word_budget"
+    },
+    {
+      "id": "start-mode-context-mode",
+      "source": "start",
+      "source_port": "mode",
+      "target": "context",
+      "target_port": "mode"
+    },
+    {
+      "id": "start-target_order_range-context-target_order_range",
+      "source": "start",
+      "source_port": "target_order_range",
+      "target": "context",
+      "target_port": "target_order_range"
+    },
+    {
+      "id": "start-user_guidance-context-user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "context",
+      "target_port": "user_guidance"
+    },
+    {
+      "id": "context-active_world_rules-create_volume_skeleton-active_world_rules",
+      "source": "context",
+      "source_port": "active_world_rules",
+      "target": "create_volume_skeleton",
+      "target_port": "active_world_rules"
+    },
+    {
+      "id": "context-characters-create_volume_skeleton-characters",
+      "source": "context",
+      "source_port": "characters",
+      "target": "create_volume_skeleton",
+      "target_port": "characters"
+    },
+    {
+      "id": "context-existing_volumes-create_volume_skeleton-existing_volumes",
+      "source": "context",
+      "source_port": "existing_volumes",
+      "target": "create_volume_skeleton",
+      "target_port": "existing_volumes"
+    },
+    {
+      "id": "context-factions_and_relations-create_volume_skeleton-factions_and_relations",
+      "source": "context",
+      "source_port": "factions_and_relations",
+      "target": "create_volume_skeleton",
+      "target_port": "factions_and_relations"
+    },
+    {
+      "id": "context-mode-create_volume_skeleton-mode",
+      "source": "context",
+      "source_port": "mode",
+      "target": "create_volume_skeleton",
+      "target_port": "mode"
+    },
+    {
+      "id": "context-novel_profile-create_volume_skeleton-novel_profile",
+      "source": "context",
+      "source_port": "novel_profile",
+      "target": "create_volume_skeleton",
+      "target_port": "novel_profile"
+    },
+    {
+      "id": "context-protagonists-create_volume_skeleton-protagonists",
+      "source": "context",
+      "source_port": "protagonists",
+      "target": "create_volume_skeleton",
+      "target_port": "protagonists"
+    },
+    {
+      "id": "context-target_order_range-create_volume_skeleton-target_order_range",
+      "source": "context",
+      "source_port": "target_order_range",
+      "target": "create_volume_skeleton",
+      "target_port": "target_order_range"
+    },
+    {
+      "id": "context-target_volume_count-create_volume_skeleton-target_volume_count",
+      "source": "context",
+      "source_port": "target_volume_count",
+      "target": "create_volume_skeleton",
+      "target_port": "target_volume_count"
+    },
+    {
+      "id": "context-total_chapter_budget-create_volume_skeleton-total_chapter_budget",
+      "source": "context",
+      "source_port": "total_chapter_budget",
+      "target": "create_volume_skeleton",
+      "target_port": "total_chapter_budget"
+    },
+    {
+      "id": "context-total_word_budget-create_volume_skeleton-total_word_budget",
+      "source": "context",
+      "source_port": "total_word_budget",
+      "target": "create_volume_skeleton",
+      "target_port": "total_word_budget"
+    },
+    {
+      "id": "context-user_guidance-create_volume_skeleton-user_guidance",
+      "source": "context",
+      "source_port": "user_guidance",
+      "target": "create_volume_skeleton",
+      "target_port": "user_guidance"
+    },
+    {
+      "id": "context-worldview_summary-create_volume_skeleton-worldview_summary",
+      "source": "context",
+      "source_port": "worldview_summary",
+      "target": "create_volume_skeleton",
+      "target_port": "worldview_summary"
+    },
+    {
+      "id": "create_volume_skeleton-volumes-result-volumes",
+      "source": "create_volume_skeleton",
+      "source_port": "volumes",
+      "target": "result",
+      "target_port": "volumes"
+    },
+    {
+      "id": "start-target_volume_count-result-param_target_volume_count",
+      "source": "start",
+      "source_port": "target_volume_count",
+      "target": "result",
+      "target_port": "param_target_volume_count"
+    },
+    {
+      "id": "start-total_chapter_budget-result-param_total_chapter_budget",
+      "source": "start",
+      "source_port": "total_chapter_budget",
+      "target": "result",
+      "target_port": "param_total_chapter_budget"
+    },
+    {
+      "id": "start-total_word_budget-result-param_total_word_budget",
+      "source": "start",
+      "source_port": "total_word_budget",
+      "target": "result",
+      "target_port": "param_total_word_budget"
+    },
+    {
+      "id": "start-mode-result-param_mode",
+      "source": "start",
+      "source_port": "mode",
+      "target": "result",
+      "target_port": "param_mode"
+    },
+    {
+      "id": "start-target_order_range-result-param_target_order_range",
+      "source": "start",
+      "source_port": "target_order_range",
+      "target": "result",
+      "target_port": "param_target_order_range"
+    },
+    {
+      "id": "start-user_guidance-result-param_user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "result",
+      "target_port": "param_user_guidance"
+    }
+  ],
+  "control_edges": [],
+  "subflows": {},
+  "editor": {
+    "positions": {
+      "start": {
+        "x": 0,
+        "y": 80
+      },
+      "context": {
+        "x": 340,
+        "y": 80
+      },
+      "create_volume_skeleton": {
+        "x": 680,
+        "y": 80
+      },
+      "result": {
+        "x": 1020,
+        "y": 80
+      }
+    }
+  },
+  "max_node_executions": 1000
+}

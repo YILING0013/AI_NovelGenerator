@@ -1,0 +1,253 @@
+{
+  "format_version": 1,
+  "id": "default_check_chapter_world_rules_by_ai",
+  "task": "check_chapter_world_rules_by_ai",
+  "revision": 1,
+  "name": "默认流程",
+  "default_provider": "",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "input",
+      "label": "开始",
+      "inputs": {},
+      "outputs": {
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "title": "Provider",
+          "required": true
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "context",
+      "type": "context",
+      "label": "读取章正文和所选世界规则",
+      "inputs": {},
+      "outputs": {
+        "chapter_content": {
+          "type": "string"
+        },
+        "world_rules_context": {
+          "type": "string"
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "check_chapter_world_rules",
+      "type": "llm",
+      "label": "检查所选世界规则疑点",
+      "inputs": {
+        "chapter_content": {
+          "type": "string"
+        },
+        "world_rules_context": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "title": "Provider",
+          "required": true
+        }
+      },
+      "outputs": {
+        "issues": {
+          "items": {
+            "$ref": "#/$defs/ChapterWorldRulesCheckIssueV1"
+          },
+          "maxItems": 10,
+          "title": "Issues",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "ChapterWorldRulesCheckIssueV1": {
+              "additionalProperties": false,
+              "description": "模型只提供疑点、所选规则编号和原章引文。",
+              "properties": {
+                "text": {
+                  "title": "Text",
+                  "type": "string"
+                },
+                "rule_ids": {
+                  "items": {
+                    "pattern": "^rule_[0-9]{6,}$",
+                    "type": "string"
+                  },
+                  "maxItems": 5,
+                  "minItems": 1,
+                  "title": "Rule Ids",
+                  "type": "array"
+                },
+                "start": {
+                  "description": "从零开始的 Unicode 码点位置，不是 UTF-16 下标。",
+                  "maximum": 2147483647,
+                  "minimum": 0,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "quote": {
+                  "maxLength": 10000,
+                  "minLength": 1,
+                  "title": "Quote",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "text",
+                "rule_ids",
+                "start",
+                "quote"
+              ],
+              "title": "ChapterWorldRulesCheckIssueV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "values": {},
+      "config": {
+        "mode": "json",
+        "provider": "",
+        "model": "",
+        "parameters": {},
+        "provider_input": "provider",
+        "prompt_file": "check_chapter_world_rules_prompt.md",
+        "preserve_prompt_whitespace": true
+      }
+    },
+    {
+      "id": "result",
+      "type": "output",
+      "label": "检查结果",
+      "inputs": {
+        "issues": {
+          "items": {
+            "$ref": "#/$defs/ChapterWorldRulesCheckIssueV1"
+          },
+          "maxItems": 10,
+          "title": "Issues",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "ChapterWorldRulesCheckIssueV1": {
+              "additionalProperties": false,
+              "description": "模型只提供疑点、所选规则编号和原章引文。",
+              "properties": {
+                "text": {
+                  "title": "Text",
+                  "type": "string"
+                },
+                "rule_ids": {
+                  "items": {
+                    "pattern": "^rule_[0-9]{6,}$",
+                    "type": "string"
+                  },
+                  "maxItems": 5,
+                  "minItems": 1,
+                  "title": "Rule Ids",
+                  "type": "array"
+                },
+                "start": {
+                  "description": "从零开始的 Unicode 码点位置，不是 UTF-16 下标。",
+                  "maximum": 2147483647,
+                  "minimum": 0,
+                  "title": "Start",
+                  "type": "integer"
+                },
+                "quote": {
+                  "maxLength": 10000,
+                  "minLength": 1,
+                  "title": "Quote",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "text",
+                "rule_ids",
+                "start",
+                "quote"
+              ],
+              "title": "ChapterWorldRulesCheckIssueV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "outputs": {},
+      "values": {},
+      "config": {
+        "candidate_fields": {
+          "issues": "issues"
+        },
+        "parameter_fields": {}
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "context-chapter_content-check",
+      "source": "context",
+      "source_port": "chapter_content",
+      "target": "check_chapter_world_rules",
+      "target_port": "chapter_content"
+    },
+    {
+      "id": "context-world_rules_context-check",
+      "source": "context",
+      "source_port": "world_rules_context",
+      "target": "check_chapter_world_rules",
+      "target_port": "world_rules_context"
+    },
+    {
+      "id": "start-provider-check",
+      "source": "start",
+      "source_port": "provider",
+      "target": "check_chapter_world_rules",
+      "target_port": "provider"
+    },
+    {
+      "id": "check-issues-result",
+      "source": "check_chapter_world_rules",
+      "source_port": "issues",
+      "target": "result",
+      "target_port": "issues"
+    }
+  ],
+  "control_edges": [
+    {
+      "id": "start-context",
+      "source": "start",
+      "target": "context"
+    }
+  ],
+  "subflows": {},
+  "editor": {
+    "positions": {
+      "start": {
+        "x": 0,
+        "y": 80
+      },
+      "context": {
+        "x": 340,
+        "y": 80
+      },
+      "result": {
+        "x": 1020,
+        "y": 80
+      },
+      "check_chapter_world_rules": {
+        "x": 680,
+        "y": 80
+      }
+    }
+  },
+  "max_node_executions": 1000
+}

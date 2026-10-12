@@ -1,0 +1,596 @@
+{
+  "format_version": 1,
+  "id": "default_create_world_rules_by_ai",
+  "task": "create_world_rules_by_ai",
+  "revision": 1,
+  "name": "默认流程",
+  "default_provider": "",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "input",
+      "label": "开始",
+      "inputs": {},
+      "outputs": {
+        "core_rule_count": {
+          "default": 5,
+          "maximum": 20,
+          "minimum": 1,
+          "title": "Core Rule Count",
+          "type": "integer",
+          "required": false
+        },
+        "allow_incremental": {
+          "default": true,
+          "title": "Allow Incremental",
+          "type": "boolean",
+          "required": false
+        },
+        "user_guidance": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "User Guidance",
+          "type": "string",
+          "required": false
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "context",
+      "type": "context",
+      "label": "读取任务资料",
+      "inputs": {
+        "core_rule_count": {
+          "default": 6,
+          "maximum": 20,
+          "minimum": 1,
+          "title": "Core Rule Count",
+          "type": "integer",
+          "required": false
+        },
+        "allow_incremental": {
+          "default": false,
+          "title": "Allow Incremental",
+          "type": "boolean",
+          "required": false
+        },
+        "user_guidance": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "User Guidance",
+          "type": "string",
+          "required": false
+        }
+      },
+      "outputs": {
+        "allow_incremental": {
+          "type": "string"
+        },
+        "characters": {
+          "type": "string"
+        },
+        "core_rule_count": {
+          "type": "integer"
+        },
+        "existing_world_rules": {
+          "type": "string"
+        },
+        "faction_relations": {
+          "type": "string"
+        },
+        "factions": {
+          "type": "string"
+        },
+        "novel_summary": {
+          "type": "string"
+        },
+        "protagonists": {
+          "type": "string"
+        },
+        "user_guidance": {
+          "type": "string"
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "create_core_world_rules",
+      "type": "llm",
+      "label": "create_core_world_rules",
+      "inputs": {
+        "allow_incremental": {
+          "type": "string"
+        },
+        "characters": {
+          "type": "string"
+        },
+        "core_rule_count": {
+          "type": "integer"
+        },
+        "existing_world_rules": {
+          "type": "string"
+        },
+        "faction_relations": {
+          "type": "string"
+        },
+        "factions": {
+          "type": "string"
+        },
+        "novel_summary": {
+          "type": "string"
+        },
+        "protagonists": {
+          "type": "string"
+        },
+        "user_guidance": {
+          "type": "string"
+        }
+      },
+      "outputs": {
+        "core_world_rules": {
+          "items": {
+            "$ref": "#/$defs/WorldRuleCandidateV1"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Core World Rules",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "WorldRuleCandidateExceptionV1": {
+              "additionalProperties": false,
+              "description": "一条候选规则的例外条件及生效结果。",
+              "properties": {
+                "condition": {
+                  "maxLength": 500,
+                  "minLength": 1,
+                  "title": "Condition",
+                  "type": "string"
+                },
+                "effect": {
+                  "maxLength": 500,
+                  "minLength": 1,
+                  "title": "Effect",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "condition",
+                "effect"
+              ],
+              "title": "WorldRuleCandidateExceptionV1",
+              "type": "object"
+            },
+            "WorldRuleCandidateV1": {
+              "additionalProperties": false,
+              "description": "模型可输出且用户可编辑的一条世界规则候选。",
+              "properties": {
+                "candidate_ref": {
+                  "pattern": "^rule_candidate_[0-9]+$",
+                  "title": "Candidate Ref",
+                  "type": "string"
+                },
+                "name": {
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Name",
+                  "type": "string"
+                },
+                "category": {
+                  "maxLength": 40,
+                  "minLength": 1,
+                  "title": "Category",
+                  "type": "string"
+                },
+                "statement": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Statement",
+                  "type": "string"
+                },
+                "scope_type": {
+                  "enum": [
+                    "global",
+                    "faction",
+                    "character"
+                  ],
+                  "title": "Scope Type",
+                  "type": "string"
+                },
+                "scope_entity_ids": {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 100,
+                  "title": "Scope Entity Ids",
+                  "type": "array"
+                },
+                "enforcement": {
+                  "maxLength": 1000,
+                  "title": "Enforcement",
+                  "type": "string"
+                },
+                "exceptions": {
+                  "items": {
+                    "$ref": "#/$defs/WorldRuleCandidateExceptionV1"
+                  },
+                  "maxItems": 20,
+                  "title": "Exceptions",
+                  "type": "array"
+                },
+                "costs_and_consequences": {
+                  "items": {
+                    "maxLength": 500,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "title": "Costs And Consequences",
+                  "type": "array"
+                },
+                "priority": {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "title": "Priority",
+                  "type": "integer"
+                },
+                "tags": {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "title": "Tags",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "candidate_ref",
+                "name",
+                "category",
+                "statement",
+                "scope_type",
+                "scope_entity_ids",
+                "enforcement",
+                "exceptions",
+                "costs_and_consequences",
+                "priority",
+                "tags"
+              ],
+              "title": "WorldRuleCandidateV1",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "values": {},
+      "config": {
+        "mode": "json",
+        "provider": "",
+        "model": "",
+        "parameters": {},
+        "prompt_separator": "\n\n",
+        "prompt_file": "create_core_world_rules_prompt.md",
+        "schema_prompt_file": "create_core_world_rules_schema_prompt.md",
+        "text_prompt_file": "create_core_world_rules_text_prompt.md"
+      }
+    },
+    {
+      "id": "result",
+      "type": "output",
+      "label": "任务结果",
+      "inputs": {
+        "core_world_rules": {
+          "items": {
+            "$ref": "#/$defs/WorldRuleCandidateV1"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Core World Rules",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "WorldRuleCandidateExceptionV1": {
+              "additionalProperties": false,
+              "description": "一条候选规则的例外条件及生效结果。",
+              "properties": {
+                "condition": {
+                  "maxLength": 500,
+                  "minLength": 1,
+                  "title": "Condition",
+                  "type": "string"
+                },
+                "effect": {
+                  "maxLength": 500,
+                  "minLength": 1,
+                  "title": "Effect",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "condition",
+                "effect"
+              ],
+              "title": "WorldRuleCandidateExceptionV1",
+              "type": "object"
+            },
+            "WorldRuleCandidateV1": {
+              "additionalProperties": false,
+              "description": "模型可输出且用户可编辑的一条世界规则候选。",
+              "properties": {
+                "candidate_ref": {
+                  "pattern": "^rule_candidate_[0-9]+$",
+                  "title": "Candidate Ref",
+                  "type": "string"
+                },
+                "name": {
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Name",
+                  "type": "string"
+                },
+                "category": {
+                  "maxLength": 40,
+                  "minLength": 1,
+                  "title": "Category",
+                  "type": "string"
+                },
+                "statement": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Statement",
+                  "type": "string"
+                },
+                "scope_type": {
+                  "enum": [
+                    "global",
+                    "faction",
+                    "character"
+                  ],
+                  "title": "Scope Type",
+                  "type": "string"
+                },
+                "scope_entity_ids": {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 100,
+                  "title": "Scope Entity Ids",
+                  "type": "array"
+                },
+                "enforcement": {
+                  "maxLength": 1000,
+                  "title": "Enforcement",
+                  "type": "string"
+                },
+                "exceptions": {
+                  "items": {
+                    "$ref": "#/$defs/WorldRuleCandidateExceptionV1"
+                  },
+                  "maxItems": 20,
+                  "title": "Exceptions",
+                  "type": "array"
+                },
+                "costs_and_consequences": {
+                  "items": {
+                    "maxLength": 500,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "title": "Costs And Consequences",
+                  "type": "array"
+                },
+                "priority": {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "title": "Priority",
+                  "type": "integer"
+                },
+                "tags": {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "title": "Tags",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "candidate_ref",
+                "name",
+                "category",
+                "statement",
+                "scope_type",
+                "scope_entity_ids",
+                "enforcement",
+                "exceptions",
+                "costs_and_consequences",
+                "priority",
+                "tags"
+              ],
+              "title": "WorldRuleCandidateV1",
+              "type": "object"
+            }
+          }
+        },
+        "param_core_rule_count": {
+          "default": 6,
+          "maximum": 20,
+          "minimum": 1,
+          "title": "Core Rule Count",
+          "type": "integer",
+          "required": false
+        },
+        "param_allow_incremental": {
+          "default": false,
+          "title": "Allow Incremental",
+          "type": "boolean",
+          "required": false
+        },
+        "param_user_guidance": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "User Guidance",
+          "type": "string",
+          "required": false
+        }
+      },
+      "outputs": {},
+      "values": {},
+      "config": {
+        "candidate_fields": {
+          "core_world_rules": "core_world_rules"
+        },
+        "parameter_fields": {
+          "core_rule_count": "param_core_rule_count",
+          "allow_incremental": "param_allow_incremental",
+          "user_guidance": "param_user_guidance"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "start-core_rule_count-context-core_rule_count",
+      "source": "start",
+      "source_port": "core_rule_count",
+      "target": "context",
+      "target_port": "core_rule_count"
+    },
+    {
+      "id": "start-allow_incremental-context-allow_incremental",
+      "source": "start",
+      "source_port": "allow_incremental",
+      "target": "context",
+      "target_port": "allow_incremental"
+    },
+    {
+      "id": "start-user_guidance-context-user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "context",
+      "target_port": "user_guidance"
+    },
+    {
+      "id": "context-allow_incremental-create_core_world_rules-allow_incremental",
+      "source": "context",
+      "source_port": "allow_incremental",
+      "target": "create_core_world_rules",
+      "target_port": "allow_incremental"
+    },
+    {
+      "id": "context-characters-create_core_world_rules-characters",
+      "source": "context",
+      "source_port": "characters",
+      "target": "create_core_world_rules",
+      "target_port": "characters"
+    },
+    {
+      "id": "context-core_rule_count-create_core_world_rules-core_rule_count",
+      "source": "context",
+      "source_port": "core_rule_count",
+      "target": "create_core_world_rules",
+      "target_port": "core_rule_count"
+    },
+    {
+      "id": "context-existing_world_rules-create_core_world_rules-existing_world_rules",
+      "source": "context",
+      "source_port": "existing_world_rules",
+      "target": "create_core_world_rules",
+      "target_port": "existing_world_rules"
+    },
+    {
+      "id": "context-faction_relations-create_core_world_rules-faction_relations",
+      "source": "context",
+      "source_port": "faction_relations",
+      "target": "create_core_world_rules",
+      "target_port": "faction_relations"
+    },
+    {
+      "id": "context-factions-create_core_world_rules-factions",
+      "source": "context",
+      "source_port": "factions",
+      "target": "create_core_world_rules",
+      "target_port": "factions"
+    },
+    {
+      "id": "context-novel_summary-create_core_world_rules-novel_summary",
+      "source": "context",
+      "source_port": "novel_summary",
+      "target": "create_core_world_rules",
+      "target_port": "novel_summary"
+    },
+    {
+      "id": "context-protagonists-create_core_world_rules-protagonists",
+      "source": "context",
+      "source_port": "protagonists",
+      "target": "create_core_world_rules",
+      "target_port": "protagonists"
+    },
+    {
+      "id": "context-user_guidance-create_core_world_rules-user_guidance",
+      "source": "context",
+      "source_port": "user_guidance",
+      "target": "create_core_world_rules",
+      "target_port": "user_guidance"
+    },
+    {
+      "id": "create_core_world_rules-core_world_rules-result-core_world_rules",
+      "source": "create_core_world_rules",
+      "source_port": "core_world_rules",
+      "target": "result",
+      "target_port": "core_world_rules"
+    },
+    {
+      "id": "start-core_rule_count-result-param_core_rule_count",
+      "source": "start",
+      "source_port": "core_rule_count",
+      "target": "result",
+      "target_port": "param_core_rule_count"
+    },
+    {
+      "id": "start-allow_incremental-result-param_allow_incremental",
+      "source": "start",
+      "source_port": "allow_incremental",
+      "target": "result",
+      "target_port": "param_allow_incremental"
+    },
+    {
+      "id": "start-user_guidance-result-param_user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "result",
+      "target_port": "param_user_guidance"
+    }
+  ],
+  "control_edges": [],
+  "subflows": {},
+  "editor": {
+    "positions": {
+      "start": {
+        "x": 0,
+        "y": 80
+      },
+      "context": {
+        "x": 340,
+        "y": 80
+      },
+      "create_core_world_rules": {
+        "x": 680,
+        "y": 80
+      },
+      "result": {
+        "x": 1020,
+        "y": 80
+      }
+    }
+  },
+  "max_node_executions": 1000
+}

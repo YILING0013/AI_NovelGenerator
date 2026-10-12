@@ -1,0 +1,2420 @@
+{
+  "format_version": 1,
+  "id": "default_create_factions_by_ai",
+  "task": "create_factions_by_ai",
+  "revision": 1,
+  "name": "默认流程",
+  "default_provider": "",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "input",
+      "label": "开始",
+      "inputs": {},
+      "outputs": {
+        "faction_count": {
+          "default": 3,
+          "maximum": 6,
+          "minimum": 1,
+          "title": "Faction Count",
+          "type": "integer",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        },
+        "independent_faction_count": {
+          "default": 0,
+          "maximum": 6,
+          "minimum": 0,
+          "title": "Independent Faction Count",
+          "type": "integer",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        },
+        "user_guidance": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "User Guidance",
+          "type": "string",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        },
+        "single_faction_integrity_score": {
+          "anyOf": [
+            {
+              "maximum": 10,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Single Faction Integrity Score",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        },
+        "connect_to_existing": {
+          "default": false,
+          "title": "Connect To Existing",
+          "type": "boolean",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        },
+        "existing_relation_targets": {
+          "items": {
+            "$ref": "#/$defs/ExistingFactionRelationTargetV2"
+          },
+          "maxItems": 12,
+          "title": "Existing Relation Targets",
+          "type": "array",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        },
+        "existing_relation_score": {
+          "anyOf": [
+            {
+              "maximum": 10,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Existing Relation Score",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "context",
+      "type": "context",
+      "label": "读取任务资料",
+      "inputs": {
+        "faction_count": {
+          "default": 3,
+          "maximum": 6,
+          "minimum": 1,
+          "title": "Faction Count",
+          "type": "integer",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        },
+        "independent_faction_count": {
+          "default": 0,
+          "maximum": 6,
+          "minimum": 0,
+          "title": "Independent Faction Count",
+          "type": "integer",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        },
+        "user_guidance": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "User Guidance",
+          "type": "string",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        },
+        "single_faction_integrity_score": {
+          "anyOf": [
+            {
+              "maximum": 10,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Single Faction Integrity Score",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        },
+        "connect_to_existing": {
+          "default": false,
+          "title": "Connect To Existing",
+          "type": "boolean",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        },
+        "existing_relation_targets": {
+          "items": {
+            "$ref": "#/$defs/ExistingFactionRelationTargetV2"
+          },
+          "maxItems": 12,
+          "title": "Existing Relation Targets",
+          "type": "array",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        },
+        "existing_relation_score": {
+          "anyOf": [
+            {
+              "maximum": 10,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Existing Relation Score",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "outputs": {
+        "core_idea": {
+          "type": "string"
+        },
+        "core_seed": {
+          "type": "string"
+        },
+        "era_background": {
+          "type": "string"
+        },
+        "existing_core_factions_json": {
+          "type": "string"
+        },
+        "faction_count": {
+          "type": "integer"
+        },
+        "generation_strategy": {
+          "type": "string"
+        },
+        "genre": {
+          "type": "string"
+        },
+        "narrative_pov": {
+          "type": "string"
+        },
+        "number_of_chapters": {
+          "type": "integer"
+        },
+        "plot": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "tags_json": {
+          "type": "string"
+        },
+        "target_audience": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "tone": {
+          "type": "string"
+        },
+        "words_per_chapter": {
+          "type": "integer"
+        },
+        "worldview": {
+          "type": "string"
+        },
+        "writing_style": {
+          "type": "string"
+        }
+      },
+      "values": {},
+      "config": {}
+    },
+    {
+      "id": "create_core_factions",
+      "type": "llm",
+      "label": "create_core_factions",
+      "inputs": {
+        "core_idea": {
+          "type": "string"
+        },
+        "core_seed": {
+          "type": "string"
+        },
+        "era_background": {
+          "type": "string"
+        },
+        "existing_core_factions_json": {
+          "type": "string"
+        },
+        "faction_count": {
+          "type": "integer"
+        },
+        "generation_strategy": {
+          "type": "string"
+        },
+        "genre": {
+          "type": "string"
+        },
+        "narrative_pov": {
+          "type": "string"
+        },
+        "number_of_chapters": {
+          "type": "integer"
+        },
+        "plot": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "tags_json": {
+          "type": "string"
+        },
+        "target_audience": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "tone": {
+          "type": "string"
+        },
+        "words_per_chapter": {
+          "type": "integer"
+        },
+        "worldview": {
+          "type": "string"
+        },
+        "writing_style": {
+          "type": "string"
+        }
+      },
+      "outputs": {
+        "core_factions": {
+          "description": "全书级核心阵营列表",
+          "items": {
+            "$ref": "#/$defs/CoreFactionSchema"
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "title": "Core Factions",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "CandidateFactionEndpointV2": {
+              "additionalProperties": false,
+              "description": "引用本次尚未落库势力的关系端点。",
+              "properties": {
+                "kind": {
+                  "const": "candidate",
+                  "title": "Kind",
+                  "type": "string"
+                },
+                "faction_ref": {
+                  "pattern": "^faction_[0-9]{3}$",
+                  "title": "Faction Ref",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "faction_ref"
+              ],
+              "title": "CandidateFactionEndpointV2",
+              "type": "object"
+            },
+            "CoreFactionRelationSchema": {
+              "additionalProperties": false,
+              "description": "AI 生成阶段只使用候选 ref 或正式 ID 引用端点的阵营关系。",
+              "properties": {
+                "relation_ref": {
+                  "pattern": "^relation_[0-9]{3}$",
+                  "title": "Relation Ref",
+                  "type": "string"
+                },
+                "source": {
+                  "discriminator": {
+                    "mapping": {
+                      "candidate": "#/$defs/CandidateFactionEndpointV2",
+                      "existing": "#/$defs/ExistingFactionEndpointV2"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/CandidateFactionEndpointV2"
+                    },
+                    {
+                      "$ref": "#/$defs/ExistingFactionEndpointV2"
+                    }
+                  ],
+                  "title": "Source"
+                },
+                "target": {
+                  "discriminator": {
+                    "mapping": {
+                      "candidate": "#/$defs/CandidateFactionEndpointV2",
+                      "existing": "#/$defs/ExistingFactionEndpointV2"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/CandidateFactionEndpointV2"
+                    },
+                    {
+                      "$ref": "#/$defs/ExistingFactionEndpointV2"
+                    }
+                  ],
+                  "title": "Target"
+                },
+                "relation_type": {
+                  "description": "阵营关系类型",
+                  "enum": [
+                    "hostile",
+                    "allied",
+                    "cold_war",
+                    "dependent",
+                    "subordinate",
+                    "trade_partner",
+                    "secret_cooperation",
+                    "historical_enemy"
+                  ],
+                  "title": "Relation Type",
+                  "type": "string"
+                },
+                "current_state": {
+                  "description": "当前关系状态",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Current State",
+                  "type": "string"
+                },
+                "core_conflict": {
+                  "description": "关系中的核心矛盾",
+                  "maxLength": 600,
+                  "minLength": 5,
+                  "title": "Core Conflict",
+                  "type": "string"
+                },
+                "hidden_tension": {
+                  "default": "",
+                  "description": "尚未爆发的深层张力",
+                  "maxLength": 500,
+                  "title": "Hidden Tension",
+                  "type": "string"
+                },
+                "possible_change": {
+                  "description": "后续可能变化",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Possible Change",
+                  "type": "string"
+                },
+                "intensity": {
+                  "description": "关系强度，1到5",
+                  "maximum": 5,
+                  "minimum": 1,
+                  "title": "Intensity",
+                  "type": "integer"
+                },
+                "is_active": {
+                  "default": true,
+                  "description": "关系是否当前有效",
+                  "title": "Is Active",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "relation_ref",
+                "source",
+                "target",
+                "relation_type",
+                "current_state",
+                "core_conflict",
+                "possible_change",
+                "intensity"
+              ],
+              "title": "CoreFactionRelationSchema",
+              "type": "object"
+            },
+            "CoreFactionSchema": {
+              "additionalProperties": false,
+              "description": "全书级核心阵营生成结果。",
+              "properties": {
+                "faction_ref": {
+                  "description": "本次候选内稳定引用，例如 faction_001",
+                  "pattern": "^faction_[0-9]{3}$",
+                  "title": "Faction Ref",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "阵营名称",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Name",
+                  "type": "string"
+                },
+                "faction_type": {
+                  "description": "阵营类型",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Faction Type",
+                  "type": "string"
+                },
+                "positioning": {
+                  "description": "阵营在世界结构中的定位",
+                  "maxLength": 500,
+                  "minLength": 10,
+                  "title": "Positioning",
+                  "type": "string"
+                },
+                "public_stance": {
+                  "description": "阵营公开对外立场",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Public Stance",
+                  "type": "string"
+                },
+                "core_goal": {
+                  "description": "阵营真实核心目标",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Core Goal",
+                  "type": "string"
+                },
+                "hidden_goal": {
+                  "default": "",
+                  "description": "阵营隐藏目标",
+                  "maxLength": 500,
+                  "title": "Hidden Goal",
+                  "type": "string"
+                },
+                "resources_and_advantages": {
+                  "description": "阵营主要资源或优势",
+                  "items": {
+                    "maxLength": 80,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 6,
+                  "minItems": 1,
+                  "title": "Resources And Advantages",
+                  "type": "array"
+                },
+                "organization_style": {
+                  "description": "组织气质或行动风格",
+                  "maxLength": 300,
+                  "minLength": 5,
+                  "title": "Organization Style",
+                  "type": "string"
+                },
+                "core_values": {
+                  "description": "核心价值观",
+                  "items": {
+                    "maxLength": 80,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 6,
+                  "minItems": 1,
+                  "title": "Core Values",
+                  "type": "array"
+                },
+                "conflict_with_mainline": {
+                  "description": "与主线冲突的关系",
+                  "maxLength": 600,
+                  "minLength": 10,
+                  "title": "Conflict With Mainline",
+                  "type": "string"
+                },
+                "is_public": {
+                  "default": true,
+                  "description": "阵营是否公开存在",
+                  "title": "Is Public",
+                  "type": "boolean"
+                },
+                "influence_scope": {
+                  "description": "影响范围",
+                  "maxLength": 80,
+                  "minLength": 2,
+                  "title": "Influence Scope",
+                  "type": "string"
+                },
+                "expandability": {
+                  "description": "后续可扩展方向",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Expandability",
+                  "type": "string"
+                },
+                "tags": {
+                  "description": "阵营标签",
+                  "items": {
+                    "maxLength": 80,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 8,
+                  "title": "Tags",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "faction_ref",
+                "name",
+                "faction_type",
+                "positioning",
+                "public_stance",
+                "core_goal",
+                "resources_and_advantages",
+                "organization_style",
+                "core_values",
+                "conflict_with_mainline",
+                "influence_scope",
+                "expandability"
+              ],
+              "title": "CoreFactionSchema",
+              "type": "object"
+            },
+            "ExistingFactionEndpointV2": {
+              "additionalProperties": false,
+              "description": "引用已有正式势力的关系端点。",
+              "properties": {
+                "kind": {
+                  "const": "existing",
+                  "title": "Kind",
+                  "type": "string"
+                },
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "faction_id"
+              ],
+              "title": "ExistingFactionEndpointV2",
+              "type": "object"
+            }
+          }
+        },
+        "faction_relations": {
+          "description": "核心阵营之间的关系列表",
+          "items": {
+            "$ref": "#/$defs/CoreFactionRelationSchema"
+          },
+          "maxItems": 20,
+          "title": "Faction Relations",
+          "type": "array",
+          "required": false,
+          "$defs": {
+            "CandidateFactionEndpointV2": {
+              "additionalProperties": false,
+              "description": "引用本次尚未落库势力的关系端点。",
+              "properties": {
+                "kind": {
+                  "const": "candidate",
+                  "title": "Kind",
+                  "type": "string"
+                },
+                "faction_ref": {
+                  "pattern": "^faction_[0-9]{3}$",
+                  "title": "Faction Ref",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "faction_ref"
+              ],
+              "title": "CandidateFactionEndpointV2",
+              "type": "object"
+            },
+            "CoreFactionRelationSchema": {
+              "additionalProperties": false,
+              "description": "AI 生成阶段只使用候选 ref 或正式 ID 引用端点的阵营关系。",
+              "properties": {
+                "relation_ref": {
+                  "pattern": "^relation_[0-9]{3}$",
+                  "title": "Relation Ref",
+                  "type": "string"
+                },
+                "source": {
+                  "discriminator": {
+                    "mapping": {
+                      "candidate": "#/$defs/CandidateFactionEndpointV2",
+                      "existing": "#/$defs/ExistingFactionEndpointV2"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/CandidateFactionEndpointV2"
+                    },
+                    {
+                      "$ref": "#/$defs/ExistingFactionEndpointV2"
+                    }
+                  ],
+                  "title": "Source"
+                },
+                "target": {
+                  "discriminator": {
+                    "mapping": {
+                      "candidate": "#/$defs/CandidateFactionEndpointV2",
+                      "existing": "#/$defs/ExistingFactionEndpointV2"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/CandidateFactionEndpointV2"
+                    },
+                    {
+                      "$ref": "#/$defs/ExistingFactionEndpointV2"
+                    }
+                  ],
+                  "title": "Target"
+                },
+                "relation_type": {
+                  "description": "阵营关系类型",
+                  "enum": [
+                    "hostile",
+                    "allied",
+                    "cold_war",
+                    "dependent",
+                    "subordinate",
+                    "trade_partner",
+                    "secret_cooperation",
+                    "historical_enemy"
+                  ],
+                  "title": "Relation Type",
+                  "type": "string"
+                },
+                "current_state": {
+                  "description": "当前关系状态",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Current State",
+                  "type": "string"
+                },
+                "core_conflict": {
+                  "description": "关系中的核心矛盾",
+                  "maxLength": 600,
+                  "minLength": 5,
+                  "title": "Core Conflict",
+                  "type": "string"
+                },
+                "hidden_tension": {
+                  "default": "",
+                  "description": "尚未爆发的深层张力",
+                  "maxLength": 500,
+                  "title": "Hidden Tension",
+                  "type": "string"
+                },
+                "possible_change": {
+                  "description": "后续可能变化",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Possible Change",
+                  "type": "string"
+                },
+                "intensity": {
+                  "description": "关系强度，1到5",
+                  "maximum": 5,
+                  "minimum": 1,
+                  "title": "Intensity",
+                  "type": "integer"
+                },
+                "is_active": {
+                  "default": true,
+                  "description": "关系是否当前有效",
+                  "title": "Is Active",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "relation_ref",
+                "source",
+                "target",
+                "relation_type",
+                "current_state",
+                "core_conflict",
+                "possible_change",
+                "intensity"
+              ],
+              "title": "CoreFactionRelationSchema",
+              "type": "object"
+            },
+            "CoreFactionSchema": {
+              "additionalProperties": false,
+              "description": "全书级核心阵营生成结果。",
+              "properties": {
+                "faction_ref": {
+                  "description": "本次候选内稳定引用，例如 faction_001",
+                  "pattern": "^faction_[0-9]{3}$",
+                  "title": "Faction Ref",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "阵营名称",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Name",
+                  "type": "string"
+                },
+                "faction_type": {
+                  "description": "阵营类型",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Faction Type",
+                  "type": "string"
+                },
+                "positioning": {
+                  "description": "阵营在世界结构中的定位",
+                  "maxLength": 500,
+                  "minLength": 10,
+                  "title": "Positioning",
+                  "type": "string"
+                },
+                "public_stance": {
+                  "description": "阵营公开对外立场",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Public Stance",
+                  "type": "string"
+                },
+                "core_goal": {
+                  "description": "阵营真实核心目标",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Core Goal",
+                  "type": "string"
+                },
+                "hidden_goal": {
+                  "default": "",
+                  "description": "阵营隐藏目标",
+                  "maxLength": 500,
+                  "title": "Hidden Goal",
+                  "type": "string"
+                },
+                "resources_and_advantages": {
+                  "description": "阵营主要资源或优势",
+                  "items": {
+                    "maxLength": 80,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 6,
+                  "minItems": 1,
+                  "title": "Resources And Advantages",
+                  "type": "array"
+                },
+                "organization_style": {
+                  "description": "组织气质或行动风格",
+                  "maxLength": 300,
+                  "minLength": 5,
+                  "title": "Organization Style",
+                  "type": "string"
+                },
+                "core_values": {
+                  "description": "核心价值观",
+                  "items": {
+                    "maxLength": 80,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 6,
+                  "minItems": 1,
+                  "title": "Core Values",
+                  "type": "array"
+                },
+                "conflict_with_mainline": {
+                  "description": "与主线冲突的关系",
+                  "maxLength": 600,
+                  "minLength": 10,
+                  "title": "Conflict With Mainline",
+                  "type": "string"
+                },
+                "is_public": {
+                  "default": true,
+                  "description": "阵营是否公开存在",
+                  "title": "Is Public",
+                  "type": "boolean"
+                },
+                "influence_scope": {
+                  "description": "影响范围",
+                  "maxLength": 80,
+                  "minLength": 2,
+                  "title": "Influence Scope",
+                  "type": "string"
+                },
+                "expandability": {
+                  "description": "后续可扩展方向",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Expandability",
+                  "type": "string"
+                },
+                "tags": {
+                  "description": "阵营标签",
+                  "items": {
+                    "maxLength": 80,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 8,
+                  "title": "Tags",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "faction_ref",
+                "name",
+                "faction_type",
+                "positioning",
+                "public_stance",
+                "core_goal",
+                "resources_and_advantages",
+                "organization_style",
+                "core_values",
+                "conflict_with_mainline",
+                "influence_scope",
+                "expandability"
+              ],
+              "title": "CoreFactionSchema",
+              "type": "object"
+            },
+            "ExistingFactionEndpointV2": {
+              "additionalProperties": false,
+              "description": "引用已有正式势力的关系端点。",
+              "properties": {
+                "kind": {
+                  "const": "existing",
+                  "title": "Kind",
+                  "type": "string"
+                },
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "faction_id"
+              ],
+              "title": "ExistingFactionEndpointV2",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "values": {},
+      "config": {
+        "mode": "json",
+        "provider": "",
+        "model": "",
+        "parameters": {},
+        "prompt_separator": "\n",
+        "prompt_file": "create_core_factions_prompt.md",
+        "schema_prompt_file": "create_core_factions_schema_prompt.md",
+        "text_prompt_file": "create_core_factions_text_prompt.md",
+        "force_text_prompt": true,
+        "preserve_prompt_whitespace": true,
+        "strip_prompt": true
+      }
+    },
+    {
+      "id": "result",
+      "type": "output",
+      "label": "任务结果",
+      "inputs": {
+        "core_factions": {
+          "description": "全书级核心阵营列表",
+          "items": {
+            "$ref": "#/$defs/CoreFactionSchema"
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "title": "Core Factions",
+          "type": "array",
+          "required": true,
+          "$defs": {
+            "CandidateFactionEndpointV2": {
+              "additionalProperties": false,
+              "description": "引用本次尚未落库势力的关系端点。",
+              "properties": {
+                "kind": {
+                  "const": "candidate",
+                  "title": "Kind",
+                  "type": "string"
+                },
+                "faction_ref": {
+                  "pattern": "^faction_[0-9]{3}$",
+                  "title": "Faction Ref",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "faction_ref"
+              ],
+              "title": "CandidateFactionEndpointV2",
+              "type": "object"
+            },
+            "CoreFactionRelationSchema": {
+              "additionalProperties": false,
+              "description": "AI 生成阶段只使用候选 ref 或正式 ID 引用端点的阵营关系。",
+              "properties": {
+                "relation_ref": {
+                  "pattern": "^relation_[0-9]{3}$",
+                  "title": "Relation Ref",
+                  "type": "string"
+                },
+                "source": {
+                  "discriminator": {
+                    "mapping": {
+                      "candidate": "#/$defs/CandidateFactionEndpointV2",
+                      "existing": "#/$defs/ExistingFactionEndpointV2"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/CandidateFactionEndpointV2"
+                    },
+                    {
+                      "$ref": "#/$defs/ExistingFactionEndpointV2"
+                    }
+                  ],
+                  "title": "Source"
+                },
+                "target": {
+                  "discriminator": {
+                    "mapping": {
+                      "candidate": "#/$defs/CandidateFactionEndpointV2",
+                      "existing": "#/$defs/ExistingFactionEndpointV2"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/CandidateFactionEndpointV2"
+                    },
+                    {
+                      "$ref": "#/$defs/ExistingFactionEndpointV2"
+                    }
+                  ],
+                  "title": "Target"
+                },
+                "relation_type": {
+                  "description": "阵营关系类型",
+                  "enum": [
+                    "hostile",
+                    "allied",
+                    "cold_war",
+                    "dependent",
+                    "subordinate",
+                    "trade_partner",
+                    "secret_cooperation",
+                    "historical_enemy"
+                  ],
+                  "title": "Relation Type",
+                  "type": "string"
+                },
+                "current_state": {
+                  "description": "当前关系状态",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Current State",
+                  "type": "string"
+                },
+                "core_conflict": {
+                  "description": "关系中的核心矛盾",
+                  "maxLength": 600,
+                  "minLength": 5,
+                  "title": "Core Conflict",
+                  "type": "string"
+                },
+                "hidden_tension": {
+                  "default": "",
+                  "description": "尚未爆发的深层张力",
+                  "maxLength": 500,
+                  "title": "Hidden Tension",
+                  "type": "string"
+                },
+                "possible_change": {
+                  "description": "后续可能变化",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Possible Change",
+                  "type": "string"
+                },
+                "intensity": {
+                  "description": "关系强度，1到5",
+                  "maximum": 5,
+                  "minimum": 1,
+                  "title": "Intensity",
+                  "type": "integer"
+                },
+                "is_active": {
+                  "default": true,
+                  "description": "关系是否当前有效",
+                  "title": "Is Active",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "relation_ref",
+                "source",
+                "target",
+                "relation_type",
+                "current_state",
+                "core_conflict",
+                "possible_change",
+                "intensity"
+              ],
+              "title": "CoreFactionRelationSchema",
+              "type": "object"
+            },
+            "CoreFactionSchema": {
+              "additionalProperties": false,
+              "description": "全书级核心阵营生成结果。",
+              "properties": {
+                "faction_ref": {
+                  "description": "本次候选内稳定引用，例如 faction_001",
+                  "pattern": "^faction_[0-9]{3}$",
+                  "title": "Faction Ref",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "阵营名称",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Name",
+                  "type": "string"
+                },
+                "faction_type": {
+                  "description": "阵营类型",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Faction Type",
+                  "type": "string"
+                },
+                "positioning": {
+                  "description": "阵营在世界结构中的定位",
+                  "maxLength": 500,
+                  "minLength": 10,
+                  "title": "Positioning",
+                  "type": "string"
+                },
+                "public_stance": {
+                  "description": "阵营公开对外立场",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Public Stance",
+                  "type": "string"
+                },
+                "core_goal": {
+                  "description": "阵营真实核心目标",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Core Goal",
+                  "type": "string"
+                },
+                "hidden_goal": {
+                  "default": "",
+                  "description": "阵营隐藏目标",
+                  "maxLength": 500,
+                  "title": "Hidden Goal",
+                  "type": "string"
+                },
+                "resources_and_advantages": {
+                  "description": "阵营主要资源或优势",
+                  "items": {
+                    "maxLength": 80,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 6,
+                  "minItems": 1,
+                  "title": "Resources And Advantages",
+                  "type": "array"
+                },
+                "organization_style": {
+                  "description": "组织气质或行动风格",
+                  "maxLength": 300,
+                  "minLength": 5,
+                  "title": "Organization Style",
+                  "type": "string"
+                },
+                "core_values": {
+                  "description": "核心价值观",
+                  "items": {
+                    "maxLength": 80,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 6,
+                  "minItems": 1,
+                  "title": "Core Values",
+                  "type": "array"
+                },
+                "conflict_with_mainline": {
+                  "description": "与主线冲突的关系",
+                  "maxLength": 600,
+                  "minLength": 10,
+                  "title": "Conflict With Mainline",
+                  "type": "string"
+                },
+                "is_public": {
+                  "default": true,
+                  "description": "阵营是否公开存在",
+                  "title": "Is Public",
+                  "type": "boolean"
+                },
+                "influence_scope": {
+                  "description": "影响范围",
+                  "maxLength": 80,
+                  "minLength": 2,
+                  "title": "Influence Scope",
+                  "type": "string"
+                },
+                "expandability": {
+                  "description": "后续可扩展方向",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Expandability",
+                  "type": "string"
+                },
+                "tags": {
+                  "description": "阵营标签",
+                  "items": {
+                    "maxLength": 80,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 8,
+                  "title": "Tags",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "faction_ref",
+                "name",
+                "faction_type",
+                "positioning",
+                "public_stance",
+                "core_goal",
+                "resources_and_advantages",
+                "organization_style",
+                "core_values",
+                "conflict_with_mainline",
+                "influence_scope",
+                "expandability"
+              ],
+              "title": "CoreFactionSchema",
+              "type": "object"
+            },
+            "ExistingFactionEndpointV2": {
+              "additionalProperties": false,
+              "description": "引用已有正式势力的关系端点。",
+              "properties": {
+                "kind": {
+                  "const": "existing",
+                  "title": "Kind",
+                  "type": "string"
+                },
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "faction_id"
+              ],
+              "title": "ExistingFactionEndpointV2",
+              "type": "object"
+            }
+          }
+        },
+        "faction_relations": {
+          "description": "核心阵营之间的关系列表",
+          "items": {
+            "$ref": "#/$defs/CoreFactionRelationSchema"
+          },
+          "maxItems": 20,
+          "title": "Faction Relations",
+          "type": "array",
+          "required": false,
+          "$defs": {
+            "CandidateFactionEndpointV2": {
+              "additionalProperties": false,
+              "description": "引用本次尚未落库势力的关系端点。",
+              "properties": {
+                "kind": {
+                  "const": "candidate",
+                  "title": "Kind",
+                  "type": "string"
+                },
+                "faction_ref": {
+                  "pattern": "^faction_[0-9]{3}$",
+                  "title": "Faction Ref",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "faction_ref"
+              ],
+              "title": "CandidateFactionEndpointV2",
+              "type": "object"
+            },
+            "CoreFactionRelationSchema": {
+              "additionalProperties": false,
+              "description": "AI 生成阶段只使用候选 ref 或正式 ID 引用端点的阵营关系。",
+              "properties": {
+                "relation_ref": {
+                  "pattern": "^relation_[0-9]{3}$",
+                  "title": "Relation Ref",
+                  "type": "string"
+                },
+                "source": {
+                  "discriminator": {
+                    "mapping": {
+                      "candidate": "#/$defs/CandidateFactionEndpointV2",
+                      "existing": "#/$defs/ExistingFactionEndpointV2"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/CandidateFactionEndpointV2"
+                    },
+                    {
+                      "$ref": "#/$defs/ExistingFactionEndpointV2"
+                    }
+                  ],
+                  "title": "Source"
+                },
+                "target": {
+                  "discriminator": {
+                    "mapping": {
+                      "candidate": "#/$defs/CandidateFactionEndpointV2",
+                      "existing": "#/$defs/ExistingFactionEndpointV2"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/CandidateFactionEndpointV2"
+                    },
+                    {
+                      "$ref": "#/$defs/ExistingFactionEndpointV2"
+                    }
+                  ],
+                  "title": "Target"
+                },
+                "relation_type": {
+                  "description": "阵营关系类型",
+                  "enum": [
+                    "hostile",
+                    "allied",
+                    "cold_war",
+                    "dependent",
+                    "subordinate",
+                    "trade_partner",
+                    "secret_cooperation",
+                    "historical_enemy"
+                  ],
+                  "title": "Relation Type",
+                  "type": "string"
+                },
+                "current_state": {
+                  "description": "当前关系状态",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Current State",
+                  "type": "string"
+                },
+                "core_conflict": {
+                  "description": "关系中的核心矛盾",
+                  "maxLength": 600,
+                  "minLength": 5,
+                  "title": "Core Conflict",
+                  "type": "string"
+                },
+                "hidden_tension": {
+                  "default": "",
+                  "description": "尚未爆发的深层张力",
+                  "maxLength": 500,
+                  "title": "Hidden Tension",
+                  "type": "string"
+                },
+                "possible_change": {
+                  "description": "后续可能变化",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Possible Change",
+                  "type": "string"
+                },
+                "intensity": {
+                  "description": "关系强度，1到5",
+                  "maximum": 5,
+                  "minimum": 1,
+                  "title": "Intensity",
+                  "type": "integer"
+                },
+                "is_active": {
+                  "default": true,
+                  "description": "关系是否当前有效",
+                  "title": "Is Active",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "relation_ref",
+                "source",
+                "target",
+                "relation_type",
+                "current_state",
+                "core_conflict",
+                "possible_change",
+                "intensity"
+              ],
+              "title": "CoreFactionRelationSchema",
+              "type": "object"
+            },
+            "CoreFactionSchema": {
+              "additionalProperties": false,
+              "description": "全书级核心阵营生成结果。",
+              "properties": {
+                "faction_ref": {
+                  "description": "本次候选内稳定引用，例如 faction_001",
+                  "pattern": "^faction_[0-9]{3}$",
+                  "title": "Faction Ref",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "阵营名称",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Name",
+                  "type": "string"
+                },
+                "faction_type": {
+                  "description": "阵营类型",
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "title": "Faction Type",
+                  "type": "string"
+                },
+                "positioning": {
+                  "description": "阵营在世界结构中的定位",
+                  "maxLength": 500,
+                  "minLength": 10,
+                  "title": "Positioning",
+                  "type": "string"
+                },
+                "public_stance": {
+                  "description": "阵营公开对外立场",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Public Stance",
+                  "type": "string"
+                },
+                "core_goal": {
+                  "description": "阵营真实核心目标",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Core Goal",
+                  "type": "string"
+                },
+                "hidden_goal": {
+                  "default": "",
+                  "description": "阵营隐藏目标",
+                  "maxLength": 500,
+                  "title": "Hidden Goal",
+                  "type": "string"
+                },
+                "resources_and_advantages": {
+                  "description": "阵营主要资源或优势",
+                  "items": {
+                    "maxLength": 80,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 6,
+                  "minItems": 1,
+                  "title": "Resources And Advantages",
+                  "type": "array"
+                },
+                "organization_style": {
+                  "description": "组织气质或行动风格",
+                  "maxLength": 300,
+                  "minLength": 5,
+                  "title": "Organization Style",
+                  "type": "string"
+                },
+                "core_values": {
+                  "description": "核心价值观",
+                  "items": {
+                    "maxLength": 80,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 6,
+                  "minItems": 1,
+                  "title": "Core Values",
+                  "type": "array"
+                },
+                "conflict_with_mainline": {
+                  "description": "与主线冲突的关系",
+                  "maxLength": 600,
+                  "minLength": 10,
+                  "title": "Conflict With Mainline",
+                  "type": "string"
+                },
+                "is_public": {
+                  "default": true,
+                  "description": "阵营是否公开存在",
+                  "title": "Is Public",
+                  "type": "boolean"
+                },
+                "influence_scope": {
+                  "description": "影响范围",
+                  "maxLength": 80,
+                  "minLength": 2,
+                  "title": "Influence Scope",
+                  "type": "string"
+                },
+                "expandability": {
+                  "description": "后续可扩展方向",
+                  "maxLength": 500,
+                  "minLength": 5,
+                  "title": "Expandability",
+                  "type": "string"
+                },
+                "tags": {
+                  "description": "阵营标签",
+                  "items": {
+                    "maxLength": 80,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 8,
+                  "title": "Tags",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "faction_ref",
+                "name",
+                "faction_type",
+                "positioning",
+                "public_stance",
+                "core_goal",
+                "resources_and_advantages",
+                "organization_style",
+                "core_values",
+                "conflict_with_mainline",
+                "influence_scope",
+                "expandability"
+              ],
+              "title": "CoreFactionSchema",
+              "type": "object"
+            },
+            "ExistingFactionEndpointV2": {
+              "additionalProperties": false,
+              "description": "引用已有正式势力的关系端点。",
+              "properties": {
+                "kind": {
+                  "const": "existing",
+                  "title": "Kind",
+                  "type": "string"
+                },
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "faction_id"
+              ],
+              "title": "ExistingFactionEndpointV2",
+              "type": "object"
+            }
+          }
+        },
+        "param_faction_count": {
+          "default": 3,
+          "maximum": 6,
+          "minimum": 1,
+          "title": "Faction Count",
+          "type": "integer",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        },
+        "param_independent_faction_count": {
+          "default": 0,
+          "maximum": 6,
+          "minimum": 0,
+          "title": "Independent Faction Count",
+          "type": "integer",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        },
+        "param_user_guidance": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "User Guidance",
+          "type": "string",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        },
+        "param_single_faction_integrity_score": {
+          "anyOf": [
+            {
+              "maximum": 10,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Single Faction Integrity Score",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        },
+        "param_connect_to_existing": {
+          "default": false,
+          "title": "Connect To Existing",
+          "type": "boolean",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        },
+        "param_existing_relation_targets": {
+          "items": {
+            "$ref": "#/$defs/ExistingFactionRelationTargetV2"
+          },
+          "maxItems": 12,
+          "title": "Existing Relation Targets",
+          "type": "array",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        },
+        "param_existing_relation_score": {
+          "anyOf": [
+            {
+              "maximum": 10,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Existing Relation Score",
+          "required": false,
+          "$defs": {
+            "ExistingFactionRelationTargetV2": {
+              "additionalProperties": false,
+              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "properties": {
+                "faction_id": {
+                  "pattern": "^fac_[0-9]{6,}$",
+                  "title": "Faction Id",
+                  "type": "string"
+                },
+                "relation_score": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Relation Score",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "faction_id",
+                "relation_score"
+              ],
+              "title": "ExistingFactionRelationTargetV2",
+              "type": "object"
+            }
+          }
+        }
+      },
+      "outputs": {},
+      "values": {},
+      "config": {
+        "candidate_fields": {
+          "core_factions": "core_factions",
+          "faction_relations": "faction_relations"
+        },
+        "parameter_fields": {
+          "faction_count": "param_faction_count",
+          "independent_faction_count": "param_independent_faction_count",
+          "user_guidance": "param_user_guidance",
+          "single_faction_integrity_score": "param_single_faction_integrity_score",
+          "connect_to_existing": "param_connect_to_existing",
+          "existing_relation_targets": "param_existing_relation_targets",
+          "existing_relation_score": "param_existing_relation_score"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "start-faction_count-context-faction_count",
+      "source": "start",
+      "source_port": "faction_count",
+      "target": "context",
+      "target_port": "faction_count"
+    },
+    {
+      "id": "start-independent_faction_count-context-independent_faction_count",
+      "source": "start",
+      "source_port": "independent_faction_count",
+      "target": "context",
+      "target_port": "independent_faction_count"
+    },
+    {
+      "id": "start-user_guidance-context-user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "context",
+      "target_port": "user_guidance"
+    },
+    {
+      "id": "start-single_faction_integrity_score-context-single_faction_integrity_score",
+      "source": "start",
+      "source_port": "single_faction_integrity_score",
+      "target": "context",
+      "target_port": "single_faction_integrity_score"
+    },
+    {
+      "id": "start-connect_to_existing-context-connect_to_existing",
+      "source": "start",
+      "source_port": "connect_to_existing",
+      "target": "context",
+      "target_port": "connect_to_existing"
+    },
+    {
+      "id": "start-existing_relation_targets-context-existing_relation_targets",
+      "source": "start",
+      "source_port": "existing_relation_targets",
+      "target": "context",
+      "target_port": "existing_relation_targets"
+    },
+    {
+      "id": "start-existing_relation_score-context-existing_relation_score",
+      "source": "start",
+      "source_port": "existing_relation_score",
+      "target": "context",
+      "target_port": "existing_relation_score"
+    },
+    {
+      "id": "context-core_idea-create_core_factions-core_idea",
+      "source": "context",
+      "source_port": "core_idea",
+      "target": "create_core_factions",
+      "target_port": "core_idea"
+    },
+    {
+      "id": "context-core_seed-create_core_factions-core_seed",
+      "source": "context",
+      "source_port": "core_seed",
+      "target": "create_core_factions",
+      "target_port": "core_seed"
+    },
+    {
+      "id": "context-era_background-create_core_factions-era_background",
+      "source": "context",
+      "source_port": "era_background",
+      "target": "create_core_factions",
+      "target_port": "era_background"
+    },
+    {
+      "id": "context-existing_core_factions_json-create_core_factions-existing_core_factions_json",
+      "source": "context",
+      "source_port": "existing_core_factions_json",
+      "target": "create_core_factions",
+      "target_port": "existing_core_factions_json"
+    },
+    {
+      "id": "context-faction_count-create_core_factions-faction_count",
+      "source": "context",
+      "source_port": "faction_count",
+      "target": "create_core_factions",
+      "target_port": "faction_count"
+    },
+    {
+      "id": "context-generation_strategy-create_core_factions-generation_strategy",
+      "source": "context",
+      "source_port": "generation_strategy",
+      "target": "create_core_factions",
+      "target_port": "generation_strategy"
+    },
+    {
+      "id": "context-genre-create_core_factions-genre",
+      "source": "context",
+      "source_port": "genre",
+      "target": "create_core_factions",
+      "target_port": "genre"
+    },
+    {
+      "id": "context-narrative_pov-create_core_factions-narrative_pov",
+      "source": "context",
+      "source_port": "narrative_pov",
+      "target": "create_core_factions",
+      "target_port": "narrative_pov"
+    },
+    {
+      "id": "context-number_of_chapters-create_core_factions-number_of_chapters",
+      "source": "context",
+      "source_port": "number_of_chapters",
+      "target": "create_core_factions",
+      "target_port": "number_of_chapters"
+    },
+    {
+      "id": "context-plot-create_core_factions-plot",
+      "source": "context",
+      "source_port": "plot",
+      "target": "create_core_factions",
+      "target_port": "plot"
+    },
+    {
+      "id": "context-summary-create_core_factions-summary",
+      "source": "context",
+      "source_port": "summary",
+      "target": "create_core_factions",
+      "target_port": "summary"
+    },
+    {
+      "id": "context-tags_json-create_core_factions-tags_json",
+      "source": "context",
+      "source_port": "tags_json",
+      "target": "create_core_factions",
+      "target_port": "tags_json"
+    },
+    {
+      "id": "context-target_audience-create_core_factions-target_audience",
+      "source": "context",
+      "source_port": "target_audience",
+      "target": "create_core_factions",
+      "target_port": "target_audience"
+    },
+    {
+      "id": "context-title-create_core_factions-title",
+      "source": "context",
+      "source_port": "title",
+      "target": "create_core_factions",
+      "target_port": "title"
+    },
+    {
+      "id": "context-tone-create_core_factions-tone",
+      "source": "context",
+      "source_port": "tone",
+      "target": "create_core_factions",
+      "target_port": "tone"
+    },
+    {
+      "id": "context-words_per_chapter-create_core_factions-words_per_chapter",
+      "source": "context",
+      "source_port": "words_per_chapter",
+      "target": "create_core_factions",
+      "target_port": "words_per_chapter"
+    },
+    {
+      "id": "context-worldview-create_core_factions-worldview",
+      "source": "context",
+      "source_port": "worldview",
+      "target": "create_core_factions",
+      "target_port": "worldview"
+    },
+    {
+      "id": "context-writing_style-create_core_factions-writing_style",
+      "source": "context",
+      "source_port": "writing_style",
+      "target": "create_core_factions",
+      "target_port": "writing_style"
+    },
+    {
+      "id": "create_core_factions-core_factions-result-core_factions",
+      "source": "create_core_factions",
+      "source_port": "core_factions",
+      "target": "result",
+      "target_port": "core_factions"
+    },
+    {
+      "id": "create_core_factions-faction_relations-result-faction_relations",
+      "source": "create_core_factions",
+      "source_port": "faction_relations",
+      "target": "result",
+      "target_port": "faction_relations"
+    },
+    {
+      "id": "start-faction_count-result-param_faction_count",
+      "source": "start",
+      "source_port": "faction_count",
+      "target": "result",
+      "target_port": "param_faction_count"
+    },
+    {
+      "id": "start-independent_faction_count-result-param_independent_faction_count",
+      "source": "start",
+      "source_port": "independent_faction_count",
+      "target": "result",
+      "target_port": "param_independent_faction_count"
+    },
+    {
+      "id": "start-user_guidance-result-param_user_guidance",
+      "source": "start",
+      "source_port": "user_guidance",
+      "target": "result",
+      "target_port": "param_user_guidance"
+    },
+    {
+      "id": "start-single_faction_integrity_score-result-param_single_faction_integrity_score",
+      "source": "start",
+      "source_port": "single_faction_integrity_score",
+      "target": "result",
+      "target_port": "param_single_faction_integrity_score"
+    },
+    {
+      "id": "start-connect_to_existing-result-param_connect_to_existing",
+      "source": "start",
+      "source_port": "connect_to_existing",
+      "target": "result",
+      "target_port": "param_connect_to_existing"
+    },
+    {
+      "id": "start-existing_relation_targets-result-param_existing_relation_targets",
+      "source": "start",
+      "source_port": "existing_relation_targets",
+      "target": "result",
+      "target_port": "param_existing_relation_targets"
+    },
+    {
+      "id": "start-existing_relation_score-result-param_existing_relation_score",
+      "source": "start",
+      "source_port": "existing_relation_score",
+      "target": "result",
+      "target_port": "param_existing_relation_score"
+    }
+  ],
+  "control_edges": [],
+  "subflows": {},
+  "editor": {
+    "positions": {
+      "start": {
+        "x": 0,
+        "y": 80
+      },
+      "context": {
+        "x": 340,
+        "y": 80
+      },
+      "create_core_factions": {
+        "x": 680,
+        "y": 80
+      },
+      "result": {
+        "x": 1020,
+        "y": 80
+      }
+    }
+  },
+  "max_node_executions": 1000
+}
