@@ -17,7 +17,7 @@ CHARACTER_FACTION_PRIMARY_INDEX = (
 )
 
 
-async def init_novel_indexes():
+async def init_novel_indexes(db=None):
     """功能：初始化 novels 集合的当前索引。
 
     Args:
@@ -27,7 +27,7 @@ async def init_novel_indexes():
         无。
     """
     try:
-        db = get_database()
+        db = db if db is not None else get_database()
         novels_collection = db["novels"]
 
         logger.info("正在初始化'novels'集合的索引...")
@@ -68,7 +68,7 @@ async def init_novel_indexes():
         raise
 
 
-async def init_volume_indexes():
+async def init_volume_indexes(db=None):
     """功能：初始化 volumes 集合的当前索引。
 
     Args:
@@ -78,7 +78,7 @@ async def init_volume_indexes():
         无。
     """
     try:
-        db = get_database()
+        db = db if db is not None else get_database()
         volumes_collection = db["volumes"]
 
         logger.info("正在初始化'volumes'集合的索引...")
@@ -131,7 +131,7 @@ async def init_volume_indexes():
         raise
 
 
-async def init_faction_indexes():
+async def init_faction_indexes(db=None):
     """功能：初始化 factions 集合的当前索引。
 
     Args:
@@ -141,7 +141,7 @@ async def init_faction_indexes():
         无。
     """
     try:
-        db = get_database()
+        db = db if db is not None else get_database()
         factions_collection = db["factions"]
 
         logger.info("正在初始化'factions'集合的索引...")
@@ -227,7 +227,7 @@ async def init_faction_indexes():
         raise
 
 
-async def init_faction_relation_indexes():
+async def init_faction_relation_indexes(db=None):
     """功能：初始化 faction_relations 集合的当前索引。
 
     Args:
@@ -237,7 +237,7 @@ async def init_faction_relation_indexes():
         无。
     """
     try:
-        db = get_database()
+        db = db if db is not None else get_database()
         relations_collection = db["faction_relations"]
 
         logger.info("正在初始化'faction_relations'集合的索引...")
@@ -319,7 +319,7 @@ async def init_faction_relation_indexes():
         raise
 
 
-async def init_character_indexes() -> None:
+async def init_character_indexes(db=None) -> None:
     """初始化全书级角色集合索引。
 
     Args:
@@ -329,7 +329,7 @@ async def init_character_indexes() -> None:
         无。
     """
     try:
-        collection = get_database()["characters"]
+        collection = (db if db is not None else get_database())["characters"]
         indexes = [
             # 业务 ID 终身唯一，软删除后也不得复用。
             pymongo.IndexModel(
@@ -374,7 +374,7 @@ async def init_character_indexes() -> None:
         raise
 
 
-async def init_character_relation_indexes() -> None:
+async def init_character_relation_indexes(db=None) -> None:
     """初始化全书级角色关系索引。
 
     Args:
@@ -384,7 +384,7 @@ async def init_character_relation_indexes() -> None:
         无。
     """
     try:
-        collection = get_database()["character_relations"]
+        collection = (db if db is not None else get_database())["character_relations"]
         indexes = [
             pymongo.IndexModel(
                 [("novel_id", 1), ("relation_id", 1)],
@@ -446,7 +446,7 @@ async def init_character_relation_indexes() -> None:
         raise
 
 
-async def init_character_faction_binding_indexes() -> None:
+async def init_character_faction_binding_indexes(db=None) -> None:
     """初始化全书级角色势力绑定索引。
 
     Args:
@@ -456,7 +456,7 @@ async def init_character_faction_binding_indexes() -> None:
         无。
     """
     try:
-        collection = get_database()["character_faction_bindings"]
+        collection = (db if db is not None else get_database())["character_faction_bindings"]
         indexes = [
             pymongo.IndexModel(
                 [("novel_id", 1), ("binding_id", 1)],
@@ -517,7 +517,7 @@ async def init_character_faction_binding_indexes() -> None:
         raise
 
 
-async def init_world_rule_indexes() -> None:
+async def init_world_rule_indexes(db=None) -> None:
     """初始化正式世界规则集合索引。
 
     Args:
@@ -530,7 +530,7 @@ async def init_world_rule_indexes() -> None:
         Exception: MongoDB 索引创建或核对失败。
     """
     try:
-        collection = get_database()["world_rules"]
+        collection = (db if db is not None else get_database())["world_rules"]
         await collection.create_indexes(
             [
                 # 业务 ID 在同一小说全历史唯一，软删除后也不得复用。
@@ -594,7 +594,7 @@ async def init_world_rule_indexes() -> None:
         raise
 
 
-async def init_world_rule_confirmation_receipt_indexes() -> None:
+async def init_world_rule_confirmation_receipt_indexes(db=None) -> None:
     """初始化核心世界规则确认命令的不可变幂等回执索引。
 
     Args:
@@ -604,7 +604,7 @@ async def init_world_rule_confirmation_receipt_indexes() -> None:
         无。
     """
     try:
-        collection = get_database()["world_rule_core_confirmation_receipts"]
+        collection = (db if db is not None else get_database())["world_rule_core_confirmation_receipts"]
         await collection.create_indexes(
             [
                 pymongo.IndexModel(
@@ -620,7 +620,7 @@ async def init_world_rule_confirmation_receipt_indexes() -> None:
         raise
 
 
-async def init_volume_command_receipt_indexes() -> None:
+async def init_volume_command_receipt_indexes(db=None) -> None:
     """初始化卷创建与批量规划确认的不可变幂等收据索引。
 
     Args:
@@ -630,7 +630,7 @@ async def init_volume_command_receipt_indexes() -> None:
         无。
     """
     try:
-        collection = get_database()["volume_command_receipts"]
+        collection = (db if db is not None else get_database())["volume_command_receipts"]
         await collection.create_indexes(
             [
                 pymongo.IndexModel(
@@ -646,7 +646,7 @@ async def init_volume_command_receipt_indexes() -> None:
         raise
 
 
-async def init_location_indexes() -> None:
+async def init_location_indexes(db=None) -> None:
     """初始化正式地点集合索引。
 
     Args:
@@ -659,7 +659,7 @@ async def init_location_indexes() -> None:
         Exception: MongoDB 索引创建失败。
     """
     try:
-        collection = get_database()["locations"]
+        collection = (db if db is not None else get_database())["locations"]
         await collection.create_indexes(
             [
                 pymongo.IndexModel(
@@ -731,7 +731,7 @@ async def init_location_indexes() -> None:
         raise
 
 
-async def init_location_confirmation_receipt_indexes() -> None:
+async def init_location_confirmation_receipt_indexes(db=None) -> None:
     """初始化地点批量确认不可变回执索引。
 
     Args:
@@ -741,7 +741,7 @@ async def init_location_confirmation_receipt_indexes() -> None:
         无。
     """
     try:
-        collection = get_database()["location_generation_confirmation_receipts"]
+        collection = (db if db is not None else get_database())["location_generation_confirmation_receipts"]
         await collection.create_indexes(
             [
                 pymongo.IndexModel(
@@ -757,7 +757,7 @@ async def init_location_confirmation_receipt_indexes() -> None:
         raise
 
 
-async def init_item_indexes() -> None:
+async def init_item_indexes(db=None) -> None:
     """初始化正式物品集合索引。
 
     Args:
@@ -770,7 +770,7 @@ async def init_item_indexes() -> None:
         Exception: MongoDB 索引创建失败。
     """
     try:
-        collection = get_database()["items"]
+        collection = (db if db is not None else get_database())["items"]
         await collection.create_indexes(
             [
                 pymongo.IndexModel(
@@ -836,7 +836,7 @@ async def init_item_indexes() -> None:
         raise
 
 
-async def init_item_confirmation_receipt_indexes() -> None:
+async def init_item_confirmation_receipt_indexes(db=None) -> None:
     """初始化物品批量确认不可变回执索引。
 
     Args:
@@ -846,7 +846,7 @@ async def init_item_confirmation_receipt_indexes() -> None:
         无。
     """
     try:
-        collection = get_database()["item_generation_confirmation_receipts"]
+        collection = (db if db is not None else get_database())["item_generation_confirmation_receipts"]
         await collection.create_indexes(
             [
                 pymongo.IndexModel(
@@ -862,7 +862,7 @@ async def init_item_confirmation_receipt_indexes() -> None:
         raise
 
 
-async def init_character_volume_state_indexes() -> None:
+async def init_character_volume_state_indexes(db=None) -> None:
     """初始化角色卷级参与状态索引。
 
     Args:
@@ -871,7 +871,7 @@ async def init_character_volume_state_indexes() -> None:
     Returns:
         无。
     """
-    collection = get_database()["character_volume_states"]
+    collection = (db if db is not None else get_database())["character_volume_states"]
     await collection.create_indexes(
         [
             pymongo.IndexModel(
@@ -937,7 +937,7 @@ async def init_character_volume_state_indexes() -> None:
     logger.info("成功初始化 character_volume_states 索引。")
 
 
-async def init_character_volume_state_initialization_receipt_indexes() -> None:
+async def init_character_volume_state_initialization_receipt_indexes(db=None) -> None:
     """初始化角色卷状态批量初始化不可变回执索引。
 
     Args:
@@ -946,7 +946,7 @@ async def init_character_volume_state_initialization_receipt_indexes() -> None:
     Returns:
         无。
     """
-    collection = get_database()[
+    collection = (db if db is not None else get_database())[
         "character_volume_state_initialization_receipts"
     ]
     await collection.create_indexes(
@@ -965,7 +965,7 @@ async def init_character_volume_state_initialization_receipt_indexes() -> None:
     logger.info("成功初始化角色卷状态初始化回执索引。")
 
 
-async def init_faction_scope_indexes() -> None:
+async def init_faction_scope_indexes(db=None) -> None:
     """初始化势力归属卷查询和活动作用域名称唯一索引。
 
     Args:
@@ -974,7 +974,7 @@ async def init_faction_scope_indexes() -> None:
     Returns:
         无。
     """
-    collection = get_database()["factions"]
+    collection = (db if db is not None else get_database())["factions"]
     await collection.create_indexes(
         [
             pymongo.IndexModel(
@@ -1007,7 +1007,7 @@ async def init_faction_scope_indexes() -> None:
     logger.info("成功初始化 factions 归属卷作用域索引。")
 
 
-async def init_faction_volume_state_indexes() -> None:
+async def init_faction_volume_state_indexes(db=None) -> None:
     """初始化势力卷级参与状态索引。
 
     Args:
@@ -1016,7 +1016,7 @@ async def init_faction_volume_state_indexes() -> None:
     Returns:
         无。
     """
-    collection = get_database()["faction_volume_states"]
+    collection = (db if db is not None else get_database())["faction_volume_states"]
     await collection.create_indexes(
         [
             pymongo.IndexModel(
@@ -1078,7 +1078,7 @@ async def init_faction_volume_state_indexes() -> None:
     logger.info("成功初始化 faction_volume_states 索引。")
 
 
-async def init_faction_volume_state_initialization_receipt_indexes() -> None:
+async def init_faction_volume_state_initialization_receipt_indexes(db=None) -> None:
     """初始化势力卷状态批量初始化不可变回执索引。
 
     Args:
@@ -1087,7 +1087,7 @@ async def init_faction_volume_state_initialization_receipt_indexes() -> None:
     Returns:
         无。
     """
-    collection = get_database()[
+    collection = (db if db is not None else get_database())[
         "faction_volume_state_initialization_receipts"
     ]
     await collection.create_indexes(
@@ -1106,7 +1106,7 @@ async def init_faction_volume_state_initialization_receipt_indexes() -> None:
     logger.info("成功初始化势力卷状态初始化回执索引。")
 
 
-async def init_id_sequence_indexes() -> None:
+async def init_id_sequence_indexes(db=None) -> None:
     """初始化小说内业务 ID 序列索引。
 
     Args:
@@ -1116,7 +1116,7 @@ async def init_id_sequence_indexes() -> None:
         无。
     """
     try:
-        db = get_database()
+        db = db if db is not None else get_database()
         await db["id_sequences"].create_indexes(
             [
                 pymongo.IndexModel(
@@ -1241,11 +1241,11 @@ async def init_chapter_record_indexes(db: Any) -> None:
         无。
     """
     from backend.ops.book_archive_indexes import BOOK_INDEXES
-    for name in ("events", "chapter_reports", "entity_state_history", "chapter_record_confirmation_receipts", "character_creation_batch_receipts"):
+    for name in ("events", "chapter_reports", "entity_state_history", "chapter_record_confirmation_receipts", "character_creation_batch_receipts", "faction_creation_batch_receipts"):
         await db[name].create_indexes(BOOK_INDEXES[name])
 
 
-async def init_all_indexes() -> None:
+async def init_all_indexes(db=None) -> None:
     """为当前数据结构创建全部业务索引。
 
     Args:
@@ -1254,29 +1254,30 @@ async def init_all_indexes() -> None:
     Returns:
         无。
     """
-    await init_novel_indexes()
-    await init_volume_indexes()
-    await init_faction_indexes()
-    await init_faction_relation_indexes()
-    await init_character_indexes()
-    await init_character_relation_indexes()
-    await init_character_faction_binding_indexes()
-    await init_world_rule_indexes()
-    await init_world_rule_confirmation_receipt_indexes()
-    await init_volume_command_receipt_indexes()
-    await init_id_sequence_indexes()
-    await init_location_indexes()
-    await init_location_confirmation_receipt_indexes()
-    await init_item_indexes()
-    await init_item_confirmation_receipt_indexes()
-    await init_character_volume_state_indexes()
-    await init_character_volume_state_initialization_receipt_indexes()
-    await init_faction_scope_indexes()
-    await init_faction_volume_state_indexes()
-    await init_faction_volume_state_initialization_receipt_indexes()
-    await init_arc_indexes(get_database())
-    await init_hierarchy_indexes(get_database())
-    await init_foreshadowing_indexes(get_database())
-    await init_chapter_record_indexes(get_database())
+    db = db if db is not None else get_database()
+    await init_novel_indexes(db)
+    await init_volume_indexes(db)
+    await init_faction_indexes(db)
+    await init_faction_relation_indexes(db)
+    await init_character_indexes(db)
+    await init_character_relation_indexes(db)
+    await init_character_faction_binding_indexes(db)
+    await init_world_rule_indexes(db)
+    await init_world_rule_confirmation_receipt_indexes(db)
+    await init_volume_command_receipt_indexes(db)
+    await init_id_sequence_indexes(db)
+    await init_location_indexes(db)
+    await init_location_confirmation_receipt_indexes(db)
+    await init_item_indexes(db)
+    await init_item_confirmation_receipt_indexes(db)
+    await init_character_volume_state_indexes(db)
+    await init_character_volume_state_initialization_receipt_indexes(db)
+    await init_faction_scope_indexes(db)
+    await init_faction_volume_state_indexes(db)
+    await init_faction_volume_state_initialization_receipt_indexes(db)
+    await init_arc_indexes(db)
+    await init_hierarchy_indexes(db)
+    await init_foreshadowing_indexes(db)
+    await init_chapter_record_indexes(db)
     from backend.services.assistant.resources import init_assistant_indexes
-    await init_assistant_indexes()
+    await init_assistant_indexes(db)

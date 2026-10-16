@@ -20,12 +20,12 @@
 已有物品（只能用于去重和整体平衡，禁止重复输出）:
 {existing_items_json}
 
-本次必须生成物品数量: {item_count}
+本次数量参数（null/None 由 AI 决定）: {item_count}
 是否允许在已有物品基础上继续补充: {allow_incremental}
 用户补充要求: {user_guidance}
 
 硬性规则:
-1. items 数量必须严格等于本次要求，只生成对主线、角色选择或世界规则有明确作用的物品。
+1. items 指定整数时数量必须严格等于本次要求，只生成对主线、角色选择或世界规则有明确作用的物品。
 2. 名称和别名不得与已有物品或本批其他候选重复，不要换一个近似名称复制已有物品。
 3. candidate_ref 使用 item_candidate_1、item_candidate_2 这类本批引用并保持唯一；不得输出正式 item_ ID。
 4. owner_character_id、controlling_faction_id、current_location_id 只能使用输入白名单中的正式 ID，也可以为 null。
@@ -33,3 +33,5 @@
 6. 每条候选必须且只能包含 candidate_ref、name、aliases、item_type、description、appearance、origin、abilities、limitations、costs、owner_character_id、controlling_faction_id、current_location_id、lifecycle_status、story_function、tags。
 7. aliases、abilities、limitations、costs、tags 必须使用 JSON 数组；没有内容时使用空数组，各数组内不要重复。
 8. 禁止输出正式 item_id、order_index、version、删除或审计字段，也不要宣称候选已经保存。
+
+数量参数 item_count 为 null 或 None 时，由你根据故事实际需要决定数量，至少 1 个、最多 20 个；不要把上限当成目标，也不要默认凑满。指定整数时严格遵守该数量。

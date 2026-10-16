@@ -12,6 +12,7 @@ from backend.api.error_protocol import DomainApiError
 from backend.db.base import BaseRepository
 from backend.db.utils import get_utc_now
 from backend.db.write_contracts import canonical_request_hash
+from backend.llm.schemas.volume_entity_pydantic import CHARACTER_PLAN_CONTRACT
 from backend.services.task_flows.contracts import FlowRef, GraphRunRequest
 from backend.services.task_flows.graph import port_schema
 from backend.services.task_flows.integration import generate_task_flow
@@ -50,8 +51,10 @@ POSITION_REVIEW_TASKS = CONTENT_TASKS | {
 
 FACT_GENERATION_CONTRACTS = {
     "create_characters_by_ai": "character_fact_batch_v1",
+    "create_factions_by_ai": "faction_fact_batch_v1",
+    "create_factions_for_volume_by_ai": "participation_plan_v1",
     "create_character_relations_by_ai": "character_relation_fact_batch_v1",
-    "create_characters_for_volume_by_ai": "participation_plan_v1",
+    "create_characters_for_volume_by_ai": CHARACTER_PLAN_CONTRACT,
 }
 
 
@@ -125,9 +128,12 @@ async def validate_creation(change: dict, *, session=None) -> None:
     if task in FACT_GENERATION_CONTRACTS:
         policy = change.get("generation_policy", {})
         answers = policy.get("author_answers", [])
-        position = {"version": 1, "intent": "volume_start", "target_type": "volume", "target_id": request.get("scope", {}).get("volume_id")} if task == "create_characters_for_volume_by_ai" else {
+        position = {"version": 1, "intent": "volume_start", "target_type": "volume", "target_id": request.get("scope", {}).get("volume_id")} if task in {"create_characters_for_volume_by_ai", "create_factions_for_volume_by_ai"} else {
             "version": 1, "intent": "book_start", "target_type": "novel", "target_id": str(change["novel_id"])}
-        if (not run or policy.get("contract") != FACT_GENERATION_CONTRACTS[task]
+        supported_contracts = {FACT_GENERATION_CONTRACTS[task]}
+        if task == "create_characters_for_volume_by_ai":
+            supported_contracts.add("participation_plan_v1")
+        if (not run or policy.get("contract") not in supported_contracts
                 or policy.get("request_hash") != run.get("request_hash")
                 or canonical_request_hash(run["request"]) != run.get("request_hash")
                 or policy.get("author_location") != run["request"].get("location")
@@ -139,7 +145,9 @@ async def validate_creation(change: dict, *, session=None) -> None:
         if change.get("candidate"):
             field, keys = {"create_characters_by_ai": ("core_characters", ("character_ref",)),
                            "create_character_relations_by_ai": ("relations", ("relation_ref", "source_character_id", "target_character_id")),
-                           "create_characters_for_volume_by_ai": ("characters", ("candidate_ref", "character_id"))}[task]
+                           "create_characters_for_volume_by_ai": ("characters", ("candidate_ref", "character_id")),
+                           "create_factions_for_volume_by_ai": ("factions", ("candidate_ref", "faction_id")),
+                           "create_factions_by_ai": ("core_factions", ("faction_ref",))}[task]
             original = change["envelope"]["candidate"][field]
             if [tuple(row.get(key) for key in keys) for row in change["candidate"][field]] != [tuple(row.get(key) for key in keys) for row in original]:
                 raise DomainApiError("ASSISTANT_CHANGE_SCOPE", "这批人物或关系的对应位置已变化，请保留原稿并另发请求", status_code=409)
@@ -181,7 +189,7 @@ def describe_generation(task: str, flow_ref: FlowRef | None = None) -> dict:
             "semantics": "position_writing" if task in CONTENT_TASKS else "book_management",
             "instructions": ("按位置创作必须匹配作者本轮 writing_target。作者要求取原消息、真实回答和服务端按位置核实的回答动作，最多 5000 字；inputs 只采用原表单数量、字数和枚举，不采用模型提问全文、补写的要求、搜索词、摘要或资料选择。"
                              if task in CONTENT_TASKS else "全书设计任务会读取全书资料，不能声称按章安全。保持原方案和开始表单。")
-                            + ("人物/关系批量及卷人物计划只取作者原话作为要求，保存前核对作者意图；全书核心人物和关系从书初建立，卷人物使用本卷六字段参与计划，不覆盖已有事实。位置不明先提问。" if task in FACT_GENERATION_CONTRACTS else "")
+                            + ("人物/关系/势力批量及卷参与计划只取作者原话作为要求，保存前核对作者意图；全书核心人物、关系和势力从书初建立，卷参与计划只存设计字段，不覆盖已有事实。位置不明先提问。" if task in FACT_GENERATION_CONTRACTS else "")
                             + "target 指定原按钮的位置；字段改写另指定 target_field。依赖前组修改时先保存该组，再调用生成。结果为独立审核组。"}
 
 
@@ -228,8 +236,8 @@ async def run_generation(novel_id: str, session_id: str, run_id: str, *, task: s
         run = await BaseRepository("assistant_runs").collection.find_one({"_id": ObjectId(run_id), "novel_id": ObjectId(novel_id)})
         if not run or run.get("creation_contract_version") != 1 or canonical_request_hash(run["request"]) != run.get("request_hash"):
             raise DomainApiError("ASSISTANT_CREATION_REQUEST_EXPIRED", "此轮缺少原作者要求，请由作者另发新请求", status_code=409)
-        if task != "create_characters_for_volume_by_ai" and target is not None and target.model_dump() != {"resource_type": "novel", "id": novel_id}:
-            raise DomainApiError("ASSISTANT_FACT_POSITION_REQUIRED", "全书核心人物和关系从书初建立；其它起点请使用明确位置的事实工具", status_code=409)
+        if task not in {"create_characters_for_volume_by_ai", "create_factions_for_volume_by_ai"} and target is not None and target.model_dump() != {"resource_type": "novel", "id": novel_id}:
+            raise DomainApiError("ASSISTANT_FACT_POSITION_REQUIRED", "全书核心人物、关系和势力从书初建立；其它起点请使用明确位置的事实工具", status_code=409)
         author_request = "\n".join([run["request"]["message"], *(answer["message"] for answer in run.get("answers", []))])
         if len(author_request) > 2000:
             raise DomainApiError("ASSISTANT_FACT_SOURCE_REQUIRED", "请作者用不超过 2000 字说明这批要求，助手不会代写或截断原文", status_code=409)
@@ -291,7 +299,7 @@ async def run_generation(novel_id: str, session_id: str, run_id: str, *, task: s
         # 数量和枚举仍由原业务合同校验，不允许在这些字段里夹带自由文本。
         WritingGenerateInputV1.model_validate({**scope, **inputs})
     if generation_policy is not None:
-        position = {"version": 1, "intent": "volume_start", "target_type": "volume", "target_id": scope["volume_id"]} if task == "create_characters_for_volume_by_ai" else {
+        position = {"version": 1, "intent": "volume_start", "target_type": "volume", "target_id": scope["volume_id"]} if task in {"create_characters_for_volume_by_ai", "create_factions_for_volume_by_ai"} else {
             "version": 1, "intent": "book_start", "target_type": "novel", "target_id": novel_id}
         selected_position = next((answer["selected_position"] for answer in reversed(run.get("answers", [])) if answer.get("selected_position")), None)
         if selected_position and selected_position != position:
@@ -368,11 +376,17 @@ async def run_generation(novel_id: str, session_id: str, run_id: str, *, task: s
             basis = envelope["basis"]
             candidate = deepcopy(envelope["candidate"])
             policy = existing.get("generation_policy") if existing else generation_policy
-            if task == "create_characters_for_volume_by_ai" and policy and policy["contract"] == "participation_plan_v1":
-                from backend.llm.schemas.character_volume_state_pydantic import CharacterVolumePlanFieldsV1
-                # 只为本次明确的计划请求取六字段；原九字段输出完整留在 envelope，旧候选不升级。
-                for row in candidate["characters"]:
-                    row["state"] = {field: value for field, value in row["state"].items() if field in CharacterVolumePlanFieldsV1.model_fields}
+            if task == "create_characters_for_volume_by_ai" and (not policy or policy["contract"] != CHARACTER_PLAN_CONTRACT
+                    or envelope.get("contract") != CHARACTER_PLAN_CONTRACT):
+                raise DomainApiError("CHARACTER_CANDIDATE_CONTRACT_REQUIRED", "旧人物生成请求请保留原稿，并用新合同重新生成", status_code=409)
+            if task == "create_factions_for_volume_by_ai" and policy and policy["contract"] == "participation_plan_v1":
+                from backend.llm.schemas.faction_volume_state_pydantic import FactionVolumePlanFieldsV1
+                for row in candidate["factions"]:
+                    original_state = row["state"]
+                    row["state"] = {field: value for field, value in original_state.items() if field in FactionVolumePlanFieldsV1.model_fields}
+                    if row.get("profile"):
+                        row["initial_facts"] = {("story_status" if field == "active_status" else field): original_state[field]
+                            for field in ("power_level", "resources", "public_stance", "influence_scope", "active_status") if field in original_state}
             sources, before = [], {}
             if task in POSITION_REVIEW_TASKS:
                 # 原任务已固定按位置读取依据，不能再用整实体的统计版本替代它。
@@ -433,7 +447,7 @@ async def confirm_generation(change: dict, *, session) -> dict:
     from backend.llm.schemas.location_pydantic import LocationBulkGeneratedRequestV1
     from backend.llm.schemas.item_pydantic import ItemBulkGeneratedRequestV1
     from backend.llm.schemas.volume_planning_pydantic import VolumeBulkPlanRequestV1, VolumeLaunchConfirmV1
-    from backend.llm.schemas.volume_entity_pydantic import VolumeCharactersPlanConfirmV1, VolumeCharactersPlanResultV1, VolumeFactionsConfirmV1
+    from backend.llm.schemas.volume_entity_pydantic import VolumeCharactersInitialFactsConfirmV1, VolumeCharactersInitialFactsResultV1, VolumeCharactersPlanConfirmV1, VolumeCharactersPlanResultV1, VolumeFactionsPlanConfirmV1, VolumeFactionsPlanResultV1
     from backend.services.novel.writing_contract import WritingConfirmV1
     from backend.services.novel.plot_contract import PlotConfirmV1
     from backend.services.novel.writing_generation import confirm_writing
@@ -442,8 +456,12 @@ async def confirm_generation(change: dict, *, session) -> dict:
     from .domain import NovelService, VolumeService, FactionService, FactionRelationService, WorldRuleService, LocationService, ItemService
 
     task, novel_id = change["generation_task"], str(change["novel_id"])
-    result_model = VolumeCharactersPlanResultV1 if task == "create_characters_for_volume_by_ai" else TASKS[task].result_model
-    candidate = result_model.model_validate(change["candidate"]).model_dump(mode="json")
+    character_contract = change["envelope"].get("contract") if task == "create_characters_for_volume_by_ai" else None
+    if character_contract not in (None, CHARACTER_PLAN_CONTRACT):
+        raise DomainApiError("CHARACTER_CANDIDATE_CONTRACT_REQUIRED", "人物候选合同不受支持，请保留原稿", status_code=409)
+    character_result = VolumeCharactersInitialFactsResultV1 if character_contract == CHARACTER_PLAN_CONTRACT else VolumeCharactersPlanResultV1
+    result_model = {"create_characters_for_volume_by_ai": character_result, "create_factions_for_volume_by_ai": VolumeFactionsPlanResultV1}.get(task, TASKS[task].result_model)
+    candidate = result_model.model_validate(change["candidate"]).model_dump(mode="json", exclude_unset=task == "create_factions_for_volume_by_ai")
     basis = deepcopy(change["envelope"]["basis"])
     inputs = basis["generation_input"] if "generation_input" in basis else basis["flow_snapshot"]["business_input"]
     expected = {f"{ref['resource_type']}:{ref['id']}": ref["version"] for ref in basis["source_refs"]}
@@ -464,7 +482,16 @@ async def confirm_generation(change: dict, *, session) -> dict:
         await NovelService.confirm_ai_field(novel_id, NovelAIFieldConfirmationRequestV1.model_validate(payload), **common)
     elif task == "create_factions_by_ai":
         payload.update(selected_faction_refs=[row["faction_ref"] for row in candidate["core_factions"]], selected_relation_refs=[row["relation_ref"] for row in candidate["faction_relations"]])
-        await FactionService.bulk_create_core_factions_with_relations(novel_id, CoreFactionsAIConfirmationRequestV2.model_validate(payload), **common)
+        CoreFactionsAIConfirmationRequestV2.model_validate(payload)
+        from backend.services.novel.faction_fact_batch_service import create_faction_fact_batch
+        from backend.services.novel.faction_fact_contract import FactionFactCreateDataV1, FACTION_FACT_PROFILE_FIELDS
+        rows = [{"candidate_ref": row["faction_ref"],
+            "profile": {**{field: value for field, value in row.items() if field in FactionFactCreateDataV1.model_fields}, "level_type": "core"},
+            "facts": {field: value for field, value in row.items() if field in FACTION_FACT_PROFILE_FIELDS}} for row in candidate["core_factions"]]
+        saved_batch = await create_faction_fact_batch(novel_id, {"position": change["generation_policy"]["position"],
+            "candidates": rows, "relations": candidate["faction_relations"],
+            "generation": {"basis": basis, "generation_input": inputs}, "confirmed": True}, **common)
+        identities = saved_batch["faction_ref_map"]
     elif task == "create_characters_by_ai":
         from backend.services.novel.character_fact_batch_service import create_character_fact_batch
         from backend.services.novel.character_fact_contract import CharacterFactCreateDataV1, CHARACTER_FACT_PROFILE_FIELDS
@@ -508,12 +535,13 @@ async def confirm_generation(change: dict, *, session) -> dict:
     elif task == "plan_volume_launch_by_ai":
         await VolumeService.confirm_launch_package(inputs["volume_id"], VolumeLaunchConfirmV1.model_validate({**candidate["launch_package"], "basis": basis, "expected_version": inputs["volume_expected_version"]}), **common)
     elif task in {"create_characters_for_volume_by_ai", "create_factions_for_volume_by_ai"}:
-        field, model = ("characters", VolumeCharactersPlanConfirmV1) if task == "create_characters_for_volume_by_ai" else ("factions", VolumeFactionsConfirmV1)
+        character_model = VolumeCharactersInitialFactsConfirmV1 if character_contract == CHARACTER_PLAN_CONTRACT else VolumeCharactersPlanConfirmV1
+        field, model = ("characters", character_model) if task == "create_characters_for_volume_by_ai" else ("factions", VolumeFactionsPlanConfirmV1)
         request = {"candidates": candidate[field], "basis": basis}
-        if task == "create_characters_for_volume_by_ai":
-            request["contract"] = "participation_plan_v1"
+        if task in {"create_characters_for_volume_by_ai", "create_factions_for_volume_by_ai"}:
+            request["contract"] = character_contract or "participation_plan_v1"
         result = await confirm_volume_entities(task, novel_id, inputs["volume_id"], model.model_validate(request), **common)
-        if task == "create_characters_for_volume_by_ai":
+        if task in {"create_characters_for_volume_by_ai", "create_factions_for_volume_by_ai"}:
             saved_batch, identities = result, result["mapping"]
     elif task in PLOT_TASKS:
         await confirm_plot(task, inputs["target_id"], PlotConfirmV1.model_validate({"candidate": candidate, "basis": basis, "expected_version": inputs["expected_version"]}), **common)

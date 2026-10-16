@@ -284,11 +284,12 @@ export default function HierarchyWorkspace({ novelId, location, scope = "chapter
 
   const expand = async (node: HierarchyNode) => {
     if (expanded.has(node.id)) { setExpanded((set) => { const next = new Set(set); next.delete(node.id); return next; }); return; }
-    setExpanded((set) => new Set([...set, node.id]));
-    if (!branches[node.id]) {
-      try { const children = await loadChildren(node); setBranches((current) => ({ ...current, [node.id]: children })); }
-      catch (failure) { setError(failure instanceof Error ? failure.message : t("loadFailed")); }
-    }
+    if (node.kind === "scene" && !showTrash && node.record.chapter_count === 0 && !branches[node.id]?.some((child) => !child.record.is_deleted)) return;
+    try {
+      const children = branches[node.id] ?? await loadChildren(node);
+      setBranches((current) => ({ ...current, [node.id]: children }));
+      if (children.some((child) => showTrash || !child.record.is_deleted)) setExpanded((set) => new Set([...set, node.id]));
+    } catch (failure) { setError(failure instanceof Error ? failure.message : t("loadFailed")); }
   };
 
   const visible: { node: HierarchyNode; level: number; parent: HierarchyNode | null }[] = [];
@@ -460,16 +461,19 @@ export default function HierarchyWorkspace({ novelId, location, scope = "chapter
     <div className={`${generationPage ? "hidden" : "grid"} min-h-0 flex-1 overflow-hidden @min-[800px]/hierarchy:grid-cols-[minmax(240px,280px)_minmax(0,1fr)]`}>
       <aside aria-label={t("tree")} className={`${mobileDetail ? "hidden @min-[800px]/hierarchy:block" : "block"} workspace-scrollbar min-h-0 overflow-y-auto border-r border-border`}>
         <ul role="tree" aria-label={t("tree")} className="py-2">
-          {visible.map(({ node, level, parent: treeParent }, position) => <li key={`${node.kind}:${node.id}`} role="none">
+          {visible.map(({ node, level, parent: treeParent }, position) => {
+            const emptyScene = node.kind === "scene" && (branches[node.id] ? !branches[node.id].some((child) => showTrash || !child.record.is_deleted) : !showTrash && node.record.chapter_count === 0);
+            const isExpanded = expanded.has(node.id) && !emptyScene;
+            return <li key={`${node.kind}:${node.id}`} role="none">
             <div className={`flex min-w-0 items-center border-l-2 ${selected?.id === node.id ? "border-accent bg-selected" : "border-transparent hover:bg-surface-secondary"}`} style={{ paddingLeft: (level - 1) * 16 }}>
-              {node.kind !== "chapter" && !(scope === "arcs" && node.kind === "arc") && !node.record.is_deleted ? <button type="button" tabIndex={-1} aria-label={t(expanded.has(node.id) ? "collapse" : "expand", { title: node.record.title })} onClick={() => void expand(node)} className="min-h-11 w-8 shrink-0 text-accent">{expanded.has(node.id) ? "−" : "+"}</button> : <span className="w-8 shrink-0" />}
-              <button id={`hierarchy-${scope}-${node.id}`} type="button" role="treeitem" disabled={planSaving || bodySaving || recordsSaving} aria-level={level} aria-selected={selected?.id === node.id} aria-expanded={node.kind !== "chapter" && !(scope === "arcs" && node.kind === "arc") && !node.record.is_deleted ? expanded.has(node.id) : undefined} tabIndex={selected?.id === node.id || (!visible.some((item) => item.node.id === selected?.id) && position === 0) ? 0 : -1} className="min-h-14 min-w-0 flex-1 px-2 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent" onClick={() => choose(node)} onKeyDown={(event) => {
+              {node.kind !== "chapter" && !(scope === "arcs" && node.kind === "arc") && !node.record.is_deleted ? <button type="button" tabIndex={-1} disabled={emptyScene} title={emptyScene ? t("noChaptersToExpand") : undefined} aria-label={t(isExpanded ? "collapse" : "expand", { title: node.record.title })} onClick={() => void expand(node)} className="min-h-11 w-8 shrink-0 text-accent disabled:cursor-not-allowed disabled:text-muted disabled:opacity-40">{isExpanded ? "−" : "+"}</button> : <span className="w-8 shrink-0" />}
+              <button id={`hierarchy-${scope}-${node.id}`} type="button" role="treeitem" disabled={planSaving || bodySaving || recordsSaving} aria-level={level} aria-selected={selected?.id === node.id} aria-expanded={node.kind !== "chapter" && !(scope === "arcs" && node.kind === "arc") && !node.record.is_deleted ? isExpanded : undefined} tabIndex={selected?.id === node.id || (!visible.some((item) => item.node.id === selected?.id) && position === 0) ? 0 : -1} className="min-h-14 min-w-0 flex-1 px-2 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent" onClick={() => choose(node)} onKeyDown={(event) => {
                 let target: HierarchyNode | undefined;
                 if (event.key === "ArrowDown") target = visible[position + 1]?.node;
                 if (event.key === "ArrowUp") target = visible[position - 1]?.node;
                 if (event.key === "Home") target = visible[0]?.node;
                 if (event.key === "End") target = visible.at(-1)?.node;
-                if (event.key === "ArrowRight" && node.kind !== "chapter" && !(scope === "arcs" && node.kind === "arc")) { event.preventDefault(); if (!expanded.has(node.id)) void expand(node); else target = visible[position + 1]?.node; }
+                if (event.key === "ArrowRight" && node.kind !== "chapter" && !(scope === "arcs" && node.kind === "arc")) { event.preventDefault(); if (!emptyScene) { if (!isExpanded) void expand(node); else target = visible[position + 1]?.node; } }
                 if (event.key === "ArrowLeft") { event.preventDefault(); if (expanded.has(node.id)) void expand(node); else target = treeParent ?? undefined; }
                 if (target) { event.preventDefault(); document.getElementById(`hierarchy-${scope}-${target.id}`)?.focus(); }
               }}>
@@ -477,10 +481,7 @@ export default function HierarchyWorkspace({ novelId, location, scope = "chapter
                 <span className="text-xs text-muted">{t(`kinds.${node.kind}`)} {node.kind === "chapter" ? node.record.chapter_number ?? node.record.order_index : node.record.order_index}{node.record.is_deleted ? ` · ${t("trashed")}` : ""}</span>
               </button>
             </div>
-            {node.kind === "scene" && expanded.has(node.id) && branches[node.id]?.length === 0 && !node.record.is_deleted && <div className="px-4 pb-3">
-              <Button size="sm" variant="ghost" className="h-auto min-h-11 w-full whitespace-normal border border-dashed border-border text-accent [overflow-wrap:anywhere]" isDisabled={actionsDisabled} onPress={() => choose(node)}><span aria-hidden="true">＋</span>{t("enterEmptyScene")}</Button>
-            </div>}
-          </li>)}
+          </li>; })}
         </ul>
       </aside>
       <article ref={detailRef} tabIndex={-1} aria-label={t("detail")} className={`${mobileDetail ? "flex" : "hidden @min-[800px]/hierarchy:flex"} workspace-scrollbar min-h-0 min-w-0 flex-col overflow-y-auto px-5 py-3 outline-none sm:px-7`}>
@@ -547,7 +548,7 @@ export default function HierarchyWorkspace({ novelId, location, scope = "chapter
             {batchScene && <Button size="sm" variant="ghost" isDisabled={actionsDisabled} onPress={() => choose(batchScene)}>{t("openScene")}</Button>}
           </>} />}
           <div id={!readingBody ? `hierarchy-${scope}-${selected.id}-panel` : undefined} role={selected.kind === "chapter" && !readingBody ? "tabpanel" : undefined} aria-labelledby={selected.kind === "chapter" ? `chapter-${selected.id}-tab-${recordsTab ? "records" : bodyTab}` : undefined} className={readingBody ? "hidden" : "flex min-h-0 flex-1 flex-col"}>
-            {selected.kind === "chapter" && <div className={recordsTab ? "block" : "hidden"}><RetainedViewActive.Provider value={active && recordsTab}><ChapterRecords key={selected.id} novelId={novelId} chapterId={selected.id} chapter={selected.record} choices={choices} chapterReviewId={chapterReviewId} onNavigateItem={onNavigateItem} refreshToken={refresh} onBusy={setRecordsSaving} onDirty={setRecordsDirty} beforeLeaveRef={recordsBeforeLeave} relationCheckVersion={2} /></RetainedViewActive.Provider></div>}
+            {selected.kind === "chapter" && <div className={recordsTab ? "block" : "hidden"}><RetainedViewActive.Provider value={active && recordsTab}><ChapterRecords key={selected.id} novelId={novelId} chapterId={selected.id} chapter={selected.record} choices={choices} chapterReviewId={chapterReviewId} onNavigateItem={onNavigateItem} refreshToken={refresh} showRefresh={mobileDetail} refreshClassName="@min-[800px]/hierarchy:hidden" onBusy={setRecordsSaving} onDirty={setRecordsDirty} beforeLeaveRef={recordsBeforeLeave} relationCheckVersion={2} /></RetainedViewActive.Provider></div>}
 
             {ownsSelected && (selected.kind !== "chapter" || !bodyTab && !recordsTab) && <div>
               <div className="space-y-4">

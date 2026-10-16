@@ -1,5 +1,7 @@
 "use client";
 
+import { downloadExport } from "@/lib/userExport";
+
 import { apiGet, apiPost, apiPut } from "@/lib/api";
 import { TooltipHint } from "@/components/shared/TooltipHint";
 import {
@@ -583,7 +585,7 @@ export default function TaskFlowWorkspace() {
               const anchor = document.createElement("a");
               anchor.href = url;
               anchor.download = `${root.name.replace(/[\\/:*?"<>|]/g, "_")}.json`;
-              anchor.click();
+              void downloadExport(anchor);
               URL.revokeObjectURL(url);
             }}
           >

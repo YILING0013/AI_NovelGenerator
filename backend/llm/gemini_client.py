@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from backend.llm.base_client import BaseLLMClient, _BeforeSendError, _ThinkStreamFilter
 from backend.llm.config import LLMProviderConfig
+from backend.llm.exceptions import LLMConnectionError
 from backend.llm.exceptions import (
     LLMAuthError,
     LLMError,
@@ -22,6 +23,7 @@ from backend.llm.exceptions import (
     LLMSchemaError,
     LLMTimeoutError,
 )
+from backend.llm.provider_probe import observe_provider_response
 from backend.llm.logger import LLMCall, log_http_request, log_http_response, log_parse_error
 from backend.llm.json_guard import reject_duplicate_json_keys
 from backend.llm.models import LLMFunctionCallProbe, LLMRequest, LLMResponse, TokenUsage, LLMToolCall, LLMToolDefinition, LLMToolResult, LLMToolTurn
@@ -165,6 +167,47 @@ class GeminiClient(BaseLLMClient):
             total_tokens=getattr(usage_metadata, "total_token_count", 0) or 0,
         )
 
+    async def _generate_content(self, *, model: str, contents: list[types.Content],
+                                config: types.GenerateContentConfig, stream: bool) -> Any:
+        """收齐 Generate Content 的原生内容块，保留工具调用和签名。
+
+        Args:
+            model: 当前模型。
+            contents: 完整输入及工具上下文。
+            config: 已构建的生成参数。
+            stream: 是否使用流式接口。
+        Returns:
+            完整的 SDK 响应，普通请求保持原样。
+        """
+        if not stream:
+            return await self._client.aio.models.generate_content(model=model, contents=contents, config=config)
+        response = None
+        candidate = None
+        parts: list[types.Part] = []
+        events = await self._client.aio.models.generate_content_stream(model=model, contents=contents, config=config)
+        async with aclosing(events):
+            async for chunk in events:
+                observe_provider_response(chunk, self.config.resolved_api_mode)
+                if response is None:
+                    response = chunk.model_copy(deep=True)
+                if chunk.usage_metadata is not None:
+                    response.usage_metadata = chunk.usage_metadata
+                if chunk.candidates:
+                    current = chunk.candidates[0]
+                    if candidate is None:
+                        candidate = current.model_copy(deep=True)
+                    if current.content is not None:
+                        parts.extend(current.content.parts or [])
+                    if current.finish_reason is not None:
+                        candidate.finish_reason = current.finish_reason
+        if candidate is None or candidate.finish_reason is None:
+            raise LLMConnectionError("Gemini 响应流提前断开，请重试", provider=self.provider_name, model=model)
+        if candidate.finish_reason != types.FinishReason.STOP:
+            raise LLMResponseError(f"Gemini 回复未完成：{candidate.finish_reason}", provider=self.provider_name, model=model)
+        candidate.content = types.Content(role="model", parts=parts)
+        response.candidates = [candidate]
+        return response
+
     async def text_generate(self, request: LLMRequest) -> LLMResponse:
         """调用 Gemini API 进行普通文本生成。"""
         request = self._apply_defaults(request)
@@ -173,11 +216,12 @@ class GeminiClient(BaseLLMClient):
             start = time.perf_counter()
 
             try:
-                resp = await self._client.aio.models.generate_content(
+                resp = await self._generate_content(stream=request.stream,
                     model=model,
                     contents=self._build_contents(request),
                     config=self._build_config(request),
                 )
+                observe_provider_response(resp, self.config.resolved_api_mode)
             except LLMError:
                 raise
             except Exception as exc:
@@ -224,11 +268,12 @@ class GeminiClient(BaseLLMClient):
                 config.response_mime_type = "application/json"
                 config.response_json_schema = schema.model_json_schema()
 
-                resp = await self._client.aio.models.generate_content(
+                resp = await self._generate_content(stream=request.stream,
                     model=model,
                     contents=self._build_contents(request),
                     config=config,
                 )
+                observe_provider_response(resp, self.config.resolved_api_mode)
             except LLMError:
                 raise
             except Exception as exc:
@@ -289,6 +334,7 @@ class GeminiClient(BaseLLMClient):
                 stream_filter = _ThinkStreamFilter(preserve_json_strings=request.json_output_schema is not None)
                 async with aclosing(stream):
                     async for chunk in stream:
+                        observe_provider_response(chunk, self.config.resolved_api_mode)
                         call.chunk_count += 1
                         if chunk.usage_metadata is not None:
                             call.usage = self._extract_usage(chunk.usage_metadata)
@@ -300,6 +346,8 @@ class GeminiClient(BaseLLMClient):
                             clean_text = stream_filter.feed(text)
                             if clean_text:
                                 yield clean_text
+                if not call.finish_reason:
+                    raise LLMConnectionError("Gemini 响应流提前断开，请重试", provider=self.provider_name, model=model)
                 if call.finish_reason == "MAX_TOKENS":
                     raise LLMResponseError(
                         "模型输出达到长度上限，内容未完成", provider=self.provider_name, model=model,
@@ -348,7 +396,8 @@ class GeminiClient(BaseLLMClient):
         config.automatic_function_calling = types.AutomaticFunctionCallingConfig(disable=True)
         config.tool_config = types.ToolConfig(function_calling_config=types.FunctionCallingConfig(mode="AUTO"))
         try:
-            response = await self._client.aio.models.generate_content(model=model, contents=contents, config=config)
+            response = await self._generate_content(stream=request.stream, model=model, contents=contents, config=config)
+            observe_provider_response(response, self.config.resolved_api_mode)
             if not response.candidates or response.candidates[0].content is None:
                 raise ValueError("工具对话没有返回候选")
             candidate = response.candidates[0]
@@ -406,11 +455,12 @@ class GeminiClient(BaseLLMClient):
                     )
                 )
                 contents = self._build_contents(request)
-                first_resp = await self._client.aio.models.generate_content(
+                first_resp = await self._generate_content(stream=request.stream,
                     model=model,
                     contents=contents,
                     config=config,
                 )
+                observe_provider_response(first_resp, self.config.resolved_api_mode)
                 first_content = first_resp.candidates[0].content if first_resp.candidates else None
                 function_call = None
                 for part in getattr(first_content, "parts", []) or []:
@@ -430,21 +480,22 @@ class GeminiClient(BaseLLMClient):
                     types.Content(
                         role="user",
                         parts=[
-                            types.Part.from_function_response(
-                                name=probe.tool_name,
+                            types.Part(function_response=types.FunctionResponse(
+                                id=function_call.id, name=probe.tool_name,
                                 response=probe.tool_result,
-                            ),
+                            )),
                             types.Part(text=probe.final_response_prompt),
                         ],
                     )
                 )
                 final_config = self._build_config(request)
                 final_config.tools = [tool]
-                final_resp = await self._client.aio.models.generate_content(
+                final_resp = await self._generate_content(stream=request.stream,
                     model=model,
                     contents=final_contents,
                     config=final_config,
                 )
+                observe_provider_response(final_resp, self.config.resolved_api_mode)
             except LLMError:
                 raise
             except Exception as exc:

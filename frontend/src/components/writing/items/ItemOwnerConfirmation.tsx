@@ -1,4 +1,5 @@
 "use client";
+import DraftChip from "@/components/shared/DraftChip";
 
 import { Button, Modal } from "@heroui/react";
 import { useContext, useEffect, useId, useRef, useState, type RefObject } from "react";
@@ -45,9 +46,12 @@ export function ItemOwnerConfirmationEntry({ novelId, item, disabled, refresh = 
   return <section data-testid="item-owner-confirmation" className={`${eligible || drafts.length > 0 || error ? "mt-4 " : ""}grid min-w-0 gap-3`}>
     {eligible && <div><Button size="sm" variant="outline" isDisabled={disabled} onPress={() => onStart()}>{t("itemOwner.open")}</Button></div>}
     {error && <RelationEditorErrorSummary message={error} />}
-    {drafts.length > 0 && <details><summary className="min-h-11 cursor-pointer py-2 text-sm text-accent">{t("localDrafts", { count: drafts.length })}</summary><ul className="divide-y divide-border">{drafts.map((stored) => <li key={stored.key} className="flex min-w-0 flex-wrap items-center justify-between gap-2 py-2"><span className="break-words text-sm">{stored.itemOwner?.from_name} → {stored.itemOwner?.to_name || t("itemOwner.newHolder")} · {t(stored.command?.saved ? "savedPending" : stored.command?.unknown ? "unknown" : stored.command ? "rejected" : "draft")}</span><Button size="sm" variant="outline" isDisabled={disabled} onPress={() => onStart(stored)}>{t("resume")}</Button>{!stored.itemFact && (!stored.review || stored.command?.saved) && (!stored.command?.unknown || stored.command.saved) && <Button size="sm" variant="ghost" isDisabled={disabled} onPress={async () => {
-      try { await writeChapterRecordDraft(scope, stored, stored.revision, true); setDrafts(await readChapterRecordDrafts(scope)); setError(""); } catch { setError(t("localFailed")); }
-    }}>{t("discard")}</Button>}</li>)}</ul></details>}
+    {drafts.length > 0 && <div className="flex flex-wrap gap-2" aria-label={t("localDrafts", { count: drafts.length })}>
+      {drafts.map((stored) => <DraftChip key={stored.key} label={`${stored.itemOwner?.from_name} → ${stored.itemOwner?.to_name || t("itemOwner.newHolder")}`} status={stored.command?.saved ? "saved" : stored.command ? stored.command.unknown ? "pending" : "rejected" : "draft"} isDisabled={disabled} onResume={() => onStart(stored)}
+        onDiscard={!stored.itemFact && (!stored.review || stored.command?.saved) && (!stored.command?.unknown || stored.command.saved) ? async () => {
+          await writeChapterRecordDraft(scope, stored, stored.revision, true); setDrafts(await readChapterRecordDrafts(scope)); setError("");
+        } : undefined} />)}
+    </div>}
   </section>;
 }
 

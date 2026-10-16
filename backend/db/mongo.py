@@ -10,6 +10,7 @@ from backend.db.confirmation_timing import confirmation_commands
 logger = logging.getLogger(__name__)
 
 client: AsyncMongoClient | None = None
+setup_error: dict[str, str] | None = None
 _active_connection_settings: tuple[str, str, int] | None = None
 MONGODB_URL_ENV_VAR = "NOVEL_GENERATOR_MONGODB_URL"
 MONGO_DATABASE_NAME_ENV_VAR = "NOVEL_GENERATOR_MONGO_DATABASE_NAME"
@@ -44,7 +45,7 @@ def _get_database_name() -> str:
     return _get_runtime_setting(
         MONGO_DATABASE_NAME_ENV_VAR,
         "mongo_database_name",
-        "novel_generator",
+        "",
     )
 
 
@@ -61,7 +62,7 @@ def _get_connection_settings() -> tuple[str, str, int]:
     mongo_uri = _get_runtime_setting(
         MONGODB_URL_ENV_VAR,
         "mongodb_url",
-        "mongodb://localhost:27017",
+        "",
     )
     db_name = _get_database_name()
     timeout_ms = int(get_config_value("mongo_timeout_ms", 5000))
@@ -76,18 +77,25 @@ async def connect_to_mongo():
     Returns:
         无。
     """
-    global client, _active_connection_settings
+    global client, _active_connection_settings, setup_error
 
     connection_settings = _get_connection_settings()
 
     if client is not None and _active_connection_settings == connection_settings:
+        setup_error = None
         return
 
-    mongo_uri, _, timeout_ms = connection_settings
+    mongo_uri, database_name, timeout_ms = connection_settings
+    if not mongo_uri or not database_name:
+        await close_mongo_connection()
+        setup_error = None
+        return
     next_client = AsyncMongoClient(mongo_uri, serverSelectionTimeoutMS=timeout_ms, event_listeners=[confirmation_commands])
     try:
         # 连接对象是惰性的，主动 ping 可以在启动期暴露配置或网络错误。
         await next_client.admin.command("ping")
+        from backend.migrations.database import prepare_database
+        await prepare_database(next_client, database_name)
     except Exception:
         await next_client.close()
         raise
@@ -95,6 +103,7 @@ async def connect_to_mongo():
     previous_client = client
     client = next_client
     _active_connection_settings = connection_settings
+    setup_error = None
 
     # 新连接已经通过 ping 后才切换全局引用；失败时旧连接始终可继续服务。
     if previous_client is not None:
@@ -129,7 +138,8 @@ def get_database() -> AsyncDatabase:
     Returns:
         PyMongo Async 数据库对象。
     """
-    return get_client()[_get_database_name()]
+    active_client = get_client()
+    return active_client[_active_connection_settings[1]]
 
 async def close_mongo_connection():
     """关闭 MongoDB 异步客户端连接。

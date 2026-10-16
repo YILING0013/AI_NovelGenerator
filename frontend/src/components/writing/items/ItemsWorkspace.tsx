@@ -31,9 +31,10 @@ import ItemCandidateWorkspace from "@/components/writing/items/ItemCandidateWork
 import ItemFactsPanel from "./ItemFactsPanel";
 import ItemFactPreparationDialog from "./ItemFactPreparationDialog";
 import ItemFactConfirmationDialog from "./ItemFactConfirmationDialog";
-import { readItemFactPreparations, writeItemFactPreparation, type ItemFactPreparationV1 } from "./itemFactPreparation";
+import { readItemFactPreparations, discardItemFactPreparation, writeItemFactPreparation, type ItemFactPreparationV1 } from "./itemFactPreparation";
 import type { ItemFactDraftV1, ItemFactBatchDraftV1 } from "./itemFactDrafts";
-import { readFactDrafts } from "../characters/factDraftStorage";
+import { readFactDrafts, writeFactDraft } from "../characters/factDraftStorage";
+import DraftChip from "@/components/shared/DraftChip";
 import { loadCharacterFactChapters } from "../characters/characterFactPositions";
 import type { ItemFactsAtPositionV1, ItemFactReadResultV1 } from "@/types/itemFacts";
 import type { HierarchyRecord } from "@/types/hierarchy";
@@ -293,7 +294,7 @@ export default function ItemsWorkspace({
   const [latestFacts, setLatestFacts] = useState<Record<string, ItemFactsAtPositionV1>>({});
   const [factReadRefresh, setFactReadRefresh] = useState(0);
   const [factBusy, setFactBusy] = useState(false);
-  const [factChapters, setFactChapters] = useState<HierarchyRecord[]>([]);
+  const [factChapters, setFactChapters] = useState<HierarchyRecord[] | null>(null);
   const [factPreparation, setFactPreparation] = useState<ItemFactPreparationV1 | null>(null);
   const [closedPreparation, setClosedPreparation] = useState<ItemFactPreparationV1 | null>(null);
   const preparationDialog = factPreparation ?? closedPreparation;
@@ -1082,23 +1083,30 @@ export default function ItemsWorkspace({
             ))}
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            <Button variant="ghost" size="sm" onPress={() => {
+            <SectionActionButton action="refresh" label={loading ? t("actions.refreshing") : t("actions.refresh")} variant="ghost" size="sm" onPress={() => {
               setCandidateReviewing(false);
               setCandidateSessionKey((current) => current + 1);
               setFactReadRefresh((current) => current + 1);
               void loadWorkspace();
-            }} isDisabled={busy}>
-              {loading ? t("actions.refreshing") : t("actions.refresh")}
-            </Button>
+            }} isDisabled={busy} />
           </div>
         </div>
       </header>
 
       <div id={`${TAB_PREFIX}-${view}-panel`} data-entity-body role="tabpanel" aria-labelledby={`${TAB_PREFIX}-${view}-tab`} className="@container/master flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-3 sm:px-6">
-        {(factPreparations.length > 0 || factDrafts.length > 0) && <details className="shrink-0 border-b border-border pb-2"><summary className="min-h-11 cursor-pointer py-2 text-sm text-accent">{f("localDrafts", { count: factPreparations.length + factDrafts.length })}</summary><ul className="divide-y divide-border">
-          {factPreparations.map((row) => <li key={row.key} className="flex min-w-0 flex-wrap items-center justify-between gap-2 py-2"><span className="break-words text-sm">{row.target?.name || row.candidate?.name || f(row.generation ? "prepareBatch" : "untitledDraft")}</span><Button size="sm" variant="outline" isDisabled={busy || Boolean(factPreparation || factDraft)} onPress={() => setFactPreparation(row)}>{tRecords("resume")}</Button></li>)}
-          {factDrafts.map((row) => <li key={row.key} className="flex min-w-0 flex-wrap items-center justify-between gap-2 py-2"><span className="break-words text-sm">{row.schema_id === "item.fact.batch.draft" ? f("confirmBatch") : row.preview.basis.target.kind === "new" ? row.preview.basis.target.candidate.name : row.preview.basis.target.name} · {tRecords(row.command?.saved ? "savedPending" : row.command?.unknown ? "unknown" : "draft")}</span><Button size="sm" variant="outline" isDisabled={busy || Boolean(factPreparation || factDraft)} onPress={() => setFactDraft(row)}>{tRecords("resume")}</Button></li>)}
-        </ul></details>}
+        {(factPreparations.length > 0 || factDrafts.length > 0) && <div className="flex shrink-0 flex-wrap gap-2" aria-label={f("localDrafts", { count: factPreparations.length + factDrafts.length })}>
+          {factPreparations.map((row) => <DraftChip key={row.key} label={row.target?.name || row.candidate?.name || f(row.generation ? "prepareBatch" : "untitledDraft")} isDisabled={busy || Boolean(factPreparation || factDraft)} onResume={() => setFactPreparation(row)}
+            onDiscard={!row.origin && !row.returnedToCheck ? async () => {
+              await discardItemFactPreparation(row);
+              setClosedPreparation((current) => current?.key === row.key ? null : current);
+              setFactPreparations((rows) => rows.filter((current) => current.key !== row.key));
+            } : undefined} />)}
+          {factDrafts.map((row) => <DraftChip key={row.key} label={row.schema_id === "item.fact.batch.draft" ? f("confirmBatch") : row.preview.basis.target.kind === "new" ? row.preview.basis.target.candidate.name : row.preview.basis.target.name} status={row.command?.saved ? "saved" : row.command ? row.command.unknown ? "pending" : "rejected" : "draft"} isDisabled={busy || Boolean(factPreparation || factDraft)} onResume={() => setFactDraft(row)}
+            onDiscard={!(row.schema_id === "item.fact.draft" && row.origin) && !row.returnedToCheck && (!row.command || row.command.saved && row.command.readbackDone) ? async () => {
+              await writeFactDraft(row.schema_id === "item.fact.batch.draft" ? "item_batch" : "item", `${novelId}:${row.schema_id === "item.fact.batch.draft" ? "item-fact-batches" : "item-facts"}`, row, row.revision, true);
+              setFactDrafts((rows) => rows.filter((current) => current.key !== row.key));
+            } : undefined} />)}
+        </div>}
         {reviewKey && <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border pb-3">
           {!currentReview && <p role="status" className="text-sm text-muted">{t("loading")}</p>}
           {currentReview?.error && <><RelationEditorErrorSummary message={currentReview.error} /><Button size="sm" variant="outline" onPress={() => setOwnerEntryVersion((version) => version + 1)}>{t("actions.retry")}</Button></>}
@@ -1223,7 +1231,7 @@ export default function ItemsWorkspace({
                   <div className="flex flex-wrap gap-2">
                     {view === "items" ? (
                       <>
-                        <Button size="sm" variant="ghost" className="text-danger" onPress={() => void openConfirm({ kind: "soft-delete", item: selectedItem })} isDisabled={busy || Boolean(inlineSession)}>{t("actions.delete")}</Button>
+                        <SectionActionButton action="trash" label={t("actions.delete")} size="sm" variant="ghost" className="text-danger" onPress={() => void openConfirm({ kind: "soft-delete", item: selectedItem })} isDisabled={busy || Boolean(inlineSession)} />
                       </>
                     ) : (
                       <>
@@ -1274,7 +1282,7 @@ export default function ItemsWorkspace({
                           <ReadOnlyField label={t("fields.tags")} value={selectedItem.tags.length ? <TagList values={selectedItem.tags} /> : <span className="text-sm text-muted">{t("empty.none")}</span>} />
                         </>}
                       </dl>}
-                      {section === "references" && novelId && <ItemFactsPanel key={`facts:${novelId}:${selectedItem.item_id}`} novelId={novelId} item={selectedItem} chapters={factChapters} choices={{ characters, factions, locations }} disabled={busy || Boolean(factPreparation || factDraft || inlineSession)} refresh={factReadRefresh} onPrepare={startFact} />}
+                      {section === "references" && novelId && <ItemFactsPanel key={`facts:${novelId}:${selectedItem.item_id}`} novelId={novelId} item={selectedItem} chapters={factChapters ?? []} choices={{ characters, factions, locations }} disabled={busy || Boolean(factPreparation || factDraft || inlineSession)} refresh={factReadRefresh} onPrepare={startFact} />}
                       {section === "references" && view === "items" && novelId && <ItemOwnerConfirmationEntry key={`${novelId}:${selectedItem.item_id}`} novelId={novelId} item={selectedItem} refresh={ownerEntryVersion} disabled={busy || Boolean(ownerSession && !ownerSession.closed) || Boolean(referenceErrors.character)} onStart={(restored) => { if (!active) return; setOwnerSaved(false); setOwnerSession({ novelId, itemId: selectedItem.item_id, item: selectedItem, draft: restored, entryVersion: ownerEntryVersion, closed: false }); }} />}
                     </DocumentSection>;
                   })}

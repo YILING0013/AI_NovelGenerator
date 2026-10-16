@@ -194,9 +194,9 @@ export default function CharacterGenerationPreview({
     : t("candidate.relationTitle");
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-surface">
-      <div className="@container workspace-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/30" tabIndex={0} aria-label={title}>
-        <header className="border-b border-border pb-4">
+    <div className="@container/candidates flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-surface">
+      <div className="@container workspace-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto @min-[800px]/candidates:overflow-hidden px-4 py-5 sm:px-6 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/30" tabIndex={0} aria-label={title}>
+        <header className="shrink-0 border-b border-border pb-4">
           <div className="flex flex-wrap items-baseline gap-x-5 gap-y-2">
           <h2 className="text-lg font-semibold text-foreground">{title}</h2>
           <dl className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
@@ -307,8 +307,8 @@ function CoreCandidateReview({ preview, selectedIndex, factions, disabled, selec
   if (!activeCandidate) return <p className="py-8 text-muted">{t("emptyCharacters")}</p>;
   const activeBinding = preview.binding_candidates.find((row) => row.character_ref === activeCandidate.character_ref)
     ?? createUnboundCandidate(activeCandidate.character_ref);
-  return <section className="grid min-h-0 min-w-0 gap-5 py-5 @min-[800px]:grid-cols-[260px_minmax(0,1fr)]" aria-label={t("candidate.chooseCharacter")}>
-    <ul className="workspace-scrollbar max-h-64 divide-y divide-border border border-border bg-surface-secondary/45 overflow-y-auto @min-[800px]:max-h-[65vh]">
+  return <section className="grid shrink-0 min-h-0 min-w-0 gap-5 py-5 @min-[800px]/candidates:flex-1 @min-[800px]/candidates:shrink @min-[800px]/candidates:overflow-hidden @min-[800px]/candidates:grid-cols-[260px_minmax(0,1fr)]" aria-label={t("candidate.chooseCharacter")}>
+    <ul className="workspace-scrollbar max-h-64 divide-y divide-border border border-border bg-surface-secondary/45 overflow-y-auto @min-[800px]/candidates:min-h-0 @min-[800px]/candidates:max-h-none">
       {preview.core_characters.map((candidate, index) => <li key={candidate.character_ref}
         className={`flex min-w-0 items-center gap-3 border-l-2 px-3 ${index === activeIndex ? "border-accent bg-selected" : "border-transparent hover:bg-surface-secondary"}`}>
         <input type="checkbox" checked={selectedCharacterRefs.includes(candidate.character_ref)}
@@ -322,7 +322,7 @@ function CoreCandidateReview({ preview, selectedIndex, factions, disabled, selec
         <SectionEditButton label={t("actions.edit")} isDisabled={disabled} onPress={() => { onSelect(index); requestAnimationFrame(() => detailRef.current?.querySelector<HTMLElement>("input, select, textarea")?.focus()); }} />
       </li>)}
     </ul>
-    <div ref={detailRef} className="workspace-scrollbar min-w-0 bg-surface pb-4 @min-[800px]:max-h-[65vh] @min-[800px]:overflow-y-auto @min-[800px]:px-3">
+    <div ref={detailRef} className="workspace-scrollbar min-w-0 bg-surface pb-4 @min-[800px]/candidates:min-h-0 @min-[800px]/candidates:max-h-none @min-[800px]/candidates:overflow-y-auto @min-[800px]/candidates:px-3">
       <h3 className="mb-4 text-[22px] font-semibold leading-7 [overflow-wrap:anywhere]">{activeCandidate.name}</h3>
       <CharacterProfileForm value={activeCandidate} disabled={disabled}
         onChange={(value) => onCoreChange(activeIndex, { ...value, character_ref: activeCandidate.character_ref })} t={t} />
@@ -560,15 +560,15 @@ function RelationCandidateReview({
   }
 
   return (
-    <section className="@container py-5" aria-labelledby="character-relation-candidate-heading">
+    <section className="flex shrink-0 min-h-0 flex-col py-5 @min-[800px]/candidates:flex-1 @min-[800px]/candidates:shrink @min-[800px]/candidates:overflow-hidden" aria-labelledby="character-relation-candidate-heading">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h3 id="character-relation-candidate-heading" className="text-sm font-semibold text-foreground">
           {t("candidate.chooseRelation")}
         </h3>
         {!manualPreparation && <span className="text-xs text-muted">{t("candidate.selectedCount", { count: selectedRelationRefs.length })}</span>}
       </div>
-      <div className="grid min-w-0 gap-5 @min-[800px]:grid-cols-[260px_minmax(0,1fr)]">
-      <ul className="workspace-scrollbar max-h-64 divide-y divide-border border border-border bg-surface-secondary/45 overflow-y-auto @min-[800px]:max-h-[65vh]">
+      <div className="grid min-h-0 min-w-0 gap-5 @min-[800px]/candidates:flex-1 @min-[800px]/candidates:shrink @min-[800px]/candidates:overflow-hidden @min-[800px]/candidates:grid-cols-[260px_minmax(0,1fr)]">
+      <ul className="workspace-scrollbar max-h-64 divide-y divide-border border border-border bg-surface-secondary/45 overflow-y-auto @min-[800px]/candidates:min-h-0 @min-[800px]/candidates:max-h-none">
           {preview.relations.map((relation, index) => {
             const selectedForCommit = selectedRelationRefs.includes(relation.relation_ref);
             const sourceName =
@@ -601,7 +601,7 @@ function RelationCandidateReview({
           })}
       </ul>
 
-      <div ref={detailRef} className="workspace-scrollbar min-w-0 bg-surface pb-4 @min-[800px]:max-h-[65vh] @min-[800px]:overflow-y-auto @min-[800px]:px-3">
+      <div ref={detailRef} className="workspace-scrollbar min-w-0 bg-surface pb-4 @min-[800px]/candidates:min-h-0 @min-[800px]/candidates:max-h-none @min-[800px]/candidates:overflow-y-auto @min-[800px]/candidates:px-3">
         <h3 className="mb-4 text-[22px] font-semibold leading-7 [overflow-wrap:anywhere]">{characterNames.get(activeRelation.source_character_id) ?? activeRelation.source_character_id} → {characterNames.get(activeRelation.target_character_id) ?? activeRelation.target_character_id}</h3>
         <CharacterRelationEditor
           value={activeRelation}

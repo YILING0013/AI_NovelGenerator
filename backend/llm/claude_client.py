@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from backend.llm.base_client import BaseLLMClient, _BeforeSendError, _ThinkStreamFilter
 from backend.llm.config import LLMProviderConfig
+from backend.llm.exceptions import LLMConnectionError
 from backend.llm.exceptions import (
     LLMAuthError,
     LLMError,
@@ -21,6 +22,7 @@ from backend.llm.exceptions import (
     LLMSchemaError,
     LLMTimeoutError,
 )
+from backend.llm.provider_probe import observe_provider_response
 from backend.llm.logger import LLMCall, log_http_request, log_http_response, log_parse_error
 from backend.llm.json_guard import reject_duplicate_json_keys
 from backend.llm.models import LLMFunctionCallProbe, LLMRequest, LLMResponse, TokenUsage, LLMToolCall, LLMToolDefinition, LLMToolResult, LLMToolTurn
@@ -108,8 +110,8 @@ def build_claude_parameters(request: LLMRequest, config: LLMProviderConfig) -> d
     elif thinking_mode:
         if thinking_mode == "disabled" and ("opus-5-5" in model or "sonnet-5-5" in model):
             raise ValueError("当前 Claude 模型不能关闭思考，请降低思考等级")
-        if thinking_mode == "between_tools" and ("sonnet-5-5" not in model or request.reasoning_effort in {"xhigh", "max"}):
-            raise ValueError("between_tools 仅适用于 Claude Sonnet 5.5 的 low、medium、high 等级")
+        if thinking_mode == "between_tools" and request.reasoning_effort in {"xhigh", "max"}:
+            raise ValueError("between_tools 使用 low、medium、high 等级；模型是否支持请查看接口测试结果")
         params["thinking"] = {"type": thinking_mode}
     elif request.reasoning_effort and re.search(r"claude-(?:opus-4-[678]|sonnet-4-6)", model):
         params["thinking"] = {"type": "adaptive"}
@@ -191,6 +193,39 @@ class ClaudeClient(BaseLLMClient):
             total_tokens=input_t + output_t,
         )
 
+    async def _create_message(self, params: dict[str, Any], *, stream: bool) -> Any:
+        """按已选方式请求，流式时收齐文本、工具参数和思考签名。
+
+        Args:
+            params: 已构建的 Messages 参数。
+            stream: 是否使用流式请求。
+        Returns:
+            SDK 完整消息，供原有解析和两轮上下文复用。
+        """
+        if not stream:
+            return await self._client.messages.create(**params)
+        finished = False
+        tool_json: dict[int, str] = {}
+        async with self._client.messages.stream(**params) as events:
+            async for event in events:
+                observe_provider_response(event, self.config.resolved_api_mode)
+                if event.type == "content_block_start" and event.content_block.type == "tool_use":
+                    tool_json[event.index] = ""
+                elif event.type == "content_block_delta" and event.delta.type == "input_json_delta":
+                    tool_json[event.index] += event.delta.partial_json
+                elif event.type == "content_block_stop" and tool_json.get(event.index):
+                    # SDK 允许部分 JSON，必须另查原文是否完整且没有重复字段。
+                    reject_duplicate_json_keys(tool_json[event.index])
+                    json.loads(tool_json[event.index])
+                elif event.type == "message_stop":
+                    finished = True
+            if not finished:
+                raise LLMConnectionError("Claude 响应流提前断开，请重试", provider=self.provider_name)
+            response = await events.get_final_message()
+        if response.stop_reason not in {"end_turn", "stop_sequence", "tool_use"}:
+            raise LLMResponseError(f"Claude 回复未完成：{response.stop_reason}", provider=self.provider_name)
+        return response
+
     async def text_generate(self, request: LLMRequest) -> LLMResponse:
         """调用 Claude Messages API 进行普通文本生成。"""
         request = self._apply_defaults(request)
@@ -200,6 +235,7 @@ class ClaudeClient(BaseLLMClient):
 
             try:
                 resp = await self._client.messages.create(**self._build_params(request))
+                observe_provider_response(resp, self.config.resolved_api_mode)
             except LLMError:
                 raise
             except Exception as exc:
@@ -265,34 +301,39 @@ class ClaudeClient(BaseLLMClient):
                         raise ValueError("工具式结构化输出不能强制调用思考模型，请选择原生 JSON Schema")
                     params["tools"] = [tool_def]
                     params["tool_choice"] = {"type": "tool", "name": "structured_output"}
-                    raw_response = await self._client.messages.with_raw_response.create(**params)
-                    raw_body = (await raw_response.text()).strip()
-                    # SDK 会把 input 转成 dict；仅检查约定工具的参数原文，不检查协议历史。
-                    try:
-                        content = _json_member_slices(raw_body).get("content", "[]")
-                        decoder = json.JSONDecoder()
-                        position = 1
-                        while position < len(content):
-                            position += len(content[position:]) - len(content[position:].lstrip())
-                            if content[position] == "]":
-                                break
-                            block, end = decoder.raw_decode(content, position)
-                            if block.get("type") == "tool_use" and block.get("name") == "structured_output":
-                                fields = _json_member_slices(content[position:end])
-                                if "input" in fields:
-                                    reject_duplicate_json_keys(fields["input"])
-                                break
-                            position = end
-                            position += len(content[position:]) - len(content[position:].lstrip())
-                            if content[position] == ",":
-                                position += 1
-                    except json.JSONDecodeError:
-                        # 非 JSON 响应仍交给 SDK 和原有错误处理。
-                        pass
-                    resp = await raw_response.parse()
+                    if request.stream:
+                        resp = await self._create_message(params, stream=True)
+                    else:
+                        raw_response = await self._client.messages.with_raw_response.create(**params)
+                        raw_body = (await raw_response.text()).strip()
+                        # SDK 会把 input 转成 dict；仅检查约定工具的参数原文，不检查协议历史。
+                        try:
+                            content = _json_member_slices(raw_body).get("content", "[]")
+                            decoder = json.JSONDecoder()
+                            position = 1
+                            while position < len(content):
+                                position += len(content[position:]) - len(content[position:].lstrip())
+                                if content[position] == "]":
+                                    break
+                                block, end = decoder.raw_decode(content, position)
+                                if block.get("type") == "tool_use" and block.get("name") == "structured_output":
+                                    fields = _json_member_slices(content[position:end])
+                                    if "input" in fields:
+                                        reject_duplicate_json_keys(fields["input"])
+                                    break
+                                position = end
+                                position += len(content[position:]) - len(content[position:].lstrip())
+                                if content[position] == ",":
+                                    position += 1
+                        except json.JSONDecodeError:
+                            # 非 JSON 响应仍交给 SDK 和原有错误处理。
+                            pass
+                        resp = await raw_response.parse()
+                    observe_provider_response(resp, self.config.resolved_api_mode)
                 else:
                     params.setdefault("output_config", {})["format"] = {"type": "json_schema", "schema": transform_schema(schema)}
-                    resp = await self._client.messages.create(**params)
+                    resp = await self._create_message(params, stream=request.stream)
+                    observe_provider_response(resp, self.config.resolved_api_mode)
             except LLMError:
                 raise
             except Exception as exc:
@@ -362,6 +403,7 @@ class ClaudeClient(BaseLLMClient):
                 stream_filter = _ThinkStreamFilter(preserve_json_strings=request.json_output_schema is not None)
                 async with stream:
                     async for event in stream:
+                        observe_provider_response(event, self.config.resolved_api_mode)
                         call.chunk_count += 1
                         if event.type == "message_start":
                             call.usage = self._extract_usage(event.message.usage)
@@ -376,6 +418,8 @@ class ClaudeClient(BaseLLMClient):
                             clean_text = stream_filter.feed(text)
                             if clean_text:
                                 yield clean_text
+                if not call.finish_reason:
+                    raise LLMConnectionError("Claude 响应流提前断开，请重试", provider=self.provider_name, model=model)
                 if call.finish_reason == "max_tokens":
                     raise LLMResponseError(
                         "模型输出达到长度上限，内容未完成", provider=self.provider_name, model=model,
@@ -423,7 +467,8 @@ class ClaudeClient(BaseLLMClient):
             {"name": tool.name, "description": tool.description, "input_schema": tool.parameters} for tool in tools
         ])
         try:
-            response = await self._client.messages.create(**params)
+            response = await self._create_message(params, stream=request.stream)
+            observe_provider_response(response, self.config.resolved_api_mode)
             if response.stop_reason not in {"end_turn", "stop_sequence", "tool_use"}:
                 raise LLMResponseError(f"Claude 工具回复未完成：{response.stop_reason}，请检查输出上限或输入", provider=self.provider_name, model=model)
             messages.append({"role": "assistant", "content": [block.model_dump(mode="json", exclude_none=True) for block in response.content]})
@@ -465,7 +510,8 @@ class ClaudeClient(BaseLLMClient):
                 params = self._build_params(request)
                 params["tools"] = [tool_def]
                 params["tool_choice"] = {"type": "auto"}
-                first_resp = await self._client.messages.create(**params)
+                first_resp = await self._create_message(params, stream=request.stream)
+                observe_provider_response(first_resp, self.config.resolved_api_mode)
                 tool_block = next(
                     (
                         block
@@ -507,7 +553,8 @@ class ClaudeClient(BaseLLMClient):
                 final_params = self._build_params(request)
                 final_params["messages"] = messages
                 final_params["tools"] = [tool_def]
-                final_resp = await self._client.messages.create(**final_params)
+                final_resp = await self._create_message(final_params, stream=request.stream)
+                observe_provider_response(final_resp, self.config.resolved_api_mode)
             except LLMError:
                 raise
             except Exception as exc:

@@ -1,4 +1,6 @@
 "use client";
+
+import { downloadExport } from "@/lib/userExport";
 import { RetainedModalBackdrop, RetainedViewActive } from "@/components/layout/RetainedViews";
 
 
@@ -356,7 +358,7 @@ function GenerationEditor({ node, choices, choicesError, fixedSetup, planOrigin,
           {error && <RelationEditorErrorSummary message={error} fieldErrors={errors} className="mb-4" />}
           {legacyBasisMissing && <p role="alert" className="mb-4 border-y border-amber-500/50 py-3 text-sm">{t("legacyCandidateBasisMissing")}</p>}
           {draftReadFailed && <Button size="sm" variant="outline" onPress={() => setDraftReadAttempt((value) => value + 1)}>{t("retryRead")}</Button>}
-          {uncertain && <p role="status" className="mb-4 border-l-2 border-amber-500 pl-3 text-sm">{t("confirmUncertain")}</p>}
+          {uncertain && !saving && <p role="status" className="mb-4 border-l-2 border-amber-500 pl-3 text-sm">{t("confirmUncertain")}</p>}
           {savedResult && <p role="status" className="mb-4 border-l-2 border-amber-500 pl-3 text-sm">{t("savedAwaitingRefresh")}</p>}
           {!preview && restored && !flowLoading && !setupMatches && <p role="alert" className="mb-4 text-sm">{t("fixedSetupUnavailable")}</p>}
           {choicesError && <RelationEditorErrorSummary message={choicesError} className="mb-4" />}
@@ -414,7 +416,7 @@ function GenerationEditor({ node, choices, choicesError, fixedSetup, planOrigin,
           {preview && <Button size="sm" variant="ghost" onPress={() => {
             const blob = new Blob([JSON.stringify({ ...preview, ...(reviewState ? { review_state: reviewState } : {}) }, null, 2)], { type: "application/json;charset=utf-8" });
             const url = URL.createObjectURL(blob); const link = document.createElement("a");
-            link.href = url; link.download = `${node.record.title}-candidate.json`; link.click(); URL.revokeObjectURL(url);
+            link.href = url; link.download = `${node.record.title}-candidate.json`; void downloadExport(link); URL.revokeObjectURL(url);
           }}>{t("exportDraft")}</Button>}
           {preview && <Button size="sm" variant="outline" isDisabled={candidateLocked} onPress={() => void discardCandidate()}>{t("discardCandidate")}</Button>}
           {(!inPage || preview) && <Button size="sm" variant="primary" isDisabled={loading || !restored || running || saving || (preview ? stale || (legacyBasisMissing && !command.current && !savedResult) : flow.loading || !flow.definition || !setupMatches)} onPress={() => void (preview ? confirm() : generate())}>{saving ? t("saving") : savedResult ? t("retrySavedRefresh") : preview ? t("confirmCandidate") : t("generateNow")}</Button>}

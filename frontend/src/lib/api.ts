@@ -449,7 +449,15 @@ async function consumeSSE<T>(
 
   try {
     while (true) {
-      const { done, value } = await reader.read();
+      let chunk: ReadableStreamReadResult<Uint8Array>;
+      try {
+        chunk = await reader.read();
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") throw error;
+        if (pendingFrame || buffer.trim()) throw createSSEProtocolError("SSE 连接中断时仍有未结束的事件");
+        throw new ApiRequestError({ status: 502, code: "SSE_CONNECTION_LOST", message: "SSE 连接读取中断" });
+      }
+      const { done, value } = chunk;
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
       await drainBuffer(false);
@@ -615,10 +623,22 @@ export async function apiPost<T = unknown>(
   data: unknown,
   options: ApiRequestOptions = {}
 ): Promise<T> {
+  return apiPostJson<T>(path, JSON.stringify(data), options);
+}
+
+/** 发送已保存的 JSON 原文，幂等重试不再次序列化。
+ * Args: path 接口路径；payload 原始 JSON 请求体；options 请求头和中止信号。
+ * Returns: 已校验 HTTP 状态的 JSON 响应。
+ */
+export async function apiPostJson<T = unknown>(
+  path: string,
+  payload: string,
+  options: ApiRequestOptions = {}
+): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers: mergeHeaders({ "Content-Type": "application/json" }, options.headers),
-    body: JSON.stringify(data),
+    body: payload,
     signal: options.signal,
   });
   await assertResponseOk(response);
@@ -728,46 +748,53 @@ export async function apiPostSSE(
     ...(options.allowedEvents ?? []),
   ]);
   let terminalEvent: string | null = null;
+  let doneDelivered = false;
   let staleRequest = false;
   const responseRequestId = response.headers.get("x-request-id");
 
-  await consumeSSE<Record<string, unknown>>(
-    response,
-    async ({ event, data: eventData }) => {
-      if (options.isCurrentRequest && !options.isCurrentRequest()) {
-        // 小说切换或新请求接管后，旧请求的迟到事件不得覆盖当前页面状态。
-        staleRequest = true;
-        return;
-      }
-      if (!allowedEvents.has(event)) {
-        throw createSSEProtocolError(`SSE 收到未声明的业务事件: ${event}`, {
-          event,
-          data: eventData,
-        });
-      }
-      if (terminalEvent) {
-        throw createSSEProtocolError(
-          TERMINAL_POST_SSE_EVENTS.has(event)
-            ? `SSE 收到重复终态: ${event}`
-            : `SSE 在终态 ${terminalEvent} 之后仍收到业务事件: ${event}`,
-          { event, terminal_event: terminalEvent, data: eventData },
-        );
-      }
-
-      if (TERMINAL_POST_SSE_EVENTS.has(event)) {
-        terminalEvent = event;
-      }
-      if (event === "error") {
-        try {
-          await onEvent(event, eventData);
-        } catch {
-          // 历史调用方会在 error 回调中抛普通 Error；公共协议异常应保留更完整的上下文。
+  try {
+    await consumeSSE<Record<string, unknown>>(
+      response,
+      async ({ event, data: eventData }) => {
+        if (options.isCurrentRequest && !options.isCurrentRequest()) {
+          // 小说切换或新请求接管后，旧请求的迟到事件不得覆盖当前页面状态。
+          staleRequest = true;
+          return;
         }
-        throw createSSETerminalError(eventData, responseRequestId);
+        if (!allowedEvents.has(event)) {
+          throw createSSEProtocolError(`SSE 收到未声明的业务事件: ${event}`, {
+            event,
+            data: eventData,
+          });
+        }
+        if (terminalEvent) {
+          throw createSSEProtocolError(
+            TERMINAL_POST_SSE_EVENTS.has(event)
+              ? `SSE 收到重复终态: ${event}`
+              : `SSE 在终态 ${terminalEvent} 之后仍收到业务事件: ${event}`,
+            { event, terminal_event: terminalEvent, data: eventData },
+          );
+        }
+
+        if (TERMINAL_POST_SSE_EVENTS.has(event)) {
+          terminalEvent = event;
+        }
+        if (event === "error") {
+          try {
+            await onEvent(event, eventData);
+          } catch {
+            // 历史调用方会在 error 回调中抛普通 Error；公共协议异常应保留更完整的上下文。
+          }
+          throw createSSETerminalError(eventData, responseRequestId);
+        }
+        await onEvent(event, eventData);
+        if (event === "done") doneDelivered = true;
       }
-      await onEvent(event, eventData);
-    }
-  );
+    );
+  } catch (error) {
+    // 完整 done 已交付；只忽略随后读取连接尾部失败，协议与回调错误仍失败。
+    if (!(doneDelivered && !options.signal?.aborted && error instanceof ApiRequestError && error.code === "SSE_CONNECTION_LOST")) throw error;
+  }
 
   if (!staleRequest && terminalEvent === null) {
     throw createSSEProtocolError("SSE 连接在收到 done 或 error 终态前关闭");

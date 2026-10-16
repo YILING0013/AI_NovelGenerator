@@ -5,8 +5,7 @@ from fastapi.responses import JSONResponse
 
 router = APIRouter(prefix="/api/upload", tags=["upload"])
 
-COVER_DIR = "static/covers"
-os.makedirs(COVER_DIR, exist_ok=True)
+from backend.storage import COVERS_DIR as COVER_DIR
 
 @router.post("/cover")
 async def upload_cover(file: UploadFile = File(...)):
@@ -14,6 +13,7 @@ async def upload_cover(file: UploadFile = File(...)):
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File provided is not an image.")
 
+    COVER_DIR.mkdir(parents=True, exist_ok=True)
     content = await file.read()
     
     file_hash = hashlib.sha256(content).hexdigest()

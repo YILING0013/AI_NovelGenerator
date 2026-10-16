@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,19 +21,16 @@ class LauncherSettings:
 
 
 def get_launcher_settings_path() -> Path:
-    """返回当前用户专属的启动器设置文件路径。
+    """返回当前项目专属的启动器设置文件路径。
 
     Args:
         无。
 
     Returns:
-        Windows 下位于 LOCALAPPDATA、其他系统位于用户配置目录的 JSON 路径。
+        项目 user_data/config 下的 JSON 路径。
     """
-    if sys.platform == "win32":
-        base_dir = Path(os.getenv("LOCALAPPDATA") or (Path.home() / "AppData" / "Local"))
-    else:
-        base_dir = Path(os.getenv("XDG_CONFIG_HOME") or (Path.home() / ".config"))
-    return base_dir / "AINovelGenerator" / "launcher_settings.json"
+    from backend.storage import CONFIG_DIR
+    return CONFIG_DIR / "launcher_settings.json"
 
 
 def validate_launcher_port(value: object, label: str) -> int:

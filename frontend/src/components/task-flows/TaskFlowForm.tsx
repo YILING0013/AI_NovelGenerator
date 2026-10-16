@@ -1,4 +1,6 @@
 "use client";
+
+import { downloadExport } from "@/lib/userExport";
 import { RetainedModalBackdrop } from "@/components/layout/RetainedViews";
 
 
@@ -7,7 +9,7 @@ import type { TaskFlowState } from "@/hooks/useTaskFlow";
 import { resolveTaskFlowSchema,type FlowNodeEvent,type JsonSchema, type PreparedContextV1 } from "@/types/taskFlow";
 import { Button,Modal,Tooltip } from "@heroui/react";
 import { useLocale,useTranslations } from "next-intl";
-import { useEffect,useId,useRef,useState } from "react";
+import { useEffect,useId,useRef,useState, type ReactNode } from "react";
 
 type FieldChoices = Record<string, { value: string; label: string }[]>;
 const WRITING_DEFAULT_TITLES: Record<string, string> = { count: "生成数量", count_mode: "数量方式", user_guidance: "作者要求", target_word_count: "目标字数", search_text: "检索文字", search_scope: "检索范围" };
@@ -39,6 +41,7 @@ export function TaskFlowSchemaField({
   nullableAsEmpty?: boolean;
 }) {
   const id = useId();
+  const manualCount = useRef<number | null>(typeof value === "number" ? value : null);
   const t = useTranslations("taskFlows");
   const schema = resolveTaskFlowSchema(rawSchema);
   const type = Array.isArray(schema.type)
@@ -46,6 +49,18 @@ export function TaskFlowSchemaField({
     : schema.type;
   const label = fieldLabels[fieldPath] ?? (schema.title || name);
   const inlineOptional = nullableAsEmpty && Array.isArray(schema.type) && schema.type.includes("null") && ["string", "number", "integer"].includes(type ?? "");
+  const aiCount = ["character_count", "faction_count", "item_count", "core_rule_count"].includes(name)
+    && Array.isArray(schema.type) && schema.type.includes("null") && type === "integer";
+  if (aiCount) {
+    return <div className="grid min-w-0 gap-2">
+      <label htmlFor={`${id}-mode`} className="text-xs font-medium text-muted">{t("countModeFor", { field: label })}</label>
+      <select id={`${id}-mode`} className={FLOW_INPUT_CLASS} disabled={disabled} value={value === null ? "auto" : "fixed"}
+        onChange={(event) => { if (typeof value === "number") manualCount.current = value; onChange(event.target.value === "auto" ? null : manualCount.current ?? (typeof schema.default === "number" ? schema.default : schema.minimum ?? 1)); }}>
+        <option value="fixed">{t("countModes.fixed")}</option><option value="auto">{t("countModes.ai")}</option>
+      </select>
+      {value !== null && <TaskFlowSchemaField name={name} schema={{ ...schema, type: "integer" }} value={value} onChange={onChange} disabled={disabled} invalid={invalid} fieldLabels={fieldLabels} fieldPath={fieldPath} />}
+    </div>;
+  }
   if (Array.isArray(schema.type) && schema.type.includes("null") && !inlineOptional) {
     return (
       <div className="grid min-w-0 gap-3">
@@ -303,6 +318,7 @@ export function TaskFlowForm({
   fieldLabels = {},
   showError = true,
   hiddenFields = [],
+  toolbarActions,
 }: {
   flow: TaskFlowState;
   disabled?: boolean;
@@ -310,6 +326,7 @@ export function TaskFlowForm({
   fieldLabels?: Record<string, string>;
   showError?: boolean;
   hiddenFields?: string[];
+  toolbarActions?: ReactNode;
 }) {
   const t = useTranslations("taskFlows");
   const locale = useLocale();
@@ -331,7 +348,7 @@ export function TaskFlowForm({
           <label htmlFor={id} className="text-xs font-medium text-muted">
             {t("scheme")}
           </label>
-          <select
+          {flow.flows.length === 1 && flow.definition ? <span className="flex min-h-11 items-center text-sm" aria-label={t("scheme")}>{flow.definition.id === `default_${flow.task}` ? t(`tasks.${flow.task}`) : flow.definition.name}</span> : <select
             id={id}
             className={FLOW_INPUT_CLASS}
             disabled={disabled || flow.loading}
@@ -351,7 +368,7 @@ export function TaskFlowForm({
                 {item.id === `default_${item.task}` && item.name === WRITING_DEFAULT_NAMES[item.task] ? t(`tasks.${item.task}`) : item.name}
               </option>
             ))}
-          </select>
+          </select>}
         </div>
         <Button
           variant="ghost"
@@ -376,6 +393,7 @@ export function TaskFlowForm({
         >
           {t("refresh")}
         </Button>
+        {toolbarActions}
       </div>
       {flow.loading && (
         <p role="status" className="text-sm text-muted">
@@ -392,7 +410,7 @@ export function TaskFlowForm({
         </p>
       )}
       {!flow.loading &&
-        fields.filter(([name]) => !hiddenFields.includes(name) && !(name === "count" && flow.inputs.count_mode === "auto") && !(flow.inputs.selection_mode === "auto" && ["create_characters_for_volume_by_ai", "create_factions_for_volume_by_ai", "create_locations_for_volume_by_ai"].includes(flow.task) && ["selection_mode", "new_count", "selected_existing_ids", "location_count", "selected_existing_location_ids", "allow_incremental"].includes(name))).map(([name, schema]) => {
+        fields.filter(([name]) => !hiddenFields.includes(name) && !(name === "count" && flow.inputs.count_mode === "auto") && !(flow.inputs.selection_mode === "auto" && ["create_characters_for_volume_by_ai", "create_factions_for_volume_by_ai", "create_locations_for_volume_by_ai"].includes(flow.task) && ["new_count", "selected_existing_ids", "location_count", "selected_existing_location_ids", "allow_incremental"].includes(name))).map(([name, schema]) => {
           const errors = Object.entries(flow.fieldErrors)
             .filter(([key]) => key === name || key.startsWith(`${name}.`))
             .flatMap(([, messages]) => messages);
@@ -407,6 +425,7 @@ export function TaskFlowForm({
             ...schema,
             ...(name === "count" && flow.inputs.count_mode === "fixed" ? { type: "integer", anyOf: undefined, minimum: 1 } : {}),
             title: fieldLabels[name] ?? translatedTitle,
+            ...(name === "selection_mode" && !fieldChoices[name] ? { "x-choices": [{ value: "auto", label: t("countModes.ai") }, { value: "manual", label: t("selectionManual") }] } : {}),
             ...(fieldChoices[name] ? { "x-choices": fieldChoices[name] } : {}),
             ...(name === "search_scope" && schema.title === WRITING_DEFAULT_TITLES.search_scope && !fieldChoices[name] ? { "x-choices": [{ value: "novel", label: t("searchScopes.novel") }, { value: "current_part", label: t("searchScopes.current_part") }] } : {}),
             ...(name === "provider" ? { enum: flow.providers } : {}),
@@ -490,7 +509,8 @@ export function TaskFlowProgress({
   // 只收起这一轮的完成提示；新运行、错误和候选本身仍由原任务管理。
   if (state === "done" && dismissedEvents === flow.events) return null;
   const continuation = flow.agentContinuation;
-  const canContinue = !running && failed && continuation && onContinue;
+  const networkRecovery = continuation?.reason === "network";
+  const canContinue = !running && failed && continuation && !networkRecovery && onContinue;
   const rounds = flow.continuationAdditionalRounds ?? Number(additionalRounds);
   const roundsValid = Number.isInteger(rounds) && rounds >= 1 && rounds <= 16;
   const lastError = continuation?.last_error;
@@ -515,7 +535,7 @@ export function TaskFlowProgress({
             />
           )}
           <span className={state === "failed" ? "text-danger" : "text-foreground"}>
-            {running && flow.continuing ? t("agent.continuing") : running && flow.repairing ? t("repairing") : running && label ? label : t(`states.${state}`)}
+            {running && current?.network_state === "waiting" ? t("agent.waiting", { seconds: Math.ceil(Number(current.retry_after)) }) : running && current?.network_state === "retrying" ? t("agent.reconnecting", { attempt: Number(current.retry_attempt), limit: Number(current.retry_limit), seconds: Math.ceil(Number(current.retry_after)) }) : !running && networkRecovery ? t("agent.connectionPaused") : running && flow.continuing ? t("agent.continuing") : running && flow.repairing ? t("repairing") : running && label ? label : t(`states.${state}`)}
           </span>
           {running && current && (
             <span className="min-w-0 truncate text-muted">{current.displayLabel}</span>
@@ -529,7 +549,7 @@ export function TaskFlowProgress({
         {!running && failed && (
           <div className="flex flex-wrap items-center gap-2">
             {onRepair && <Button size="sm" variant="primary" className="min-h-11" onPress={onRepair}>{t("repair")}</Button>}
-            {onRetry && <Button size="sm" variant={onRepair || canContinue ? "outline" : "primary"} className="min-h-11" onPress={onRetry}>{t("retry")}</Button>}
+            {onRetry && <Button size="sm" variant={onRepair || canContinue ? "outline" : "primary"} className={networkRecovery ? "h-11 min-h-11" : "min-h-11"} onPress={onRetry}>{t(networkRecovery ? "agent.recover" : "retry")}</Button>}
             {onDiscard && <Button size="sm" variant="outline" className="min-h-11" onPress={onDiscard}>{t("discardRun")}</Button>}
           </div>
         )}
@@ -567,10 +587,11 @@ export function TaskFlowProgress({
           const link = document.createElement("a");
           link.href = url;
           link.download = diagnostic.raw_output_truncated ? "model-output-untrusted-truncated.txt" : "model-output-untrusted.txt";
-          link.click();
+          void downloadExport(link);
           URL.revokeObjectURL(url);
         }}>{t("jsonDiagnostic.export")}</Button>
       </div>}
+      {!running && failed && networkRecovery && <p className="py-2 text-sm text-muted">{t("agent.recoveryBoundary")}</p>}
       {canContinue && <div className="flex min-w-0 flex-wrap items-end gap-3 border-t border-border py-3">
         <div className="min-w-0 flex-[1_1_16rem] space-y-2">
           <p className="text-sm tabular-nums">{t("agent.round", { round: continuation.round, count: continuation.call_count })}</p>

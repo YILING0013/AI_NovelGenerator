@@ -28,7 +28,7 @@ from backend.services.llm.candidate_contract import (
     MAX_CANDIDATE_SOURCE_REFS,
     CandidateSourceRefV1,
 )
-from backend.services.novel.writing_context import character_position_content, position_content, resolve_writing_position
+from backend.services.novel.writing_context import character_position_content, faction_position_content, position_content, resolve_writing_position
 
 
 NOVEL_SUMMARY_FIELDS = (
@@ -297,14 +297,23 @@ async def load_volume_location_generation_context(
                 **position_content(state, "character_volume_state"),
             }
         )
+    from backend.services.novel.faction_fact_service import read_faction_facts
+    faction_result = await read_faction_facts(novel_id, sorted({str(state["faction_id"]) for state in faction_states}), {
+        "target_type": "volume", "target_id": volume_id,
+        "reading_intent": "replan", "reading_version": 1,
+    }, session=session)
+    faction_facts = {row["faction_id"]: row for row in faction_result["factions"]}
     faction_state_input = []
     for state in faction_states:
         faction_id = str(state["faction_id"])
+        if faction_id not in faction_facts:
+            raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "势力在读取期间已变化，请重新读取", status_code=409)
         faction_state_input.append(
             {
                 "state_id": str(state["state_id"]),
                 "faction_name": factions[faction_id]["name"],
                 "level_type": factions[faction_id]["level_type"],
+                "faction": faction_position_content(factions[faction_id], faction_facts[faction_id]),
                 "version": state["version"],
                 **position_content(state, "faction_volume_state"),
             }
@@ -316,6 +325,8 @@ async def load_volume_location_generation_context(
     )
     if facts["position"] != position:
         raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "卷顺序在读取期间已变化，请重新读取", status_code=409)
+    if faction_result["position"] != position:
+        raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "卷顺序在读取期间已变化，请重新读取", status_code=409)
     location_input = {
         item["location_id"]: {"location_id": item["location_id"], "version": item["version"],
             "order_index": item["order_index"], **position_content(item, "location")}
@@ -365,7 +376,7 @@ async def load_volume_location_generation_context(
         },
         "allowed_location_ids": set(locations_by_id),
         "existing_location_tokens": existing_location_tokens,
-        "fact_reads": facts["reads"],
+        "fact_reads": [*facts["reads"], *faction_result["reads"]],
     }
     if require_planning and generation_input.selection_mode == "auto":
         from backend.services.novel.plot_service import preparation_content_fingerprint
@@ -377,7 +388,7 @@ async def load_volume_location_generation_context(
         data["content_fingerprint"] = canonical_request_hash({
             "reading_contract": "position_v1", "position": position,
             "source_content_fingerprint": preparation_content_fingerprint(
-                sources, character_facts=list(character_facts.values()), fact_reads=facts["reads"],
+                sources, character_facts=list(character_facts.values()), fact_reads=data["fact_reads"],
             ),
         })
     return data

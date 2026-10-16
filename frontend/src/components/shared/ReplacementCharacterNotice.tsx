@@ -1,5 +1,7 @@
 "use client";
 
+import { downloadExport } from "@/lib/userExport";
+
 import { Button } from "@heroui/react";
 import { useTranslations } from "next-intl";
 
@@ -80,7 +82,7 @@ export default function ReplacementCharacterNotice({ value }: { value: unknown }
         const link = document.createElement("a");
         link.href = url;
         link.download = "candidate-text.json";
-        link.click();
+        void downloadExport(link);
         URL.revokeObjectURL(url);
       }}>{t("exportOriginal")}</Button>
     </div>

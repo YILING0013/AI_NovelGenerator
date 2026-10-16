@@ -1185,7 +1185,7 @@
         "characters": {
           "items": {
             "additionalProperties": false,
-            "description": "一条新人物或已有档案的当前卷状态候选。",
+            "description": "仅在模型响应边界接收未知标记，不接收旧 state 事实字段。",
             "properties": {
               "candidate_ref": {
                 "pattern": "^[a-z][a-z0-9_]{0,63}$",
@@ -1209,7 +1209,7 @@
                 "anyOf": [
                   {
                     "additionalProperties": false,
-                    "description": "本卷新增人物沿用档案字段，始终为非核心人物。",
+                    "description": "新卷人物的设计资料；实际事实仅由 initial_facts 提交。",
                     "properties": {
                       "name": {
                         "maxLength": 80,
@@ -1219,6 +1219,8 @@
                       },
                       "aliases": {
                         "items": {
+                          "maxLength": 80,
+                          "minLength": 1,
                           "type": "string"
                         },
                         "maxItems": 10,
@@ -1246,116 +1248,52 @@
                         "title": "Importance Level",
                         "type": "string"
                       },
-                      "gender": {
-                        "maxLength": 80,
-                        "minLength": 1,
-                        "title": "Gender",
-                        "type": "string"
-                      },
-                      "age_group": {
-                        "maxLength": 80,
-                        "minLength": 1,
-                        "title": "Age Group",
-                        "type": "string"
-                      },
-                      "race": {
-                        "maxLength": 80,
-                        "minLength": 1,
-                        "title": "Race",
-                        "type": "string"
-                      },
-                      "identity": {
-                        "maxLength": 500,
-                        "minLength": 1,
-                        "title": "Identity",
-                        "type": "string"
-                      },
-                      "appearance": {
-                        "maxLength": 1000,
-                        "minLength": 1,
-                        "title": "Appearance",
-                        "type": "string"
-                      },
-                      "personality": {
-                        "maxLength": 1000,
-                        "minLength": 1,
-                        "title": "Personality",
-                        "type": "string"
-                      },
-                      "core_desire": {
-                        "maxLength": 1000,
-                        "minLength": 1,
-                        "title": "Core Desire",
-                        "type": "string"
-                      },
-                      "core_fear": {
-                        "maxLength": 1000,
-                        "minLength": 1,
-                        "title": "Core Fear",
-                        "type": "string"
-                      },
-                      "strengths": {
-                        "items": {
-                          "type": "string"
-                        },
-                        "maxItems": 12,
-                        "title": "Strengths",
-                        "type": "array"
-                      },
-                      "weaknesses": {
-                        "items": {
-                          "type": "string"
-                        },
-                        "maxItems": 12,
-                        "title": "Weaknesses",
-                        "type": "array"
-                      },
-                      "abilities": {
-                        "items": {
-                          "type": "string"
-                        },
-                        "maxItems": 12,
-                        "title": "Abilities",
-                        "type": "array"
+                      "is_core_character": {
+                        "const": false,
+                        "default": false,
+                        "title": "Is Core Character",
+                        "type": "boolean"
                       },
                       "conflict_with_mainline": {
+                        "default": "",
                         "maxLength": 1000,
-                        "minLength": 1,
                         "title": "Conflict With Mainline",
                         "type": "string"
                       },
                       "relationship_with_protagonist": {
+                        "default": "",
                         "maxLength": 1000,
-                        "minLength": 1,
                         "title": "Relationship With Protagonist",
                         "type": "string"
                       },
                       "initial_state": {
+                        "default": "",
                         "maxLength": 1000,
-                        "minLength": 1,
                         "title": "Initial State",
                         "type": "string"
                       },
                       "growth_direction": {
+                        "default": "",
                         "maxLength": 1000,
-                        "minLength": 1,
                         "title": "Growth Direction",
                         "type": "string"
                       },
                       "story_function": {
+                        "default": "",
                         "maxLength": 1000,
-                        "minLength": 1,
                         "title": "Story Function",
                         "type": "string"
                       },
                       "arc_seed": {
+                        "default": "",
                         "maxLength": 1000,
-                        "minLength": 1,
                         "title": "Arc Seed",
                         "type": "string"
                       },
                       "tags": {
                         "items": {
+                          "maxLength": 80,
+                          "minLength": 1,
                           "type": "string"
                         },
                         "maxItems": 10,
@@ -1369,33 +1307,18 @@
                         "title": "Sort Order",
                         "type": "integer"
                       },
-                      "is_core_character": {
-                        "const": false,
-                        "default": false,
-                        "title": "Is Core Character",
-                        "type": "boolean"
+                      "extra": {
+                        "additionalProperties": {},
+                        "title": "Extra",
+                        "type": "object"
                       }
                     },
                     "required": [
                       "name",
                       "role_type",
-                      "importance_level",
-                      "gender",
-                      "age_group",
-                      "race",
-                      "identity",
-                      "appearance",
-                      "personality",
-                      "core_desire",
-                      "core_fear",
-                      "conflict_with_mainline",
-                      "relationship_with_protagonist",
-                      "initial_state",
-                      "growth_direction",
-                      "story_function",
-                      "arc_seed"
+                      "importance_level"
                     ],
-                    "title": "VolumeCharacterProfileV1",
+                    "title": "VolumeCharacterPlanProfileV1",
                     "type": "object"
                   },
                   {
@@ -1406,7 +1329,7 @@
               },
               "state": {
                 "additionalProperties": false,
-                "description": "角色在一卷内可人工维护的完整业务字段。",
+                "description": "角色本卷的参与安排与计划，不接受实际处境。",
                 "properties": {
                   "participation_scope": {
                     "enum": [
@@ -1435,24 +1358,6 @@
                     "title": "Planned End State",
                     "type": "string"
                   },
-                  "psychological_state": {
-                    "default": "",
-                    "maxLength": 1000,
-                    "title": "Psychological State",
-                    "type": "string"
-                  },
-                  "public_state": {
-                    "default": "",
-                    "maxLength": 1000,
-                    "title": "Public State",
-                    "type": "string"
-                  },
-                  "hidden_state": {
-                    "default": "",
-                    "maxLength": 1000,
-                    "title": "Hidden State",
-                    "type": "string"
-                  },
                   "relationship_focus_ids": {
                     "items": {
                       "pattern": "^cr_[0-9]{6,}$",
@@ -1475,7 +1380,7 @@
                   "current_goal",
                   "start_state"
                 ],
-                "title": "CharacterVolumeStateFieldsV1",
+                "title": "CharacterVolumePlanFieldsV1",
                 "type": "object"
               },
               "state_expected_version": {
@@ -1490,13 +1395,246 @@
                 ],
                 "default": null,
                 "title": "State Expected Version"
+              },
+              "initial_facts": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "gender": {
+                        "anyOf": [
+                          {
+                            "maxLength": 80,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Gender"
+                      },
+                      "age_group": {
+                        "anyOf": [
+                          {
+                            "maxLength": 80,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Age Group"
+                      },
+                      "race": {
+                        "anyOf": [
+                          {
+                            "maxLength": 80,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Race"
+                      },
+                      "identity": {
+                        "anyOf": [
+                          {
+                            "maxLength": 500,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Identity"
+                      },
+                      "appearance": {
+                        "anyOf": [
+                          {
+                            "maxLength": 1000,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Appearance"
+                      },
+                      "personality": {
+                        "anyOf": [
+                          {
+                            "maxLength": 1000,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Personality"
+                      },
+                      "core_desire": {
+                        "anyOf": [
+                          {
+                            "maxLength": 1000,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Core Desire"
+                      },
+                      "core_fear": {
+                        "anyOf": [
+                          {
+                            "maxLength": 1000,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Core Fear"
+                      },
+                      "strengths": {
+                        "anyOf": [
+                          {
+                            "items": {
+                              "maxLength": 80,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "maxItems": 12,
+                            "type": "array"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Strengths"
+                      },
+                      "weaknesses": {
+                        "anyOf": [
+                          {
+                            "items": {
+                              "maxLength": 80,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "maxItems": 12,
+                            "type": "array"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Weaknesses"
+                      },
+                      "abilities": {
+                        "anyOf": [
+                          {
+                            "items": {
+                              "maxLength": 80,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "maxItems": 12,
+                            "type": "array"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Abilities"
+                      },
+                      "psychological_state": {
+                        "anyOf": [
+                          {
+                            "maxLength": 1000,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Psychological State"
+                      },
+                      "public_state": {
+                        "anyOf": [
+                          {
+                            "maxLength": 1000,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Public State"
+                      },
+                      "hidden_state": {
+                        "anyOf": [
+                          {
+                            "maxLength": 1000,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Hidden State"
+                      },
+                      "actual_goal": {
+                        "anyOf": [
+                          {
+                            "maxLength": 1000,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Actual Goal"
+                      }
+                    },
+                    "title": "GeneratedCharacterInitialFactsV1",
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
               }
             },
             "required": [
               "candidate_ref",
               "state"
             ],
-            "title": "VolumeCharacterCandidateV1",
+            "title": "GeneratedVolumeCharacterPlanCandidateV1",
             "type": "object"
           },
           "maxItems": 20,
@@ -1511,6 +1649,7 @@
         "model": "",
         "parameters": {},
         "prompt_file": "create_characters_for_volume_by_ai_story_prompt.md",
+        "append_output_schema": true,
         "schema_prompt_file": "create_volume_entities_output.md",
         "text_prompt_file": "create_volume_entities_output.md"
       }
@@ -1523,7 +1662,7 @@
         "characters": {
           "items": {
             "additionalProperties": false,
-            "description": "一条新人物或已有档案的当前卷状态候选。",
+            "description": "仅在模型响应边界接收未知标记，不接收旧 state 事实字段。",
             "properties": {
               "candidate_ref": {
                 "pattern": "^[a-z][a-z0-9_]{0,63}$",
@@ -1547,7 +1686,7 @@
                 "anyOf": [
                   {
                     "additionalProperties": false,
-                    "description": "本卷新增人物沿用档案字段，始终为非核心人物。",
+                    "description": "新卷人物的设计资料；实际事实仅由 initial_facts 提交。",
                     "properties": {
                       "name": {
                         "maxLength": 80,
@@ -1557,6 +1696,8 @@
                       },
                       "aliases": {
                         "items": {
+                          "maxLength": 80,
+                          "minLength": 1,
                           "type": "string"
                         },
                         "maxItems": 10,
@@ -1584,116 +1725,52 @@
                         "title": "Importance Level",
                         "type": "string"
                       },
-                      "gender": {
-                        "maxLength": 80,
-                        "minLength": 1,
-                        "title": "Gender",
-                        "type": "string"
-                      },
-                      "age_group": {
-                        "maxLength": 80,
-                        "minLength": 1,
-                        "title": "Age Group",
-                        "type": "string"
-                      },
-                      "race": {
-                        "maxLength": 80,
-                        "minLength": 1,
-                        "title": "Race",
-                        "type": "string"
-                      },
-                      "identity": {
-                        "maxLength": 500,
-                        "minLength": 1,
-                        "title": "Identity",
-                        "type": "string"
-                      },
-                      "appearance": {
-                        "maxLength": 1000,
-                        "minLength": 1,
-                        "title": "Appearance",
-                        "type": "string"
-                      },
-                      "personality": {
-                        "maxLength": 1000,
-                        "minLength": 1,
-                        "title": "Personality",
-                        "type": "string"
-                      },
-                      "core_desire": {
-                        "maxLength": 1000,
-                        "minLength": 1,
-                        "title": "Core Desire",
-                        "type": "string"
-                      },
-                      "core_fear": {
-                        "maxLength": 1000,
-                        "minLength": 1,
-                        "title": "Core Fear",
-                        "type": "string"
-                      },
-                      "strengths": {
-                        "items": {
-                          "type": "string"
-                        },
-                        "maxItems": 12,
-                        "title": "Strengths",
-                        "type": "array"
-                      },
-                      "weaknesses": {
-                        "items": {
-                          "type": "string"
-                        },
-                        "maxItems": 12,
-                        "title": "Weaknesses",
-                        "type": "array"
-                      },
-                      "abilities": {
-                        "items": {
-                          "type": "string"
-                        },
-                        "maxItems": 12,
-                        "title": "Abilities",
-                        "type": "array"
+                      "is_core_character": {
+                        "const": false,
+                        "default": false,
+                        "title": "Is Core Character",
+                        "type": "boolean"
                       },
                       "conflict_with_mainline": {
+                        "default": "",
                         "maxLength": 1000,
-                        "minLength": 1,
                         "title": "Conflict With Mainline",
                         "type": "string"
                       },
                       "relationship_with_protagonist": {
+                        "default": "",
                         "maxLength": 1000,
-                        "minLength": 1,
                         "title": "Relationship With Protagonist",
                         "type": "string"
                       },
                       "initial_state": {
+                        "default": "",
                         "maxLength": 1000,
-                        "minLength": 1,
                         "title": "Initial State",
                         "type": "string"
                       },
                       "growth_direction": {
+                        "default": "",
                         "maxLength": 1000,
-                        "minLength": 1,
                         "title": "Growth Direction",
                         "type": "string"
                       },
                       "story_function": {
+                        "default": "",
                         "maxLength": 1000,
-                        "minLength": 1,
                         "title": "Story Function",
                         "type": "string"
                       },
                       "arc_seed": {
+                        "default": "",
                         "maxLength": 1000,
-                        "minLength": 1,
                         "title": "Arc Seed",
                         "type": "string"
                       },
                       "tags": {
                         "items": {
+                          "maxLength": 80,
+                          "minLength": 1,
                           "type": "string"
                         },
                         "maxItems": 10,
@@ -1707,33 +1784,18 @@
                         "title": "Sort Order",
                         "type": "integer"
                       },
-                      "is_core_character": {
-                        "const": false,
-                        "default": false,
-                        "title": "Is Core Character",
-                        "type": "boolean"
+                      "extra": {
+                        "additionalProperties": {},
+                        "title": "Extra",
+                        "type": "object"
                       }
                     },
                     "required": [
                       "name",
                       "role_type",
-                      "importance_level",
-                      "gender",
-                      "age_group",
-                      "race",
-                      "identity",
-                      "appearance",
-                      "personality",
-                      "core_desire",
-                      "core_fear",
-                      "conflict_with_mainline",
-                      "relationship_with_protagonist",
-                      "initial_state",
-                      "growth_direction",
-                      "story_function",
-                      "arc_seed"
+                      "importance_level"
                     ],
-                    "title": "VolumeCharacterProfileV1",
+                    "title": "VolumeCharacterPlanProfileV1",
                     "type": "object"
                   },
                   {
@@ -1744,7 +1806,7 @@
               },
               "state": {
                 "additionalProperties": false,
-                "description": "角色在一卷内可人工维护的完整业务字段。",
+                "description": "角色本卷的参与安排与计划，不接受实际处境。",
                 "properties": {
                   "participation_scope": {
                     "enum": [
@@ -1773,24 +1835,6 @@
                     "title": "Planned End State",
                     "type": "string"
                   },
-                  "psychological_state": {
-                    "default": "",
-                    "maxLength": 1000,
-                    "title": "Psychological State",
-                    "type": "string"
-                  },
-                  "public_state": {
-                    "default": "",
-                    "maxLength": 1000,
-                    "title": "Public State",
-                    "type": "string"
-                  },
-                  "hidden_state": {
-                    "default": "",
-                    "maxLength": 1000,
-                    "title": "Hidden State",
-                    "type": "string"
-                  },
                   "relationship_focus_ids": {
                     "items": {
                       "pattern": "^cr_[0-9]{6,}$",
@@ -1813,7 +1857,7 @@
                   "current_goal",
                   "start_state"
                 ],
-                "title": "CharacterVolumeStateFieldsV1",
+                "title": "CharacterVolumePlanFieldsV1",
                 "type": "object"
               },
               "state_expected_version": {
@@ -1828,13 +1872,246 @@
                 ],
                 "default": null,
                 "title": "State Expected Version"
+              },
+              "initial_facts": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "gender": {
+                        "anyOf": [
+                          {
+                            "maxLength": 80,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Gender"
+                      },
+                      "age_group": {
+                        "anyOf": [
+                          {
+                            "maxLength": 80,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Age Group"
+                      },
+                      "race": {
+                        "anyOf": [
+                          {
+                            "maxLength": 80,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Race"
+                      },
+                      "identity": {
+                        "anyOf": [
+                          {
+                            "maxLength": 500,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Identity"
+                      },
+                      "appearance": {
+                        "anyOf": [
+                          {
+                            "maxLength": 1000,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Appearance"
+                      },
+                      "personality": {
+                        "anyOf": [
+                          {
+                            "maxLength": 1000,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Personality"
+                      },
+                      "core_desire": {
+                        "anyOf": [
+                          {
+                            "maxLength": 1000,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Core Desire"
+                      },
+                      "core_fear": {
+                        "anyOf": [
+                          {
+                            "maxLength": 1000,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Core Fear"
+                      },
+                      "strengths": {
+                        "anyOf": [
+                          {
+                            "items": {
+                              "maxLength": 80,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "maxItems": 12,
+                            "type": "array"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Strengths"
+                      },
+                      "weaknesses": {
+                        "anyOf": [
+                          {
+                            "items": {
+                              "maxLength": 80,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "maxItems": 12,
+                            "type": "array"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Weaknesses"
+                      },
+                      "abilities": {
+                        "anyOf": [
+                          {
+                            "items": {
+                              "maxLength": 80,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "maxItems": 12,
+                            "type": "array"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Abilities"
+                      },
+                      "psychological_state": {
+                        "anyOf": [
+                          {
+                            "maxLength": 1000,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Psychological State"
+                      },
+                      "public_state": {
+                        "anyOf": [
+                          {
+                            "maxLength": 1000,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Public State"
+                      },
+                      "hidden_state": {
+                        "anyOf": [
+                          {
+                            "maxLength": 1000,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Hidden State"
+                      },
+                      "actual_goal": {
+                        "anyOf": [
+                          {
+                            "maxLength": 1000,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Actual Goal"
+                      }
+                    },
+                    "title": "GeneratedCharacterInitialFactsV1",
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
               }
             },
             "required": [
               "candidate_ref",
               "state"
             ],
-            "title": "VolumeCharacterCandidateV1",
+            "title": "GeneratedVolumeCharacterPlanCandidateV1",
             "type": "object"
           },
           "maxItems": 20,
@@ -2207,7 +2484,8 @@
           "selected_existing_ids": "param_selected_existing_ids",
           "user_guidance": "param_user_guidance",
           "selection_mode": "param_selection_mode"
-        }
+        },
+        "candidate_contract": "character_plan_initial_facts_v1"
       }
     }
   ],

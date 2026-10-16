@@ -796,11 +796,24 @@ BOOK_INDEXES = {
 # v9 复用这些键和名称；独立保存 v8 对象，防止后续列表或 IndexModel 原地修改旧目录。
 V8_BOOK_INDEXES = deepcopy(BOOK_INDEXES)
 V10_BOOK_INDEXES = deepcopy(BOOK_INDEXES)
+# 势力事实复用 v10 索引；v11 恢复目录仍只有原 30 个集合。
+V11_BOOK_INDEXES = deepcopy(BOOK_INDEXES)
 
 # 整批创建的回执随 v12 归档；旧恢复目录保持原摘要。
 BOOK_INDEXES["character_creation_batch_receipts"] = [
     IndexModel([("novel_id", 1), ("operation", 1), ("idempotency_key_hash", 1)],
                unique=True, name="character_creation_batch_novel_operation_key_unique"),
+]
+
+
+# v13 沿用 v12 的 31 集合索引，单独冻结历史对象。
+V12_BOOK_INDEXES = deepcopy(BOOK_INDEXES)
+V13_BOOK_INDEXES = deepcopy(BOOK_INDEXES)
+
+# v14 才加入势力批次；v11/v12/v13 的集合、字段顺序和索引摘要不变。
+BOOK_INDEXES["faction_creation_batch_receipts"] = [
+    IndexModel([("novel_id", 1), ("operation", 1), ("idempotency_key_hash", 1)],
+               unique=True, name="faction_creation_batch_novel_operation_key_unique"),
 ]
 
 

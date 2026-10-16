@@ -20,16 +20,34 @@ from backend.services.novel.writing_context import (
     load_writing_parents, protect_writing_sources, position_content, character_position_content,
     character_relation_position_content, read_character_relation_context,
     item_position_content, read_item_context,
+    faction_position_content,
     writing_order, resolve_writing_position, chapter_visible_at_position,
+    chapter_scope_content, CHAPTER_PARENT_FIELDS,
 )
 from backend.services.novel.character_fact_contract import CharacterFactReadV1
 from backend.services.novel.character_relation_fact_contract import CharacterRelationFactReadV1
 from backend.services.novel.item_fact_contract import ItemFactReadV1
+from backend.services.novel.faction_fact_contract import FactionFactReadV1
 from .agent_contract import AgentModel, BookReadV1, EntityKind, PreparedTargetV1
 
 
 class EmptyToolArgs(AgentModel):
     """不接受模型更改小说或操作位置。"""
+
+
+class ParentFieldArgs(AgentModel):
+    """补读一个真实祖先的允许原文字段。"""
+
+    resource_type: Literal["novel", "volume", "arc", "scene"]
+    id: ObjectIdString
+    field: str
+
+
+class ScopeArgs(AgentModel):
+    """旧调用仍为空参数；本章模式及补读字段进入实际读取记录。"""
+
+    view: Literal["chapter_local_v1"] | None = Field(default=None, exclude_if=lambda value: value is None)
+    parent_field: ParentFieldArgs | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 class DirectoryArgs(AgentModel):
@@ -85,7 +103,7 @@ class ReadPreviousArgs(AgentModel):
 
 
 BOOK_TOOL_MODELS = {
-    "get_scope": (EmptyToolArgs, "读取当前小说主线、当前父链、相邻部分和已有下级；整理必须首先使用。"),
+    "get_scope": (ScopeArgs, "先核对当前目标和相邻边界。本章模式只返回局部资料；需补读上层原文时按 parent_sources 指定一个 parent_field（resource_type、id、field），不能读取父链之外的资料。"),
     "list_directory": (DirectoryArgs, "分页阅读本书指定层级的详细规划和已保存剧情，可用ids读取指定卷、篇章、场景或章节；不返回章节正文，前文须用read_previous；has_more为真时仍有下一页。"),
     "search_book": (SearchBookArgs, "按普通文字检索当前部分或本书的规划、剧情及伏笔；伏笔只读，返回作者状态、实际证据和需复核标记，不自动改状态。正文仅检索当前位置以前的章节。"),
     "search_entities": (SearchEntityArgs, "在本书可用角色、势力、地点、物品或规则中检索普通文字，空文字用于浏览；采用前须 read_entity。"),
@@ -132,6 +150,7 @@ class BookTools:
             session: 可选的确认事务会话。
         """
         self.scope = normalize_agent_scope(scope)
+        self.chapter_local = scope.get("chapter_context_version") == 1
         self.reads = reads
         self.session = session
         self.guards: dict[tuple[str, str], dict[str, Any]] = {}
@@ -141,6 +160,7 @@ class BookTools:
         self.volume_states: dict[str, dict[str, Any]] = {}
         self.relations: dict[str, dict[str, Any]] = {}
         self.previous_text: dict[str, dict[str, Any]] = {}
+        self.parent_fields: dict[tuple[str, str, str], dict[str, Any]] = {}
         self.chain: list[tuple[str, dict[str, Any]]] = []
 
     def definitions(self, names: list[str]) -> list[LLMToolDefinition]:
@@ -151,9 +171,15 @@ class BookTools:
         Returns:
             原生 Function Calling 工具定义。
         """
-        return [LLMToolDefinition(name=name, description=BOOK_TOOL_MODELS[name][1],
-                                  parameters=BOOK_TOOL_MODELS[name][0].model_json_schema())
-                for name in names if name in BOOK_TOOL_MODELS]
+        result = [LLMToolDefinition(name=name, description=BOOK_TOOL_MODELS[name][1],
+                                   parameters=BOOK_TOOL_MODELS[name][0].model_json_schema())
+                  for name in names if name in BOOK_TOOL_MODELS]
+        if not self.chapter_local:
+            for definition in result:
+                if definition.name == "get_scope":
+                    definition.parameters = EmptyToolArgs.model_json_schema()
+                    definition.description = "读取当前小说主线、当前父链、相邻部分和已有下级；整理必须首先使用。"
+        return result
 
     def _remember(self, kind: str, document: dict[str, Any], *, detail: bool = False, facts: dict[str, Any] | None = None) -> dict[str, Any]:
         """提取内容并记录实际文档；统计和锁字段不参与内容散列。"""
@@ -167,6 +193,11 @@ class BookTools:
                 raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "人物资料缺少明确位置的读取结果，请重新读取", status_code=409)
             value = character_position_content(document, facts)
             collection = RESOURCE_COLLECTIONS[kind]
+        elif kind == "faction":
+            if facts is None:
+                raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "势力资料缺少明确位置的读取结果，请重新读取", status_code=409)
+            value = faction_position_content(document, facts)
+            collection = "factions"
         elif kind == "character_relation":
             if facts is None:
                 raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "关系资料缺少明确位置的读取结果，请重新读取", status_code=409)
@@ -200,7 +231,10 @@ class BookTools:
         """
         if name not in BOOK_TOOL_MODELS:
             raise DomainApiError("AGENT_TOOL_UNKNOWN", "资料整理请求了未开放的工具", status_code=422)
-        args = BOOK_TOOL_MODELS[name][0].model_validate(arguments).model_dump(mode="json")
+        if name == "get_scope" and self.chapter_local:
+            arguments = {**arguments, "view": "chapter_local_v1"}
+        model = EmptyToolArgs if name == "get_scope" and not self.chapter_local else BOOK_TOOL_MODELS[name][0]
+        args = model.model_validate(arguments).model_dump(mode="json")
         if not self.chain or name == "get_scope":
             self.chain = await load_writing_parents(*(self.scope[key] for key in ("novel_id", "target_type", "target_id")), session=self.session)
         novel_id = ObjectId(self.scope["novel_id"])
@@ -233,6 +267,25 @@ class BookTools:
                     raise DomainApiError("AGENT_DIRECTORY_TOO_LARGE", "已有下级超过读取上限", status_code=422)
                 children = [self._remember(child_kind, document) for document in documents]
             output = {"target": self.scope, "plan": plans, "neighbors": neighbors, "existing_children": children}
+            if args.get("view") == "chapter_local_v1":
+                if target_kind != "chapter" or self.scope["reading_intent"] != "chapter_before":
+                    raise ValueError("本章资料只能用于章前写作")
+                output.update(chapter_scope_content(plans, neighbors))
+                if selection := args.get("parent_field"):
+                    kind, identity, field = selection["resource_type"], selection["id"], selection["field"]
+                    document = next((doc for part, doc in self.chain[:-1] if part == kind and str(doc["_id"]) == identity), None)
+                    if document is None or field not in CHAPTER_PARENT_FIELDS[kind]:
+                        raise ValueError("只能补读本书真实父链中允许的原文字段")
+                    value = self._remember(kind, document)
+                    for key in field.split("."):
+                        value = value.get(key) if isinstance(value, dict) else None
+                    if not isinstance(value, str) or not value.strip():
+                        raise ValueError("该祖先字段没有可读取的原文，请核对缺项")
+                    original = {**selection, "version": document["version"], "text": value}
+                    self.parent_fields[(kind, identity, field)] = original
+                    output["parent_field"] = original
+            elif args.get("parent_field"):
+                raise ValueError("祖先字段补读需要本章资料模式")
         elif name == "list_directory":
             kind = args["resource_type"]
             query = {"novel_id": novel_id, "is_deleted": False}
@@ -270,6 +323,15 @@ class BookTools:
                 facts = {row["character_id"]: row for row in fact_result["characters"]}
                 if any(row[id_field] not in facts for row in documents):
                     raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "人物在读取期间已变化，请重新读取", status_code=409)
+            elif kind == "faction":
+                from backend.services.novel.faction_fact_service import read_faction_facts
+                selected_ids = args["ids"] if name == "read_entity" else [row[id_field] for row in documents]
+                fact_result = await read_faction_facts(str(novel_id), selected_ids, self.scope, session=self.session)
+                fact_reads.extend(fact_result["reads"])
+                position = fact_result["position"]
+                facts = {row["faction_id"]: row for row in fact_result["factions"]}
+                if any(row[id_field] not in facts for row in documents):
+                    raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "势力在读取期间已变化，请重新读取", status_code=409)
             elif kind == "item":
                 selected_ids = args["ids"] if name == "read_entity" else [row[id_field] for row in documents]
                 facts, item_reads, position = await read_item_context(str(novel_id), selected_ids, self.scope, session=self.session)
@@ -283,6 +345,7 @@ class BookTools:
                 matches = [document for document in documents
                            if args["query"].casefold() in json.dumps(
                                 character_position_content(document, facts[document[id_field]]) if kind == "character" else
+                                faction_position_content(document, facts[document[id_field]]) if kind == "faction" else
                                 item_position_content(document, facts[document[id_field]]) if kind == "item" else position_content(document, kind),
                                ensure_ascii=False).casefold()]
                 items = [self._remember(kind, document, facts=facts.get(document[id_field]))
@@ -332,6 +395,13 @@ class BookTools:
                 # 卷状态只保留参与和计划；心理等事实统一按人物提供一次。
                 output["character_facts"] = [{key: value for key, value in row.items() if key not in {"entity_id", "version"}}
                                              for row in fact_result["characters"]]
+            else:
+                from backend.services.novel.faction_fact_service import read_faction_facts
+                fact_result = await read_faction_facts(str(novel_id), args["ids"], self.scope, session=self.session)
+                fact_reads.extend(fact_result["reads"])
+                position = fact_result["position"]
+                output["faction_facts"] = [{key: value for key, value in row.items() if key not in {"entity_id", "version"}}
+                                           for row in fact_result["factions"]]
         elif name == "search_book" and args["resource_type"] == "foreshadowing":
             from backend.services.novel.foreshadowing_service import ForeshadowingService
             rows = await ForeshadowingService.list(str(novel_id), session=self.session)
@@ -394,7 +464,8 @@ class BookTools:
                         value.update(excerpt=document["content"][start:start + 2000], excerpt_start=start,
                                      truncated=start > 0 or len(document["content"]) > 2000,
                                      content_fingerprint=canonical_request_hash(document["content"]), content_semantics="design_plan_with_prior_text")
-                        self.previous_text[value["id"]] = value
+                        key = f'{value["id"]}:{start}:{start + len(value["excerpt"])}' if self.chapter_local else value["id"]
+                        self.previous_text[key] = value
                     items.append(value)
                 output = {"items": items, "offset": args["offset"], "limit": args["limit"],
                           "has_more": len(matches) > args["offset"] + args["limit"], "total_matches": len(matches),
@@ -410,7 +481,10 @@ class BookTools:
                 for document in written[args["offset"]:args["offset"] + args["limit"]]:
                     value = self._remember("chapter", document)
                     value.update(excerpt=document["content"][-args["excerpt_characters"]:], truncated=len(document["content"]) > args["excerpt_characters"], content_fingerprint=canonical_request_hash(document["content"]), content_semantics="design_plan_with_prior_text")
-                    self.previous_text[value["id"]] = value
+                    if self.chapter_local:
+                        value["excerpt_start"] = len(document["content"]) - len(value["excerpt"])
+                    key = f'{value["id"]}:{value["excerpt_start"]}:{len(document["content"])}' if self.chapter_local else value["id"]
+                    self.previous_text[key] = value
                     items.append(value)
                 # 先后次序和已写章节集合也属于读取依据；新的前章会使旧候选过期。
                 output = {"items": items, "offset": args["offset"], "limit": args["limit"], "has_more": len(written) > args["offset"] + args["limit"], "before_order": position["order"], "written_order": [str(document["_id"]) for document in written]}
@@ -429,6 +503,90 @@ class BookTools:
         self.reads.extend(fact_reads)
         self.reads.append(BookReadV1(tool=name, arguments=args, scope=self.scope, fingerprint=canonical_request_hash(output)).model_dump(mode="json"))
         return output
+
+
+def select_chapter_sources(report: Any, material: dict[str, Any]) -> dict[str, Any]:
+    """从实际读过的同版本资料取本章采用内容，不接受模型自由拼接原文。
+
+    Args:
+        report: 已校验格式的整理报告。
+        material: 当前工具读取或完整重放得到的原资料。
+    Returns:
+        已核对的祖先原文、前文和关系；缺项交回原整理恢复流程。
+    """
+    if report.chapter_sources is None:
+        raise ValueError("请明确填写本章采用的原文、前文和关系，未采用的列表填空")
+    chosen = report.chapter_sources
+    excerpts = []
+    for ref in chosen.parent_excerpts:
+        source = next((value for value in material.get("parent_fields", [])
+                       if (value["resource_type"], value["id"], value["field"], value["version"]) ==
+                       (ref.resource_type, ref.id, ref.field, ref.version)), None)
+        if (source is None or not ref.quote.strip() or ref.end <= ref.start or ref.end > len(source["text"])
+                or source["text"][ref.start:ref.end] != ref.quote):
+            raise ValueError("采用原文必须是实际补读的同版本祖先字段中有效的一段连续原文")
+        value = ref.model_dump(mode="json")
+        if value not in excerpts:
+            excerpts.append(value)
+    previous = material.get("previous_text", [])
+    relations = {value["id"]: value for value in material.get("relations", [])}
+    if set(chosen.previous_chapter_ids) - {value["id"] for value in previous} or set(chosen.relation_ids) - relations.keys():
+        raise ValueError("采用的前文或关系尚未实际读到，请先补读")
+    for identity in chosen.relation_ids:
+        relation = relations[identity]
+        kind = {"character_relation": "character", "faction_relation": "faction"}.get(relation.get("resource_type"))
+        if kind is None:
+            raise ValueError("采用的关系类型不受支持，请核对实际读取来源")
+        selected = set(getattr(report.selected_entities, f"{kind}_ids"))
+        if not selected.intersection({relation.get(f"source_{kind}_id"), relation.get(f"target_{kind}_id")}):
+            raise ValueError("采用的关系至少一端应属于本章采用的对应人物或势力")
+    return {"parent_excerpts": excerpts,
+            "previous_text": [value for identity in dict.fromkeys(chosen.previous_chapter_ids) for value in previous if value["id"] == identity],
+            "relations": [relations[identity] for identity in dict.fromkeys(chosen.relation_ids)]}
+
+
+def assemble_chapter_context(context: dict[str, Any], report: Any, material: dict[str, Any]) -> dict[str, Any]:
+    """为新版正文和预览组装一份资料；阅读意见与工具历史只留在报告中。
+
+    Args:
+        context: 正式资料节点的局部上下文。
+        report: 本次整理结果。
+        material: 实际工具读取资料；预览只可使用明确标为示例的资料。
+    Returns:
+        正文唯一资料输入，必要原文保留，不拼入整份整理报告。
+    """
+    adopted = select_chapter_sources(report, material)
+    result = {key: value for key, value in context.items()
+              if key not in {"candidate_entities", "required_entities", "parent_sources", "search_results", "previous_written"}}
+    result["parent_excerpts"] = adopted["parent_excerpts"]
+    result["relations"] = adopted["relations"]
+    previous_sources = list(adopted["previous_text"])
+    if nearest := context.get("previous_written"):
+        previous_sources.insert(0, {"id": nearest["chapter_id"], **{key: nearest[key]
+            for key in ("title", "excerpt", "excerpt_start", "truncated", "content_fingerprint") if key in nearest}})
+    previous = []
+    for value in previous_sources:
+        # 同章、同正文指纹且区间完全包含才去重；原始读取记录不变。
+        covered = False
+        start = value.get("excerpt_start")
+        if start is not None and value.get("content_fingerprint"):
+            end = start + len(value["excerpt"])
+            for existing in list(previous):
+                if (existing["id"] != value["id"] or existing.get("content_fingerprint") != value["content_fingerprint"]
+                        or existing.get("excerpt_start") is None):
+                    continue
+                old_start = existing["excerpt_start"]
+                old_end = old_start + len(existing["excerpt"])
+                if old_start <= start and end <= old_end:
+                    covered = True
+                    break
+                if start <= old_start and old_end <= end:
+                    previous.remove(existing)
+        if covered:
+            continue
+        previous.append({key: value[key] for key in ("id", "title", "excerpt", "excerpt_start", "truncated", "content_fingerprint", "content_semantics") if key in value})
+    result["previous_text"] = previous
+    return result
 
 
 async def replay_book_reads(scope: dict[str, Any], reads: list[dict[str, Any]], *, session: AsyncClientSession | None = None, protect: bool = False) -> dict[str, Any]:
@@ -457,6 +615,9 @@ async def replay_book_reads(scope: dict[str, Any], reads: list[dict[str, Any]], 
         if raw.get("kind") == "item_facts":
             pending_facts.append(ItemFactReadV1.model_validate(raw).model_dump(mode="json"))
             continue
+        if raw.get("kind") == "faction_facts":
+            pending_facts.append(FactionFactReadV1.model_validate(raw).model_dump(mode="json"))
+            continue
         if "kind" in raw:
             raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "事实读取种类不受支持，请保留草稿并重新整理", status_code=409)
         if raw.get("scope", {}).get("reading_version") != 1 or not raw.get("scope", {}).get("reading_intent"):
@@ -476,13 +637,15 @@ async def replay_book_reads(scope: dict[str, Any], reads: list[dict[str, Any]], 
             "reads": current, "selected_entities": list(tools.selected_entities.values()),
             "volume_states": list(tools.volume_states.values()), "relations": list(tools.relations.values()),
             "previous_text": list(tools.previous_text.values())}
+    if any(read.get("arguments", {}).get("view") == "chapter_local_v1" for read in current):
+        data["parent_fields"] = list(tools.parent_fields.values())
     if protect:
         from backend.services.novel.foreshadowing_service import protect_foreshadowing_sources
         await protect_foreshadowing_sources(tools.foreshadowing_evidence_guards, session=session)
         # 关系表没有主档的 dependency_guard_revision；直接触碰关系文档以争用其修改。
         ordinary = {key: value for key, value in tools.guards.items() if key[0] not in {"character_relations", "faction_relations", "foreshadowings"}}
         await protect_writing_sources({"guards": ordinary, "fact_reads": [
-            read for read in reads if read.get("kind") in {"character_facts", "character_relation_facts", "item_facts"}
+            read for read in reads if read.get("kind") in {"character_facts", "character_relation_facts", "item_facts", "faction_facts"}
         ]}, session=session)
         for (collection_name, _), document in tools.guards.items():
             if collection_name not in {"character_relations", "faction_relations", "foreshadowings"}:

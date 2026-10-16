@@ -21,6 +21,7 @@ config.yaml
 *.p12
 *.pfx
 /data/
+/user_data/
 /logs/
 /static/
 *.log

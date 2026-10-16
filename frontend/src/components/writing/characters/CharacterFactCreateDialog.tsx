@@ -1,4 +1,5 @@
 "use client";
+import { TooltipHint } from "@/components/shared/TooltipHint";
 
 import { useContext, useEffect, useRef, useState, type RefObject } from "react";
 import { useTranslations } from "next-intl";
@@ -32,7 +33,7 @@ export default function CharacterFactCreateDialog({ novelId, initialPreparation,
   const current = useRef(initialPreparation), alive = useRef(true), pending = useRef(false);
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<ApiFieldErrors>({});
-  const [chapters, setChapters] = useState<HierarchyRecord[]>([]), [directoryError, setDirectoryError] = useState("");
+  const [chapters, setChapters] = useState<HierarchyRecord[] | null>(null), [directoryError, setDirectoryError] = useState("");
   const store = useCharacterFactPreparationPersistence(novelId);
   useEffect(() => { store.persisted.current.set(initialPreparation.key, initialPreparation.revision); }, [initialPreparation, store]);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
@@ -69,7 +70,14 @@ export default function CharacterFactCreateDialog({ novelId, initialPreparation,
     current.current = next; setPreparation(next);
     void store.persist(next).catch((failure) => { if (alive.current) setError(failure.message); });
   };
-  const close = async () => { try { await keep(); onClose(); } catch (failure) { if (alive.current) setError((failure as Error).message); } };
+  const close = async () => { if (pending.current) return; try { await keep(); onClose(); } catch (failure) { if (alive.current) setError((failure as Error).message); } };
+  const discard = async () => {
+    if (pending.current) return;
+    pending.current = true; setBusy(true);
+    try { await store.remove(current.current); onClose(); }
+    catch (failure) { if (alive.current) setError((failure as Error).message); }
+    finally { pending.current = false; if (alive.current) setBusy(false); }
+  };
   const preview = async () => {
     if (pending.current) return;
     const original = current.current;
@@ -85,17 +93,17 @@ export default function CharacterFactCreateDialog({ novelId, initialPreparation,
       const { candidate, after } = splitCharacterFactCreate(original.profile, original.is_core_character, original.fields);
       const input: CharacterFactCreatePreviewInputV1 = { operation: "create", target: { candidate }, position: original.position, source: { kind: "author", note: original.note }, fields: [...original.fields], references: [] };
       const response = await apiPost<CharacterFactPreviewV1>(`/api/character-facts/novel/${novelId}/preview`, input);
-      const positionLabel = original.position.intent === "book_start" ? ft("positions.book_start") : original.position.intent === "volume_start" ? ft("positions.volume_start") : `${chapters.find((row) => row.chapter_id === original.position!.target_id)?.title ?? original.position.target_id} · ${ft(`positions.${original.position.intent}`)}`;
+      const positionLabel = original.position.intent === "book_start" ? ft("positions.book_start") : original.position.intent === "volume_start" ? ft("positions.volume_start") : `${chapters?.find((row) => row.chapter_id === original.position!.target_id)?.title ?? original.position.target_id} · ${ft(`positions.${original.position.intent}`)}`;
       const draft: CharacterFactDraftV1 = { schema_id: "character.fact.draft", schema_version: 1, key: crypto.randomUUID(), revision: 1, positionLabel, preview: response, after, reason: "", authorConfirmed: false };
       await store.promote(original, draft);
       if (alive.current) onPreviewed(draft);
     } catch (failure) { if (alive.current) { setError((failure as Error).message); setFieldErrors(failure instanceof ApiRequestError ? failure.fieldErrors : {}); } }
     finally { pending.current = false; if (alive.current) setBusy(false); }
   };
-  return <ModalLayer title={t("manualCharacter.title")} busy={busy} onClose={() => void close()} footer={<><Button variant="ghost" size="sm" isDisabled={busy} onPress={() => void close()}>{ft("closeKeep")}</Button><Button variant="primary" size="sm" isDisabled={busy} onPress={() => void preview()}>{busy ? ft("saving") : ft("preview")}</Button></>}>
+  return <ModalLayer title={t("manualCharacter.title")} busy={busy} onClose={() => void close()} footer={<><Button variant="ghost" size="sm" isDisabled={busy} onPress={() => void discard()}>{ft("discardClose")}</Button><Button variant="ghost" size="sm" isDisabled={busy} onPress={() => void close()}>{ft("closeKeep")}</Button><Button variant="primary" size="sm" isDisabled={busy} onPress={() => void preview()}>{busy ? ft("saving") : ft("preview")}</Button></>}>
     {error && <div ref={errorRef}><RelationEditorErrorSummary message={error} fieldErrors={fieldErrors} className="mb-5" /></div>}
     <fieldset className="mb-6 border-b border-border pb-5" disabled={busy}><legend className="text-sm font-semibold">{t("manualCharacter.coreIdentity")}</legend><div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-surface-secondary/55 p-1" aria-label={t("manualCharacter.coreIdentity")}>{[false, true].map((isCore) => <button key={String(isCore)} type="button" aria-pressed={preparation.is_core_character === isCore} onClick={() => update({ is_core_character: isCore })} className={`min-h-10 rounded-lg px-3 text-sm font-medium ${preparation.is_core_character === isCore ? "bg-background text-foreground shadow-sm" : "text-muted"}`}>{t(isCore ? "status.core" : "status.nonCore")}</button>)}</div></fieldset>
-    <div className="mb-6 grid gap-4 border-b border-border pb-5"><CharacterFactPositionPicker novelId={novelId} chapters={chapters} value={preparation.position} onChange={(position) => update({ position })} disabled={busy} /><label className="grid gap-2 text-xs font-medium text-muted">{ft("authorNote")}<textarea className={INPUT} value={preparation.note} onChange={(event) => update({ note: event.target.value })} disabled={busy} maxLength={2000} /></label>{directoryError && <p role="alert" className="text-sm text-danger">{directoryError}</p>}</div>
+    <div className="mb-6 grid gap-4 border-b border-border pb-5"><CharacterFactPositionPicker novelId={novelId} chapters={chapters} value={preparation.position} onChange={(position) => update({ position })} disabled={busy} /><label className="grid gap-2 text-xs font-medium text-muted"><TooltipHint label={ft("authorNote")} text={ft("authorNoteHelp")} /><textarea aria-label={ft("authorNote")} className={INPUT} value={preparation.note} onChange={(event) => update({ note: event.target.value })} disabled={busy} maxLength={2000} /></label>{directoryError && <p role="alert" className="text-sm text-danger">{directoryError}</p>}</div>
     <fieldset className="mb-6 border-b border-border pb-5" disabled={busy}><legend className="text-sm font-semibold">{ft("selectedFields")}</legend><div className="mt-3 grid gap-2 sm:grid-cols-2">{CHARACTER_PROFILE_FACT_FIELDS.map((field) => <label key={field} className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={preparation.fields.includes(field)} onChange={(event) => update({ fields: event.target.checked ? [...preparation.fields, field] : preparation.fields.filter((selected) => selected !== field) })} />{ft(`fields.${field}`)}</label>)}</div></fieldset>
     <CharacterProfileForm value={preparation.profile} visibleFactFields={preparation.fields} onChange={(profile) => update({ profile })} disabled={busy} t={t} fieldErrors={fieldErrors} />
   </ModalLayer>;

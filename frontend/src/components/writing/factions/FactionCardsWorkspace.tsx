@@ -1,5 +1,19 @@
 "use client";
 import { useFactionBatchCreation } from "../characters/useCharacterBatchCreation";
+import { buildCoreFactionFactBatch } from "./factionFactBatch";
+import type { FactionFactPositionV1 } from "@/types/factionFacts";
+import type { HierarchyRecord } from "@/types/hierarchy";
+import CharacterFactPositionPicker from "../characters/CharacterFactPositionPicker";
+import { loadCharacterFactChapters } from "../characters/characterFactPositions";
+import FactionFactsPanel from "./FactionFactsPanel";
+import FactionFactDialog from "./FactionFactDialog";
+import FactionFactValue from "./FactionFactValue";
+import { readFactionFactPreparations, removeFactionFactPreparation, writeFactionFactPreparation, type FactionFactPreparationV1 } from "./factionFactPreparation";
+import { factionFactDraftScope, type FactionFactDraftV1 } from "./factionFactDrafts";
+import { readFactDrafts, writeFactDraft } from "../characters/factDraftStorage";
+import DraftChip from "@/components/shared/DraftChip";
+import type { FactionFactField, FactionFactResultV1 } from "@/types/factionFacts";
+import type { FactionFactBatchResultV1 } from "@/types/factionFactBatch";
 import { useResourceRefresh } from "@/hooks/useResourceRefresh";
 import { useAssistantResource, useAssistantFocus } from "@/components/writing/assistant/AssistantContext";
 import { RetainedModalBackdrop, RetainedViewActive } from "@/components/layout/RetainedViews";
@@ -34,10 +48,10 @@ type CandidateStateName,
 } from "@/lib/aiCandidate";
 import { apiDelete,apiGet,apiPost,apiPut,ApiRequestError,type ApiFieldErrors } from "@/lib/api";
 import type {
+BulkCreateCoreFactionsResponse,
 CoreFaction,
 CoreFactionRelationCandidateV2,
 CoreFactionRelationEndpointV2,
-CoreFactionsAIConfirmationRequestV2,
 CoreFactionsCandidateEnvelopeV2,
 CoreFactionsGenerationInputV2,
 CoreFactionsResultV2,
@@ -74,11 +88,12 @@ interface FactionCardsWorkspaceProps {
 export type FactionWorkspaceView = "profiles" | "relations" | "trash";
 type FactionLevelFilter = "all" | "core" | "volume" | "local";
 type FactionSection = "identity" | "strategy" | "structure" | "story";
-type EditorState = { mode: "create" | "edit"; draft: CoreFaction; section?: FactionSection } | null;
+type EditorState = ({ mode: "create"; draft: CoreFaction; section?: never } |
+  { mode: "edit"; draft: CoreFaction; base: CoreFaction; section: FactionSection }) | null;
 const FACTION_SECTION_FIELDS = {
-  identity: ["name", "alias", "faction_type", "influence_scope", "is_public", "parent_faction_id", "active_status"],
-  strategy: ["positioning", "public_stance", "core_goal", "hidden_goal"],
-  structure: ["organization_style", "resources_and_advantages", "core_values"],
+  identity: ["name", "alias", "parent_faction_id", "active_status"],
+  strategy: ["core_goal", "hidden_goal"],
+  structure: ["resources_and_advantages"],
   story: ["conflict_with_mainline", "expandability", "tags"],
 } as const;
 interface FactionInlineEditingProps {
@@ -389,18 +404,22 @@ export function buildFactionUpdateRequest(
 }
 
 /**
- * 只更新当前资料节，沿用开始编辑时的版本。
+ * 只提交当前节相对开始编辑时实际改动的字段。
  * Args:
  *   draft: 已固定版本的势力草稿。
  *   section: 正在编辑的资料节。
+ *   base: 开始编辑时固定的原资料；刷新不得替换。
  * Returns:
- *   当前节字段与乐观锁版本，不带其他节的旧内容。
+ *   实际修改与原版本；无修改时仅含版本，由页面直接退出编辑。
  */
-export function buildFactionSectionRequest(draft: CoreFaction, section: FactionSection): Partial<FactionUpdateRequestV1> & { expected_version: number } {
+export function buildFactionSectionRequest(draft: CoreFaction, section: FactionSection, base: CoreFaction): Partial<FactionUpdateRequestV1> & { expected_version: number } {
   const editable = buildFactionUpdateRequest(draft);
+  const original = buildFactionUpdateRequest(base);
   return {
-    ...Object.fromEntries(FACTION_SECTION_FIELDS[section].map((field) => [field, editable[field]])),
-    expected_version: draft.version,
+    ...Object.fromEntries(FACTION_SECTION_FIELDS[section]
+      .filter((field) => JSON.stringify(editable[field]) !== JSON.stringify(original[field]))
+      .map((field) => [field, editable[field]])),
+    expected_version: base.version,
   };
 }
 
@@ -624,6 +643,13 @@ export default function FactionCardsWorkspace({
   onFormalFactsChanged,
 }: FactionCardsWorkspaceProps) {
   const t = useTranslations("writing.factions");
+  const factT = useTranslations("writing.characterFacts");
+  const [creationPreparation, setCreationPreparation] = useState<FactionFactPreparationV1 | null>(null);
+  const [creationDraft, setCreationDraft] = useState<FactionFactDraftV1 | null>(null);
+  const [creationPreparations, setCreationPreparations] = useState<FactionFactPreparationV1[]>([]);
+  const [creationDrafts, setCreationDrafts] = useState<FactionFactDraftV1[]>([]);
+  const [focusFactionId, setFocusFactionId] = useState("");
+  const [factAnchor, setFactAnchor] = useState<{ factionId: string; position: FactionFactPositionV1 } | null>(null);
   const [activeView, setActiveView] = useState<FactionWorkspaceView>(initialView);
   const [search, setSearch] = useState("");
   const [coreWarningDismissed, setCoreWarningDismissed] = useState(false);
@@ -642,9 +668,13 @@ export default function FactionCardsWorkspace({
     createLocalCandidateState<CoreFactionsResultV2>(),
   );
   const [coreGenerationInput, setCoreGenerationInput] = useState<CoreFactionsGenerationInputV2 | null>(null);
+  const [coreFactPosition, setCoreFactPosition] = useState<FactionFactPositionV1 | null>(null);
+  const [factChapters, setFactChapters] = useState<HierarchyRecord[]>([]);
   const [selectedCoreFactionRefs, setSelectedCoreFactionRefs] = useState<string[]>([]);
   const [selectedCoreRelationRefs, setSelectedCoreRelationRefs] = useState<string[]>([]);
   const [editor, setEditor] = useState<EditorState>(null);
+  const [editorFocusTarget, setEditorFocusTarget] = useState("");
+  const workspaceRef = useRef<HTMLDivElement>(null);
   const [editorFieldErrors, setEditorFieldErrors] = useState<ApiFieldErrors>({});
   const [deleteIntent, setDeleteIntent] = useState<DeleteIntent>(null);
   const [relationEditor, setRelationEditor] = useState<RelationEditorState>(null);
@@ -799,7 +829,18 @@ export default function FactionCardsWorkspace({
   }, [novelId]);
 
   const active = useContext(RetainedViewActive);
+  const viewKey = JSON.stringify([novelId, active, activeView, selectedVolumeId, search, levelFilter]);
+  const currentView = useRef({ key: viewKey });
+  if (currentView.current.key !== viewKey) currentView.current = { key: viewKey };
   useResourceRefresh(novelId, loadData, active);
+  useEffect(() => {
+    if (!editorFocusTarget || saving || loading) return;
+    // 等阅读态和禁用状态实际提交后再还焦点；隐藏工作台不能抢焦点。
+    if (active && activeView === "profiles" && !editor) {
+      workspaceRef.current?.querySelector<HTMLButtonElement>(`[id="${editorFocusTarget}"]:not(:disabled)`)?.focus();
+    }
+    setEditorFocusTarget("");
+  }, [editorFocusTarget, saving, loading, active, activeView, editor]);
 
   useEffect(() => {
     // 小说切换或工作台卸载时同时取消两条 AI 请求，并丢弃仅存在内存中的候选。
@@ -827,6 +868,7 @@ export default function FactionCardsWorkspace({
     setInvalidVolumeId("");
     setLoadedNovelId("");
     setEditor(null);
+    setEditorFocusTarget("");
     setEditorFieldErrors({});
     setRelationEditor(null);
     setRelationEditorError("");
@@ -968,25 +1010,45 @@ export default function FactionCardsWorkspace({
     restoredCoreBatch.current = original.key;
     const requestId = coreCandidateState.requestId + 1;
     dispatchCoreCandidate({ type: "generate", requestId });
-    dispatchCoreCandidate({ type: "preview", requestId, candidate: original.preview, basis: original.body.basis });
-    setCoreGenerationInput(original.body.generation_input);
-    setSelectedCoreFactionRefs(original.body.selected_faction_refs);
-    setSelectedCoreRelationRefs(original.body.selected_relation_refs);
-  }, [coreBatch.command, coreCandidateState.requestId]);
+    const body = original.body;
+    const generation = "request_type" in body ? body : body.generation;
+    if (!generation) { setError(t("candidate.invalidEnvelope")); return; }
+    dispatchCoreCandidate({ type: "preview", requestId, candidate: original.preview, basis: generation.basis });
+    setCoreGenerationInput(generation.generation_input);
+    setSelectedCoreFactionRefs("request_type" in body ? body.selected_faction_refs : body.candidates.map((row) => row.candidate_ref));
+    setSelectedCoreRelationRefs("request_type" in body ? body.selected_relation_refs : body.relations.map((row) => row.relation_ref));
+    if (!("request_type" in body)) setCoreFactPosition(body.position);
+  }, [coreBatch.command, coreCandidateState.requestId, t]);
+
+  useEffect(() => {
+    setCoreFactPosition(null); setFactChapters([]);
+    if (!novelId) return;
+    const abort = new AbortController();
+    void loadCharacterFactChapters(novelId, abort.signal).then((rows) => { if (!abort.signal.aborted) setFactChapters(rows); })
+      .catch((failure) => { if (!abort.signal.aborted) setError(failure.message); });
+    return () => abort.abort();
+  }, [novelId]);
 
   const handleSavePreview = async () => {
     if (!novelId || !preview || !coreCandidateState.basis || !coreGenerationInput || coreBatch.busy
         || !coreBatch.command && coreCandidateState.status === "stale") return;
     if (!selectedCoreFactionRefs.length || findRelationsWithUnselectedFaction(preview, selectedCoreFactionRefs, selectedCoreRelationRefs).length) return;
-    const request: CoreFactionsAIConfirmationRequestV2 = coreBatch.command?.body ?? {
-      request_type: "ai_confirmation", candidate: preview,
-      selected_faction_refs: selectedCoreFactionRefs, selected_relation_refs: selectedCoreRelationRefs,
-      basis: coreCandidateState.basis, generation_input: coreGenerationInput,
-      expected_versions: buildCandidateExpectedVersions(coreCandidateState.basis),
-    };
-    const complete = await coreBatch.save(request, preview, async () => {
-      // 创建回执是旧快照，恢复时只读取当前资料；读取失败保留已成功命令。
+    const request = coreBatch.command?.body ?? buildCoreFactionFactBatch(preview, selectedCoreFactionRefs, selectedCoreRelationRefs,
+      coreFactPosition ?? { version: 1, intent: "book_start", target_type: "novel", target_id: novelId }, coreCandidateState.basis, coreGenerationInput);
+    const saveView = currentView.current;
+    const complete = await coreBatch.save(request, preview, async (original) => {
+      // 当前资料决定可见筛选；旧成功也只读取，不重新创建或升级原请求。
+      const factionId = "request_type" in original.body
+        ? (original.result as BulkCreateCoreFactionsResponse).factions[0]?.faction_id
+        : (original.result as FactionFactBatchResultV1).factions[0]?.result.faction_id;
+      const current = factionId ? await apiGet<CoreFaction>(`/api/factions/novel/${novelId}/${factionId}`) : null;
       if (!await loadData()) throw new Error(t("candidate.savedRefreshFailed"));
+      if (current && active && saveView === currentView.current) {
+        if (levelFilter !== "all" && levelFilter !== current.level_type) setLevelFilter(current.level_type ?? "core");
+        if (!filterFactionProfiles([current], search, "all").length) setSearch("");
+        setFocusFactionId(current.faction_id);
+        if (!("request_type" in original.body)) setFactAnchor({ factionId: current.faction_id, position: original.body.position });
+      }
       onFormalFactsChanged?.();
     });
     if (complete) {
@@ -995,7 +1057,20 @@ export default function FactionCardsWorkspace({
     }
   };
 
-  const handleOpenCreate = () => {
+  const readCreationDrafts = useCallback(async () => {
+    if (!novelId) return;
+    const [pending, prepared] = await Promise.all([readFactionFactPreparations(novelId), readFactDrafts<FactionFactDraftV1>("faction", factionFactDraftScope(novelId))]);
+    if (currentNovelIdRef.current !== novelId) return;
+    setCreationPreparations(pending.filter((row) => row.candidate !== null));
+    setCreationDrafts(prepared.filter((row) => row.preview.basis.target.kind === "new"));
+  }, [novelId]);
+  useEffect(() => {
+    setCreationPreparation(null); setCreationDraft(null); setCreationPreparations([]); setCreationDrafts([]); setFocusFactionId(""); setFactAnchor(null);
+    void readCreationDrafts().catch(() => setError(factT("localFailed")));
+  }, [readCreationDrafts, factT]);
+
+  const handleOpenCreate = async () => {
+    if (!novelId || saving) return;
     setError("");
     setEditorFieldErrors({});
     changeActiveView("profiles");
@@ -1006,22 +1081,34 @@ export default function FactionCardsWorkspace({
       (faction.level_type ?? "core") === level && (faction.volume_id ?? null) === volumeId
     )).length;
     setLevelFilter(level);
-    setEditor({
-      mode: "create",
-      draft: createFactionDraft({
-        level_type: level,
-        volume_id: volumeId,
-        parent_faction_id: null,
-        sort_order: (siblingCount + 1) * 10,
-      }, siblingCount),
-    });
+    const next: FactionFactPreparationV1 = { schema_id: "faction.fact.preparation", schema_version: 1, key: crypto.randomUUID(), revision: 1,
+      novel_id: novelId, candidate: { name: "", level_type: level, volume_id: volumeId, parent_faction_id: null, sort_order: (siblingCount + 1) * 10 }, target: null,
+      position: volumeId ? { version: 1, intent: "volume_start", target_type: "volume", target_id: volumeId } : { version: 1, intent: "book_start", target_type: "novel", target_id: novelId },
+      initial: {}, after: {}, records: [], blockers: {}, void_record: null, reason: "" };
+    try { await writeFactionFactPreparation(next, null); setCreationPreparation(next); setCreationDraft(null); }
+    catch { setError(factT("localFailed")); }
+  };
+
+  const readbackCreatedFaction = async (receipt: FactionFactResultV1) => {
+    const current = await apiGet<CoreFaction>(`/api/factions/novel/${novelId}/${receipt.faction_id}`);
+    if (!await loadData()) throw new Error(t("candidate.savedRefreshFailed"));
+    // 弹窗允许改类别和所属卷；成功后使用当前主档定位，不能让旧筛选藏起新资料。
+    setSearch("");
+    setLevelFilter(current.level_type ?? "core");
+    if (current.volume_id) {
+      setSelectedVolumeId(current.volume_id);
+      onVolumeIdChange?.(current.volume_id);
+    }
+    setFocusFactionId(receipt.faction_id);
+    if (receipt.record) setFactAnchor({ factionId: receipt.faction_id, position: receipt.record.position });
+    onFormalFactsChanged?.();
   };
 
   const handleOpenEdit = (faction: CoreFaction, section: FactionSection) => {
     setError("");
     setEditorFieldErrors({});
     changeActiveView("profiles");
-    setEditor({ mode: "edit", draft: createFactionDraft(faction), section });
+    setEditor({ mode: "edit", draft: createFactionDraft(faction), base: createFactionDraft(faction), section });
     requestAnimationFrame(() => document.getElementById(`faction-inline-${faction.faction_id}`)?.querySelector<HTMLElement>("input:not([readonly]), textarea, select")?.focus());
   };
 
@@ -1059,9 +1146,16 @@ export default function FactionCardsWorkspace({
         if (controller.signal.aborted || currentNovelIdRef.current !== requestNovelId) return;
         factionCreateCommandRef.current = null;
       } else if (editor.draft.faction_id) {
+        const request = buildFactionSectionRequest(editor.draft, editor.section, editor.base);
+        if (Object.keys(request).length === 1) {
+          // 没有改动时不重发长旧原文，也不制造一次无意义版本更新。
+          restoreFocusId = `faction-edit-${editor.draft.faction_id}-${editor.section}`;
+          setEditor(null);
+          return;
+        }
         const savedFaction = await apiPut<CoreFaction>(
           `/api/factions/novel/${novelId}/${editor.draft.faction_id}`,
-          editor.section ? buildFactionSectionRequest(editor.draft, editor.section) : buildFactionUpdateRequest(editor.draft),
+          request,
           { signal: controller.signal },
         );
         if (controller.signal.aborted || currentNovelIdRef.current !== requestNovelId) return;
@@ -1090,7 +1184,7 @@ export default function FactionCardsWorkspace({
         editorMutationAbortRef.current = null;
         setSaving(false);
         // 等待保存锁解除，阅读态按钮恢复可用后再还原焦点。
-        if (restoreFocusId) requestAnimationFrame(() => document.getElementById(restoreFocusId)?.focus());
+        if (restoreFocusId) setEditorFocusTarget(restoreFocusId);
       }
     }
   };
@@ -1448,7 +1542,7 @@ export default function FactionCardsWorkspace({
   }
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden">
+    <div ref={workspaceRef} className="relative flex h-full flex-col overflow-hidden">
       <header className="shrink-0 border-b border-border bg-surface">
         <h2 className="sr-only">{t("title")}</h2>
         {((error && !editor?.section) || (activeView === "profiles" && preview) || (activeView === "profiles" && shouldWarnTooManyCoreFactions)) && (
@@ -1510,9 +1604,7 @@ export default function FactionCardsWorkspace({
               </button>
             ))}
           </nav>
-          <Button className="shrink-0" variant="ghost" size="sm" onPress={loadData} isDisabled={loading || saving || generating || coreCandidateState.status === "confirming" || relationGenerating || relationSaving}>
-            {loading ? t("loading") : t("refresh")}
-          </Button>
+          <SectionActionButton action="refresh" label={loading ? t("loading") : t("refresh")} className="shrink-0" variant="ghost" size="sm" onPress={loadData} isDisabled={loading || saving || generating || coreCandidateState.status === "confirming" || relationGenerating || relationSaving} />
         </div>
       </header>
 
@@ -1557,8 +1649,17 @@ export default function FactionCardsWorkspace({
             {!preview && coreCandidateState.status === "error" && coreCandidateState.error && (
               <p role="alert" className="border-y border-red-500/30 py-3 text-sm text-red-600 dark:text-red-300">{coreCandidateState.error}</p>
             )}
+            {!preview && (creationPreparations.length > 0 || creationDrafts.length > 0) && <div className="flex flex-wrap gap-2" aria-label={factT("retainedDrafts")}>
+              {creationPreparations.map((row) => <DraftChip key={row.key} label={row.candidate?.name || factT(`positions.${row.position.intent}`)} isDisabled={saving || Boolean(creationPreparation || creationDraft)} onResume={() => { setCreationPreparation(row); setCreationDraft(null); }}
+                onDiscard={async () => { await removeFactionFactPreparation(row); await readCreationDrafts(); }} />)}
+              {creationDrafts.map((row) => <DraftChip key={row.key} label={row.positionLabel} status={row.command?.saved ? "saved" : row.command ? row.command.unknown ? "pending" : "rejected" : "draft"} isDisabled={saving || Boolean(creationPreparation || creationDraft)} onResume={() => { setCreationDraft(row); setCreationPreparation(null); }}
+                onDiscard={!row.command || row.command.saved && row.command.readbackDone ? async () => { await writeFactDraft("faction", factionFactDraftScope(novelId!), row, row.revision, true); await readCreationDrafts(); } : undefined} />)}
+            </div>}
             {preview ? (
               <CoreFactionCandidateReview
+                positionPicker={novelId && !(coreBatch.command && "request_type" in coreBatch.command.body) ? <CharacterFactPositionPicker novelId={novelId} chapters={factChapters} volumes={volumes}
+                  value={coreFactPosition ?? { version: 1, intent: "book_start", target_type: "novel", target_id: novelId }} required disabled={Boolean(coreBatch.command) || coreBatch.busy}
+                  onChange={(position) => { if (position) setCoreFactPosition(position); }} /> : undefined}
                 candidate={preview}
                 savedFactions={availableRelationFactions}
                 selectedFactionRefs={selectedCoreFactionRefs}
@@ -1585,6 +1686,9 @@ export default function FactionCardsWorkspace({
               />
             ) : (
               <FactionProfilesWorkspace
+              requestedFactionId={focusFactionId}
+              factAnchor={factAnchor}
+              onFactsChanged={async () => { if (!await loadData()) throw new Error(t("candidate.savedRefreshFailed")); onFormalFactsChanged?.(); }}
               factions={filteredFactions}
               allFactions={factions}
               editor={editor?.mode === "edit" ? editor : null}
@@ -1592,7 +1696,7 @@ export default function FactionCardsWorkspace({
               editorFieldErrors={editorFieldErrors}
               saving={saving}
               onEditorChange={(draft) => setEditor((current) => current ? { ...current, draft } : current)}
-              onEditorCancel={() => { const triggerId = editor ? `faction-edit-${editor.draft.faction_id}-${editor.section}` : ""; setEditor(null); setEditorFieldErrors({}); setError(""); requestAnimationFrame(() => document.getElementById(triggerId)?.focus()); }}
+              onEditorCancel={() => { const triggerId = editor ? `faction-edit-${editor.draft.faction_id}-${editor.section}` : ""; setEditor(null); setEditorFieldErrors({}); setError(""); setEditorFocusTarget(triggerId); }}
               onEditorSave={() => void handleSaveEditor()}
               allFactionCount={factions.length}
               search={search}
@@ -1710,6 +1814,11 @@ export default function FactionCardsWorkspace({
         )}
       </div>
 
+      {novelId && (creationPreparation || creationDraft) && <FactionFactDialog key={creationPreparation?.key ?? creationDraft!.key} novelId={novelId}
+        factions={factions} preferredVolumeId={selectedVolumeId || undefined}
+        initialPreparation={creationPreparation ?? undefined} initialDraft={creationDraft ?? undefined}
+        positionLabel={creationDraft?.positionLabel ?? factT(`positions.${creationPreparation!.position.intent}`)} onBusy={setSaving} onReadback={readbackCreatedFaction}
+        onClose={() => { setCreationPreparation(null); setCreationDraft(null); void readCreationDrafts().catch(() => setError(factT("localFailed"))); }} />}
       {editor?.mode === "create" && (
         <EditorModal
           editor={editor}
@@ -1881,6 +1990,7 @@ type FactionEditorValue = Pick<
 >;
 
 interface CoreFactionCandidateReviewProps {
+  positionPicker?: ReactNode;
   candidate: CoreFactionsResultV2;
   savedFactions: CoreFaction[];
   selectedFactionRefs: string[];
@@ -1907,6 +2017,7 @@ type CoreCandidateEditIntent =
 
 /** 渲染核心势力 AI 候选的平面选择、编辑与确认工作区。 */
 function CoreFactionCandidateReview({
+  positionPicker,
   candidate,
   savedFactions,
   selectedFactionRefs,
@@ -1956,9 +2067,10 @@ function CoreFactionCandidateReview({
   const endpointByValue = new Map(endpointOptions.map((option) => [option.value, option.endpoint]));
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface">
-      <div className="@container workspace-scrollbar min-h-0 w-full min-w-0 flex-1 overflow-y-auto px-4 py-3 sm:px-6 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/30" tabIndex={0} aria-label={t("candidate.title")}>
-        <header className="border-b border-border pb-4">
+    <div className="@container/candidates flex min-h-0 flex-1 flex-col overflow-hidden bg-surface">
+      <div className="@container workspace-scrollbar flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-y-auto @min-[800px]/candidates:overflow-hidden px-4 py-3 sm:px-6 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/30" tabIndex={0} aria-label={t("candidate.title")}>
+        <header className="shrink-0 border-b border-border pb-4">
+          {positionPicker && <div className="mb-4 max-w-2xl">{positionPicker}</div>}
           <div className="flex flex-wrap items-baseline gap-x-5 gap-y-2">
             <h3 className="text-lg font-semibold text-foreground">{t("candidate.title")}</h3>
             <p className="text-xs text-muted">
@@ -1984,7 +2096,7 @@ function CoreFactionCandidateReview({
             </p>
           )}
         </header>
-        <div className="grid min-h-0 min-w-0 gap-5 @min-[800px]:grid-cols-[260px_minmax(0,1fr)]"><div className="workspace-scrollbar max-h-64 overflow-y-auto border-x border-border bg-surface-secondary/45 @min-[800px]:max-h-[65vh]">
+        <div className="grid min-h-0 min-w-0 gap-5 @min-[800px]/candidates:flex-1 @min-[800px]/candidates:overflow-hidden @min-[800px]/candidates:grid-cols-[260px_minmax(0,1fr)]"><div className="workspace-scrollbar min-h-0 max-h-64 overflow-y-auto border-x border-border bg-surface-secondary/45 @min-[800px]/candidates:max-h-none">
 
         <section className="py-5" aria-labelledby="core-candidate-factions-heading">
           <div className="mb-3 flex items-center justify-between gap-3">
@@ -2052,7 +2164,7 @@ function CoreFactionCandidateReview({
           )}
         </section>
 
-        </div><div ref={detailRef} className="workspace-scrollbar min-w-0 bg-surface py-5 @min-[800px]:max-h-[65vh] @min-[800px]:overflow-y-auto @min-[800px]:px-3">
+        </div><div ref={detailRef} className="workspace-scrollbar min-h-0 min-w-0 bg-surface py-5 @min-[800px]/candidates:max-h-none @min-[800px]/candidates:overflow-y-auto @min-[800px]/candidates:px-3">
                 <h3 className="mb-4 text-[22px] font-semibold leading-7 [overflow-wrap:anywhere]">{editedFaction?.name ?? (editedRelation ? `${endpointLabels.get(endpointIdentity(editedRelation.source))} ${isSymmetricFactionRelation(editedRelation.relation_type) ? "↔" : "→"} ${endpointLabels.get(endpointIdentity(editedRelation.target))}` : "")}</h3>
                 {editedFaction && (
                   <FactionEditor
@@ -2145,6 +2257,7 @@ function FactionEditor({
   disabled = false,
   section,
   fieldErrors = {},
+  designOnly = false,
 }: {
   value: FactionEditorValue;
   onChange: (patch: Partial<FactionEditorValue>) => void;
@@ -2153,6 +2266,7 @@ function FactionEditor({
   disabled?: boolean;
   section?: FactionSection;
   fieldErrors?: ApiFieldErrors;
+  designOnly?: boolean;
 }) {
   const fieldError = (name: string) => fieldErrors[name]?.[0] ?? fieldErrors[`payload.${name}`]?.[0];
   return (
@@ -2170,7 +2284,7 @@ function FactionEditor({
             disabled={disabled}
             onChange={(name) => onChange({ name })}
           />
-          <TextInput
+          {!designOnly && <TextInput
             name="faction_type"
             error={fieldError("faction_type")}
             label={t("fields.factionType")}
@@ -2178,8 +2292,8 @@ function FactionEditor({
             placeholder={t("placeholders.factionType")}
             disabled={disabled}
             onChange={(faction_type) => onChange({ faction_type })}
-          />
-          <TextInput
+          />}
+          {!designOnly && <TextInput
             name="influence_scope"
             error={fieldError("influence_scope")}
             label={t("fields.influenceScope")}
@@ -2187,7 +2301,7 @@ function FactionEditor({
             placeholder={t("placeholders.influenceScope")}
             disabled={disabled}
             onChange={(influence_scope) => onChange({ influence_scope })}
-          />
+          />}
         </div>
         {showAliases && (
           <TagInput
@@ -2203,7 +2317,7 @@ function FactionEditor({
             disabled={disabled}
           />
         )}
-        <div className="mt-5 border-l-2 border-accent/30 pl-4">
+        {!designOnly && <div className="mt-5 border-l-2 border-accent/30 pl-4">
           <PublicStatusSwitch
             name="is_public"
             checked={value.is_public}
@@ -2211,13 +2325,13 @@ function FactionEditor({
             label={t("fields.isPublic")}
             onChange={(is_public) => onChange({ is_public })}
           />
-        </div>
+        </div>}
       </section>}
 
       {(!section || section === "strategy") && <section className={section ? "" : "border-t border-border pt-8"}>
         {!section && <SectionHeading index="B" title={t("sections.strategy")} />}
         <div className="grid gap-5">
-          <TextArea
+          {!designOnly && <TextArea
             name="positioning"
             error={fieldError("positioning")}
             className="col-span-full"
@@ -2227,8 +2341,8 @@ function FactionEditor({
             placeholder={t("placeholders.positioning")}
             disabled={disabled}
             onChange={(positioning) => onChange({ positioning })}
-          />
-          <TextArea
+          />}
+          {!designOnly && <TextArea
             name="public_stance"
             error={fieldError("public_stance")}
             label={t("fields.publicStance")}
@@ -2237,7 +2351,7 @@ function FactionEditor({
             placeholder={t("placeholders.publicStance")}
             disabled={disabled}
             onChange={(public_stance) => onChange({ public_stance })}
-          />
+          />}
           <TextArea
             name="core_goal"
             error={fieldError("core_goal")}
@@ -2264,7 +2378,7 @@ function FactionEditor({
 
       {(!section || section === "structure") && <section className={section ? "" : "border-t border-border pt-8"}>
         {!section && <SectionHeading index="C" title={t("sections.structure")} />}
-        <TextArea
+        {!designOnly && <TextArea
           name="organization_style"
             error={fieldError("organization_style")}
           label={t("fields.organizationStyle")}
@@ -2273,7 +2387,7 @@ function FactionEditor({
           placeholder={t("placeholders.organizationStyle")}
           disabled={disabled}
           onChange={(organization_style) => onChange({ organization_style })}
-        />
+        />}
         <div className="mt-5 grid gap-5">
           <TagInput
             name="resources_and_advantages"
@@ -2287,7 +2401,7 @@ function FactionEditor({
             maxItems={6}
             disabled={disabled}
           />
-          <TagInput
+          {!designOnly && <TagInput
             name="core_values"
             error={fieldError("core_values")}
             label={t("fields.values")}
@@ -2298,7 +2412,7 @@ function FactionEditor({
             limitReachedText={t("tagLimitReached")}
             maxItems={6}
             disabled={disabled}
-          />
+          />}
         </div>
       </section>}
 
@@ -2581,6 +2695,9 @@ function EditorModal({
  *   名册和详情可独立滚动的响应式势力档案工作台。
  */
 function FactionProfilesWorkspace({
+  requestedFactionId,
+  factAnchor,
+  onFactsChanged,
   factions,
   allFactions,
   allFactionCount,
@@ -2602,6 +2719,9 @@ function FactionProfilesWorkspace({
   t,
   ...inlineEditing
 }: FactionInlineEditingProps & {
+  requestedFactionId: string;
+  factAnchor: { factionId: string; position: FactionFactPositionV1 } | null;
+  onFactsChanged: () => Promise<void>;
   factions: CoreFaction[];
   allFactions: CoreFaction[];
   allFactionCount: number;
@@ -2627,7 +2747,15 @@ function FactionProfilesWorkspace({
   const [listCollapsed, setListCollapsed] = useState(false);
   const [selectedKey, setSelectedKey] = useState("");
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
-  useAssistantFocus("faction", (target) => { setSelectedKey(target.id); setMobileDetailOpen(true); onSearchChange(""); onLevelFilterChange("all"); });
+  const factLeave = useRef<(() => Promise<void>) | null>(null);
+  const [factBusy, setFactBusy] = useState(false), [factError, setFactError] = useState("");
+  const usedFocus = useRef("");
+  useEffect(() => {
+    if (!requestedFactionId || usedFocus.current === requestedFactionId || !factions.some((row) => row.faction_id === requestedFactionId)) return;
+    const frame = requestAnimationFrame(() => { usedFocus.current = requestedFactionId; setSelectedKey(requestedFactionId); setMobileDetailOpen(true); });
+    return () => cancelAnimationFrame(frame);
+  }, [requestedFactionId, factions]);
+  useAssistantFocus("faction", (target) => { void (async () => { try { await factLeave.current?.(); setSelectedKey(target.id); setMobileDetailOpen(true); onSearchChange(""); onLevelFilterChange("all"); } catch (failure) { setFactError((failure as Error).message); } })(); });
   const selected = factions.find((item) => getFactionRenderKey(item) === selectedKey) ?? factions[0];
   const assistantDraft = inlineEditing.editor?.mode === "edit" && inlineEditing.editor.draft.faction_id === selected?.faction_id ? inlineEditing.editor.draft : null;
   useAssistantResource(selected?.faction_id ? { resource_type: "faction", id: selected.faction_id, name: selected.name, version: selected.version, draft: assistantDraft ? { text: JSON.stringify(assistantDraft), fields: Object.keys(assistantDraft), version: assistantDraft.version } : undefined } : null);
@@ -2635,6 +2763,7 @@ function FactionProfilesWorkspace({
 
   return (
     <div className="@container/master flex min-h-0 flex-1 flex-col gap-3">
+      {factError && <p role="alert" className="text-sm text-danger">{factError}</p>}
       <section className={`shrink-0 border-b border-border pb-3 ${mobileDetailOpen ? "hidden @min-[800px]/master:block" : ""}`}>
         <div data-entity-toolbar className="workspace-toolbar flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
           <div className="grid flex-1 items-end gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_190px_minmax(260px,0.8fr)]">
@@ -2711,9 +2840,10 @@ function FactionProfilesWorkspace({
                     <button
                       id={`faction-roster-${key}`}
                       type="button"
-                      disabled={inlineEditing.saving}
+                      disabled={inlineEditing.saving || factBusy}
                       aria-current={getFactionRenderKey(selected) === key ? "true" : undefined}
-                      onClick={() => {
+                      onClick={async () => {
+                        try { await factLeave.current?.(); setFactError(""); } catch (failure) { setFactError((failure as Error).message); return; }
                         setSelectedKey(key);
                         setMobileDetailOpen(true);
                         requestAnimationFrame(() => {
@@ -2727,9 +2857,8 @@ function FactionProfilesWorkspace({
                     >
                       <span className="flex items-center justify-between gap-3">
                         <span className="truncate text-sm font-semibold text-foreground">{faction.name}</span>
-                        <span className={`size-2 shrink-0 rounded-full ${(faction.active_status ?? "active") === "active" ? "bg-emerald-500" : "bg-muted/45"}`} aria-hidden="true" />
                       </span>
-                      <span className="mt-1 block truncate text-xs text-muted">{getFactionLevelLabel(faction, t)} · {faction.faction_type || t("card.typeEmpty")} · {(faction.active_status ?? "active") === "active" ? t("factionStatus.active") : t("factionStatus.inactive")}</span>
+                      <span className="mt-1 block truncate text-xs text-muted">{getFactionLevelLabel(faction, t)}</span>
                     </button>
                   </li>
                 );
@@ -2752,6 +2881,9 @@ function FactionProfilesWorkspace({
               ← {t("profileActions.back")}
             </button>
             <FactionDetail
+              key={selected.faction_id}
+              factPosition={factAnchor?.factionId === selected.faction_id ? factAnchor.position : undefined}
+              onFactsChanged={onFactsChanged} onFactBusy={setFactBusy} factLeave={factLeave}
               {...inlineEditing}
               allFactions={allFactions}
               volumes={volumes}
@@ -2777,7 +2909,7 @@ function FactionProfilesWorkspace({
  * Returns:
  *   不使用卡片嵌套、以章节分隔组织的完整势力档案。
  */
-function FactionDetail({ faction, allFactions, volumes, busy, onEdit, onDelete, t, editor, editorError, editorFieldErrors, saving, onEditorChange, onEditorCancel, onEditorSave }: FactionInlineEditingProps & {
+function FactionDetail({ faction, allFactions, volumes, busy, onEdit, onDelete, t, editor, editorError, editorFieldErrors, saving, onEditorChange, onEditorCancel, onEditorSave, factPosition, onFactsChanged, onFactBusy, factLeave }: FactionInlineEditingProps & {
   faction: CoreFaction;
   allFactions: CoreFaction[];
   volumes: VolumeReadV2[];
@@ -2785,7 +2917,13 @@ function FactionDetail({ faction, allFactions, volumes, busy, onEdit, onDelete, 
   onEdit: (section: FactionSection) => void;
   onDelete: () => void;
   t: ReturnType<typeof useTranslations>;
+  factPosition?: FactionFactPositionV1;
+  onFactsChanged: () => Promise<void>;
+  onFactBusy: (value: boolean) => void;
+  factLeave: React.RefObject<(() => Promise<void>) | null>;
 }) {
+  const ft = useTranslations("writing.factionFacts");
+  const [claimed, setClaimed] = useState<FactionFactField[]>([]);
   const activeEditor = editor?.draft.faction_id === faction.faction_id ? editor : null;
   const parentOptions = allFactions.filter((parent) => !parent.is_deleted
     && (parent.active_status ?? "active") === "active"
@@ -2795,15 +2933,12 @@ function FactionDetail({ faction, allFactions, volumes, busy, onEdit, onDelete, 
     { key: "identity", values: [
       [t("fields.name"), faction.name],
       [t("fields.aliases"), faction.alias ?? []],
-      [t("fields.factionType"), faction.faction_type],
       [t("fields.levelType"), getFactionLevelLabel(faction, t)],
       [t("fields.volumeId"), volumes.find((volume) => volume.volume_id === faction.volume_id)?.title ?? faction.volume_id ?? t("editor.coreNoVolume")],
       [t("fields.parentFaction"), allFactions.find((parent) => parent.faction_id === faction.parent_faction_id)?.name ?? faction.parent_faction_id ?? t("editor.noParent")],
-      [t("fields.influenceScope"), faction.influence_scope],
-      [t("fields.isPublic"), faction.is_public ? t("publicStatus.public") : t("publicStatus.hidden")],
     ] },
-    { key: "strategy", values: [[t("fields.positioning"), faction.positioning], [t("fields.publicStance"), faction.public_stance], [t("fields.coreGoal"), faction.core_goal], [t("fields.hiddenGoal"), faction.hidden_goal ?? ""]] },
-    { key: "structure", values: [[t("fields.organizationStyle"), faction.organization_style], [t("fields.resources"), faction.resources_and_advantages ?? []], [t("fields.values"), faction.core_values ?? []]] },
+    { key: "strategy", values: [[t("fields.coreGoal"), faction.core_goal], [t("fields.hiddenGoal"), faction.hidden_goal ?? ""]] },
+    { key: "structure", values: [[t("fields.resources"), faction.resources_and_advantages ?? []]] },
     { key: "story", values: [[t("fields.conflict"), faction.conflict_with_mainline], [t("fields.expandability"), faction.expandability], [t("fields.tags"), faction.tags ?? []]] },
   ];
   return (
@@ -2816,18 +2951,25 @@ function FactionDetail({ faction, allFactions, volumes, busy, onEdit, onDelete, 
           <h3 className="sr-only">{faction.name}</h3>
           <p className="mt-1 break-all font-mono text-xs text-muted">{faction.faction_id}</p>
         </div>
-        <Button size="sm" variant="ghost" className="text-danger" onPress={onDelete} isDisabled={busy || saving || Boolean(editor)}>{t("delete")}</Button>
+        <SectionActionButton action="trash" label={t("delete")} size="sm" variant="ghost" className="text-danger" onPress={onDelete} isDisabled={busy || saving || Boolean(editor)} />
       </header>
+      <FactionFactsPanel novelId={faction.novel_id} factionId={faction.faction_id} initialPosition={factPosition ?? (faction.level_type !== "core" && faction.volume_id
+        ? { version: 1, intent: "volume_start", target_type: "volume", target_id: faction.volume_id } : undefined)}
+        readOnly={Boolean(editor) || saving || busy} onChanged={onFactsChanged} onBusy={onFactBusy} beforeLeaveRef={factLeave} onRead={(row) => setClaimed(row?.claimed_fields ?? [])} />
+      {(["faction_type", "positioning", "organization_style", "core_values", "is_public", "public_stance", "influence_scope"] as const).some((field) => !claimed.includes(field)) && <details className="mt-6">
+        <summary className="cursor-pointer text-sm text-accent">{ft("legacyTitle")}</summary><p className="my-3 text-sm text-muted">{ft("legacyExplanation")}</p>
+        <dl className="detail-fields grid gap-4">{(["faction_type", "positioning", "organization_style", "core_values", "is_public", "public_stance", "influence_scope"] as const).filter((field) => !claimed.includes(field)).map((field) => <ReadOnlyField key={field} label={ft(`fields.${field}`)} value={<FactionFactValue field={field} value={faction[field]} />} wide />)}</dl>
+      </details>}
       <div className="mt-4 space-y-4">
         {sections.map((section, index) => {
           const editing = activeEditor?.section === section.key;
-          return <DocumentSection key={section.key} number={String(index + 1).padStart(2, "0")} title={t(`sections.${section.key}`)} actions={editing ? <>
+          return <DocumentSection key={section.key} number={String(index + 3).padStart(2, "0")} title={t(`sections.${section.key}`)} actions={editing ? <>
             <SectionActionButton action="cancel" label={t("cancel")} size="sm" variant="ghost" onPress={onEditorCancel} isDisabled={saving} />
             <SectionActionButton action="save" label={t(saving ? "saving" : "save")} size="sm" variant="primary" onPress={onEditorSave} isDisabled={saving} />
           </> : <SectionEditButton id={`faction-edit-${faction.faction_id}-${section.key}`} onPress={() => onEdit(section.key)} isDisabled={busy || saving || Boolean(editor)} label={t("edit")} />}>
             {editing && activeEditor ? <div id={`faction-inline-${faction.faction_id}`} className="space-y-4">
               {editorError && <RelationEditorErrorSummary message={editorError} fieldErrors={editorFieldErrors} />}
-              <FactionEditor value={activeEditor.draft} section={section.key} fieldErrors={editorFieldErrors} showAliases disabled={saving} onChange={(patch) => onEditorChange({ ...activeEditor.draft, ...patch })} t={t} />
+              <FactionEditor designOnly value={activeEditor.draft} section={section.key} fieldErrors={editorFieldErrors} showAliases disabled={saving} onChange={(patch) => onEditorChange({ ...activeEditor.draft, ...patch })} t={t} />
               {section.key === "identity" && <div className="detail-fields grid gap-4">
                 <RelationFieldShell label={t("fields.levelType")}><input readOnly aria-readonly="true" value={getFactionLevelLabel(faction, t)} className={RELATION_INPUT_CLASS} /></RelationFieldShell>
                 <RelationFieldShell label={t("fields.volumeId")}><input readOnly aria-readonly="true" value={volumes.find((volume) => volume.volume_id === faction.volume_id)?.title ?? faction.volume_id ?? t("editor.coreNoVolume")} className={RELATION_INPUT_CLASS} /></RelationFieldShell>
@@ -3039,7 +3181,7 @@ function FactionRelationsWorkspace({ relations, relationTypeLabels, actionId, on
               <h3 className="sr-only">{sourceName} <span className="text-accent">{isSymmetricFactionRelation(selected.relation_type) ? "↔" : "→"}</span> {targetName}</h3>
               <p className="mt-1 text-xs text-muted">{t(`relationDirection.${isSymmetricFactionRelation(selected.relation_type) ? "symmetric" : "directed"}`)} · {selected.is_active ? t("relationStatus.active") : t("relationStatus.inactive")}</p>
             </div>
-            <div className="flex flex-wrap gap-2"><Button size="sm" variant="ghost" onPress={() => onCopy(selected)} isDisabled={busy || Boolean(editor)}>{t("relationActions.copy")}</Button><Button size="sm" variant="ghost" onPress={() => onToggle(selected)} isDisabled={busy || Boolean(editor)}>{(selected.user_is_active ?? selected.is_active) ? t("relationActions.deactivate") : t("relationActions.activate")}</Button><Button size="sm" variant="ghost" className="text-danger" onPress={() => onDelete(selected)} isDisabled={busy || Boolean(editor)}>{t("delete")}</Button></div>
+            <div className="flex flex-wrap gap-2"><Button size="sm" variant="ghost" onPress={() => onCopy(selected)} isDisabled={busy || Boolean(editor)}>{t("relationActions.copy")}</Button><Button size="sm" variant="ghost" onPress={() => onToggle(selected)} isDisabled={busy || Boolean(editor)}>{(selected.user_is_active ?? selected.is_active) ? t("relationActions.deactivate") : t("relationActions.activate")}</Button><SectionActionButton action="trash" label={t("delete")} size="sm" variant="ghost" className="text-danger" onPress={() => onDelete(selected)} isDisabled={busy || Boolean(editor)} /></div>
           </header>
           <div className="mt-4 space-y-4">
             <DocumentSection number="01" title={t("relationEditor.endpoints")}>

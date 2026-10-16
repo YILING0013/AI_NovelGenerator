@@ -110,7 +110,7 @@ export interface WorldRuleContextV1 {
 /** 核心规则生成请求中会被 basis 固定下来的业务输入。 */
 export interface CoreWorldRulesGenerationInputV1 extends ReasoningOptions {
   novel_id: string;
-  core_rule_count: number;
+  core_rule_count: number | null;
   allow_incremental: boolean;
   user_guidance: string;
   temperature: number | null;
@@ -123,7 +123,7 @@ export interface CoreWorldRulesGenerationInputV1 extends ReasoningOptions {
 
 /** 核心规则生成接口请求；use_stream 只选择普通或 SSE 入口。 */
 export interface CoreWorldRulesGenerateRequestV1 extends ReasoningOptions {
-  core_rule_count: number;
+  core_rule_count: number | null;
   allow_incremental: boolean;
   user_guidance: string;
   temperature?: number | null;

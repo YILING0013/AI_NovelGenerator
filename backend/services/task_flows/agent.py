@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import pickle
+import time
 from collections.abc import AsyncIterator
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -16,11 +17,13 @@ from pydantic import Field, ValidationError
 from backend.api.error_protocol import DomainApiError
 from backend.db.write_contracts import canonical_request_hash
 from backend.llm.logger import LLMCall
+from backend.llm.exceptions import LLMError, network_retry_delay
 from backend.llm.models import LLMRequest, LLMToolCall, LLMToolDefinition, LLMToolResult, TokenUsage
 from backend.llm.schemas.writing_pydantic import WRITING_TASKS
 from .agent_contract import AgentModel, AgentNodeConfigV1, PreparedContextV1
 from .agent_continuation import (
-    AgentContinuation, claim_agent_continuation, release_agent_continuation, save_agent_continuation,
+    AgentContinuation, claim_agent_continuation, release_agent_continuation, save_agent_continuation, agent_continuation_progress,
+    FlowContinuationState, update_agent_continuation,
 )
 from .book_tools import BookTools, normalize_agent_scope, replay_book_reads
 from .contracts import Node
@@ -65,6 +68,7 @@ class _AgentState:
     submitted_entity_results: dict[str, str] = field(default_factory=dict)
     last_error: str | None = None
     material_missing_reviewed: bool = False
+    retry_not_before: float = 0
 
     def size(self) -> int:
         """估算实际保留资料和原生历史的大小；序列化结果只用于计量。"""
@@ -162,6 +166,13 @@ def build_agent_request(
     else:
         instructions += ("\n当前任务是为当前卷或篇章剧情、章节正文准备资料：核对承接、边界、实体与前文，完成资料整理即可。"
                          "无需判断下级拆分是否覆盖全部剧情。coverage说明本次写作已有资料与缺口，remaining=true、suggested_count=1表示继续本次写作。")
+    if cfg.chapter_context_version == 1:
+        instructions += ("\n本章资料模式：required_entities 是作者明确选择和本章视角人物，必须实际读取并采用；candidate_entities 只是当前场景候选索引，不要求全部采用。"
+                         "按本章行动发现必要配角，人物名字有歧义先查找，不把作者的排除要求当采用要求。"
+                         "get_scope 默认只核对局部边界，不能为凑齐资料遍读整卷或全部父链。上层必要约束不明确时，按 parent_sources 指定一个 parent_field 补读原文。"
+                         "chapter_sources 明确采用的祖先连续原文及其版本和字符范围、已读前文章节 ID、已读关系 ID，未采用的列表填空。"
+                         "正文只使用这些实际原文和选定实体；boundaries、coverage、selection_reasons 留作阅读报告，不会代替原文传入正文。"
+                         "前文工具按章节翻页且每章只返回尾段，不能声称已读完整章节；必要资料确实无法读取时使用原 missing_required。")
     if cfg.system_prompt:
         instructions += "\n" + render_template(cfg.system_prompt, prompt_inputs)
     prompt = render_template(cfg.prompt, prompt_inputs) if cfg.prompt else "请整理下一步创作需要的资料。"
@@ -183,6 +194,7 @@ async def execute_agent(
     models: FlowModels, scope: dict[str, Any], reads: list[dict[str, Any]],
     continuation: AgentContinuation | None = None, continuation_binding: str = "",
     completed_nodes: dict[str, Any] | None = None,
+    flow_state: FlowContinuationState | None = None, flow_token: str | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     """执行有预算的资料检索循环，最终报告中的正式详情由服务端填入。
 
@@ -196,13 +208,15 @@ async def execute_agent(
         continuation: 作者明确要求增加轮数时提交的原整理凭证。
         continuation_binding: 集成层固定流程、输入、范围与模型配置的散列。
         completed_nodes: 本次流程已完成的资料节点及读取记录，用于续跑时恢复。
+        flow_state: 由集成层独占的整个生成流程状态。
+        flow_token: 流程的原恢复凭证，Agent 完成后继续由集成层持有。
     Yields:
         不含思考内容的工具进度，最后返回 prepared_context。
     """
     cfg = AgentNodeConfigV1.model_validate(node.config)
     local_reads: list[dict[str, Any]] = []
     scope = normalize_agent_scope(scope, task=models.task)
-    book = BookTools(scope, local_reads)
+    book = BookTools({**scope, **({"chapter_context_version": 1} if cfg.chapter_context_version == 1 else {})}, local_reads)
     request, inputs = build_agent_request(cfg, inputs, task=models.task, scope=book.scope, parameters=models.parameters)
     provider, config = models.resolve_provider(node, inputs)
     if not config.supports_function_calling:
@@ -213,6 +227,10 @@ async def execute_agent(
         tools.append(LLMToolDefinition(name="load_skill", description="按 ID 读取当前节点内嵌的技能指令。", parameters=LoadSkillArgs.model_json_schema()))
     structural_task = models.task in {"plan_arcs_by_ai", "plan_scenes_by_ai", "plan_chapters_by_ai"}
     report_schema = PreparedContextV1.model_json_schema()
+    if cfg.chapter_context_version != 1:
+        report_schema["properties"].pop("chapter_sources")
+        for name in ("ChapterSourcesV1", "ChapterParentExcerptV1"):
+            report_schema.get("$defs", {}).pop(name, None)
     if not structural_task:
         report_schema["properties"]["suggested_count"]["description"] = "本任务不是拆分下级规划，填写1表示完成资料整理后继续本次实体准备或写作；实体新建数量填写new_counts。"
         report_schema["properties"]["coverage"]["description"] = "说明本次实体职责或写作所需资料已覆盖哪些内容、还缺什么；不要求评估下级规划的剧情覆盖。"
@@ -226,12 +244,15 @@ async def execute_agent(
     binding = continuation_binding or canonical_request_hash({"node": node.model_dump(mode="json"), "task": models.task,
                                                               "scope": book.scope, "inputs": inputs,
                                                               "models": models.config.model_dump(mode="json"), "parameters": models.parameters})
-    active_token = continuation.token if continuation is not None else None
-    state = claim_agent_continuation(continuation, binding=binding, instance_path=instance_path) if continuation else _AgentState(
+    active_token = flow_token or (continuation.token if continuation is not None else None)
+    resuming = flow_state.agent is not None if flow_state is not None else continuation is not None
+    state = (flow_state.agent if flow_state is not None else claim_agent_continuation(continuation, binding=binding, instance_path=instance_path)) if resuming else _AgentState(
         instance_path=instance_path, input_hash=input_hash, request=request, tools=tools, book=book,
         provider=provider, provider_config=config.model_copy(deep=True), round_limit=cfg.max_rounds, call_limit=cfg.max_tool_calls, reads=local_reads,
-        completed_nodes=deepcopy(completed_nodes or {}),
+        completed_nodes={} if flow_state is not None else deepcopy(completed_nodes or {}),
     )
+    if flow_state is not None:
+        flow_state.agent = state
     client = None
     discard_token = False
 
@@ -248,14 +269,34 @@ async def execute_agent(
                 state.submitted_entity_results.clear()
 
     try:
-        if continuation:
+        if resuming:
             if state.input_hash != input_hash:
                 raise DomainApiError("AGENT_CONTINUATION_CHANGED", "资料节点的输入已变化，请重新整理", status_code=409)
             # 包括空查询、分页和前文在内逐条重放；任何变化都必须在下一次付费请求前发现。
             await validate_reads_before_send()
             book = state.book
             request, tools, provider, config = state.request, state.tools, state.provider, state.provider_config
-        client = flow_llm.create_llm_client_from_config(config, provider_name=provider, timeout_seconds=cfg.timeout_seconds)
+        # 资料整理统一在这一层重试当前调用，SDK 不再叠加发送。
+        client = flow_llm.create_llm_client_from_config(config.model_copy(update={"max_retries": 0}), provider_name=provider, timeout_seconds=cfg.timeout_seconds)
+        if not active_token:
+            try:
+                checkpoint = save_agent_continuation(state, binding=binding, size=state.size(), reason="network", claimed=True)
+            except DomainApiError as exc:
+                exc.details["agent_continuation_unavailable"] = {"code": exc.code, "message": exc.message}
+                raise
+            active_token = checkpoint["token"]
+        else:
+            checkpoint = agent_continuation_progress(active_token)
+        checkpoint = update_agent_continuation(active_token, size=flow_state.size() if flow_state is not None else state.size())
+        yield {"status": "progress", "agent_continuation": checkpoint}
+        remaining_wait = state.retry_not_before - time.time()
+        if remaining_wait > 60:
+            raise DomainApiError("AGENT_MODEL_CONNECTION_FAILED", "模型服务仍要求等待，请稍后恢复整理", status_code=503,
+                                 details={"retry_after": remaining_wait})
+        if remaining_wait > 0:
+            yield {"status": "progress", "network_state": "waiting", "retry_after": remaining_wait,
+                   "message": "正在等待模型服务允许重连"}
+            await asyncio.sleep(remaining_wait)
         # 回调每次读取当前累计的 state.reads，不能冻结成创建客户端时的清单。
         client.before_send = validate_reads_before_send
         while True:
@@ -265,10 +306,9 @@ async def execute_agent(
                 yield {"status": "progress", "round": state.round + 1, "call_count": state.total_calls,
                        "provider": provider, "model": request.model or config.default_model, "message": "正在整理资料"}
                 await validate_reads_before_send()
-                state.round += 1
                 # 预算提示随真实工具结果回传，不改写带签名或思考块的原生 assistant 历史。
-                budget = {"round": state.round - 1, "round_limit": state.round_limit,
-                          "remaining_rounds": state.round_limit - state.round + 1,
+                budget = {"round": state.round, "round_limit": state.round_limit,
+                          "remaining_rounds": state.round_limit - state.round,
                           "call_count": state.total_calls, "call_limit": state.call_limit,
                           "remaining_tool_calls": state.call_limit - state.total_calls,
                           "instruction": "请在剩余预算内完成必要读取并独立调用 finish_preparation；工具参数报错时按返回的具体缺口修正。"}
@@ -289,10 +329,29 @@ async def execute_agent(
                     if not cfg.deduplicate_tool_budget or index == len(state.results) - 1:
                         content["agent_budget"] = budget
                     results.append(result.model_copy(update={"content": content}))
-                with LLMCall(provider, request.model or config.default_model, "function_call", use_system_proxy=config.use_system_proxy) as log_call:
-                    turn = await client.tool_turn(request, tools, history=state.history, results=results or None)
-                    log_call.usage = turn.usage
-                    log_call.finish_reason = turn.finish_reason
+                retries = min(3, max(0, config.max_retries))
+                for attempt in range(retries + 1):
+                    try:
+                        with LLMCall(provider, request.model or config.default_model, "function_call", use_system_proxy=config.use_system_proxy) as log_call:
+                            turn = await client.tool_turn(request, tools, history=deepcopy(state.history), results=deepcopy(results) or None)
+                            log_call.usage = turn.usage
+                            log_call.finish_reason = turn.finish_reason
+                        break
+                    except LLMError as exc:
+                        delay = network_retry_delay(exc, attempt)
+                        if delay is None:
+                            discard_token = True
+                            raise
+                        state.retry_not_before = time.time() + delay
+                        if attempt >= retries or delay > 60:
+                            raise DomainApiError("AGENT_MODEL_CONNECTION_FAILED", "模型连接暂时中断，已保留整理进度，请稍后恢复整理", status_code=503,
+                                                 details={"retry_after": delay}) from exc
+                        yield {"status": "progress", "network_state": "retrying", "retry_attempt": attempt + 1,
+                               "retry_limit": retries, "retry_after": delay, "message": "模型连接中断，正在等待重连"}
+                        await asyncio.sleep(delay)
+                        await validate_reads_before_send()
+                state.retry_not_before = 0
+                state.round += 1
                 # 收到模型回复后才登记完整结果；同批首次返回、失败或取消都不能提前成为引用。
                 for entity_key, call_id in full_entity_results.items():
                     state.submitted_entity_results.setdefault(entity_key, call_id)
@@ -304,7 +363,8 @@ async def execute_agent(
                 state.pending_calls = turn.calls
                 state.pending_index = 0
                 state.results = []
-                yield {"status": "progress", "usage": state.usage.model_dump(), "model_calls": state.round, "round": state.round, "call_count": state.total_calls, "message": "资料整理已收到模型回复"}
+                update_agent_continuation(active_token, size=flow_state.size() if flow_state is not None else state.size())
+                yield {"status": "progress", "usage": state.usage.model_dump(), "model_calls": state.round, "round": state.round, "call_count": state.total_calls, "network_state": "connected", "message": "资料整理已收到模型回复"}
                 if not turn.calls:
                     raise DomainApiError("AGENT_RESULT_MISSING", "模型未完成资料工具调用，请重试或检查模型的 Function Calling 设置", status_code=502)
             unstarted_calls = len(state.pending_calls) - state.pending_index - int(state.pending_started)
@@ -364,6 +424,18 @@ async def execute_agent(
                             missing = [{"resource_type": kind, "id": identity} for kind, identity in sorted(missing_states)]
                             raise DomainApiError("AGENT_REFERENCE_UNREAD", "请先查询以下实体的当前卷状态，空状态也须查询",
                                                  details={"missing_entities": missing, "next_tool": "read_volume_state"})
+                        adopted = None
+                        if cfg.chapter_context_version == 1:
+                            from .book_tools import select_chapter_sources
+                            context = inputs["writing_context"]
+                            context = json.loads(context) if isinstance(context, str) else context
+                            required = {(kinds[field], identity) for field, ids in context["required_entities"].items() for identity in ids}
+                            if required - selected:
+                                raise ValueError("整理结果缺少作者明确选择或本章视角人物，请读取并采用：" + json.dumps(sorted(required - selected)))
+                            adopted = select_chapter_sources(report, {
+                                "parent_fields": list(book.parent_fields.values()), "previous_text": list(book.previous_text.values()),
+                                "relations": list(book.relations.values()),
+                            })
                         for kind, count in report.new_counts.model_dump().items():
                             if count and not any(item.resource_type == kind for item in report.entity_needs):
                                 raise ValueError(f"新增 {kind} 前必须说明尚缺的剧情职责")
@@ -379,6 +451,11 @@ async def execute_agent(
                         report.volume_states = list(book.volume_states.values())
                         report.relations = list(book.relations.values())
                         report.previous_text = list(book.previous_text.values())
+                        if adopted is not None:
+                            report.volume_states = [value for value in report.volume_states
+                                                    if ("character", value.get("character_id")) in selected or ("faction", value.get("faction_id")) in selected]
+                            report.relations = adopted["relations"]
+                            report.previous_text = adopted["previous_text"]
                         discard_token = True
                         yield {"status": "done", "outputs": {"prepared_context": report.model_dump(mode="json")},
                                "usage": state.usage.model_dump(), "model_calls": state.round, "usage_complete": False, "call_count": state.total_calls, "round": state.round}
@@ -412,6 +489,7 @@ async def execute_agent(
                                                        content={"code": exc.code, "error": exc.message, "details": exc.details}, is_error=True))
                 state.pending_index += 1
                 state.pending_started = False
+                update_agent_continuation(active_token, size=flow_state.size() if flow_state is not None else state.size())
             state.pending_calls = []
             state.pending_index = 0
     except DomainApiError as exc:
@@ -420,23 +498,37 @@ async def execute_agent(
                                              "round": state.round, "call_count": state.total_calls,
                                              "tool_outputs": state.tool_outputs, "last_error": state.last_error}
             logger.warning("[资料整理达到上限] task=%s node=%s round=%s calls=%s last_error=%s", models.task, instance_path, state.round, state.total_calls, state.last_error)
+            if flow_state is not None:
+                update_agent_continuation(active_token, size=flow_state.size(), reason="budget")
+                raise
             try:
                 exc.details["agent_continuation"] = save_agent_continuation(state, binding=binding, size=state.size(), previous_token=active_token)
             except DomainApiError as retention_error:
+                if active_token:
+                    release_agent_continuation(active_token, size=state.size())
                 exc.details["agent_continuation_unavailable"] = {"code": retention_error.code, "message": retention_error.message}
                 exc.message = retention_error.message
             active_token = None
         elif (exc.status_code < 500 and exc.code != "WRITING_PARENT_BUSY") or exc.code in {"AGENT_RESULT_MISSING", "AGENT_TOOL_ID_DUPLICATE"}:
             discard_token = True
-        elif active_token:
+        elif active_token and flow_state is None:
+            exc.details["agent_progress"] = {"target": book.scope, "complete": False,
+                                             "round": state.round, "call_count": state.total_calls,
+                                             "tool_outputs": state.tool_outputs, "last_error": state.last_error}
             retry = release_agent_continuation(active_token, size=state.size())
             if retry:
                 exc.details["agent_continuation"] = retry
             active_token = None
         raise
+    except (asyncio.CancelledError, GeneratorExit):
+        raise
+    except Exception:
+        # 只保留原续跑的未完成调用；未知错误不触发自动网络重试。
+        discard_token = discard_token or continuation is None
+        raise
     finally:
         reads.extend(deepcopy(state.reads))
-        if active_token:
+        if active_token and flow_state is None:
             release_agent_continuation(active_token, size=state.size(), discard=discard_token)
         http_client = getattr(client, "_http_client", None)
         if http_client is not None:

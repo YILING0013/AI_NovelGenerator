@@ -10,8 +10,10 @@ import json
 import logging
 from typing import Any
 
+from anyio import CancelScope
 from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
+from starlette.types import Send
 
 from backend.api.error_protocol import DomainApiError, sse_error_payload, sse_event
 from backend.llm.config import get_llm_config
@@ -33,6 +35,10 @@ from .domain import load_task_context, validate_task_result, prepared_task_param
 from .engine import execute_flow
 from .graph import canonical_hash, flow_fingerprint, port_schema, validate_values
 from .llm import FlowModels
+from .agent_continuation import (
+    FlowContinuationState, agent_continuation_progress, claim_agent_continuation,
+    lookup_agent_continuation, release_agent_continuation, save_agent_continuation, update_agent_continuation,
+)
 from .registry import AGENT_TASKS, CONTENT_TASKS, GENERATION_FIELDS, SCOPE_FIELDS, TASKS, TRANSPORT_FIELDS, validate_task_definition, require_prepared_generation
 from .review_evidence import build_review_material, verify_review_evidence
 from .plot_source_conflicts import build_plot_source_conflicts
@@ -40,6 +46,28 @@ from .plot_source_conflicts import build_plot_source_conflicts
 
 logger = logging.getLogger(__name__)
 REPAIRABLE_TASKS = {"create_factions_by_ai", "create_volume_skeleton_by_ai", "plan_volume_launch_by_ai"}
+FACTION_DESIGN_TASKS = {"create_factions_by_ai", "create_characters_by_ai", "create_faction_relations_by_ai",
+                        "create_items_by_ai", "create_world_rules_by_ai", "create_volume_skeleton_by_ai"}
+
+
+class TaskFlowStreamingResponse(StreamingResponse):
+    """发送中断时，在原迭代任务内关闭流程，及时释放续跑占用。"""
+
+    async def stream_response(self, send: Send) -> None:
+        """兼容框架直接发送和子任务发送两条路径，保留原取消异常。
+
+        Args:
+            send: 当前请求的 ASGI 发送函数。
+        Returns:
+            无。
+        """
+        try:
+            await super().stream_response(send)
+        finally:
+            # 不能交给生成器回收任务：日志 ContextVar 必须在原上下文退出。
+            # 框架取消作用域已取消时，也让已有 finally 完成清理。
+            with CancelScope(shield=True):
+                await self.body_iterator.aclose()
 
 
 def _candidate_validation_error(task: str, exc: Exception) -> DomainApiError | None:
@@ -135,6 +163,9 @@ def prepare_flow(task: str, request: GraphRunRequest, scope: dict[str, Any], *, 
         raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "旧修复请求未区分关系设计与未定位状态，请保留草稿并重新生成", status_code=409)
     if run.agent_continuation is not None and (task not in AGENT_TASKS or run.repair is not None):
         raise DomainApiError("AGENT_CONTINUATION_UNSUPPORTED", "当前任务或响应修复不能续跑资料整理")
+    if (run.repair is not None and task in FACTION_DESIGN_TASKS
+            and run.repair.flow_snapshot.execution.get("faction_design_contract") != "unlocated_faction_profile_v1"):
+        raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "旧修复请求未区分势力设计与未定位资料，请保留草稿并重新生成", status_code=409)
     store = task_flow_store.flow_store()
     try:
         flow = store.get(run.flow_ref.id, run.flow_ref.revision) if run.flow_ref else store.get_default(task)
@@ -149,6 +180,11 @@ def prepare_flow(task: str, request: GraphRunRequest, scope: dict[str, Any], *, 
     try:
         flow = validate_task_definition(flow)
         require_prepared_generation(flow)
+        chapter_version = next((node.config.get("chapter_context_version") for node in flow.nodes if node.type == "agent" and node.config.get("chapter_context_version")), None)
+        if run.scope.get("chapter_context_version") not in {None, chapter_version} or run.scope.get("chapter_selection_complete"):
+            raise DomainApiError("TASK_FLOW_SCOPE_INVALID", "本章资料模式由所选方案固定，最终选择须由本次整理完成", status_code=422)
+        if chapter_version:
+            run.scope["chapter_context_version"] = chapter_version
         start = next(node for node in flow.nodes if node.type == "input")
         values = {**start.values, **run.flow_inputs}
         missing = {key: "请填写此项" for key, schema in start.outputs.items() if schema.get("required", "default" not in schema) and key not in values and "default" not in schema}
@@ -178,15 +214,26 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
         原接口 SSE 所需的节点进度、错误或单一完成事件。
     """
     with bind_log_context(task=task, flow_id=flow.id):
+        chapter_version = next((node.config.get("chapter_context_version") for node in flow.nodes if node.type == "agent" and node.config.get("chapter_context_version")), None)
+        if chapter_version:
+            run.scope["chapter_context_version"] = chapter_version
         if task in AGENT_TASKS:
             from .book_tools import normalize_agent_scope
             position_scope = normalize_agent_scope(run.scope, task=task)
             run.scope.update({key: position_scope[key] for key in ("reading_version", "reading_intent")})
         terminal_emitted = False
-        execution = {"models": models.snapshot, "scope": run.scope, "source_refs_by_node": {}, "character_fact_reads": [], "character_relation_fact_reads": [], "item_fact_reads": []}
+        execution = {"models": models.snapshot, "scope": run.scope, "source_refs_by_node": {}, "character_fact_reads": [], "character_relation_fact_reads": [], "item_fact_reads": [], "faction_fact_reads": []}
+        if task == "create_characters_for_volume_by_ai":
+            from backend.llm.schemas.volume_entity_pydantic import CHARACTER_PLAN_CONTRACT
+            execution["character_candidate_contract"] = CHARACTER_PLAN_CONTRACT
         if task in AGENT_TASKS | {"plan_volume_launch_by_ai"}:
             # 旧节点缓存没有这份读取合同，不能带着全书摘要进入新的按位置生成。
             execution["reading_contract"] = "position_v1"
+            execution["faction_reading_contract"] = "faction_facts_v1"
+        if task == "create_factions_for_volume_by_ai":
+            execution["faction_candidate_contract"] = "explicit_faction_values_v1"
+        if task in FACTION_DESIGN_TASKS:
+            execution["faction_design_contract"] = "unlocated_faction_profile_v1"
         if task in AGENT_TASKS | {CHAPTER_ITEM_OWNER_FACTS_CHECK_TASK}:
             execution["item_reading_contract"] = "item_facts_v1"
         if task in AGENT_TASKS | {"plan_volume_launch_by_ai", CHAPTER_CHARACTER_RELATION_FACTS_CHECK_TASK}:
@@ -198,6 +245,13 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
             if task in AGENT_TASKS | {"plan_volume_launch_by_ai"} and run.repair.flow_snapshot.execution.get("reading_contract") != "position_v1":
                 raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "旧修复请求未保存按位置读取依据，请保留草稿并重新生成", status_code=409)
             execution = deepcopy(run.repair.flow_snapshot.execution)
+            if task == "create_characters_for_volume_by_ai" and execution.get("character_candidate_contract") != CHARACTER_PLAN_CONTRACT:
+                raise DomainApiError("CHARACTER_CANDIDATE_CONTRACT_REQUIRED", "旧人物候选请保留原稿，使用新版方案重新生成", status_code=409)
+            if task == "create_factions_for_volume_by_ai" and execution.get("faction_candidate_contract") != "explicit_faction_values_v1":
+                raise DomainApiError("FACTION_CANDIDATE_CONTRACT_REQUIRED", "旧候选无法区分明确事实与默认值，请保留草稿并重新生成", status_code=409)
+            if task in AGENT_TASKS | {"plan_volume_launch_by_ai"} and (execution.get("faction_reading_contract") != "faction_facts_v1"
+                                        or "faction_fact_reads" not in execution):
+                raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "旧修复请求没有势力事实读取依据，请保留草稿并重新生成", status_code=409)
             if task in AGENT_TASKS and (execution.get("item_reading_contract") != "item_facts_v1"
                                        or "item_fact_reads" not in execution):
                 raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "旧修复请求没有物品事实读取依据，请保留草稿并重新生成", status_code=409)
@@ -222,6 +276,10 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
                     if "item_fact_reads" not in execution:
                         raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "旧请求没有物品事实读取依据，请保留草稿并重新生成", status_code=409)
                     execution["item_fact_reads"].append(deepcopy(read))
+                elif read.get("kind") == "faction_facts":
+                    if "faction_fact_reads" not in execution:
+                        raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "旧请求没有势力事实读取依据，请保留草稿并重新生成", status_code=409)
+                    execution["faction_fact_reads"].append(deepcopy(read))
                 else:
                     raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "事实读取种类不受支持，请保留草稿并重新读取", status_code=409)
         context_count = 0
@@ -257,17 +315,30 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
             "models": models.snapshot, "provider_config": models.config.model_dump(mode="json"),
             "relation_reading_contract": execution.get("relation_reading_contract"),
             "item_reading_contract": execution.get("item_reading_contract"),
+            "faction_reading_contract": execution.get("faction_reading_contract"),
+            **({"faction_candidate_contract": execution.get("faction_candidate_contract")} if task == "create_factions_for_volume_by_ai" else {}),
+            **({"character_candidate_contract": execution.get("character_candidate_contract")} if task == "create_characters_for_volume_by_ai" else {}),
         })
         continuation_instance = None
         continuation_used = False
         completed_nodes: dict[str, dict[str, Any]] = {}
         resumed_nodes: dict[str, dict[str, Any]] = {}
+        flow_state: FlowContinuationState | None = None
+        flow_token: str | None = None
+        graphs = [flow]
+        has_agent = False
+        while graphs:
+            graph = graphs.pop()
+            has_agent = has_agent or any(node.type == "agent" for node in graph.nodes)
+            graphs.extend(graph.subflows.values())
         if task in CONTENT_TASKS:
             execution.pop("source_refs_by_node")
             execution["writing_reads"] = []
 
         async def validate_reads(additional_agent_reads: list[dict[str, Any]] | None = None) -> dict[str, Any]:
             """每次发送和完成前重放原依据；不替换已发送历史、整理报告或冻结依据。"""
+            if flow_state is not None and flow_token is not None:
+                update_agent_continuation(flow_token, size=flow_state.size())
             for record in execution.get("writing_reads", []):
                 reread = await load_task_context(task, record["parameters"], record.get("scope", run.scope), run.generation_params)
                 if reread.data["context_basis"] != record["basis"]:
@@ -275,7 +346,8 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
             from backend.services.novel.writing_context import revalidate_position_fact_reads
             await revalidate_position_fact_reads([*execution.get("character_fact_reads", []),
                                                   *execution.get("character_relation_fact_reads", []),
-                                                  *execution.get("item_fact_reads", [])])
+                                                  *execution.get("item_fact_reads", []),
+                                                  *execution.get("faction_fact_reads", [])])
             for parameters, read_scope, previous in context_records:
                 if task in AGENT_TASKS - CONTENT_TASKS or task == "plan_volume_launch_by_ai" or "fact_reads" in previous.data:
                     reread = await load_task_context(task, parameters, read_scope, run.generation_params)
@@ -301,6 +373,7 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
 
         async def read_context(node: Node, parameters: dict[str, Any]) -> dict[str, Any]:
             nonlocal context_count, review_context, conflict_context, conflict_inputs
+            chapter_report = parameters.get("prepared_context")
             parameters, context_scope = prepared_task_parameters(task, parameters, run.scope, parameters.get("prepared_context"))
             loaded = await load_task_context(task, parameters, context_scope, run.generation_params)
             if task == CHAPTER_WORLD_RULES_CHECK_TASK and loaded.data["rules"] != initial.data["rules"]:
@@ -316,13 +389,20 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
                 remember_fact_reads(loaded.data["fact_reads"])
             if task in CONTENT_TASKS:
                 remember_fact_reads([read for read in loaded.data["context_basis"]["reads"]
-                                     if read["kind"] in {"character_facts", "character_relation_facts", "item_facts"}])
+                                     if read["kind"] in {"character_facts", "character_relation_facts", "item_facts", "faction_facts"}])
                 if context_count > 19:
                     raise DomainApiError("WRITING_CONTEXT_LIMIT", "单次任务最多读取 19 次资料，请减少重复节点", status_code=422)
                 execution["writing_reads"].append({"parameters": parameters, "basis": loaded.data["context_basis"], "scope": context_scope})
                 writing_contexts.append(loaded.data)
             else:
                 execution["source_refs_by_node"][f"{context_count}:{node.id}"] = [ref.model_dump(mode="json") if hasattr(ref, "model_dump") else ref for ref in loaded.data["source_refs"]]
+            if chapter_version == 1 and chapter_report is not None:
+                from .agent_contract import PreparedContextV1
+                from .book_tools import assemble_chapter_context, replay_book_reads
+                material = await replay_book_reads(run.scope, execution["agent_reads"])
+                loaded.ports["writing_context"] = json.dumps(assemble_chapter_context(
+                    loaded.data["context"], PreparedContextV1.model_validate(chapter_report), material,
+                ), ensure_ascii=False)
             return {key: loaded.ports[key] for key in node.outputs}
 
         async def check_candidate(node: Node, inputs: dict[str, Any]) -> bool:
@@ -362,7 +442,7 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
             nonlocal prepared, continuation_used
             from .agent import execute_agent
             continuation = run.agent_continuation if instance == continuation_instance else None
-            if run.agent_continuation is not None and not continuation_used and continuation is None:
+            if instance in resumed_nodes or (run.agent_continuation is not None and not continuation_used and continuation is None):
                 saved = resumed_nodes.get(instance)
                 if saved is None or saved.get("agent_input_hash") != canonical_hash(inputs):
                     raise DomainApiError("AGENT_CONTINUATION_CHANGED", "前序资料节点或输入已变化，请重新整理", status_code=409)
@@ -381,7 +461,7 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
             async with aclosing(execute_agent(node, inputs, instance, models=models, scope=run.scope,
                                              reads=execution["agent_reads"], continuation=continuation,
                                              continuation_binding=continuation_binding,
-                                             completed_nodes=completed_nodes)) as events:
+                                             completed_nodes=completed_nodes, flow_state=flow_state, flow_token=flow_token)) as events:
                 async for event in events:
                     value = event.get("data", event)
                     if "outputs" in value:
@@ -395,12 +475,24 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
                                                  details={"missing": report["missing_required"], "prepared_context": report})
                     yield event
             completed_nodes[instance] = {"agent_input_hash": canonical_hash(inputs),
-                                         "agent_reads": deepcopy(execution["agent_reads"][first_read:])}
+                                         "agent_reads": deepcopy(execution["agent_reads"][first_read:]),
+                                         "outputs": {"prepared_context": deepcopy(report)}}
+            if flow_state is not None:
+                flow_state.agent = None
+                update_agent_continuation(flow_token, size=flow_state.size())
 
         async def generate(node: Node, inputs: dict[str, Any], instance: str) -> AsyncIterator[dict[str, Any]]:
             if run.agent_continuation is not None and not continuation_used:
                 # 原本完成的模型节点由服务端结果恢复；不能在续跑前偷偷重跑付费步骤。
                 raise DomainApiError("AGENT_CONTINUATION_CHANGED", "原整理节点之前出现了需要重新生成的步骤，请重新整理", status_code=409)
+            if flow_state is not None:
+                fingerprint = canonical_hash({"node": node.model_dump(mode="json"), "inputs": inputs, "execution": execution})
+                if flow_state.model_call is None:
+                    flow_state.model_call = {"instance_path": instance, "input_fingerprint": fingerprint}
+                elif (flow_state.model_call["instance_path"] != instance
+                      or flow_state.model_call["input_fingerprint"] != fingerprint):
+                    raise DomainApiError("AGENT_CONTINUATION_CHANGED", "未完成模型节点的输入或来源已变化，请重新生成", status_code=409)
+                models.recovery_state, models.recovery_token = flow_state, flow_token
             async with aclosing(models.execute(node, inputs, instance)) as events:
                 async for event in events:
                     value = event.get("data", event)
@@ -458,6 +550,25 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
                     yield {"event": "done", "data": {"result": {"candidate": event["candidate"], "business_inputs": repair.business_inputs}}}
 
         try:
+            if has_agent and run.repair is None:
+                if run.agent_continuation is not None:
+                    continuation_instance = lookup_agent_continuation(run.agent_continuation, binding=continuation_binding)
+                    flow_state = claim_agent_continuation(run.agent_continuation, binding=continuation_binding, instance_path=continuation_instance)
+                    flow_token = run.agent_continuation.token
+                    resumed_nodes = deepcopy(flow_state.completed_nodes)
+                    continuation_used = flow_state.agent is None
+                else:
+                    flow_state = FlowContinuationState()
+                    checkpoint = save_agent_continuation(flow_state, binding=continuation_binding, size=flow_state.size(), reason="network", claimed=True)
+                    flow_token = checkpoint["token"]
+                completed_nodes = flow_state.completed_nodes
+                yield {"event": "progress", "data": {"agent_continuation": agent_continuation_progress(flow_token)}}
+                if flow_state.result is not None:
+                    # 交付已校验的原候选及原依据；不重跑模型，不执行正式保存。
+                    terminal_emitted = True
+                    yield {"event": "done", "data": {"success": True, "result": deepcopy(flow_state.result)}}
+                    return
+                update_agent_continuation(flow_token, size=flow_state.size())
             if task in {CHAPTER_CHECK_TASK, CHAPTER_ITEM_OWNER_CHECK_TASK, CHAPTER_ITEM_OWNER_FACTS_CHECK_TASK, CHAPTER_CHARACTER_RELATION_STATE_CHECK_TASK, CHAPTER_CHARACTER_RELATION_FACTS_CHECK_TASK, CHAPTER_WORLD_RULES_CHECK_TASK}:
                 # 删掉资料节点也不能跳过付费前核验，绑定只来自原请求。
                 initial = preflight or await load_task_context(task, {}, run.scope, run.generation_params)
@@ -470,9 +581,6 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
                 if task == CHAPTER_WORLD_RULES_CHECK_TASK:
                     # 完整快照也参与节点缓存签名，不用新规则快照包装旧模型结果。
                     execution["world_rules_check_rules"] = deepcopy(initial.data["rules"])
-            if run.agent_continuation is not None:
-                from .agent_continuation import lookup_agent_continuation
-                continuation_instance = lookup_agent_continuation(run.agent_continuation, binding=continuation_binding, completed_nodes=resumed_nodes)
             if task in VOLUME_ENTITY_TASKS:
                 parameters = {key: value for key, value in run.flow_inputs.items() if key in TASKS[task].request_model.model_fields and key not in SCOPE_FIELDS | GENERATION_FIELDS | TRANSPORT_FIELDS}
                 initial = preflight or await load_task_context(task, parameters, run.scope, run.generation_params)
@@ -483,7 +591,7 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
                 parameters = {key: value for key, value in run.flow_inputs.items() if key in TASKS[task].request_model.model_fields and key not in WRITING_SCOPE_FIELDS | {"novel_id"}}
                 initial = preflight or await load_task_context(task, parameters, run.scope, run.generation_params)
                 remember_fact_reads([read for read in initial.data["context_basis"]["reads"]
-                                     if read["kind"] in {"character_facts", "character_relation_facts", "item_facts"}])
+                                     if read["kind"] in {"character_facts", "character_relation_facts", "item_facts", "faction_facts"}])
                 execution["writing_reads"].append({"parameters": parameters, "basis": initial.data["context_basis"]})
                 writing_contexts.append(initial.data)
             async with aclosing(run_events()) as events:
@@ -494,6 +602,10 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
                             instance = value["instance_path"]
                             completed_nodes[instance] = {**completed_nodes.get(instance, {}),
                                                          **{key: deepcopy(value[key]) for key in CachedNode.model_fields}}
+                            if flow_state is not None:
+                                if flow_state.model_call is not None and flow_state.model_call["instance_path"] == instance:
+                                    flow_state.model_call = None
+                                update_agent_continuation(flow_token, size=flow_state.size())
                         is_review = (value.get("instance_path") == f"{flow.id}/{review_node_id}" if review_node else value.get("node_id") == review_node_id)
                         if event["event"] == "step" and is_review and value.get("state") == "done":
                             # 命中缓存也恢复检查意见，候选依据不能随是否命中缓存改变。
@@ -506,6 +618,14 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
                             execution["coverage_review"] = review
                         if event["event"] == "error":
                             terminal_emitted = True
+                            if flow_state is not None:
+                                if value.get("code") in {"AGENT_ROUND_BUDGET_EXCEEDED", "AGENT_TOOL_BUDGET_EXCEEDED"}:
+                                    # 再次耗尽预算须重新选择；旧请求不能在丢失提示后再次追加轮数。
+                                    checkpoint = save_agent_continuation(flow_state, binding=continuation_binding,
+                                        size=flow_state.size(), previous_token=flow_token, reason="budget", claimed=True)
+                                    flow_token = checkpoint["token"]
+                                value.setdefault("details", {})["agent_continuation"] = release_agent_continuation(flow_token, size=flow_state.size())
+                                flow_token = None
                         yield event
                         continue
                     if run.agent_continuation is not None and not continuation_used:
@@ -592,6 +712,8 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
                     if task in {"create_world_rules_by_ai", "create_volume_skeleton_by_ai", "plan_volume_launch_by_ai", "create_locations_for_volume_by_ai", "create_items_by_ai"} or task in VOLUME_ENTITY_TASKS:
                         basis["generation_input"] = business_input
                     envelope = {**common, "candidate": final["candidate"], "basis": basis, **(context.extra if context else {})}
+                    if task == "create_characters_for_volume_by_ai":
+                        envelope["contract"] = execution["character_candidate_contract"]
                     if prepared is not None and task in CONTENT_TASKS:
                         envelope.update(prepared_context=prepared, coverage_review=execution.get("coverage_review"))
                     try:
@@ -619,6 +741,10 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
                         }
                         raise problem from exc
                     logger.info("[任务生成完成]")
+                    if flow_state is not None:
+                        flow_state.result = deepcopy(envelope)
+                        flow_state.completed_nodes = {}
+                        update_agent_continuation(flow_token, size=flow_state.size())
                     terminal_emitted = True
                     yield {"event": "done", "data": {"success": True, "result": envelope}}
         except (asyncio.CancelledError, GeneratorExit):
@@ -627,9 +753,16 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
             raise
         except Exception as exc:
             terminal_emitted = True
-            yield {"event": "error", "data": sse_error_payload(exc, fallback_message="流程执行失败")}
+            data = sse_error_payload(exc, fallback_message="流程执行失败")
+            if flow_state is not None and flow_token is not None:
+                data.setdefault("details", {})["agent_continuation"] = release_agent_continuation(flow_token, size=flow_state.size())
+                flow_token = None
+            yield {"event": "error", "data": data}
         finally:
+            if flow_token is not None:
+                release_agent_continuation(flow_token, size=flow_state.size())
             models.before_send = original_before_send
+            models.recovery_state = models.recovery_token = None
 
 
 async def generate_task_flow(task: str, request: GraphRunRequest, *, scope: dict[str, Any] | None = None, stream: bool = False, on_event: Callable[[dict], Awaitable[None]] | None = None) -> Any:
@@ -678,7 +811,7 @@ async def generate_task_flow(task: str, request: GraphRunRequest, *, scope: dict
             async with aclosing(task_flow_events(task, flow, run, models, preflight=preflight)) as events:
                 async for event in events:
                     yield sse_event(event["event"], event["data"])
-        return StreamingResponse(body(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+        return TaskFlowStreamingResponse(body(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
     async with aclosing(task_flow_events(task, flow, run, models, preflight=preflight)) as events:
         async for event in events:
             if on_event is not None:

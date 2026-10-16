@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Button, Modal } from "@heroui/react";
+import { Modal } from "@heroui/react";
+import { SectionActionButton } from "@/components/shared/SectionEditButton";
 import { useConfig } from "@/hooks/useConfig";
 import { DatabaseCard } from "@/components/settings/DatabaseCard";
 import { ProviderCard } from "@/components/settings/ProviderCard";
@@ -60,17 +61,19 @@ const NAV_ITEMS: { key: SettingsSection; icon: React.ReactNode }[] = [
 
 interface SettingsContentProps {
   presentation?: "page" | "modal";
+  initialSection?: SettingsSection;
 }
 
 export default function SettingsContent({
   presentation = "page",
+  initialSection = "theme",
 }: SettingsContentProps) {
   const t = useTranslations("settings");
   const router = useRouter();
   const pathname = usePathname();
   const currentLocale = pathname.startsWith("/en") ? "en" : "zh";
   const isModal = presentation === "modal";
-  const [activeSection, setActiveSection] = useState<SettingsSection>("theme");
+  const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
   const [secretEditorOpen, setSecretEditorOpen] = useState(false);
   const [localMessage, setLocalMessage] = useState<{
     tone: "error" | "success";
@@ -127,7 +130,7 @@ export default function SettingsContent({
   };
 
   const closeSettings = () => {
-    if (window.history.length > 1) {
+    if (window.history.state?.workspaceHistorySession && window.history.state.writingHierarchyIndex > 0) {
       router.back();
       return;
     }
@@ -165,23 +168,8 @@ export default function SettingsContent({
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          onPress={handleReload}
-          isDisabled={saving || secretEditorOpen}
-          className="border-border text-foreground hover:bg-surface-secondary"
-        >
-          {t("reload")}
-        </Button>
-        <Button
-          size="sm"
-          onPress={handleSave}
-          isDisabled={saving || !config || secretEditorOpen}
-          className="bg-accent text-accent-foreground hover:bg-accent-hover"
-        >
-          {saving ? t("saving") : t("save")}
-        </Button>
+        <SectionActionButton action="refresh" label={t("reload")} onPress={handleReload} isDisabled={saving || secretEditorOpen} />
+        <SectionActionButton action="save" label={t(saving ? "saving" : "save")} onPress={handleSave} isPending={saving} isDisabled={saving || !config || secretEditorOpen} />
       </div>
     </div>
   );
@@ -309,12 +297,8 @@ export default function SettingsContent({
                 </Modal.Heading>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <Button size="sm" variant="outline" onPress={handleReload} isDisabled={saving || secretEditorOpen}>
-                  {t("reload")}
-                </Button>
-                <Button size="sm" onPress={handleSave} isDisabled={saving || !config || secretEditorOpen} className="bg-accent text-accent-foreground">
-                  {saving ? t("saving") : t("save")}
-                </Button>
+                <SectionActionButton action="refresh" label={t("reload")} onPress={handleReload} isDisabled={saving || secretEditorOpen} />
+                <SectionActionButton action="save" label={t(saving ? "saving" : "save")} onPress={handleSave} isPending={saving} isDisabled={saving || !config || secretEditorOpen} />
                 <Modal.CloseTrigger aria-label={t("back")} isDisabled={saving} />
               </div>
             </Modal.Header>

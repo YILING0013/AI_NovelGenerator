@@ -172,6 +172,11 @@ async def preview_task_flow(definition: dict[str, Any], scope: dict[str, Any],
         response["errors"] = [{"message": value} for value in (exc.errors if isinstance(exc, FlowValidationError) else [str(exc)])]
         return response
     response.update(valid=True, status="ready", definition_hash=flow_fingerprint(flow))
+    scope = dict(scope)
+    chapter_version = next((node.config.get("chapter_context_version") for node in flow.nodes if node.type == "agent" and node.config.get("chapter_context_version")), None)
+    scope.pop("chapter_context_version", None)
+    if chapter_version:
+        scope["chapter_context_version"] = chapter_version
     graphs: dict[tuple[str, ...], Flow] = {}
     node_views: dict[tuple[tuple[str, ...], str], dict[str, Any]] = {}
     records: dict[str, dict[str, Any]] = {}
@@ -229,11 +234,12 @@ async def preview_task_flow(definition: dict[str, Any], scope: dict[str, Any],
         agent_preview = agent_config is not None and (
             (agent_config.index_structural_context and flow.task in {"plan_arcs_by_ai", "plan_scenes_by_ai", "plan_chapters_by_ai"})
             or (agent_config.index_plot_children and flow.task in {"generate_volume_plot_by_ai", "generate_arc_plot_by_ai"})
+            or agent_config.chapter_context_version == 1
         )
         if (node.type == "llm" or agent_preview) and llm_settings is None:
             # 现有读取接口已去掉密钥；这里只保留提示词和决定请求形式的字段。
             public = get_config_read_model().get("llm", {})
-            safe_fields = {*REASONING_FIELDS, "api_mode", "structured_output_mode", "type", "default_model", "enabled", "supports_streaming", "supports_json_schema",
+            safe_fields = {*REASONING_FIELDS, "api_mode", "structured_output_mode", "type", "default_model", "enabled", "supports_streaming", "supports_json_schema", "supports_json_output",
                            "system_prompt", "temperature", "top_p", "max_tokens", "presence_penalty", "frequency_penalty"}
             llm_settings = {"default_provider": public.get("default_provider"), "providers": {
                 name: {**{key: value for key, value in config.items() if key in safe_fields},
@@ -261,7 +267,7 @@ async def preview_task_flow(definition: dict[str, Any], scope: dict[str, Any],
             if agent_preview:
                 cfg = agent_config
                 target_type = {"plan_arcs_by_ai": "volume", "plan_scenes_by_ai": "arc", "plan_chapters_by_ai": "scene",
-                               "generate_volume_plot_by_ai": "volume", "generate_arc_plot_by_ai": "arc"}[flow.task]
+                               "generate_volume_plot_by_ai": "volume", "generate_arc_plot_by_ai": "arc", "write_chapter_by_ai": "chapter"}[flow.task]
                 request_scope = {key: value for key, value in {
                     "novel_id": scope.get("novel_id"), "target_type": target_type,
                     "target_id": scope.get("target_id") or scope.get(f"{target_type}_id"),
@@ -293,6 +299,11 @@ async def preview_task_flow(definition: dict[str, Any], scope: dict[str, Any],
                     value.update(suggested_count=2, remaining=True, coverage="示例：根据当前剧情拆分未覆盖部分", boundaries="示例：承接当前部分已定起止")
                     if agent_preview and request_scope.get("reading_version") == 1:
                         value["target"] = deepcopy(request_scope)
+                    if chapter_version == 1:
+                        context = inputs["writing_context"]
+                        context = json.loads(context) if isinstance(context, str) else context
+                        value["selected_entities"] = context.get("required_entities", {})
+                        value["chapter_sources"] = {"parent_excerpts": [], "previous_chapter_ids": [], "relation_ids": []}
                 ports[name] = _source(value, "ai_example", instance, name, note="资料整理的假设示例，没有调用模型或工具")
         elif node.type == "llm":
             cfg = node.config
@@ -304,7 +315,8 @@ async def preview_task_flow(definition: dict[str, Any], scope: dict[str, Any],
             schema_model = compile_output_model(node)
             request, stream, native = build_flow_request(
                 node, inputs, schema_model, {}, use_stream=saved_config is not None,
-                supports_streaming=config.supports_streaming, supports_json_schema=config.supports_json_schema,
+                supports_streaming=config.supports_streaming,
+                supports_json_schema=config.supports_json_schema and config.resolved_structured_output_mode != "json_object",
             )
             request = apply_request_defaults(request, config)
             messages = build_request_messages(request)

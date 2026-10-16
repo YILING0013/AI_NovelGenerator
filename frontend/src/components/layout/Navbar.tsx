@@ -1,19 +1,14 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 
 export default function Navbar() {
   const t = useTranslations("nav");
   const router = useRouter();
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const { resolvedTheme, setTheme } = useTheme();
 
   const currentLocale = pathname.startsWith("/en") ? "en" : "zh";
 
@@ -26,7 +21,7 @@ export default function Navbar() {
   };
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
 
   const goSettings = () => {
@@ -79,7 +74,6 @@ export default function Navbar() {
           </div>
 
           {/* Theme Toggle */}
-          {mounted && (
             <button
               onClick={toggleTheme}
               className="relative flex size-11 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
@@ -97,11 +91,8 @@ export default function Navbar() {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className={`absolute transition-all duration-300 ${
-                  theme === "dark"
-                    ? "opacity-100 rotate-0 scale-100"
-                    : "opacity-0 -rotate-90 scale-0"
-                }`}
+                aria-hidden="true"
+                className="absolute hidden dark:block"
               >
                 <circle cx="12" cy="12" r="4" />
                 <path d="M12 2v2" />
@@ -124,16 +115,12 @@ export default function Navbar() {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className={`absolute transition-all duration-300 ${
-                  theme === "dark"
-                    ? "opacity-0 rotate-90 scale-0"
-                    : "opacity-100 rotate-0 scale-100"
-                }`}
+                aria-hidden="true"
+                className="absolute dark:hidden"
               >
                 <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
               </svg>
             </button>
-          )}
 
           {/* Settings */}
           <button

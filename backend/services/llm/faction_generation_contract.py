@@ -7,6 +7,7 @@ from typing import Any, Mapping, Sequence
 from backend.llm.generation_options import REASONING_FIELDS
 from backend.llm.schemas.novel_pydantic import GenerateCoreFactionsRequestV2, ExistingFactionRelationTargetV2
 from backend.services.llm.candidate_contract import CandidateSourceRefV1
+from backend.services.novel.writing_context import faction_design_content
 
 
 CORE_FACTIONS_WORKFLOW = "create_factions_by_ai"
@@ -66,7 +67,7 @@ def compact_existing_core_factions(factions: list[dict[str, Any]]) -> list[dict[
                 "version": int(faction["version"]),
             }
         )
-    return compacted
+    return [faction_design_content(row, tuple(row)) for row in compacted]
 
 
 def _describe_integrity_score(score: int) -> str:
@@ -146,7 +147,7 @@ def build_core_factions_generation_strategy(
     user_guidance = req.user_guidance.strip() or "无"
     has_existing = len(existing_core_factions) > 0
     lines = [
-        f"本次必须只生成 {req.faction_count} 个全新的核心阵营。",
+        ("根据故事需要自行决定新增核心阵营数量，至少 1 个、最多 6 个，同时满足下面的独立数量和关系约束。" if req.faction_count is None else f"本次必须只生成 {req.faction_count} 个全新的核心阵营。"),
         "已有核心阵营只作为上下文和关系端点参考，禁止把已有阵营重复放入 core_factions。",
         "新阵营名称不得与已有核心阵营重复。",
         "每条新关系至少要连接一个本次生成的新阵营；可以连接新阵营和已有阵营，也可以连接两个本次新阵营。",

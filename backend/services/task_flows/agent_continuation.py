@@ -1,14 +1,15 @@
-"""短期保存资料整理的原生对话；浏览器只持有一次性续跑凭证。"""
+"""短期保存资料对话、完成节点与候选；浏览器只持有排他续跑凭证。"""
 
 from __future__ import annotations
 
 from collections import OrderedDict
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import secrets
 import threading
 import time
+import pickle
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -23,11 +24,48 @@ MAX_TOTAL_BYTES = 32 * 1024 * 1024
 
 
 class AgentContinuation(BaseModel):
-    """作者明确选择的续跑凭证和新增模型请求次数。"""
+    """作者明确选择的续跑凭证；网络恢复不增加模型轮数。"""
 
     model_config = ConfigDict(extra="forbid")
     token: str = Field(min_length=20, max_length=128)
-    additional_rounds: int = Field(ge=1, le=16, strict=True)
+    additional_rounds: int = Field(ge=0, le=16, strict=True)
+
+
+@dataclass
+class FlowContinuationState:
+    """原续跑记录的流程状态；只保存在服务端，不信任浏览器的整理结果。"""
+
+    agent: Any = None
+    # 图按顺序执行，只需保存当前未完成模型节点的完整生成和审校回复。
+    model_call: dict[str, Any] | None = None
+    completed_nodes: dict[str, Any] = field(default_factory=dict)
+    result: dict[str, Any] | None = None
+
+    @property
+    def instance_path(self) -> str:
+        return self.agent.instance_path if self.agent is not None else ""
+
+    @property
+    def round(self) -> int:
+        return self.agent.round if self.agent is not None else 0
+
+    @property
+    def total_calls(self) -> int:
+        return self.agent.total_calls if self.agent is not None else 0
+
+    @property
+    def last_error(self) -> str | None:
+        return self.agent.last_error if self.agent is not None else None
+
+    def size(self) -> int:
+        """计量当前完整记录。
+
+        Args:
+            无。
+        Returns:
+            包含本轮增长和最终候选的序列化字节数。
+        """
+        return len(pickle.dumps(self, protocol=5))
 
 
 @dataclass
@@ -36,6 +74,7 @@ class _SavedContinuation:
     binding: str
     expires_at: float
     size: int
+    reason: str = "budget"
     claimed: bool = False
     additional_rounds: int | None = None
 
@@ -67,6 +106,10 @@ def _public(token: str, entry: _SavedContinuation) -> dict[str, Any]:
     value = {"token": token, "instance_path": entry.state.instance_path,
              "round": entry.state.round, "call_count": entry.state.total_calls,
              "expires_at": datetime.fromtimestamp(entry.expires_at, timezone.utc).isoformat()}
+    if entry.reason == "network":
+        value.update(reason="network", resume_rounds=entry.additional_rounds or 0)
+    if isinstance(entry.state, FlowContinuationState):
+        value.update(flow_recovery=True, running=entry.claimed, result_ready=entry.state.result is not None)
     if entry.state.last_error:
         value["last_error"] = entry.state.last_error
     return value
@@ -105,58 +148,106 @@ def claim_agent_continuation(continuation: AgentContinuation, *, binding: str, i
         entry = _entry(continuation.token, binding)
         if entry.state.instance_path != instance_path:
             raise DomainApiError("AGENT_CONTINUATION_CHANGED", "续跑节点与原整理节点不一致，请重新整理", status_code=409)
+        if entry.reason == "network" and continuation.additional_rounds != (entry.additional_rounds or 0):
+            raise DomainApiError("AGENT_CONTINUATION_CHANGED", "恢复连接不能增加整理轮数，请沿用原请求", status_code=409)
+        if entry.reason == "budget" and continuation.additional_rounds == 0:
+            raise DomainApiError("AGENT_CONTINUATION_CHANGED", "整理次数已用完，请选择增加轮数", status_code=409)
         if entry.additional_rounds is None:
             entry.additional_rounds = continuation.additional_rounds
-            entry.state.round_limit += continuation.additional_rounds
-            entry.state.call_limit += 3 * continuation.additional_rounds
+            agent = entry.state.agent if isinstance(entry.state, FlowContinuationState) else entry.state
+            if agent is not None:
+                agent.round_limit += continuation.additional_rounds
+                agent.call_limit += 3 * continuation.additional_rounds
         elif entry.additional_rounds != continuation.additional_rounds:
             raise DomainApiError("AGENT_CONTINUATION_CHANGED", "中断后重试须沿用本次已选择的新增轮数", status_code=409)
         entry.claimed = True
+        entry.reason = "network"
         return entry.state
 
 
-def save_agent_continuation(state: Any, *, binding: str, size: int, previous_token: str | None = None) -> dict[str, Any]:
-    """达到预算后短期保存状态并换发凭证；不把模型历史发送到浏览器。
+def update_agent_continuation(token: str, *, size: int, reason: str | None = None) -> dict[str, Any]:
+    """在安全停止点核算实际增长；超限保留结果并暂停，不能继续付费。
+
+    Args:
+        token: 当前流程独占的原凭证。
+        size: 当前完整状态大小；即使超限也登记实际占用。
+        reason: 达到预算时改变恢复方式，不释放并发领取。
+    Returns:
+        最新公开进度；超限抛明确错误，已完成状态仍然保留。
+    """
+    with _lock:
+        _prune()
+        entry = _continuations[token]
+        entry.size = size
+        if reason is not None:
+            entry.reason = reason
+        details = {"agent_continuation": _public(token, entry)}
+        if size > MAX_ENTRY_BYTES:
+            raise DomainApiError("AGENT_CONTINUATION_TOO_LARGE", "本轮资料超过恢复容量，已保留进度并暂停。请保留当前资料，放弃本轮后缩小范围重新生成", status_code=422, details=details)
+        if sum(value.size for value in _continuations.values()) > MAX_TOTAL_BYTES:
+            raise DomainApiError("AGENT_CONTINUATION_CAPACITY", "恢复记录占用已满，已保留本轮进度。请等待其他记录释放后恢复", status_code=503, details=details)
+        return _public(token, entry)
+
+
+def save_agent_continuation(state: Any, *, binding: str, size: int, previous_token: str | None = None, reason: str = "budget", claimed: bool = False) -> dict[str, Any]:
+    """发送前登记状态，达到预算后换发凭证；不把模型历史发送到浏览器。
 
     Args:
         state: 原生对话、待执行调用及资料记录等服务端状态。
         binding: 原流程与输入的服务端散列。
         size: 待保存状态的估算字节数，用于限制内存。
         previous_token: 本次续跑已领取的旧凭证，换发时使其失效。
+        reason: 预算耗尽或连接恢复，连接恢复不增加预算。
+        claimed: 首次发送前直接占用凭证，避免另一个请求同时恢复。
     Returns:
-        可放入预算错误的公开续跑信息。
+        可放入进度或错误的公开续跑信息。
     """
     with _lock:
         _prune()
-        if previous_token:
-            _continuations.pop(previous_token, None)
+        previous = _continuations.get(previous_token) if previous_token else None
         if size > MAX_ENTRY_BYTES:
             raise DomainApiError("AGENT_CONTINUATION_TOO_LARGE", "已整理资料超过续跑保存上限，请缩小资料范围后重新整理", status_code=422)
-        if len(_continuations) >= MAX_ENTRIES or sum(entry.size for entry in _continuations.values()) + size > MAX_TOTAL_BYTES:
+        if (len(_continuations) - bool(previous) >= MAX_ENTRIES
+                or sum(entry.size for entry in _continuations.values()) - (previous.size if previous else 0) + size > MAX_TOTAL_BYTES):
             raise DomainApiError("AGENT_CONTINUATION_CAPACITY", "当前保存的续跑记录已满，请稍后重新整理", status_code=503)
+        if previous_token:
+            _continuations.pop(previous_token, None)
         token = secrets.token_urlsafe(32)
-        entry = _SavedContinuation(state=state, binding=binding, expires_at=time.time() + TTL_SECONDS, size=size)
+        entry = _SavedContinuation(state=state, binding=binding, expires_at=time.time() + TTL_SECONDS, size=size, reason=reason, claimed=claimed)
         _continuations[token] = entry
         return _public(token, entry)
 
 
 def release_agent_continuation(token: str, *, size: int, discard: bool = False) -> dict[str, Any] | None:
-    """取消或请求失败时释放领取；成功与资料变化时直接消费凭证。
+    """请求停止后释放领取并重新计算保留期限；显式丢弃才消费凭证。
 
     Args:
         token: 本次领取的凭证。
         size: 当前状态的估算大小。
         discard: 是否使凭证失效，不再允许重试。
     Returns:
-        仍可重试时的公开信息；已消费或无法保存时返回空。
+        仍可恢复时的公开信息；已消费时返回空。
     """
     with _lock:
         entry = _continuations.get(token)
         if entry is None:
             return None
-        if discard or size > MAX_ENTRY_BYTES or sum(value.size for key, value in _continuations.items() if key != token) + size > MAX_TOTAL_BYTES:
+        if discard:
             del _continuations[token]
             return None
         entry.claimed = False
         entry.size = size
+        entry.expires_at = time.time() + TTL_SECONDS
         return _public(token, entry)
+
+
+def agent_continuation_progress(token: str) -> dict[str, Any]:
+    """读取当前执行者已领取的公开进度，供断线后恢复。
+
+    Args:
+        token: 当前执行者持有的凭证。
+    Returns:
+        不含对话和模型凭据的恢复信息。
+    """
+    with _lock:
+        return _public(token, _continuations[token])

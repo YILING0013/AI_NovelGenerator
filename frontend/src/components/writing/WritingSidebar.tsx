@@ -158,8 +158,8 @@ export default function WritingSidebar({
     const current = progress?.currentWorkspace === item.key;
     const status = locked ? "locked" : current ? "current" : saved ? "saved" : "available";
     const blockers = readiness?.steps.filter((row) => ["core_factions", "protagonist"].includes(row.key) && row.state !== "ready").flatMap((row) => row.blockers) ?? [];
-    const reason = locked ? nextPhaseBlockedReason ?? (blockers.length ? `${t("firstUse.finishCurrent")}：${blockers.map((key) => t(`initialization.blockers.${key}`)).join("；")}` : t("initialization.nextPhaseBlocked")) : t(`firstUse.${status}`);
-    const statusColor = status === "saved" ? "text-emerald-700 dark:text-emerald-300" : status === "current" ? "text-amber-700 dark:text-amber-300" : "text-muted";
+    const reason = locked ? nextPhaseBlockedReason ?? (blockers.length ? `${t("firstUse.finishCurrent")}：${blockers.map((key) => t(`initialization.blockers.${key}`)).join("；")}` : t("initialization.nextPhaseBlocked")) : current ? t("firstUse.current") : undefined;
+    const statusColor = status === "current" ? "text-amber-700 dark:text-amber-300" : "text-muted";
     return (
       <div key={item.key} className={`flex min-w-0 shrink-0 items-center md:w-full ${iconsOnly ? "md:justify-center" : ""}`}>
         <Tooltip delay={300} closeDelay={0}>
@@ -167,7 +167,7 @@ export default function WritingSidebar({
             variant="ghost"
             onPress={() => onSelect(item.key)}
             aria-label={t(item.labelKey)}
-            aria-describedby={`${sidebarId}-${item.key}-status`}
+            aria-describedby={reason ? `${sidebarId}-${item.key}-status` : undefined}
             aria-current={isActive ? "page" : undefined}
             data-module-status={status}
             className={`flex min-h-11 w-auto min-w-0 flex-1 items-center justify-start gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${iconsOnly ? "md:mx-auto md:h-11 md:w-11 md:flex-none md:justify-center md:gap-0 md:p-0" : "md:w-full"} ${
@@ -176,21 +176,19 @@ export default function WritingSidebar({
                 : "text-muted hover:text-foreground hover:bg-surface-secondary"
             }`}
           >
-            <span aria-hidden="true" className={`shrink-0 ${statusColor}`}>{item.icon}</span>
+            <span aria-hidden="true" className="shrink-0">{item.icon}</span>
             <span className={`min-w-0 whitespace-nowrap md:flex-1 md:whitespace-normal md:text-left md:[overflow-wrap:anywhere] ${iconsOnly ? "md:hidden" : ""}`}>{t(item.labelKey)}</span>
-            <span aria-hidden="true" className={`shrink-0 ${iconsOnly ? "md:hidden" : ""} ${statusColor}`}>
+            {reason && <span aria-hidden="true" className={`shrink-0 ${iconsOnly ? "md:hidden" : ""} ${statusColor}`}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                {status === "saved" ? <><circle cx="12" cy="12" r="9" /><path d="m8 12 3 3 5-6" /></>
-                  : status === "current" ? <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>
-                  : locked ? <><rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></>
-                  : <><circle cx="12" cy="12" r="9" /><path d="M7 12h10m-4-4 4 4-4 4" /></>}
+                {locked ? <><rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></>
+                  : <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>}
               </svg>
-            </span>
-            <span id={`${sidebarId}-${item.key}-status`} className="sr-only">{reason}</span>
+            </span>}
+            {reason && <span id={`${sidebarId}-${item.key}-status`} className="sr-only">{reason}</span>}
           </Button>
           <Tooltip.Content placement="right" className="z-[100] max-w-[min(20rem,calc(100vw-24px))] rounded-lg border border-border bg-surface-raised px-3 py-2 text-xs font-normal leading-5 text-foreground shadow-lg">
             <p>{t(item.labelKey)}</p>
-            <p>{reason}</p>
+            {reason && <p>{reason}</p>}
           </Tooltip.Content>
         </Tooltip>
       </div>
@@ -200,7 +198,7 @@ export default function WritingSidebar({
   return (
     <aside data-sidebar-state={display} className={`relative z-20 flex max-h-[45dvh] w-full min-w-0 max-w-full shrink-0 md:max-h-none flex-col overflow-visible border-b border-border bg-surface md:h-full md:border-b-0 md:transition-[width] md:duration-200 md:ease-in-out motion-reduce:transition-none ${display === "expanded" ? "md:w-56 md:border-r" : iconsOnly ? "md:w-16 md:border-r" : "md:w-0 md:border-r-0"}`}>
       {/* 桌面隐藏用 visibility 同时移出 Tab 顺序，手机不继承桌面的隐藏状态。 */}
-      <div id={sidebarId} className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:pb-24 ${display === "hidden" ? "md:invisible" : ""}`}>
+      <div id={sidebarId} className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${iconsOnly ? "md:pb-24" : ""} ${display === "hidden" ? "md:invisible" : ""}`}>
         <div className={`hidden px-3 pb-2 pt-4 md:block ${iconsOnly ? "md:flex md:justify-center md:px-0" : ""}`}>
           <Tooltip isDisabled={!iconsOnly} delay={300} closeDelay={0}>
             <Button
@@ -236,7 +234,7 @@ export default function WritingSidebar({
           {flow && <div className={display !== "expanded" ? "md:hidden" : ""}>{flow}</div>}
         </div>
       </div>
-      {/* 手柄独占底部边缘，窄栏中的方形按钮无需为双箭头缩小或偏移。 */}
+      {/* 完整侧栏的箭头在边缘外；只有图标态为栏内的第二个箭头留出底部空间。 */}
       <SidebarEdgeHandle controls={sidebarId} className="hidden md:bottom-0 md:top-auto md:flex md:translate-y-0"
         leftAction={display === "hidden" ? undefined : {
           label: t(iconsOnly ? "sidebar.hideSidebar" : "sidebar.collapseToIcons"), expanded: true,

@@ -26,7 +26,7 @@ from backend.llm.schemas.faction_relation_pydantic import FactionRelationCreateR
 from backend.llm.schemas.location_pydantic import LocationCreateV1, LocationUpdateV1
 from backend.llm.schemas.item_pydantic import ItemCreateV1, ItemUpdateV1
 from backend.llm.schemas.character_volume_state_pydantic import CharacterVolumeStateUpsertV1, CharacterVolumeStateUpdateV1
-from backend.llm.schemas.faction_volume_state_pydantic import FactionVolumeStateUpsertV1, FactionVolumeStateUpdateV1
+from backend.llm.schemas.faction_volume_state_pydantic import FactionVolumePlanFieldsV1, FactionVolumePlanUpdateV1
 from backend.services.novel.arc_contract import ArcCreateV1, ArcUpdateV1
 from backend.services.novel.scene_contract import SceneCreateV1, SceneUpdateV1
 from backend.services.novel.chapter_contract import ChapterCreateV2, ChapterUpdateV2
@@ -62,7 +62,7 @@ RESOURCES = {
     "faction_relation": ResourceDefinition("faction_relations", "relation_id", "势力关系", FactionRelationCreateRequestV1, FactionRelationUpdateRequestV1),
     "character_faction_binding": ResourceDefinition("character_faction_bindings", "binding_id", "角色势力绑定", CharacterFactionBindingCreateRequestV1, CharacterFactionBindingUpdateRequestV1),
     "character_volume_state": ResourceDefinition("character_volume_states", "_id", "卷内角色状态", CharacterVolumeStateUpsertV1, CharacterVolumeStateUpdateV1),
-    "faction_volume_state": ResourceDefinition("faction_volume_states", "_id", "卷内势力状态", FactionVolumeStateUpsertV1, FactionVolumeStateUpdateV1),
+    "faction_volume_state": ResourceDefinition("faction_volume_states", "_id", "卷内势力参与计划", FactionVolumePlanFieldsV1, FactionVolumePlanUpdateV1),
 }
 INTERNAL_INPUTS = {"expected_version", "request_type", "basis", "novel_id", "sort_order", "rule_order"}
 POSITION_FIELDS = ("volume_id", "arc_id", "scene_id", "chapter_id", "character_id", "faction_id", "order_index")
@@ -342,7 +342,7 @@ async def search_text(novel_id: str, query: str, *, kind: str | None = None, off
     return {"items": items, "offset": offset, "has_more": False, "query": query}
 
 
-async def init_assistant_indexes() -> None:
+async def init_assistant_indexes(db=None) -> None:
     """建立助手专用索引，不迁移或清理业务记录。
 
     Args:
@@ -361,4 +361,5 @@ async def init_assistant_indexes() -> None:
         "assistant_resource_index": [IndexModel([("novel_id", 1), ("resource_type", 1), ("resource_id", 1)], unique=True), IndexModel([("novel_id", 1), ("references", 1)]), IndexModel([("novel_id", 1), ("is_deleted", 1)])],
     }
     for name, indexes in definitions.items():
-        await BaseRepository(name).collection.create_indexes(indexes)
+        collection = db[name] if db is not None else BaseRepository(name).collection
+        await collection.create_indexes(indexes)

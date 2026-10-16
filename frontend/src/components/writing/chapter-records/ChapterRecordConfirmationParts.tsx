@@ -1,5 +1,7 @@
 "use client";
 
+import { downloadExport } from "@/lib/userExport";
+
 import { Button } from "@heroui/react";
 import { useTranslations } from "next-intl";
 import type { ChapterRecordDraft } from "./chapterRecordDrafts";
@@ -21,6 +23,6 @@ export function ChapterRecordExport({ draft }: { draft: ChapterRecordDraft }) {
   const t = useTranslations("writing.chapterRecords");
   return <Button variant="ghost" onPress={() => {
     const url = URL.createObjectURL(new Blob([JSON.stringify(draft, null, 2)], { type: "application/json;charset=utf-8" }));
-    const link = document.createElement("a"); link.href = url; link.download = `chapter-record-${draft.key}.json`; link.click(); URL.revokeObjectURL(url);
+    const link = document.createElement("a"); link.href = url; link.download = `chapter-record-${draft.key}.json`; void downloadExport(link); URL.revokeObjectURL(url);
   }}>{t("exportDraft")}</Button>;
 }

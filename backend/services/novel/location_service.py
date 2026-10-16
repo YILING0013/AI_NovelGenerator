@@ -2760,8 +2760,10 @@ class LocationService:
             generation_input,
             session=session,
         )
-        if any(read not in basis.flow_snapshot["execution"]["character_fact_reads"] for read in current_context["fact_reads"]):
-            raise _location_error("LOCATION_BASIS_CONFLICT", "地点候选缺少当前人物查询的原依据，请保留候选并重新生成", status_code=409)
+        execution = basis.flow_snapshot["execution"]
+        original_reads = [*execution["character_fact_reads"], *execution["faction_fact_reads"]]
+        if any(read not in original_reads for read in current_context["fact_reads"]):
+            raise _location_error("LOCATION_BASIS_CONFLICT", "地点候选缺少当前人物或势力查询的原依据，请保留候选并重新生成", status_code=409)
         submitted_identities = {
             (source.resource_type, source.id) for source in basis.source_refs
         }
@@ -3048,8 +3050,13 @@ class LocationService:
             execution = request.basis.flow_snapshot["execution"]
             if "character_fact_reads" not in execution:
                 raise _location_error("CHARACTER_FACT_CONTRACT_REQUIRED", "原地点候选未保存人物事实依据，请保留候选并重新生成", status_code=409)
-            from backend.services.novel.character_fact_service import revalidate_character_fact_reads
-            await revalidate_character_fact_reads(execution["character_fact_reads"], session=session, protect=True)
+            if execution.get("faction_reading_contract") != "faction_facts_v1" or "faction_fact_reads" not in execution:
+                raise _location_error("FACTION_FACT_CONTRACT_REQUIRED", "原地点候选未保存势力事实依据，请保留候选并重新生成", status_code=409)
+            from backend.services.novel.writing_context import revalidate_position_fact_reads
+            await revalidate_position_fact_reads([
+                *execution["character_fact_reads"], *execution["faction_fact_reads"],
+                *execution.get("character_relation_fact_reads", []), *execution.get("item_fact_reads", []),
+            ], session=session, protect=True)
             # 同事务先完整复查，再取地点锁；共享人物读取不能越过自己的写锁。
             await LocationService._validate_bulk_basis_sources(novel_id, request, session=session)
             # Agent 检查会拒绝地点写锁；仍在设置自己的锁前重放，全部操作使用同一事务。

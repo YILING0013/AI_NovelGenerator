@@ -60,6 +60,7 @@ STATE_CONTENT_FIELDS = (
     "active_status",
 )
 INITIALIZATION_COPY_FIELDS = STATE_CONTENT_FIELDS
+STATE_FACT_FIELDS = {"power_level": "power_level", "resources": "resources", "public_stance": "public_stance", "influence_scope": "influence_scope", "active_status": "story_status"}
 StateChange = tuple[dict[str, Any], dict[str, Any]]
 
 
@@ -406,6 +407,12 @@ class FactionVolumeStateService:
             )
 
         async def write(session: AsyncClientSession | None) -> dict[str, Any]:
+            if expected_version is None:
+                replay = resolve_idempotent_replay(await faction_volume_state_repo.find_by_creation_idempotency(novel_id, fingerprint.key_hash, session=session), fingerprint.request_hash, label="势力卷状态创建")
+                if replay is not None:
+                    return replay
+            from backend.services.novel.faction_fact_service import ensure_faction_fields_unmanaged
+            await ensure_faction_fields_unmanaged(novel_id, [faction_id], list(STATE_FACT_FIELDS.values()), session=session)
             lock = await acquire_state_write_lock(novel_id, session=session)
             try:
                 if expected_version is None:
@@ -442,6 +449,8 @@ class FactionVolumeStateService:
                     faction_id,
                     session=session,
                 )
+                if current is not None and current.get("content_contract") == "participation_plan_v1":
+                    raise _state_error("FACTION_FACT_REQUIRED", "这条记录只保存参与计划，实际情况请在剧情资料中选择位置记录", status_code=409)
                 if expected_version is None:
                     assert fingerprint is not None
                     if current is not None:
@@ -535,7 +544,7 @@ class FactionVolumeStateService:
         if session is not None:
             return await write(session)
         try:
-            return await run_mongo_write_unit(write, "upsert_faction_volume_state")
+            return await run_mongo_write_unit(write, "upsert_faction_volume_state", require_transaction=True)
         except DuplicateKeyError:
             # 唯一索引并发输家只回读正式幂等结果，不推测其他冲突成功。
             if expected_version is None:
@@ -658,6 +667,9 @@ class FactionVolumeStateService:
         model = FactionVolumeStateUpdateV1.model_validate(request)
         payload = model.model_dump(mode="json", exclude_unset=True)
         expected = int(payload.pop("expected_version"))
+        if not set(payload) & STATE_FACT_FIELDS.keys():
+            from backend.services.novel.faction_volume_plan_service import update_faction_volume_plan
+            return await update_faction_volume_plan(novel_id, state_id, {**payload, "expected_version": expected}, session=session)
         for field in (
             "current_goal",
             "start_state",
@@ -669,6 +681,11 @@ class FactionVolumeStateService:
             if field in payload:
                 payload[field] = _normalize_text(payload[field])
         async def write(session: AsyncClientSession | None) -> dict[str, Any]:
+            from backend.services.novel.faction_fact_service import ensure_faction_fields_unmanaged
+            original = await faction_volume_state_repo.get_state(novel_id, state_id, session=session)
+            if original.get("content_contract") == "participation_plan_v1":
+                raise _state_error("FACTION_FACT_REQUIRED", "这条记录只保存参与计划，实际情况请在剧情资料中选择位置记录", status_code=409)
+            await ensure_faction_fields_unmanaged(novel_id, [original["faction_id"]], [STATE_FACT_FIELDS[field] for field in payload if field in STATE_FACT_FIELDS], session=session)
             lock = await acquire_state_write_lock(novel_id, session=session)
             try:
                 current = await faction_volume_state_repo.get_state(
@@ -722,7 +739,7 @@ class FactionVolumeStateService:
         if session is not None:
             return await write(session)
 
-        return await run_mongo_write_unit(write, "update_faction_volume_state")
+        return await run_mongo_write_unit(write, "update_faction_volume_state", require_transaction=True)
 
     @staticmethod
     async def soft_delete_state(novel_id: str, state_id: str, *, expected_version: int, session: AsyncClientSession | None=None) -> dict[str, Any]:
@@ -974,276 +991,12 @@ class FactionVolumeStateService:
                 "skip_existing": False,
             },
         )
-        # 外层只作成功发布提示；锁内必须复查同一不可变回执作为读屏障。
-        outer_receipt = await faction_volume_state_initialization_receipt_repo.find_receipt(
-            novel_id,
-            fingerprint.key_hash,
-        )
-
-        async def write(session: AsyncClientSession | None) -> dict[str, Any]:
-            lock = await acquire_state_write_lock(novel_id, session=session)
-            lock_releasable = True
-            try:
-                receipt = await faction_volume_state_initialization_receipt_repo.find_receipt(
-                    novel_id,
-                    fingerprint.key_hash,
-                    session=session,
-                )
-                if receipt is None and outer_receipt is not None:
-                    receipt = outer_receipt
-                if receipt is not None:
-                    if receipt.get("request_hash") != fingerprint.request_hash:
-                        raise IdempotencyConflictError(
-                            "同一 Idempotency-Key 已用于不同的势力卷状态初始化请求"
-                        )
-                    active_volumes = await volume_repo.get_volumes_by_novel(
-                        novel_id,
-                        session=session,
-                    )
-                    target_volume = next(
-                        (
-                            volume
-                            for volume in active_volumes
-                            if volume["_id"] == receipt.get("target_volume_id")
-                            and volume["_id"] == to_object_id(target_volume_id)
-                        ),
-                        None,
-                    )
-                    if target_volume is None:
-                        raise _state_error(
-                            "VOLUME_NOT_FOUND",
-                            "初始化回放的目标卷不存在、已删除或不属于当前小说",
-                            status_code=404,
-                        )
-
-                    receipt_faction_ids = sorted(
-                        str(state["faction_id"]) for state in receipt["states"]
-                    )
-                    factions = await faction_repo.get_factions_by_novel(
-                        novel_id,
-                        session=session,
-                    )
-                    factions_by_id = {
-                        str(faction["faction_id"]): faction for faction in factions
-                    }
-                    invalid_factions: list[str] = []
-                    for faction_id in receipt_faction_ids:
-                        faction = factions_by_id.get(faction_id)
-                        if (
-                            faction is None
-                            or faction.get("active_status") != "active"
-                        ):
-                            invalid_factions.append(faction_id)
-                            continue
-                        level_type = str(faction.get("level_type") or "")
-                        if level_type == "core":
-                            continue
-                        if (
-                            level_type not in {"volume", "local"}
-                            or faction.get("volume_id") != target_volume["_id"]
-                        ):
-                            invalid_factions.append(faction_id)
-                    if invalid_factions:
-                        raise _state_error(
-                            "FACTION_NOT_FOUND",
-                            "初始化回放的势力不存在、已删除、停用或不再属于目标卷",
-                            status_code=404,
-                            details={"faction_ids": invalid_factions},
-                        )
-                    return _receipt_result(receipt)
-
-                await novel_repo.get_novel_by_id(novel_id, session=session)
-                volumes = await volume_repo.get_volumes_by_novel(
-                    novel_id,
-                    session=session,
-                )
-                target_index = next(
-                    (
-                        index
-                        for index, volume in enumerate(volumes)
-                        if str(volume["_id"]) == target_volume_id
-                    ),
-                    None,
-                )
-                if target_index is None:
-                    raise _state_error(
-                        "VOLUME_NOT_FOUND",
-                        "目标卷不存在、已删除或不属于当前小说",
-                        status_code=404,
-                    )
-                if target_index == 0:
-                    raise _state_error(
-                        "FACTION_VOLUME_STATE_PREVIOUS_VOLUME_MISSING",
-                        "首卷没有可用于初始化的上一正式卷",
-                    )
-                source_volume = volumes[target_index - 1]
-                target_volume = volumes[target_index]
-                factions = []
-                for faction_id in faction_ids:
-                    try:
-                        factions.append(
-                            await faction_repo.get_faction(
-                                novel_id,
-                                faction_id,
-                                session=session,
-                            )
-                        )
-                    except NotFoundError:
-                        continue
-                found_ids = {str(faction["faction_id"]) for faction in factions}
-                invalid_factions = sorted(
-                    set(faction_ids) - found_ids
-                    | {
-                        str(faction["faction_id"])
-                        for faction in factions
-                        if faction.get("active_status", "active") != "active"
-                    }
-                )
-                if invalid_factions:
-                    raise _state_error(
-                        "FACTION_NOT_FOUND",
-                        "初始化势力包含不存在、已删除或停用的势力",
-                        status_code=404,
-                        details={"faction_ids": invalid_factions},
-                    )
-                for faction in factions:
-                    _validate_faction_volume_scope(faction, target_volume["_id"])
-                # 先确认白名单中的势力本身全部可用，再报告上一卷状态缺失，保持 404 优先级稳定。
-                source_states = await faction_volume_state_repo.list_by_volume(
-                    novel_id,
-                    source_volume["_id"],
-                    status="active",
-                    session=session,
-                )
-                source_by_faction = {
-                    str(state["faction_id"]): state for state in source_states
-                }
-                missing = [
-                    faction_id
-                    for faction_id in faction_ids
-                    if faction_id not in source_by_faction
-                ]
-                if missing:
-                    raise _state_error(
-                        "FACTION_VOLUME_STATE_SOURCE_MISSING",
-                        "选中势力在上一正式卷没有活动状态",
-                        details={"faction_ids": missing},
-                    )
-                conflicts: list[str] = []
-                for faction_id in faction_ids:
-                    existing = await faction_volume_state_repo.find_any_by_pair(
-                        novel_id,
-                        target_volume["_id"],
-                        faction_id,
-                        session=session,
-                    )
-                    if existing is not None:
-                        conflicts.append(faction_id)
-                if conflicts:
-                    raise _state_error(
-                        "FACTION_VOLUME_STATE_INITIALIZATION_CONFLICT",
-                        "目标卷已有选中势力的状态，整批未写入",
-                        status_code=409,
-                        details={"faction_ids": conflicts},
-                    )
-
-                now = _mongo_write_time()
-                documents: list[dict[str, Any]] = []
-                for faction_id in faction_ids:
-                    source = source_by_faction[faction_id]
-                    state_id = ObjectId()
-                    documents.append(
-                        {
-                            "_id": state_id,
-                            "state_id": state_id,
-                            "novel_id": to_object_id(novel_id),
-                            "volume_id": target_volume["_id"],
-                            "faction_id": faction_id,
-                            **{
-                                field: source[field]
-                                for field in INITIALIZATION_COPY_FIELDS
-                            },
-                            "source_state_id": source["state_id"],
-                            "version": 1,
-                            "dependency_guard_revision": 0,
-                            "is_deleted": False,
-                            "deleted_at": None,
-                            "deletion_sources": [],
-                            "created_at": now,
-                            "updated_at": now,
-                            "initialization_idempotency_key_hash": fingerprint.key_hash,
-                            "initialization_request_hash": fingerprint.request_hash,
-                        }
-                    )
-                created: list[dict[str, Any]] = []
-                receipt_publication_unknown = False
-                try:
-                    created = await faction_volume_state_repo.create_states(
-                        documents,
-                        session=session,
-                    )
-                    receipt_document = {
-                        "novel_id": to_object_id(novel_id),
-                        "source_volume_id": source_volume["_id"],
-                        "target_volume_id": target_volume["_id"],
-                        "idempotency_key_hash": fingerprint.key_hash,
-                        "request_hash": fingerprint.request_hash,
-                        "state_ids": [state["state_id"] for state in created],
-                        "states": [dict(state) for state in created],
-                    }
-                    try:
-                        receipt = await (
-                            faction_volume_state_initialization_receipt_repo.create_receipt(
-                                receipt_document,
-                                session=session,
-                            )
-                        )
-                    except Exception:
-                        if session is not None:
-                            raise
-                        try:
-                            receipt = await (
-                                faction_volume_state_initialization_receipt_repo.find_receipt(
-                                    novel_id,
-                                    fingerprint.key_hash,
-                                )
-                            )
-                        except Exception:
-                            # 无法确认回执是否已发布时不得删除其正式结果；保留互斥以阻断后续漂移。
-                            receipt_publication_unknown = True
-                            lock_releasable = False
-                            raise
-                        if (
-                            receipt is None
-                            or receipt.get("request_hash") != fingerprint.request_hash
-                        ):
-                            raise
-                    return _receipt_result(receipt)
-                except Exception:
-                    if session is None and not receipt_publication_unknown:
-                        inserted = await faction_volume_state_repo.collection.find(
-                            {"_id": {"$in": [item["_id"] for item in documents]}}
-                        ).to_list(length=None)
-                        if inserted:
-                            compensated = await (
-                                faction_volume_state_repo.delete_created_states_exact(
-                                    inserted
-                                )
-                            )
-                            if compensated != len(inserted):
-                                lock_releasable = False
-                                raise RuntimeError(
-                                    "势力卷状态初始化失败，且 standalone 精确补偿未完成"
-                                )
-                    raise
-            finally:
-                if lock_releasable:
-                    await release_state_write_lock(novel_id, lock, session=session)
-
-        return await run_mongo_write_unit(
-            write,
-            "initialize_faction_volume_states_from_previous",
-        )
+        receipt = await faction_volume_state_initialization_receipt_repo.find_receipt(novel_id, fingerprint.key_hash)
+        if receipt is not None:
+            if receipt.get("request_hash") != fingerprint.request_hash:
+                raise IdempotencyConflictError("同一 Idempotency-Key 已用于不同的势力卷状态初始化请求")
+            return _receipt_result(receipt)
+        raise _state_error("FACTION_FACT_REQUIRED", "旧复制请求没有成功记录；请保留原请求，使用复制参与计划入口，实际资料按剧情位置记录", status_code=409)
 
     @staticmethod
     async def add_faction_deletion_source(

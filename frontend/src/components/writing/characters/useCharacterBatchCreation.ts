@@ -6,6 +6,7 @@ import { openTaskFlowDatabase } from "@/lib/taskFlowCache";
 import type { CoreCharactersResultV1, CharacterRelationsResultV1 } from "@/types/character";
 import type { CharacterFactBatchCreateV1, CharacterRelationFactBatchCreateV1, CharacterFactBatchResultV1, CharacterRelationFactBatchResultV1 } from "@/types/characterFactBatch";
 import type { CoreFactionsAIConfirmationRequestV2, CoreFactionsResultV2, BulkCreateCoreFactionsResponse } from "@/types/novel";
+import type { FactionFactBatchCreateV1, FactionFactBatchResultV1 } from "@/types/factionFactBatch";
 import type { CharacterRelationCandidateDraftEntry } from "./characterRelationCandidateDrafts";
 
 interface BatchCommand<Body, Preview> {
@@ -16,7 +17,7 @@ interface BatchCommand<Body, Preview> {
   sourceCandidate?: CharacterRelationCandidateDraftEntry;
 }
 export type CharacterBatchCommand = BatchCommand<CharacterFactBatchCreateV1 | CharacterRelationFactBatchCreateV1, CoreCharactersResultV1 | CharacterRelationsResultV1>;
-type FactionBatchCommand = BatchCommand<CoreFactionsAIConfirmationRequestV2, CoreFactionsResultV2>;
+type FactionBatchCommand = BatchCommand<CoreFactionsAIConfirmationRequestV2 | FactionFactBatchCreateV1, CoreFactionsResultV2>;
 const same = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right);
 
 /** 同一 IDB 事务核对整条原命令；晚成功优先，旧页面不能删除或派发已退回的命令。 */
@@ -49,7 +50,7 @@ async function storeCommand<B, P>(scope: string, next?: BatchCommand<B, P> | nul
 }
 
 /** 三种整批创建共用原请求存储与派发；这里不编排生成或其他业务步骤。 */
-function usePersistedBatch<B, P>(novelId: string | undefined, kind: string, path: string, validate: (result: unknown, body: B) => boolean) {
+function usePersistedBatch<B, P>(novelId: string | undefined, kind: string, path: string | ((body: B) => string), validate: (result: unknown, body: B) => boolean) {
   const scope = `${novelId}:character-batch:${kind}`;
   const [command, setCommand] = useState<BatchCommand<B, P> | null>(null);
   const pending = useRef<BatchCommand<B, P> | null>(null);
@@ -84,7 +85,7 @@ function usePersistedBatch<B, P>(novelId: string | undefined, kind: string, path
       }
       if (original.result === undefined) {
         sent = true;
-        const result = await apiPost<unknown>(path, original.body, { headers: { "Idempotency-Key": original.key } });
+        const result = await apiPost<unknown>(typeof path === "string" ? path : path(original.body), original.body, { headers: { "Idempotency-Key": original.key } });
         if (!validate(result, original.body)) throw new Error("保存回复不完整，请保留这批内容并重试原请求");
         const saved = { ...original, result, rejected: false };
         if (isCurrent()) { pending.current = saved; setCommand(saved); }
@@ -129,10 +130,24 @@ export function useCharacterBatchCreation(novelId: string | undefined, kind: "ch
     });
 }
 
-/** 已触及的核心势力入口复用原命令恢复，只请求既有势力批量接口。 */
+/** 新批次走事实入口；已冻结的旧命令保持原路由、原载荷与原键。 */
 export function useFactionBatchCreation(novelId: string | undefined) {
   return usePersistedBatch<FactionBatchCommand["body"], FactionBatchCommand["preview"]>(novelId, "factions",
-    `/api/factions/novel/${novelId}/bulk-core-with-relations`, (value, body) => {
+    (body) => "request_type" in body ? `/api/factions/novel/${novelId}/bulk-core-with-relations` : `/api/faction-facts/novel/${novelId}/create-batch`, (value, body) => {
+      if (!("request_type" in body)) {
+        const result = value as FactionFactBatchResultV1 | null;
+        return Boolean(result && result.novel_id === novelId && Array.isArray(result.factions) && result.factions.length === body.candidates.length
+          && Array.isArray(result.relations) && result.relations.length === body.relations.length
+          && result.faction_ref_map && result.relation_ref_map && result.factions.every((row, index) => {
+            const candidate = body.candidates[index], saved = row.result;
+            return row.candidate_ref === candidate.candidate_ref && saved?.operation === "create" && saved.novel_id === novelId
+              && saved.before_version === null && saved.after_version === 1 && saved.faction_id === result.faction_ref_map[row.candidate_ref]
+              && saved.record?.schema_id === "faction.fact" && saved.record.entity_id === saved.entity_id
+              && Object.keys(saved.record.after).length === Object.keys(candidate.facts).length
+              && Object.entries(candidate.facts).every(([field, value]) => JSON.stringify(saved.record!.after[field as keyof typeof candidate.facts]) === JSON.stringify(value));
+          }) && result.relations.every((row, index) => row.relation_ref === body.relations[index].relation_ref
+            && row.result?.novel_id === novelId && row.result.version === 1 && row.result.relation_id === result.relation_ref_map[row.relation_ref]));
+      }
       const result = value as BulkCreateCoreFactionsResponse | null;
       return Boolean(result && Array.isArray(result.factions) && Array.isArray(result.faction_relations)
         && result.faction_ref_map && body.selected_faction_refs.every((ref) => typeof result.faction_ref_map[ref] === "string")

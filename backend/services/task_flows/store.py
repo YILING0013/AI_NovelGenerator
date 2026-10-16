@@ -12,6 +12,8 @@ import tempfile
 from threading import RLock
 from typing import Any
 
+from backend.storage import TASK_FLOWS_DIR
+
 from .contracts import Flow, FlowConflictError, FlowRef
 from .defaults import builtin_flow
 from .graph import validate_flow
@@ -31,7 +33,7 @@ class FlowStore:
             root: 测试或调用方指定的目录，默认读取 TASK_FLOW_STORE_DIR。
         """
         self.root = Path(root or os.environ.get("TASK_FLOW_STORE_DIR") or
-                         Path(__file__).resolve().parents[3] / "data" / "task_flows")
+                         TASK_FLOWS_DIR)
         self.default_factory = default_factory
         self._thread_lock = RLock()
 

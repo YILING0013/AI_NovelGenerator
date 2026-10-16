@@ -1,4 +1,5 @@
 "use client";
+import { SectionActionButton } from "@/components/shared/SectionEditButton";
 
 import { Button } from "@heroui/react";
 import { useContext, useEffect, useRef, useState } from "react";
@@ -146,7 +147,7 @@ export default function ChapterHistory({ node, choices, requestedVersion, dirty,
           </select>
         </label>
         {cursor && <Button size="sm" variant="outline" isDisabled={reading || saving} onPress={() => void more()}>{t("history.more")}</Button>}
-        <Button size="sm" variant="ghost" isDisabled={saving || Boolean(command)} onPress={() => setRefresh((value) => value + 1)}>{t("refresh")}</Button>
+        <SectionActionButton action="refresh" label={t("refresh")} size="sm" variant="ghost" isDisabled={saving || Boolean(command)} onPress={() => setRefresh((value) => value + 1)} />
       </div>
       {reading && <p role="status">{t("loading")}</p>}
       {comparison && <>

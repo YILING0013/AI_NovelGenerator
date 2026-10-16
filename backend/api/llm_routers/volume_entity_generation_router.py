@@ -11,7 +11,7 @@ from pymongo.errors import PyMongoError
 from backend.api.contracts import ObjectIdString
 from backend.api.error_protocol import DomainApiError, exception_to_error
 from backend.db.errors import DuplicateKeyError, NotFoundError
-from backend.llm.schemas.volume_entity_pydantic import VolumeCharactersPreviewV1, VolumeFactionsPreviewV1, VolumeCharactersConfirmV1, VolumeCharactersPlanConfirmV1, VolumeFactionsConfirmV1, VolumeCharactersConfirmedV1, VolumeFactionsConfirmedV1
+from backend.llm.schemas.volume_entity_pydantic import VolumeCharactersPreviewV1, VolumeFactionsPreviewV1, VolumeCharactersConfirmV1, VolumeCharactersPlanConfirmV1, VolumeCharactersInitialFactsConfirmV1, VolumeFactionsConfirmV1, VolumeFactionsPlanConfirmV1, VolumeCharactersConfirmedV1, VolumeFactionsConfirmedV1
 from backend.services.llm.candidate_contract import CandidateIdempotencyKey
 from backend.services.llm.volume_entity_generation_service import confirm_volume_entities
 from backend.services.task_flows.contracts import GraphRunRequest
@@ -99,7 +99,7 @@ async def _confirm(task: str, novel_id: str, volume_id: str, request, key: str):
 
 
 @router.post("/novels/{novel_id}/volumes/{volume_id}/characters/confirm", response_model=VolumeCharactersConfirmedV1)
-async def confirm_characters(novel_id: ObjectIdString, volume_id: ObjectIdString, request: VolumeCharactersPlanConfirmV1 | VolumeCharactersConfirmV1, idempotency_key: Annotated[CandidateIdempotencyKey, Header(alias="Idempotency-Key")]):
+async def confirm_characters(novel_id: ObjectIdString, volume_id: ObjectIdString, request: VolumeCharactersInitialFactsConfirmV1 | VolumeCharactersPlanConfirmV1 | VolumeCharactersConfirmV1, idempotency_key: Annotated[CandidateIdempotencyKey, Header(alias="Idempotency-Key")]):
     """一次确认人物档案与当前卷状态，失败整体回滚。
 
     Args:
@@ -114,7 +114,7 @@ async def confirm_characters(novel_id: ObjectIdString, volume_id: ObjectIdString
 
 
 @router.post("/novels/{novel_id}/volumes/{volume_id}/factions/confirm", response_model=VolumeFactionsConfirmedV1)
-async def confirm_factions(novel_id: ObjectIdString, volume_id: ObjectIdString, request: VolumeFactionsConfirmV1, idempotency_key: Annotated[CandidateIdempotencyKey, Header(alias="Idempotency-Key")]):
+async def confirm_factions(novel_id: ObjectIdString, volume_id: ObjectIdString, request: VolumeFactionsPlanConfirmV1 | VolumeFactionsConfirmV1, idempotency_key: Annotated[CandidateIdempotencyKey, Header(alias="Idempotency-Key")]):
     """一次确认势力档案与当前卷状态，失败整体回滚。
 
     Args:

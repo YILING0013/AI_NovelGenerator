@@ -15,9 +15,8 @@ export default function VolumeFactionProfileForm({ value, factions, disabled, er
   const t = useTranslations("writing.factions");
   const aiT = useTranslations("writing.volumeEntitiesAi");
   const textFields = [
-    ["name", "name", 80], ["faction_type", "factionType", 80], ["influence_scope", "influenceScope", 80],
-    ["positioning", "positioning", 500], ["public_stance", "publicStance", 500], ["core_goal", "coreGoal", 500],
-    ["hidden_goal", "hiddenGoal", 500], ["organization_style", "organizationStyle", 300],
+    ["name", "name", 80], ["core_goal", "coreGoal", 500],
+    ["hidden_goal", "hiddenGoal", 500],
     ["conflict_with_mainline", "conflict", 600], ["expandability", "expandability", 500],
   ] as const;
   return <div className="space-y-6">
@@ -41,8 +40,7 @@ export default function VolumeFactionProfileForm({ value, factions, disabled, er
       {errors[field] && <span role="alert" className="text-danger">{errors[field].join(" · ")}</span>}
     </label>)}
     <div className="grid gap-5 sm:grid-cols-2">
-      {([ ["alias", "aliases", 10], ["resources_and_advantages", "resources", 6], ["core_values", "values", 6], ["tags", "tags", 8] ] as const).map(([field, label, limit]) => <TagInput key={field} name={field} label={t(`fields.${label}`)} values={value[field]} disabled={disabled} error={errors[field]?.[0]} maxItems={limit} onChange={(items) => onChange({ ...value, [field]: items })} getRemoveAriaLabel={(tag) => t("removeTag", { tag })} />)}
+      {([ ["alias", "aliases", 10], ["resources_and_advantages", "resources", 6], ["tags", "tags", 8] ] as const).map(([field, label, limit]) => <TagInput key={field} name={field} label={t(`fields.${label}`)} values={value[field]} disabled={disabled} error={errors[field]?.[0]} maxItems={limit} onChange={(items) => onChange({ ...value, [field]: items })} getRemoveAriaLabel={(tag) => t("removeTag", { tag })} />)}
     </div>
-    <label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" checked={value.is_public} disabled={disabled} onChange={(event) => onChange({ ...value, is_public: event.target.checked })} className="size-4 accent-accent" />{t("fields.isPublic")}</label>
   </div>;
 }

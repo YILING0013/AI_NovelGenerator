@@ -290,3 +290,19 @@ export function parseVolumeDeleteImpactV2(value: unknown): VolumeDeleteImpactV2 
   }
   return impact as unknown as VolumeDeleteImpactV2;
 }
+
+/** 卷启动表单的只读提醒；不是生成或采用依据。 */
+export interface VolumeLaunchContextV1 {
+  novel_id: string;
+  volume_id: string;
+  volume_title: string;
+  position: import("./characterFacts").CharacterFactReadPositionV1;
+  counts: Record<"characters" | "factions" | "character_relations" | "faction_relations" | "bindings" | "world_rules" | "volumes", number>;
+  entities: {
+    entity_type: "character" | "faction" | "character_relation";
+    entity_id: string;
+    name: string;
+    source_ids: string[];
+    issues: { field: string; reason: import("./characterFacts").CharacterFactUnknownReason; blocking_source_ids: string[] }[];
+  }[];
+}

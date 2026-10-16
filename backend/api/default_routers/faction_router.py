@@ -199,7 +199,6 @@ class FactionResponseV1(BaseModel):
     @field_validator(
         "alias",
         "resources_and_advantages",
-        "core_values",
         "tags",
         mode="before",
     )
@@ -222,6 +221,18 @@ class FactionResponseV1(BaseModel):
                 if isinstance(item, str) and item.strip()
             )
         )
+
+    @field_validator("core_values", mode="before")
+    @classmethod
+    def preserve_core_values(cls, value: object) -> list[str]:
+        """保留价值观原文、空白和重复项，读取不能整理已确认的事实。
+
+        Args:
+            value: 主档原值；历史空值仍显示为空数组。
+        Returns:
+            原字符串条目；历史非字符串仍按原读取规则忽略。
+        """
+        return [item for item in value if isinstance(item, str)] if isinstance(value, list) else []
 
     @model_validator(mode="after")
     def validate_scope_and_lifecycle(self) -> "FactionResponseV1":

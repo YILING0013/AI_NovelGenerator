@@ -2,7 +2,7 @@
 
 import { FLOW_INPUT_CLASS } from "@/components/task-flows/TaskFlowForm";
 import { apiGet } from "@/lib/api";
-import { isDeepSeekProvider, type AppConfig } from "@/types/config";
+import { supportsStructuredOutput, type AppConfig } from "@/types/config";
 import type { FlowTask } from "@/types/taskFlow";
 import { Button } from "@heroui/react";
 import { useLocale,useTranslations } from "next-intl";
@@ -117,7 +117,7 @@ export function WorkflowCard({ config, onChange }: Props) {
                   value={alias}
                   disabled={
                     !provider.enabled ||
-                    (!provider.supports_json_schema && !isDeepSeekProvider(provider))
+                    !supportsStructuredOutput(provider)
                   }
                 >
                   {alias}

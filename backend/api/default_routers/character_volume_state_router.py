@@ -470,6 +470,7 @@ async def create_character_volume_plan(
 @plan_router.put("/novel/{novel_id}/{state_id}/plan", response_model=CharacterVolumeStateReadV1)
 async def update_character_volume_plan(
     novel_id: NovelIdPath, state_id: StateIdPath, req: CharacterVolumePlanUpdateV1,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> CharacterVolumeStateReadV1:
     """按原状态版本局部保存参与和计划，保留已有非权威处境原文。
 
@@ -477,11 +478,12 @@ async def update_character_volume_plan(
         novel_id: 当前小说。
         state_id: 目标卷状态物理 ID。
         req: 原版本及实际提交的六字段子集。
+        idempotency_key: 原请求键；旧客户端可省略，但不能恢复未知结果。
     Returns:
         版本更新后的原公开状态形状。
     """
     try:
-        state = await CharacterVolumeStateService.update_plan(novel_id.lower(), state_id.lower(), req)
+        state = await CharacterVolumeStateService.update_plan(novel_id.lower(), state_id.lower(), req, idempotency_key=idempotency_key)
     except EXPECTED_ERRORS as exc:
         raise_arc_http_error(exc, prefix="CHARACTER_VOLUME_PLAN", label="人物参与计划")
     return _serialize_state(state)

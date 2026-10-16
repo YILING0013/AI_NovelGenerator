@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from contextvars import ContextVar
 from time import perf_counter
 from typing import Any
@@ -14,6 +15,7 @@ import httpx2 as httpx
 from pydantic import BaseModel
 
 from backend.llm.models import LLMResponse, TokenUsage
+from backend.llm.provider_probe import active_provider_probe, observe_provider_request
 from backend.runtime import is_backend_debug_enabled, log_context, log_exception
 
 logger = logging.getLogger("llm")
@@ -139,6 +141,8 @@ async def log_http_request(request: httpx.Request) -> None:
         无。
     """
     call = _current_call.get()
+    if active_provider_probe.get() is not None:
+        observe_provider_request(json.loads(request.content))
     call.http_sequence += 1
     call.last_response = None
     call.last_response_printed = False
@@ -172,10 +176,35 @@ async def log_http_response(response: httpx.Response) -> None:
         response.headers.get("x-request-id") or response.headers.get("request-id") or response.headers.get("x-goog-request-id", ""),
         response.headers.get("content-type", ""),
     )
+    probe = active_provider_probe.get()
+    if probe is not None:
+        probe._http_status = response.status_code
+        if response.is_success and probe.reasoning_status == "unknown":
+            probe.reasoning_status = "sent"
     # 不提前读取成功的 SSE 流，否则实时生成会变成等待整段响应。
     if response.is_success and "text/event-stream" in response.headers.get("content-type", "").lower():
         return
     await response.aread()
+    if probe is not None and response.status_code in {400, 422} and probe.reasoning_status == "unknown":
+        # 只接受指向本次实际参数的明确拒绝，模型名和请求回显不能作为依据。
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = {}
+        error = payload.get("error", payload) if isinstance(payload, dict) else {}
+        if isinstance(error, dict):
+            parameter = error.get("param")
+            message = error.get("message", "")
+            message = message if isinstance(message, str) else ""
+            reasoning_parameters = [key for key in probe.sent_parameters if
+                "reasoning" in key or "thinking" in key.lower() or key == "output_config.effort"]
+            if isinstance(parameter, str):
+                matches_sent = any(parameter == key or (
+                    key.startswith(parameter + ".") and ("reasoning" in parameter or "thinking" in parameter.lower())
+                ) for key in reasoning_parameters)
+                explicit_code = error.get("code") in ("unsupported_parameter", "unsupported_value", "invalid_parameter", "invalid_value")
+                if matches_sent and (explicit_code or re.search(r"^(?:unsupported|invalid) (?:parameter|value)\b", message, re.IGNORECASE)):
+                    probe.reasoning_status = "rejected"
     call.last_response = response.text
     if response.is_error or is_backend_debug_enabled():
         logger.log(

@@ -1,4 +1,14 @@
 {
+  "draftChip": {
+    "draft": "草稿",
+    "resume": "继续编辑：{name}",
+    "pending": "待确认结果",
+    "saved": "已保存，待完成",
+    "rejected": "未提交成功",
+    "discard": "放弃草稿：{name}",
+    "finishBeforeDiscard": "请先继续处理这个请求或关联记录",
+    "discardFailed": "草稿未能移除，请刷新列表后重试。"
+  },
   "textQuality": {
     "replacementSummary": "发现 {count} 处可疑替换字符 U+FFFD。原文未改，可继续保存。",
     "replacementDetails": "查看位置",
@@ -100,6 +110,9 @@
     "text": "文本",
     "defaultProvider": "方案默认模型配置",
     "tasks": {
+      "check_chapter_item_owner_by_ai": "章后物品持有人检查",
+      "check_chapter_item_owner_facts_by_ai": "章后物品事实转交检查",
+      "check_chapter_character_relation_facts_by_ai": "章后人物关系事实检查",
       "check_chapter_psychological_state_by_ai": "检查人物心理状态",
       "check_chapter_character_relation_state_by_ai": "检查人物关系现状",
       "create_novel_by_ai": "AI 新建小说",
@@ -311,7 +324,8 @@
       "instruction": "修改要求",
       "new_count": "新建数量",
       "selected_existing_ids": "选择已有档案",
-      "count_mode": "数量模式"
+      "count_mode": "数量模式",
+      "selection_mode": "资料与数量"
     },
     "searchScopes": {
       "novel": "全书",
@@ -366,6 +380,9 @@
     },
     "canvasHelp": {
       "panels": "编辑器面板",
+      "view": "画布视图",
+      "leftPanel": "左侧面板",
+      "rightPanel": "右侧面板",
       "scheme": "方案",
       "diagnostics": "检查",
       "toggleLibrary": "展开或收起左侧面板",
@@ -470,7 +487,14 @@
       "retrySameRounds": "本次轮数已追加，重试将继续使用这些轮数。",
       "previousToolError": "此前工具错误，可能已处理",
       "roundsInvalid": "请输入 1–16 的整数。",
-      "continuationExpired": "这次整理已过期或不可继续，请重试以重新整理。",
+      "connectionPaused": "生成暂停，可恢复",
+      "waiting": "模型服务要求等待，{seconds} 秒后恢复",
+      "reconnecting": "模型连接中断，{seconds} 秒后重连（{attempt}/{limit}）",
+      "recover": "恢复生成",
+      "modelDisconnected": "模型连接暂时中断，已保留完成的进度。请稍后恢复生成。",
+      "browserDisconnected": "页面连接已断开。恢复生成会核对原任务；若原请求尚未结束，请稍后再试。",
+      "recoveryBoundary": "已完成的整理和生成不会重跑，完成的候选可重新取回。未完成调用的丢失回复可能再次计费。记录在停止或完成后保留 30 分钟；刷新页面或重启服务后不可恢复。",
+      "continuationExpired": "这次生成已过期或不可恢复。请先放弃本轮，再开始新的生成。",
       "continuationChanged": "当前卷、篇章或生成位置已变化，请重新整理。",
       "max_rounds": "最多轮次",
       "max_tool_calls": "最多工具调用",
@@ -501,9 +525,12 @@
     },
     "countModes": {
       "auto": "完整覆盖剩余剧情",
-      "fixed": "指定数量"
+      "fixed": "指定数量",
+      "ai": "由 AI 决定"
     },
-    "useLatestCopy": "采用新版副本"
+    "useLatestCopy": "采用新版副本",
+    "countModeFor": "{field}方式",
+    "selectionManual": "手动选择"
   },
   "nav": {
     "title": "AI 小说生成器",
@@ -585,8 +612,8 @@
         "needsTest": "待测试"
       },
       "alias": "Provider 别名",
-      "aliasPlaceholder": "例如 openai_gpt4o",
-      "aliasRule": "仅允许字母、数字、下划线",
+      "aliasPlaceholder": "例如 日常写作 - GPT",
+      "aliasRule": "名称须为 1–100 个字符，不能有首尾空白、控制字符或使用保留名称（__proto__、constructor、prototype）",
       "aliasDuplicate": "别名已存在",
       "renameProvider": "重命名",
       "renameTo": "新别名",
@@ -652,7 +679,28 @@
         "sent": "请求已发送",
         "notStarted": "尚未开始",
         "appliedHint": "建议值已回填到当前表单，点击保存后才会写入配置文件。",
-        "unknownError": "未知错误"
+        "unknownError": "未知错误",
+        "stale": "测试期间配置已修改，旧结果未回填。请使用当前配置重新测试。",
+        "budget": "测试输出预算：{count} token（未填写时使用 4096）",
+        "summary": "{passed}/{total} 项通过；已判定项目更新开关，其余保留原值。",
+        "parameters": "实际参数与推理证据",
+        "reasoningStatus": {
+          "not_sent": "未发送显式推理参数。",
+          "sent": "推理参数已发送；仅凭发送成功无法确认代理实际采用。",
+          "rejected": "接口明确拒绝了本次推理参数。",
+          "unknown": "无法判断接口是否接受了推理参数。"
+        },
+        "noEvidence": "未观察到原生推理证据，不代表模型不支持推理。",
+        "evidence": "观察到：{types}",
+        "evidenceTypes": {
+          "usage": "原生推理用量",
+          "native_block": "原生思考块",
+          "signature": "签名或加密状态标记"
+        },
+        "tokensUnknown": "接口未提供推理 token 计数。",
+        "reasoningTokens": "本项已返回的推理用量：{count} token",
+        "parametersAdjusted": "发送参数发生过调整，下面显示最后一次实际请求。",
+        "noParameters": "没有可展示的实际生成参数。"
       },
       "danger": {
         "title": "危险操作",
@@ -667,12 +715,24 @@
         "hint": "为此 Provider 配置默认生成参数。启用后将作为默认值，请求级别的参数会覆盖这里的配置。",
         "temperature": "采样温度 (Temperature)",
         "topP": "核采样 (Top P)",
-        "maxTokens": "最大 Token 数",
+        "maxTokens": "请求输出预算",
         "presencePenalty": "存在惩罚 (Presence Penalty)",
         "frequencyPenalty": "频率惩罚 (Frequency Penalty)",
         "systemPrompt": "系统提示词 (System Prompt)",
         "systemPromptPlaceholder": "输入此 Provider 的默认系统提示词..."
-      }
+      },
+      "capacity": {
+        "title": "模型与接口容量",
+        "context_window_tokens": "上下文总容量（token）",
+        "input_token_limit": "输入上限（token）",
+        "output_token_limit": "输出上限（token）",
+        "unknown": "未知",
+        "helpTitle": "容量与输出预算有什么区别？",
+        "help": "容量填写模型或当前接口的资料，只接受正整数，未知留空。输入、输出上限不能相加推算上下文总容量。这些资料不会调整请求预算，也不会自动截断输入。生成参数中的输出预算是本次请求的上限；推理模型通常也会从中消耗思考 token，具体以所选接口为准。自定义模型可手工填写。"
+      },
+      "outputAuto": "自动（沿用当前接口默认）",
+      "apiModeHelp": "Responses 使用较新的消息、工具和推理接口；Chat Completions 使用常见的兼容聊天接口。按服务商实际支持的接口选择，切换后可测试。",
+      "apiModeHelpGemini": "Interactions 使用交互接口；Generate Content 使用内容生成接口。按服务端支持选择并测试。"
     },
     "workflow": {
       "title": "小说生成流程配置",
@@ -2659,16 +2719,21 @@
       "unavailableRelation": "已不可用的关系",
       "characters": {
         "open": "AI 生成卷内角色",
-        "title": "卷内角色候选"
+        "title": "卷内角色候选",
+        "initialFacts": "本卷出场时的初始事实"
       },
       "factions": {
+        "initialFacts": "本卷开始时的实际情况",
+        "explicitFactsRequired": "这份旧候选没有记录哪些状态是明确填写的。原稿已保留，请重新生成后再采用。",
         "open": "AI 生成卷内势力",
         "title": "卷内势力候选",
         "level": "势力层级",
         "volume": "卷级势力",
         "local": "局部势力",
         "parent": "父势力",
-        "noParent": "无父势力"
+        "noParent": "无父势力",
+        "planChanged": "本卷势力计划已变化，请保留内容并重新准备这批计划。",
+        "planChanges": "将修改 {count} 个势力已有的本卷计划"
       },
       "candidates": "候选（{count} 项）",
       "existing": "已有档案",
@@ -2677,6 +2742,7 @@
       "close": "关闭",
       "closeKeep": "关闭并保留草稿",
       "cancel": "取消生成",
+      "cancelled": "已取消生成，可以重新开始。",
       "generate": "生成候选",
       "confirm": "确认保存",
       "saving": "保存中",
@@ -2697,7 +2763,14 @@
       "adoptPlanDraft": "采用为本卷计划稿",
       "draftConflict": "另一标签页已更改候选或提交了原请求。本页候选仍保留，可导出后关闭，再重新打开核对原稿。",
       "draftConflictExport": "导出本页候选并关闭",
-      "characterStart": "新人物起点：本卷开始（{title}）"
+      "characterStart": "新人物起点：本卷开始（{title}）",
+      "factionStart": "新势力的明确资料保存于「{title}」卷首。已有势力只更新参与计划；实际剧情状态请在详情中按位置记录。",
+      "backgroundTitle": "势力生成进度",
+      "backgroundRunning": "正在生成势力候选，输入窗口已收起。",
+      "backgroundReady": "势力候选已保留，可以打开核对。",
+      "openGeneration": "打开生成任务",
+      "retainedDraft": "原稿与保存命令已完整保留，可查看或导出。未知保存结果只能使用原请求重试；未提交的旧候选请使用新版方案重新生成。",
+      "regenerateRetained": "重新生成候选"
     },
     "characterRelationFacts": {
       "recheckRequired": "关系已变化，请保留此稿，回到章后记录重新检查。",
@@ -2744,6 +2817,7 @@
       "inactive": "关系已停用，暂不能添加事实；停用不代表剧情中的关系结束。"
     },
     "characterFacts": {
+      "volumeStartTitle": "本卷起点资料",
       "panelTitle": "人物事实",
       "latest": "当前事实",
       "choosePosition": "请选择生效位置",
@@ -2768,6 +2842,7 @@
       "confirm": "确认保存事实",
       "close": "关闭",
       "closeKeep": "关闭并保留原稿",
+      "discardClose": "放弃并关闭",
       "exportDraft": "导出原稿",
       "saving": "保存中…",
       "retryRead": "重试读取与清稿",
@@ -2897,9 +2972,14 @@
       "managedLegacyField": "字段已被认领，请保留旧稿并使用人物事实操作。",
       "editLegacyText": "编辑未认领旧文字",
       "saveLegacyText": "保存旧文字",
-      "finishLegacyEditing": "旧文字正在编辑，请先保存或取消本节编辑。"
+      "finishLegacyEditing": "旧文字正在编辑，请先保存或取消本节编辑。",
+      "leaveUnknown": "保持未知",
+      "recordEmpty": "明确记录为空",
+      "positionHelp": "生效位置决定这份资料从故事哪一刻开始成立。书初：故事开始前；卷首：本卷开始前；章前：该章发生前；章后：该章结束后。当前事实按作品已保存的最新剧情位置读取，不代表书初。",
+      "authorNoteHelp": "记录你确认这份初始资料的设定依据。它会随事实保留，章后变化则需引用正文证据。"
     },
     "characterVolumeStates": {
+      "planTitle": "本卷计划",
       "legacyStatesTitle": "未定位的旧卷状态（仅供核对）",
       "loading": "正在加载角色本卷状态…",
       "version": "版本 {version}",
@@ -2945,12 +3025,12 @@
       },
       "actions": {
         "retry": "重试",
-        "create": "添加本卷状态",
-        "edit": "编辑本卷状态",
+        "create": "添加本卷计划",
+        "edit": "编辑本卷计划",
         "delete": "移入回收站",
         "restore": "恢复",
         "hardDelete": "永久删除",
-        "save": "保存本卷状态",
+        "save": "保存本卷计划",
         "saving": "保存中…",
         "cancel": "取消",
         "processing": "处理中…",
@@ -3026,9 +3106,14 @@
         "title": "从上一卷初始化角色状态",
         "characters": "选择角色",
         "targetExists": "目标卷已有状态（包括回收站状态）",
-        "conflictPolicy": "如果任一所选角色在本卷已有记录，将不会复制任何角色。",
+        "conflictPolicy": "若任一所选角色已有本卷记录，或待复制的处境已由事实管理，整批都不会复制。",
         "firstVolume": "第一卷没有上一卷，不能复制角色记录。",
-        "noSourceStates": "上一卷没有可复制的角色记录。"
+        "noSourceStates": "上一卷没有可复制的角色记录。",
+        "legacyTitle": "旧版资料兼容操作",
+        "legacyHint": "旧版完整状态复制仅用于尚未由事实管理的旧处境资料。新建本卷计划请在表单中使用“沿用上卷计划”；已发送的旧请求可在此原样重试。",
+        "legacyAction": "复制旧版状态",
+        "resume": "重试原复制请求",
+        "pending": "复制结果尚未确认。将按原人物选择和原请求重试；本页内收起窗口后仍可继续处理。"
       },
       "confirm": {
         "deletionSources": "这条记录因以下操作进入回收站：{sources}。永久删除后无法恢复。",
@@ -3049,9 +3134,23 @@
         }
       },
       "roster": "卷内角色名册",
-      "detail": "卷内角色状态"
+      "detail": "卷内角色状态",
+      "reusePrevious": {
+        "action": "沿用上卷计划",
+        "hint": "可将《{volume}》的六项计划填入空稿。开场安排和计划结束状态都是计划，请按本卷调整；实际情况见上方起点资料。",
+        "used": "已填入上卷的六项计划，可在原表单调整。开场安排和计划结束状态不是实际事实。",
+        "edited": "当前草稿已有修改，已保留你的输入。开场安排和计划结束状态仍是本卷计划。"
+      },
+      "recovery": {
+        "localFailed": "本机保稿失败或此稿已在另一页改动。请保留当前输入后重试。",
+        "unknown": "这次保存结果尚未确认。输入已保留，请核对原请求。",
+        "saved": "已保存。读取资料或清理本机稿未完成，请继续处理。",
+        "retry": "核对原请求",
+        "finish": "读取并清理"
+      }
     },
     "factionVolumeStates": {
+      "planTitle": "本卷计划",
       "loading": "正在加载势力本卷状态…",
       "version": "版本 {version}",
       "listSeparator": "；",
@@ -3088,8 +3187,8 @@
         "activeStatus": "卷内活动状态"
       },
       "form": {
-        "participationTitle": "参与情况与力量",
-        "agendaTitle": "卷内立场与资源"
+        "participationTitle": "本卷参与计划",
+        "agendaTitle": "隐藏计划"
       },
       "removeResource": "移除「{tag}」",
       "resourcePlaceholder": "输入资源后按回车",
@@ -3104,17 +3203,17 @@
       },
       "actions": {
         "retry": "重试",
-        "create": "添加本卷状态",
-        "edit": "编辑本卷状态",
+        "create": "添加参与计划",
+        "edit": "编辑参与计划",
         "delete": "移入回收站",
         "restore": "恢复",
         "hardDelete": "永久删除",
-        "save": "保存本卷状态",
+        "save": "保存参与计划",
         "saving": "保存中…",
         "cancel": "取消",
         "processing": "处理中…",
         "clearFilters": "清除筛选",
-        "initialize": "复制上一卷",
+        "initialize": "复制上一卷计划",
         "initializing": "正在复制…",
         "refreshConflict": "刷新最新内容",
         "refreshingConflict": "刷新中…",
@@ -3124,7 +3223,7 @@
       },
       "errors": {
         "load": "势力本卷状态加载失败。",
-        "save": "卷状态保存失败，请保留草稿并重试。",
+        "save": "尚未完成保存核对，原输入和原请求仍保留。请查看提示后继续。",
         "validation": "请修正卷状态字段。",
         "conflict": "这条记录或势力归属已经变化。草稿仍保留，请刷新后重试。",
         "deletedConflict": "这条记录已进入回收站。草稿仍保留，但不能覆盖已删除内容。",
@@ -3159,9 +3258,9 @@
         "wrongOwnedVolume": "这个势力只能添加到它所属的卷。"
       },
       "editor": {
-        "eyebrow": "势力本卷状态",
-        "createTitle": "添加势力本卷状态",
-        "editTitle": "编辑势力本卷状态",
+        "eyebrow": "势力参与计划",
+        "createTitle": "添加势力参与计划",
+        "editTitle": "编辑势力参与计划",
         "selectFactionTitle": "选择本卷参与势力"
       },
       "conflictReview": {
@@ -3182,10 +3281,10 @@
         "selectVolume": "请选择一个卷"
       },
       "initialize": {
-        "title": "从上一卷初始化势力状态",
+        "title": "从上一卷复制参与计划",
         "factions": "选择势力",
         "targetExists": "目标卷已有状态（包括回收站状态）",
-        "conflictPolicy": "如果任一所选势力在本卷已有记录，将不会复制任何势力。",
+        "conflictPolicy": "只复制参与计划，不复制实际资源、实力或剧情状态。任一所选势力在本卷已有参与记录时，整批均不会保存。",
         "firstVolume": "第一卷没有上一卷，不能复制势力记录。",
         "noSourceStates": "上一卷没有可复制的势力记录。"
       },
@@ -3715,7 +3814,7 @@
       "chapterRecordsPreserved": "这 {count} 条章后确认记录会保留，仍保护原文来源。",
       "chapterRecordsDeleteBlocked": "这 {count} 条章后确认记录仍保护原文来源，不能永久删除；如需全部清理，请删除整部作品。",
       "sceneChapters": "场景内章节",
-      "enterEmptyScene": "进入场景添加章节",
+      "noChaptersToExpand": "还没有章节",
       "openScene": "返回所属场景"
     },
     "volumes": {
@@ -3964,7 +4063,28 @@
           "resourceConflict": "有相关内容已经变化（{id}）。",
           "providerUnavailable": "AI 服务或数据库暂时无法使用，请稍后重试。",
           "timeout": "AI 规划已超时，本次没有保存卷。"
-        }
+        },
+        "launchContext": {
+          "title": "本卷开始时使用的资料",
+          "refresh": "刷新启动资料",
+          "position": "第 {order} 卷「{name}」开始时",
+          "scope": "人物 {characters} · 核心势力 {factions} · 规则 {world_rules}",
+          "scopeDetails": "含小说资料、目标及相邻卷 {volumes} 卷，人物关系 {character_relations}、势力关系 {faction_relations}、人物与势力关联 {bindings}。",
+          "review": "{count} 个对象有待复核资料",
+          "process": "前往处理",
+          "source": "查看来源 {number}",
+          "unknown": "{count} 项在此处暂无确定值，可继续生成；生成时会重新读取。",
+          "continueHint": "可继续生成，生成时会重新读取资料。",
+          "stale": "刷新失败，以下为上次读取。",
+          "failed": "资料暂未读到，可重试或继续生成。",
+          "kinds": {
+            "character": "人物",
+            "faction": "势力",
+            "character_relation": "人物关系"
+          }
+        },
+        "skeletonHelp": "根据全书故事安排各卷的顺序与概要，保存后可逐卷补齐规划。也可以手工创建卷。",
+        "launchHelp": "为选中的卷补充目标、冲突、转折与起止状态等详细规划。AI 分卷和手工创建的卷都可展开；不会再次拆分全书，也不会直接生成章节正文。"
       },
       "impact": {
         "arcs": "篇章",
@@ -4510,7 +4630,9 @@
       "ownerRecoveryUnavailable": "来源章之前的持有人须仍与原检查一致。转交方向已改变时，请退回检查。",
       "ownerRecoveryDirection": "此准备保留原转交方向。若需更换任一人物，请退回检查，重新建立章后审核或持有人检查。",
       "returnToCheck": "保留原稿，退回持有人检查",
-      "returnedToCheck": "已退回持有人检查；此原稿保留供查看和导出，不能再提交。"
+      "returnedToCheck": "已退回持有人检查；此原稿保留供查看和导出，不能再提交。",
+      "noteHelp": "选填：补充为什么在此处设定这些物品状态。整批采用时应用于全批；物品描述和剧情作用在各物品字段填写，不必在这里重复。",
+      "backToEdit": "返回编辑"
     },
     "firstUse": {
       "locked": "先完成前置步骤",
@@ -4525,7 +4647,7 @@
       "current": "进行中",
       "waiting": "未开始",
       "retry": "重试读取",
-      "goToStep": "继续当前步骤",
+      "goToStep": "点击继续",
       "continueOptional": "暂不添加，继续",
       "loading": "正在读取创作进度",
       "manage": "回看与资料管理",
@@ -4541,16 +4663,88 @@
       "volumelocations": "准备《{title}》的地点",
       "chapterPreparation": "准备下一章的剧情",
       "arcPlot": "完善《{title}》的情节",
-      "writeChapter": "写作：{title}",
-      "nextVolume": "已完成现有章节，准备下一卷",
+      "writeChapter": "写作·章节{number}",
+      "plannedChaptersComplete": "当前已规划章节已写完，可检查全文或继续规划",
       "phases": {
         "book": "建立作品",
         "opening": "开场资料",
         "volume": "本卷剧情",
         "preparation": "本卷准备",
         "chapters": "本卷章节",
-        "continue": "继续下一卷"
+        "continue": "检查或继续规划"
       }
+    },
+    "factionFacts": {
+      "title": "此处剧情资料",
+      "editTitle": "编辑此处资料",
+      "sections": {
+        "identity": "组织面貌",
+        "situation": "剧情处境"
+      },
+      "notEntered": "尚未填写",
+      "cleared": "明确为空",
+      "public": "公开",
+      "hidden": "隐秘",
+      "power": "{level} 级",
+      "status": {
+        "active": "活跃",
+        "dormant": "休眠",
+        "dissolved": "解散"
+      },
+      "removeTag": "移除 {value}",
+      "setEmpty": "明确没有这些内容",
+      "voidTitle": "作废这条记录",
+      "correctRecord": "更正这条记录",
+      "reviewSources": "部分资料的原来源需要复核。确认保存将以你填写的内容重新建立这些资料的依据，原记录仍保留在历史中。",
+      "legacyTitle": "查看未定位的旧资料",
+      "legacyExplanation": "这些文字尚未按剧情位置确认。设计目标、资源优势和卷计划保留原意，不自动作为此处事实。",
+      "fields": {
+        "faction_type": "势力类型",
+        "positioning": "所处地位",
+        "organization_style": "组织方式",
+        "core_values": "核心价值观",
+        "is_public": "是否公开",
+        "actual_goal": "实际目标",
+        "public_stance": "公开立场",
+        "power_level": "实力等级",
+        "resources": "拥有资源",
+        "influence_scope": "影响范围",
+        "story_status": "剧情状态"
+      },
+      "legacyFields": {
+        "faction_type": "势力类型",
+        "positioning": "所处地位",
+        "organization_style": "组织方式",
+        "core_values": "核心价值观",
+        "is_public": "是否公开",
+        "actual_goal": "实际目标",
+        "public_stance": "公开立场",
+        "power_level": "实力等级",
+        "resources": "拥有资源",
+        "influence_scope": "影响范围",
+        "story_status": "剧情状态",
+        "core_goal": "设计核心目标",
+        "hidden_goal": "设计隐藏目标",
+        "resources_and_advantages": "设计资源与优势",
+        "hidden_agenda": "本卷隐藏计划",
+        "current_goal": "本卷目标计划",
+        "active_status": "旧卷状态"
+      },
+      "factionName": "势力名称",
+      "recordChange": "记录这章带来的变化",
+      "compareChanges": "重新读取的当前资料；下方保留本次拟修改内容",
+      "recheck": "保留输入，重新核对",
+      "validity": {
+        "active": "有效记录",
+        "replaced": "已被更正",
+        "voided": "已作废"
+      },
+      "planDraftConflict": "另一页已更新此计划或本地保存不可用；输入仍保留，请重新打开核对。",
+      "resumePlan": "继续未完成的参与计划",
+      "planUnknown": "保存结果尚未确定，已保留原请求。请用原请求重试，不要另建同一计划。",
+      "planSavedRead": "保存已成功，正在恢复当前资料；无需再次提交。",
+      "planRejected": "本次保存未通过，原输入已保留，请核对当前计划后继续。",
+      "revisePlan": "保留内容，继续编辑"
     }
   },
   "reasoning": {
@@ -4577,6 +4771,23 @@
       "between_tools": "工具间思考",
       "standard": "标准",
       "pro": "Pro"
+    },
+    "protocolHelpTitle": "参数说明 · {mode}",
+    "officialDocs": "官方思考参数说明",
+    "protocolHelp": {
+      "openai": "Responses 使用 reasoning.effort，Chat Completions 使用 reasoning_effort；Pro 模式只用于 Responses。等级是否可用取决于模型，未知代理型号仍可手动设置并测试。未返回思考摘要不代表不支持推理。",
+      "claude": "思考模式发送为 thinking.type，等级发送为 output_config.effort。手动预算用于支持它的模型，至少 1024 且小于输出预算；自适应思考不填写预算。简单请求可能没有思考块。",
+      "interactions": "Interactions 使用 generation_config.thinking_level，不接受旧式 token 思考预算。支持的等级取决于模型；未返回摘要或仅有签名不代表不支持推理。",
+      "generate_content": "Generate Content 使用 thinkingConfig 中的等级或预算，二者不能同时设置。预算 -1 表示自动，0 表示关闭，但是否允许以及范围由模型决定。未知代理型号可手动设置并测试。",
+      "deepseek": "Chat Completions 使用 thinking.type 和 reasoning_effort；Responses 使用 reasoning.effort。none 表示关闭推理。思考模式下部分采样参数可能不生效；参数被接受不等于实际采用。"
     }
+  },
+  "userStorage": {
+    "databaseConnectionUnavailable": "数据库连接不可用。请检查连接地址、服务状态和认证信息，保存后重试。",
+    "databaseAuthenticationFailed": "数据库认证失败。请在连接地址中修正认证信息，保存后重试。",
+    "exportFailed": "项目内导出副本保存失败。浏览器下载仍已发起，请确认已保存文件后再关闭草稿。",
+    "checkFailed": "无法检查启动状态，请确认后端已启动。",
+    "retry": "重试",
+    "checking": "正在检查启动状态…"
   }
 }

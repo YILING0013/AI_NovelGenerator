@@ -35,7 +35,7 @@ export async function readItemFactPreparations(novelId: string): Promise<ItemFac
 /** 功能：只识别尚未填写的独立新建物品稿。Args: 当前准备稿。Returns: 是否没有作者内容、来源或已有资料。 */
 export function isEmptyItemFactPreparation(draft: ItemFactPreparationV1): boolean {
   if (draft.operation !== "create" || draft.kind !== "start" || !draft.candidate || draft.target || draft.generation || draft.record || draft.origin || draft.ownerOnly || draft.returnedToCheck
-    || draft.position || draft.evidence || draft.note.trim() || draft.reason.trim() || draft.resolves.length) return false;
+    || (draft.position && draft.position.intent !== "book_start") || draft.evidence || draft.note.trim() || draft.reason.trim() || draft.resolves.length) return false;
   return Object.entries(draft.candidate).every(([field, value]) => field === "lifecycle_status" ? value === "available"
     : value === null || (Array.isArray(value) ? value.length === 0 : typeof value === "string" && !value.trim()))
     && draft.after.lifecycle_status === "available" && !draft.after.owner_character_id && !draft.after.controlling_faction_id && !draft.after.current_location_id;

@@ -714,13 +714,11 @@ export default function WorldRulesWorkspace({
               </button>
             ))}
           </div>
-          <Button className="shrink-0" variant="ghost" size="sm" onPress={() => {
+          <SectionActionButton action="refresh" label={loading ? t("actions.refreshing") : t("actions.refresh")} className="shrink-0" variant="ghost" size="sm" onPress={() => {
             setCandidateReviewing(false);
             setCandidateSessionKey((current) => current + 1);
             void loadWorkspace();
-          }} isDisabled={loading || workspaceBusy}>
-            {loading ? t("actions.refreshing") : t("actions.refresh")}
-          </Button>
+          }} isDisabled={loading || workspaceBusy} />
         </div>
       </header>
 
@@ -850,7 +848,7 @@ export default function WorldRulesWorkspace({
                     {view === "rules" ? (
                       <>
                         <Button size="sm" variant="ghost" onPress={() => { setStatusRule(selectedRule); setStatusDraft(selectedRule.status); setConfirmError(""); }} isDisabled={workspaceBusy || Boolean(inlineSession)}>{t("actions.changeStatus")}</Button>
-                        <Button size="sm" variant="ghost" className="text-danger" onPress={() => { setConfirmIntent({ kind: "soft-delete", rule: selectedRule }); setConfirmError(""); }} isDisabled={workspaceBusy || Boolean(inlineSession)}>{t("actions.delete")}</Button>
+                        <SectionActionButton action="trash" label={t("actions.delete")} size="sm" variant="ghost" className="text-danger" onPress={() => { setConfirmIntent({ kind: "soft-delete", rule: selectedRule }); setConfirmError(""); }} isDisabled={workspaceBusy || Boolean(inlineSession)} />
                       </>
                     ) : (
                       <>

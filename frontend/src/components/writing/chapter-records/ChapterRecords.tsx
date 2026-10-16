@@ -1,4 +1,6 @@
 "use client";
+import DraftChip from "@/components/shared/DraftChip";
+import { SectionActionButton } from "@/components/shared/SectionEditButton";
 
 import { Button, Modal } from "@heroui/react";
 import { useCallback, useContext, useEffect, useId, useRef, useState, type RefObject } from "react";
@@ -66,9 +68,9 @@ function RecordDetail({ row, novelId, choices }: { row: RecordRow; novelId: stri
   </div>;
 }
 
-/** 功能：在来源章查看记录并单独确认心理或人物关系现状。Args: props 本书和来源章；只读入口无需提供可编辑章。Returns: 章后记录与独立作者确认稿。 */
-export default function ChapterRecords({ novelId, chapterId, chapter, choices = EMPTY_CHOICES, readOnly = false, refreshToken = 0, chapterReviewId, onNavigateItem, onBusy, onDirty, beforeLeaveRef, relationCheckVersion = 1 }: {
-  novelId: string; chapterId: string; chapter?: HierarchyRecord; choices?: EntityChoices; readOnly?: boolean; refreshToken?: number;
+/** 功能：在来源章查看记录并单独确认心理或人物关系现状。Args: props 本书和来源章；只读入口无需提供可编辑章；父页已有刷新入口时可关闭 showRefresh。Returns: 章后记录与独立作者确认稿。 */
+export default function ChapterRecords({ novelId, chapterId, chapter, choices = EMPTY_CHOICES, readOnly = false, refreshToken = 0, showRefresh = true, refreshClassName = "", chapterReviewId, onNavigateItem, onBusy, onDirty, beforeLeaveRef, relationCheckVersion = 1 }: {
+  novelId: string; chapterId: string; chapter?: HierarchyRecord; choices?: EntityChoices; readOnly?: boolean; refreshToken?: number; showRefresh?: boolean; refreshClassName?: string;
   chapterReviewId?: string | null; onNavigateItem?: (itemId: string, chapterId: string, reviewId: string) => void;
   onBusy?: (busy: boolean) => void; onDirty?: (dirty: boolean) => void;
   beforeLeaveRef?: RefObject<(() => Promise<void>) | null>;
@@ -435,17 +437,21 @@ export default function ChapterRecords({ novelId, chapterId, chapter, choices = 
 
   // 弹窗已隔离背景交互；入口保持可聚焦，交给 HeroUI 在关闭后恢复焦点。
   return <section data-testid="chapter-records" aria-label={t("title")} className="grid min-w-0 gap-4">
-    <header className="flex flex-wrap items-center justify-between gap-2"><h2 className="sr-only">{t("title")}</h2><Button size="sm" variant="ghost" isDisabled={loading || saving} onPress={() => setRefresh((value) => value + 1)}>{t("refresh")}</Button></header>
+    <h2 className="sr-only">{t("title")}</h2>
+    {showRefresh && <div className={`flex justify-end ${refreshClassName}`}><SectionActionButton action="refresh" label={t("refresh")} size="sm" variant="ghost" isDisabled={loading || saving} onPress={() => setRefresh((value) => value + 1)} /></div>}
     {(readOnly || chapter?.is_deleted) && <p role="status" className="border-l-2 border-amber-500 px-3 text-sm">{t("readOnly")}</p>}
     {loadError && <RelationEditorErrorSummary message={loadError} />}
     {localError && !draft && !readOnly && <RelationEditorErrorSummary message={localError} />}
     {loading && <p role="status">{t("loading")}</p>}
     {message && <p role="status" className="text-sm">{message}</p>}
     {writable && chapter && <ChapterCheckReview novelId={novelId} chapter={chapter} choices={choices} relationCheckVersion={relationCheckVersion} itemCheckVersion={2} selectedReviewId={chapterReviewId} disabled={saving || loading || Boolean(loadError)} opening={opening} refreshToken={`${refresh}:${refreshToken}:${draft?.key ?? ""}`} onResumeDraft={(stored) => { void openDraft(stored.mode, stored); }} onNavigateItem={onNavigateItem} />}
-    {!readOnly && drafts.length > 0 && <details><summary className="min-h-11 cursor-pointer py-2 text-sm text-accent">{t("localDrafts", { count: drafts.length })}</summary><ul className="divide-y divide-border">{drafts.map((stored) => <li key={stored.key} className="flex min-w-0 flex-wrap items-center justify-between gap-2 py-2"><span className="min-w-0 break-words text-sm">{draftTitle(stored)} · {t(stored.command?.saved ? "savedPending" : stored.command && stored.command.unknown !== false ? "unknown" : stored.command ? "rejected" : "draft")}</span><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" isDisabled={saving} aria-disabled={opening || undefined} onPress={() => { if (!openingRef.current) void openDraft(stored.mode, stored); }}>{t("resume")}</Button>{!stored.relationFact && (!stored.review || stored.command?.saved) && (!stored.command || stored.command.unknown === false || stored.command.saved) && <Button size="sm" variant="ghost" isDisabled={Boolean(draft) || saving} onPress={async () => {
-      try { await writeChapterRecordDraft(scope, stored, stored.revision, true); setDrafts(await readChapterRecordDrafts(scope)); setLocalError(""); }
-      catch { setLocalError(t("localFailed")); }
-    }}>{t("discard")}</Button>}</div></li>)}</ul></details>}
+    {!readOnly && drafts.length > 0 && <div role="group" className="flex flex-wrap gap-2" aria-label={t("localDrafts", { count: drafts.length })}>
+      {drafts.map((stored) => <DraftChip key={stored.key} label={draftTitle(stored)} status={stored.command?.saved ? "saved" : stored.command ? stored.command.unknown !== false ? "pending" : "rejected" : "draft"} isDisabled={saving} isResumeDisabled={opening} isDiscardDisabled={opening || Boolean(draft)}
+        onResume={() => { if (!openingRef.current) void openDraft(stored.mode, stored); }}
+        onDiscard={!stored.relationFact && (!stored.review || stored.command?.saved) && (!stored.command || stored.command.unknown === false || stored.command.saved) ? async () => {
+          await writeChapterRecordDraft(scope, stored, stored.revision, true); setDrafts(await readChapterRecordDrafts(scope)); setLocalError("");
+        } : undefined} />)}
+    </div>}
     <DocumentSection number="01" title={t("events")}>
       {writable && <Button size="sm" variant="outline" isDisabled={loading || Boolean(loadError)} onPress={() => openDraft("event")}>{t("confirmEvent")}</Button>}
       {!loading && events.length === 0 && <p className="py-3 text-sm text-muted">{t("noEvents")}</p>}

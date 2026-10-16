@@ -1,16 +1,18 @@
 "use client";
 import { useAssistantFocus, useAssistantRefresh, useAssistantResource } from "../assistant/AssistantContext";
-import { RetainedModalBackdrop } from "@/components/layout/RetainedViews";
+import { RetainedModalBackdrop, RetainedViewActive } from "@/components/layout/RetainedViews";
 
 
 import { TooltipHint } from "@/components/shared/TooltipHint";
 import SidebarEdgeHandle from "@/components/shared/SidebarEdgeHandle";
 import ReadOnlyField from "@/components/shared/ReadOnlyField";
+import DraftChip from "@/components/shared/DraftChip";
+import { readCharacterVolumePlanDrafts, writeCharacterVolumePlanDraft, writeCharacterVolumePlanReceipt, type CharacterVolumePlanDraft } from "./characterVolumePlanDrafts";
 import SectionEditButton, { SectionActionButton } from "@/components/shared/SectionEditButton";
 import DocumentSection from "@/components/shared/DocumentSection";
 import { Button, Modal } from "@heroui/react";
 import { useTranslations } from "next-intl";
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import {
   ConfirmActionModal,
@@ -54,6 +56,7 @@ import VolumeEntityCandidateWorkspace from "../volume-entities/VolumeEntityCandi
 export interface CharacterVolumeStateWorkspaceProps {
   novelId: string;
   fixedVolumeId: string;
+  requestedEntityId?: string | null;
   fixedVolumeTitle: string;
   fixedVolumeOrderIndex: number;
   fixedVolumeDeleted?: boolean;
@@ -139,11 +142,15 @@ const NO_STATES: CharacterVolumeStateReadV1[] = [];
  * @returns 可独立滚动的名册与原位分节编辑详情。
  */
 export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStateWorkspaceProps) {
+  const active = useContext(RetainedViewActive);
+  const activeRef = useRef(active); activeRef.current = active;
   const t = useTranslations("writing.characterVolumeStates");
   const listT = useTranslations("writing.listLayout");
   const aiT = useTranslations("writing.volumeEntitiesAi");
   const factT = useTranslations("writing.characterFacts");
   const [aiOpen, setAiOpen] = useState(false);
+  const [aiMinimized, setAiMinimized] = useState(false);
+  const aiTriggerRef = useRef<HTMLButtonElement>(null);
   const [adoptPreparation, setAdoptPreparation] = useState<Extract<CharacterFactPreparationV1, { kind: "create" }> | null>(null);
   const [adoptDraft, setAdoptDraft] = useState<CharacterFactDraftV1 | null>(null);
   const [adoptBusy, setAdoptBusy] = useState(false);
@@ -170,7 +177,8 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
   const [characters, setCharacters] = useState<CharacterResponseV1[]>([]);
   const [relations, setRelations] = useState<CharacterRelationResponseV1[]>([]);
   const [volumes, setVolumes] = useState<VolumeReadV2[]>([]);
-  const [previousStateCharacterIds, setPreviousStateCharacterIds] = useState<string[]>([]);
+  const [previousPlans, setPreviousPlans] = useState<{ volumeTitle: string; fields: Record<string, CharacterVolumePlanFieldsV1> } | null>(null);
+  const previousStateCharacterIds = Object.keys(previousPlans?.fields ?? {});
   const [previousStatesError, setPreviousStatesError] = useState("");
   const [loadedContextKey, setLoadedContextKey] = useState("");
   const [loading, setLoading] = useState(false);
@@ -190,6 +198,7 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
   const editTriggerRef = useRef<HTMLElement | null>(null);
   const [editor, setEditor] = useState<EditorState>(null);
   const [draft, setDraft] = useState<CharacterVolumePlanFieldsV1>(EMPTY_FIELDS);
+  const [previousPlanUse, setPreviousPlanUse] = useState<"pristine" | "edited" | "used">("pristine");
   const [editorError, setEditorError] = useState("");
   const [editorFieldErrors, setEditorFieldErrors] = useState<ApiFieldErrors>({});
   const [editorConflict, setEditorConflict] = useState(false);
@@ -203,10 +212,61 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
   const [initializeCharacterIds, setInitializeCharacterIds] = useState<string[]>([]);
   const [initializeError, setInitializeError] = useState("");
   const [initializing, setInitializing] = useState(false);
+  const initializeCommandRef = useRef<{ key: string; characterIds: string[] } | null>(null);
   const loadAbortRef = useRef<AbortController | null>(null);
   const mutationAbortRef = useRef<AbortController | null>(null);
   const contextKeyRef = useRef(contextKey);
-  const createCommandRef = useRef<{ fingerprint: string; key: string } | null>(null);
+  const planRef = useRef<CharacterVolumePlanDraft | null>(null);
+  const persistedPlans = useRef(new Map<string, CharacterVolumePlanDraft>());
+  const planQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const [planDrafts, setPlanDrafts] = useState<CharacterVolumePlanDraft[]>([]);
+  const [planLocalError, setPlanLocalError] = useState("");
+  const [planLoading, setPlanLoading] = useState(true);
+  const planScope = `${props.novelId}:character-volume-plans:${fixedVolumeId}`;
+  const planCommand = planRef.current?.command;
+  const planLocked = Boolean(planCommand?.unknown || planCommand?.saved);
+
+  const refreshPlanDrafts = useCallback(async () => {
+    const rows = await readCharacterVolumePlanDrafts(planScope);
+    if (contextKeyRef.current === contextKey) setPlanDrafts(rows);
+  }, [contextKey, planScope]);
+
+  useEffect(() => {
+    let live = true;
+    setPlanLoading(true); setPlanLocalError(""); setPlanDrafts([]);
+    void refreshPlanDrafts().catch(() => { if (live) setPlanLocalError(t("recovery.localFailed")); })
+      .finally(() => { if (live) setPlanLoading(false); });
+    const refresh = () => { void refreshPlanDrafts().catch(() => { if (live) setPlanLocalError(t("recovery.localFailed")); }); };
+    window.addEventListener("focus", refresh);
+    return () => { live = false; window.removeEventListener("focus", refresh); };
+  }, [refreshPlanDrafts, t]);
+
+  // 每份稿独立排队，完成事务后才推进持有版本；失败时保留输入。
+  const persistPlan = useCallback((value: CharacterVolumePlanDraft, remove = false, rejected = false) => {
+    const scope = `${props.novelId}:character-volume-plans:${value.editor.volumeId}`;
+    const snapshot = structuredClone(value);
+    const task = planQueue.current.then(async () => {
+      const result = await writeCharacterVolumePlanDraft(scope, snapshot, persistedPlans.current.get(snapshot.key) ?? null, remove, rejected);
+      if (remove) persistedPlans.current.delete(snapshot.key);
+      else persistedPlans.current.set(snapshot.key, result);
+      return result;
+    });
+    planQueue.current = task.catch(() => {});
+    return task;
+  }, [props.novelId]);
+  const beginPlan = (nextEditor: NonNullable<EditorState>, fields: CharacterVolumePlanFieldsV1, use: CharacterVolumePlanDraft["previousPlanUse"] = "pristine") => {
+    planRef.current = { key: crypto.randomUUID(), revision: 0, editor: nextEditor, fields, previousPlanUse: use };
+    setPlanLocalError("");
+  };
+  useEffect(() => {
+    const current = planRef.current;
+    if (!editor || !current || current.command?.unknown || current.command?.saved) return;
+    if (JSON.stringify([current.editor, current.fields, current.previousPlanUse]) === JSON.stringify([editor, draft, previousPlanUse])) return;
+    const next = { ...current, revision: current.revision + 1, editor, fields: draft, previousPlanUse };
+    planRef.current = next;
+    void persistPlan(next).catch(() => { if (planRef.current?.key === next.key) setPlanLocalError(t("recovery.localFailed")); });
+  }, [editor, draft, previousPlanUse, persistPlan, t]);
+
   contextKeyRef.current = contextKey;
 
   const workspaceReady = loadedContextKey === contextKey;
@@ -223,10 +283,7 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
     () => new Set(visibleStates.map((state) => state.character_id)),
     [visibleStates],
   );
-  const previousStateCharacterIdSet = useMemo(
-    () => new Set(previousStateCharacterIds),
-    [previousStateCharacterIds],
-  );
+  const previousStateCharacterIdSet = new Set(previousStateCharacterIds);
   const availableCreateCharacters = characters.filter((character) => (
     character.status === "active"
     && !character.is_deleted
@@ -279,11 +336,11 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
       if (relationSource.status === "rejected") throw relationSource.reason;
       if (volumeSource.status === "rejected") throw volumeSource.reason;
       const [stateResponse, characterResponse, relationResponse, volumeResponse] = [stateSource.value, characterSource.value, relationSource.value, volumeSource.value] as const;
-      let previousIds: string[] = [];
+      let previousPlanSource: typeof previousPlans = null;
       let previousError = "";
       if (fixedVolumeId && !fixedVolumeDeleted && fixedVolumeOrderIndex !== null) {
         const previousVolume = volumeResponse.data
-          .filter((volume) => volume.order_index < fixedVolumeOrderIndex)
+          .filter((volume) => !volume.is_deleted && volume.order_index < fixedVolumeOrderIndex)
           .sort((left, right) => right.order_index - left.order_index)[0];
         if (previousVolume) {
           try {
@@ -292,7 +349,9 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
               { signal: controller.signal },
             );
             if (controller.signal.aborted || contextKeyRef.current !== requestContextKey) return;
-            previousIds = previousStates.data.map((state) => state.character_id);
+            previousPlanSource = { volumeTitle: previousVolume.title, fields: Object.fromEntries(previousStates.data
+              .filter((state) => !state.is_deleted && state.volume_id === previousVolume.volume_id)
+              .map((state) => [state.character_id, draftFromState(state)])) };
           } catch {
             if (controller.signal.aborted || contextKeyRef.current !== requestContextKey) return;
             previousError = t("errors.previousStatesLoad");
@@ -303,7 +362,7 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
       setCharacters(characterResponse.data);
       setRelations(relationResponse.data);
       setVolumes(volumeResponse.data);
-      setPreviousStateCharacterIds(previousIds);
+      setPreviousPlans(previousPlanSource);
       setPreviousStatesError(previousError);
       setLoadedContextKey(requestContextKey);
       setLoadError("");
@@ -357,7 +416,7 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
     setCharacters([]);
     setRelations([]);
     setVolumes([]);
-    setPreviousStateCharacterIds([]);
+    setPreviousPlans(null);
     setPreviousStatesError("");
     setLoadedContextKey("");
     setSelectedStateId("");
@@ -368,6 +427,7 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
     setEditor(null);
     setLifecycleIntent(null);
     setInitializeOpen(false);
+    initializeCommandRef.current = null;
     setSaving(false);
     setActionStateId("");
     setInitializing(false);
@@ -378,7 +438,7 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
     setConflictRefreshing(false);
     setLifecycleError("");
     setInitializeError("");
-    createCommandRef.current = null;
+    planRef.current = null;
     return () => {
       loadAbortRef.current?.abort();
       mutationAbortRef.current?.abort();
@@ -400,9 +460,9 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
   const beforeLeaveRef = props.beforeLeaveRef;
   useEffect(() => {
     if (!beforeLeaveRef) return;
-    beforeLeaveRef.current = async () => { await legacyBeforeLeaveRef.current?.(); await adoptBeforeLeaveRef.current?.(); await factsBeforeLeaveRef.current?.(); };
+    beforeLeaveRef.current = async () => { if (planRef.current) await persistPlan(planRef.current); await legacyBeforeLeaveRef.current?.(); await adoptBeforeLeaveRef.current?.(); await factsBeforeLeaveRef.current?.(); };
     return () => { beforeLeaveRef.current = null; };
-  }, [beforeLeaveRef]);
+  }, [beforeLeaveRef, persistPlan]);
 
   const leaveFacts = async (change: () => void) => {
     if (busy) return;
@@ -425,7 +485,7 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
   }, [busy, onBusyChange]);
 
   useEffect(() => {
-    if (!editor?.source || !editorError) return;
+    if (!active || !editor?.source || !editorError) return;
     const frame = requestAnimationFrame(() => {
       const target = detailRef.current?.querySelector<HTMLElement>("[aria-invalid='true']")
         ?? detailRef.current?.querySelector<HTMLElement>("[data-editor-error-summary]");
@@ -433,7 +493,25 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
       target?.scrollIntoView?.({ block: "nearest" });
     });
     return () => cancelAnimationFrame(frame);
-  }, [editor, editorError, editorFieldErrors]);
+  }, [active, editor, editorError, editorFieldErrors]);
+
+  const requestedEntity = characters.find((row) => row.character_id === props.requestedEntityId);
+  const requestedState = states.find((row) => row.character_id === props.requestedEntityId);
+  const requestedEntityKey = `${contextKey}:${props.requestedEntityId ?? ""}`;
+  const [dismissedEntity, setDismissedEntity] = useState("");
+  const unplannedEntity = workspaceReady && requestedEntity && !requestedState && !fixedVolumeDeleted && dismissedEntity !== requestedEntityKey ? requestedEntity : null;
+  const consumedEntity = useRef("");
+  useEffect(() => {
+    if (!active) { consumedEntity.current = ""; setDismissedEntity(""); return; }
+    if (!active || !workspaceReady || loading || busy || !props.requestedEntityId) return;
+    const key = `${contextKey}:${props.requestedEntityId}`;
+    if (consumedEntity.current === key) return;
+    if (requestedState) {
+      setSelectedStateId(requestedState.state_id); setSearch(""); setScopeFilter("all");
+      setShowTrash(Boolean(requestedState.is_deleted)); setDetailOpen(true);
+    }
+    consumedEntity.current = key;
+  }, [active, workspaceReady, loading, busy, contextKey, props.requestedEntityId, requestedState]);
 
   const selectedState = filteredStates.find((state) => state.state_id === selectedStateId)
     ?? filteredStates[0] ?? null;
@@ -448,21 +526,25 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
   }, [contextKey, selectedState?.state_id]);
   useAssistantRefresh(props.novelId, async () => { await loadWorkspace(); });
   useAssistantFocus("character_volume_state", (target) => { if (busy || !visibleStates.some((state) => state.state_id === target.id)) return false; void leaveFacts(() => { setSelectedStateId(target.id); setShowTrash(Boolean(visibleStates.find((state) => state.state_id === target.id)?.is_deleted)); setSearch(""); setScopeFilter("all"); setDetailOpen(true); }); });
-  useAssistantResource(selectedState ? { resource_type: "character_volume_state", id: selectedState.state_id, name: selectedState.state_id, version: selectedState.version, draft: editor?.source?.state_id === selectedState.state_id ? { text: JSON.stringify(draft), fields: Object.keys(draft), version: editor.source.version } : undefined } : null);
+  useAssistantResource(unplannedEntity
+    ? { resource_type: "character", id: unplannedEntity.character_id, name: unplannedEntity.name, version: unplannedEntity.version }
+    : selectedState ? { resource_type: "character_volume_state", id: selectedState.state_id, name: selectedState.state_id, version: selectedState.version, draft: editor?.source?.state_id === selectedState.state_id ? { text: JSON.stringify(draft), fields: Object.keys(draft), version: editor.source.version } : undefined } : null);
 
   const openCreate = (characterId: string, volumeId: string) => {
-    editTriggerRef.current = null;
+    editTriggerRef.current = document.activeElement as HTMLElement;
     setDraft({ ...EMPTY_FIELDS });
+    setPreviousPlanUse("pristine");
     setEditor({ characterId, volumeId, source: null });
     setEditorError("");
     setEditorFieldErrors({});
     setEditorConflict(false);
     setEditorConflictLatest(null);
-    createCommandRef.current = null;
+    beginPlan({ characterId, volumeId, source: null }, { ...EMPTY_FIELDS });
   };
 
   const openEdit = (state: CharacterVolumeStateReadV1, section: StateSection) => {
     editTriggerRef.current = document.activeElement as HTMLElement;
+    beginPlan({ characterId: state.character_id, volumeId: state.volume_id, source: state, section }, draftFromState(state));
     setDraft(draftFromState(state));
     setEditor({ characterId: state.character_id, volumeId: state.volume_id, source: state, section });
     requestAnimationFrame(() => detailRef.current?.querySelector<HTMLElement>("input, select, textarea")?.focus());
@@ -472,19 +554,28 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
     setEditorConflictLatest(null);
   };
 
-  const closeEditor = () => {
+  const closeEditor = async () => {
     if (saving || conflictRefreshing) return;
-    setEditor(null);
-    requestAnimationFrame(() => { if (editTriggerRef.current?.id) document.getElementById(editTriggerRef.current.id)?.focus(); });
-    setEditorError("");
-    setEditorFieldErrors({});
-    setEditorConflict(false);
-    setEditorConflictLatest(null);
-    createCommandRef.current = null;
+    const current = planRef.current;
+    try {
+      if (current) {
+        const unchanged = !current.command && JSON.stringify(current.fields) === JSON.stringify(current.editor.source ? draftFromState(current.editor.source) : EMPTY_FIELDS);
+        await persistPlan(current, unchanged);
+      }
+      if (planRef.current?.key !== current?.key) return;
+      planRef.current = null;
+      setEditor(null);
+      await refreshPlanDrafts();
+      if (planRef.current || contextKeyRef.current !== contextKey || !activeRef.current) return;
+      requestAnimationFrame(() => { if (editTriggerRef.current?.id) document.getElementById(editTriggerRef.current.id)?.focus(); });
+      setEditorError(""); setEditorFieldErrors({}); setEditorConflict(false); setEditorConflictLatest(null);
+    } catch { setPlanLocalError(t("recovery.localFailed")); }
   };
 
   const saveEditor = async () => {
-    if (!editor || saving) return;
+    if (!editor || saving || !planRef.current) return;
+    const original = planRef.current;
+    const recovering = Boolean(original.command?.unknown || original.command?.saved);
     const fields: CharacterVolumePlanFieldsV1 = {
       ...draft,
       current_goal: draft.current_goal.trim(),
@@ -501,7 +592,7 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
           Object.assign(payload, { [field]: fields[field] });
         }
       }
-      if (Object.keys(payload).length === 1) { closeEditor(); return; }
+      if (!recovering && Object.keys(payload).length === 1) { void closeEditor(); return; }
     }
     const fieldErrors: ApiFieldErrors = {};
     if (payload.current_goal !== undefined && !payload.current_goal) fieldErrors.current_goal = [t("validation.currentGoalRequired")];
@@ -512,92 +603,100 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
     if (payload.relationship_focus_ids && payload.relationship_focus_ids.length > 30) {
       fieldErrors.relationship_focus_ids = [t("validation.relationshipLimit")];
     }
-    if (Object.keys(fieldErrors).length > 0) {
+    if (!recovering && Object.keys(fieldErrors).length > 0) {
       setEditorError(t("errors.validation"));
       setEditorFieldErrors(fieldErrors);
       focusRelationEditorError(fieldErrors);
       return;
     }
-    if (!editor.source) {
-      const fingerprint = JSON.stringify({
-        novel_id: props.novelId,
-        volume_id: editor.volumeId,
-        character_id: editor.characterId,
-        payload,
-      });
-      if (createCommandRef.current?.fingerprint !== fingerprint) {
-        createCommandRef.current = {
-          fingerprint,
-          key: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
-        };
-      }
-    }
-    mutationAbortRef.current?.abort();
-    const controller = new AbortController();
-    const requestContextKey = contextKey;
-    mutationAbortRef.current = controller;
-    setSaving(true);
-    setEditorError("");
-    setEditorFieldErrors({});
-    setEditorConflict(false);
-    setEditorConflictLatest(null);
+    const command = recovering ? original.command! : {
+      key: original.command && JSON.stringify(original.command.body) === JSON.stringify(payload) ? original.command.key : crypto.randomUUID(), method: editor.source ? "PUT" as const : "POST" as const,
+      path: editor.source ? `/api/character-volume-states/novel/${props.novelId}/${editor.source.state_id}/plan`
+        : `/api/character-volume-states/novel/${props.novelId}/plans`,
+      body: { ...payload }, unknown: true,
+    };
+    let frozen: CharacterVolumePlanDraft = { ...original, revision: original.revision + 1, editor, fields: draft, previousPlanUse, command };
+    const requestContextKey = contextKey, scope = planScope;
+    const stillHere = () => contextKeyRef.current === requestContextKey && planRef.current?.key === original.key;
+    planRef.current = frozen;
+    setSaving(true); setEditorError(""); setEditorFieldErrors({}); setPlanLocalError("");
+    let dispatched = false, receiptStored = false;
     try {
-      const saved = editor.source
-        ? await apiPut<CharacterVolumeStateReadV1>(
-            `/api/character-volume-states/novel/${props.novelId}/${editor.source.state_id}/plan`,
-            payload,
-            { signal: controller.signal },
-          )
-        : await apiPost<CharacterVolumeStateReadV1>(
-            `/api/character-volume-states/novel/${props.novelId}/plans`,
-            payload,
-            { headers: { "Idempotency-Key": createCommandRef.current!.key }, signal: controller.signal },
-          );
-      if (controller.signal.aborted || contextKeyRef.current !== requestContextKey) return;
-      // 保存前发出的读取已过期，不能盖回刚保存的新版本。
-      loadAbortRef.current?.abort();
-      loadAbortRef.current = null;
-      setLoading(false);
-      if (editor.source) {
-        setStates((current) => [saved, ...current.filter((state) => state.state_id !== saved.state_id)]);
+      // 已收到成功时先补写回执，不能让磁盘上的未知稿阻止同页恢复。
+      if (frozen.command!.saved) {
+        await writeCharacterVolumePlanReceipt(scope, frozen.command!, frozen.command!.saved!);
+        receiptStored = true;
+      }
+      // 未知请求仍先核对最新稿；成功回执落盘后再核对并清理原稿。
+      frozen = await persistPlan(frozen);
+      if (stillHere()) planRef.current = frozen;
+      if (!frozen.command!.saved) {
+        dispatched = true;
+        const saved = await (command.method === "PUT" ? apiPut : apiPost)<CharacterVolumeStateReadV1>(command.path, command.body,
+          { headers: { "Idempotency-Key": command.key } });
+        if (!saved.state_id || !Number.isSafeInteger(saved.version) || saved.version < 1 || saved.novel_id !== props.novelId || saved.volume_id !== editor.volumeId || saved.character_id !== editor.characterId
+          || (editor.source && saved.state_id !== editor.source.state_id)) throw new Error("Invalid plan response");
+        frozen = { ...frozen, command: { ...command, saved, unknown: false } };
+        // 先记住已成功，再落回执；清稿或读取失败不能重新创建。
+        if (stillHere()) planRef.current = frozen;
+      }
+      if (!receiptStored) await writeCharacterVolumePlanReceipt(scope, frozen.command!, frozen.command!.saved!);
+      receiptStored = true;
+      persistedPlans.current.set(frozen.key, frozen);
+      if (!stillHere()) return;
+      loadAbortRef.current?.abort(); loadAbortRef.current = null; setLoading(false);
+      if (!recovering && editor.source) {
+        const saved = frozen.command!.saved!;
+        setStates((current) => [saved, ...current.filter((row) => row.state_id !== saved.state_id)]);
         setSelectedStateId(saved.state_id);
         props.onFormalFactsChanged?.();
       } else {
-        // 新建可能返回旧成功回执，只用后续读取的当前资料。
-        confirmedContextRef.current = { scope: contextKey, stateId: selectedStateIdRef.current };
-        setSelectedStateId(selectedStateIdRef.current);
+        // 创建回执和恢复回执可能很旧，只展示随后读取的当前资料。
+        if (!editor.source) setEditor(null);
         pendingVolumeRefreshRef.current = true;
-        setDetailOpen(true);
-        void loadWorkspace();
+        if (!await loadWorkspace()) throw new Error("Plan readback failed");
       }
-      setEditor(null);
-      requestAnimationFrame(() => { if (editTriggerRef.current?.id) document.getElementById(editTriggerRef.current.id)?.focus(); });
-      createCommandRef.current = null;
+      if (!stillHere()) return;
+      await persistPlan(frozen, true);
+      if (!stillHere()) return;
+      planRef.current = null; setEditor(null); setEditorConflict(false); setEditorConflictLatest(null);
+      await refreshPlanDrafts();
+      if (contextKeyRef.current === requestContextKey) requestAnimationFrame(() => {
+        if (activeRef.current && !planRef.current && editTriggerRef.current?.id) document.getElementById(editTriggerRef.current.id)?.focus();
+      });
     } catch (error) {
-      if (controller.signal.aborted || contextKeyRef.current !== requestContextKey) return;
-      if (error instanceof ApiRequestError) {
-        const factBlocked = error.code === "CHARACTER_FACT_MANAGED_FIELDS" || error.code === "CHARACTER_FACT_CONTRACT_REQUIRED";
-        setEditorError(factBlocked || !editor.source ? error.message : error.status === 409 ? t("errors.conflict") : t("errors.save"));
-        // 新建失败仍是原新建请求，不能凭后来读到一条记录改成更新。
-        setEditorConflict(Boolean(editor.source) && error.status === 409 && !factBlocked);
-        setEditorConflictLatest(null);
+      // 首发的明确拒绝才解锁；未知写后来的 409 不能证明首次未保存。
+      const rejected = dispatched && !recovering && !frozen.command?.saved && error instanceof ApiRequestError && error.status < 500;
+      if (rejected) {
+        frozen = { ...frozen, revision: frozen.revision + 1, command: { ...command, unknown: false } };
+        try { await persistPlan(frozen, false, true); }
+        catch { if (stillHere()) setPlanLocalError(t("recovery.localFailed")); return; }
+      }
+      if (!stillHere()) return;
+      planRef.current = frozen;
+      const localOnly = !dispatched && !recovering;
+      if (localOnly) {
+        // 登记失败没有发送，仍保留这次原稿供重试落盘。
+        setPlanLocalError(t("recovery.localFailed"));
+      }
+      const factBlocked = error instanceof ApiRequestError && (error.code === "CHARACTER_FACT_MANAGED_FIELDS" || error.code === "CHARACTER_FACT_CONTRACT_REQUIRED");
+      setEditorError(frozen.command?.saved ? t("recovery.saved") : rejected && error instanceof ApiRequestError
+        ? !editor.source || factBlocked ? error.message : error.status === 409 ? t("errors.conflict") : t("errors.save") : t("recovery.unknown"));
+      // 回执还没落盘时保留表单和内存成功，按钮继续重试回执；落盘后才交给草稿入口。
+      if (frozen.command?.saved && !editor.source && receiptStored) {
+        planRef.current = null; setEditor(null); setSaving(false);
+        try { await refreshPlanDrafts(); }
+        catch { if (contextKeyRef.current === requestContextKey) setPlanLocalError(t("recovery.localFailed")); }
+        if (contextKeyRef.current !== requestContextKey || planRef.current) return;
+      }
+      setEditorConflict(Boolean(rejected && editor.source && error instanceof ApiRequestError && error.status === 409));
+      setEditorConflictLatest(null);
+      if (rejected && error instanceof ApiRequestError) {
         const normalized: ApiFieldErrors = {};
-        for (const [field, messages] of Object.entries(error.fieldErrors)) {
-          const key = field.split(".").at(-1) ?? field;
-          normalized[key] = [...(normalized[key] ?? []), ...messages];
-        }
-        setEditorFieldErrors(normalized);
-        focusRelationEditorError(normalized);
-      } else {
-        setEditorError(t("errors.save"));
-        focusRelationEditorError({});
+        for (const [field, messages] of Object.entries(error.fieldErrors)) normalized[field.split(".").at(-1) ?? field] = messages;
+        setEditorFieldErrors(normalized); if (activeRef.current) focusRelationEditorError(normalized);
       }
-    } finally {
-      if (mutationAbortRef.current === controller && contextKeyRef.current === requestContextKey) {
-        mutationAbortRef.current = null;
-        setSaving(false);
-      }
-    }
+    } finally { if (stillHere()) setSaving(false); else if (contextKeyRef.current === requestContextKey && !planRef.current) setSaving(false); }
   };
 
   const refreshEditorConflict = async () => {
@@ -694,20 +793,16 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
     }
   };
 
+  // 兼容旧资料的完整状态复制；普通本卷计划使用上面的六字段填稿和 /plans。
   const runInitialize = async () => {
     if (!fixedVolumeId || initializing || initializeCharacterIds.length === 0) return;
     const requestContextKey = contextKey;
-    const fingerprint = JSON.stringify({
-      volume_id: fixedVolumeId,
-      character_ids: [...initializeCharacterIds].sort(),
-      skip_existing: false,
-    });
-    if (createCommandRef.current?.fingerprint !== fingerprint) {
-      createCommandRef.current = {
-        fingerprint,
-        key: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
-      };
-    }
+    const wasPending = Boolean(initializeCommandRef.current);
+    const command = initializeCommandRef.current ?? {
+      key: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+      characterIds: [...initializeCharacterIds],
+    };
+    initializeCommandRef.current = command;
     mutationAbortRef.current?.abort();
     const controller = new AbortController();
     mutationAbortRef.current = controller;
@@ -716,9 +811,9 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
     try {
       await apiPost<CharacterVolumeStateInitializeResultV1>(
         `/api/character-volume-states/novel/${props.novelId}/volume/${fixedVolumeId}/initialize-from-previous`,
-        { character_ids: initializeCharacterIds, skip_existing: false },
+        { character_ids: command.characterIds, skip_existing: false },
         {
-          headers: { "Idempotency-Key": createCommandRef.current.key },
+          headers: { "Idempotency-Key": command.key },
           signal: controller.signal,
         },
       );
@@ -729,10 +824,12 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
       pendingVolumeRefreshRef.current = true;
       setInitializeOpen(false);
       setInitializeCharacterIds([]);
-      createCommandRef.current = null;
+      initializeCommandRef.current = null;
       void loadWorkspace();
     } catch (error) {
       if (controller.signal.aborted || contextKeyRef.current !== requestContextKey) return;
+      // 原请求结果不明时，后来目标不可用等拒绝不能证明首次没有成功。
+      if (!wasPending && error instanceof ApiRequestError && error.status < 500) initializeCommandRef.current = null;
       setInitializeError(error instanceof ApiRequestError
         ? error.code === "CHARACTER_VOLUME_STATE_INITIALIZATION_CONFLICT" ? t("errors.initializeConflict") : error.message
         : t("errors.initialize"));
@@ -744,6 +841,9 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
     }
   };
 
+  const initializeCharacters = initializeCommandRef.current
+    ? initializeCommandRef.current.characterIds.map((characterId) => ({ character_id: characterId, name: characterNames.get(characterId) ?? characterId }))
+    : characters.filter((character) => character.status === "active" && !character.is_deleted && previousStateCharacterIdSet.has(character.character_id));
   const selectedEditorCharacter = editor
     ? characters.find((character) => character.character_id === editor.characterId) ?? null
     : null;
@@ -753,6 +853,8 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
 
   const renderEditorFields = editor && (
     <>
+      {planLocalError && <p role="alert" className="text-sm text-danger">{planLocalError}</p>}
+      {planLocked && !saving && !editorError && <p role="status" className="text-sm text-muted">{t(planCommand?.saved ? "recovery.saved" : "recovery.unknown")}</p>}
             {editorError && (
               <div className="mb-6">
                 <RelationEditorErrorSummary
@@ -855,11 +957,11 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
             <CharacterVolumeStateForm
               section={editor.section}
               value={draft}
-              onChange={setDraft}
+              onChange={(fields) => { setDraft(fields); setPreviousPlanUse((current) => current === "used" ? current : "edited"); }}
               characterId={editor.characterId}
               relations={relations}
               characterNames={characterNames}
-              disabled={saving || conflictRefreshing}
+              disabled={saving || conflictRefreshing || planLocked}
               fieldErrors={editorFieldErrors}
               errorIdPrefix={`character-volume-state-${editor.source?.state_id ?? "new"}`}
               autoFocusCurrentGoal={Boolean(editor.source)}
@@ -867,7 +969,7 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
     </>
   );
 
-  const renderEditor = editor && (!editor.source || !editor.section) && (
+  const renderEditor = editor && (!editor.source || !editor.section || !visibleStates.some((row) => row.state_id === editor.source?.state_id)) && (
     <RetainedModalBackdrop
       isOpen
       onOpenChange={(isOpen) => !isOpen && !saving && !conflictRefreshing && closeEditor()}
@@ -884,49 +986,66 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
                   ? t("editor.editTitle")
                   : fixedVolumeId ? t("editor.selectCharacterTitle") : t("editor.createTitle")}
               </Modal.Heading>
-              <p className="mt-1 break-words text-sm leading-6 text-muted">
-                {selectedEditorCharacter?.name ?? editor.characterId} · {editor.characterId}
-                <br />
-                {selectedEditorVolume?.title ?? fixedVolumeTitle ?? editor.volumeId} · {editor.volumeId}
-              </p>
+              <p className="mt-1 break-words text-sm leading-6 text-muted">{selectedEditorVolume?.title ?? fixedVolumeTitle}</p>
             </div>
             <Modal.CloseTrigger aria-label={t("actions.cancel")} isDisabled={saving || conflictRefreshing} />
           </Modal.Header>
           <Modal.Body className="min-h-0 px-5 py-6 sm:px-7">
             {!editor.source && !editor.adopted && fixedVolumeId && (
-              <label className="mb-6 grid gap-1.5 text-xs font-medium text-muted">
+              <label className="mb-4 grid gap-1.5 text-xs font-medium text-muted">
                 <span>{t("fields.character")}</span>
                 <select
                   value={editor.characterId}
                   onChange={(event) => {
                     setEditor({ ...editor, characterId: event.target.value });
                     setDraft({ ...EMPTY_FIELDS });
+                    setPreviousPlanUse("pristine");
                     setEditorError("");
                     setEditorFieldErrors({});
                     setEditorConflict(false);
                     setEditorConflictLatest(null);
-                    createCommandRef.current = null;
+                    beginPlan({ ...editor, characterId: event.target.value }, { ...EMPTY_FIELDS });
                   }}
-                  className={FILTER_CLASS}
-                  disabled={saving || conflictRefreshing}
+                  className={`${FILTER_CLASS} min-w-0 w-full`}
+                  disabled={saving || conflictRefreshing || planLocked}
                   autoFocus
                 >
                   {availableCreateCharacters.map((character) => (
-                    <option key={character.character_id} value={character.character_id}>{character.name} · {character.character_id}</option>
+                    <option key={character.character_id} value={character.character_id}>{character.name}</option>
                   ))}
                 </select>
               </label>
             )}
+            {(editor.source || editor.adopted || !fixedVolumeId) && <p className="mb-4 text-sm font-medium">{selectedEditorCharacter?.name ?? editor.characterId}</p>}
+            <CharacterFactsPanel novelId={props.novelId} characterId={editor.characterId}
+              initialPosition={{ version: 1, intent: "volume_start", target_type: "volume", target_id: editor.volumeId }} readOnly volumeStartPreview />
             {editor.adopted && <section className="mb-6 border-b border-border pb-5" aria-label={editor.source ? t("version", { version: editor.source.version }) : t("editor.noCurrentPlan")}>
               <h3 className="mb-3 text-sm font-semibold">{editor.source ? t("version", { version: editor.source.version }) : t("editor.noCurrentPlan")}</h3>
               {editor.source && <dl className="detail-fields grid gap-4">{PLAN_FIELDS.map((field) => <ReadOnlyField key={field} label={t(`fields.${FIELD_LABELS[field]}`)} wide value={field === "participation_scope" ? t(`scope.${editor.source!.participation_scope}`) : field === "relationship_focus_ids" ? relationNames(editor.source!, relations, characterNames).join(t("listSeparator")) || "—" : field === "arc_progress" ? `${editor.source!.arc_progress}%` : editor.source![field] || "—"} />)}</dl>}
             </section>}
-            {renderEditorFields}
+            <section className="mt-4 space-y-4 border-t border-border pt-4" aria-label={t("planTitle")}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold">{t("planTitle")}</h3>
+                {!editor.source && !editor.adopted && !anyStateCharacterIds.has(editor.characterId) && previousPlans?.fields[editor.characterId] && <Button size="sm" variant="outline"
+                  isDisabled={saving || conflictRefreshing || planLocked || previousPlanUse !== "pristine" || Boolean(planRef.current?.command)}
+                  onPress={() => {
+                    if (saving || conflictRefreshing || planLocked || previousPlanUse !== "pristine" || planRef.current?.command || anyStateCharacterIds.has(editor.characterId)) return;
+                    const fields = previousPlans?.fields[editor.characterId];
+                    if (!fields) return;
+                    setDraft(structuredClone(fields));
+                    setPreviousPlanUse("used");
+                  }}>{t("reusePrevious.action")}</Button>}
+              </div>
+              {!editor.source && !editor.adopted && previousPlans?.fields[editor.characterId] && !anyStateCharacterIds.has(editor.characterId) && <p className="text-xs leading-6 text-muted" role={previousPlanUse === "used" ? "status" : undefined}>
+                {t(previousPlanUse === "used" ? "reusePrevious.used" : previousPlanUse === "edited" ? "reusePrevious.edited" : "reusePrevious.hint", { volume: previousPlans.volumeTitle })}
+              </p>}
+              {renderEditorFields}
+            </section>
           </Modal.Body>
           <Modal.Footer className="sticky bottom-0 flex justify-end gap-2 border-t border-border bg-surface px-5 py-4 sm:px-7">
             <Button variant="ghost" onPress={closeEditor} isDisabled={saving || conflictRefreshing}>{t("actions.cancel")}</Button>
             <Button variant="primary" onPress={() => void saveEditor()} isDisabled={saving || conflictRefreshing}>
-              {saving ? t("actions.saving") : t("actions.save")}
+              {saving ? t("actions.saving") : t(planCommand?.saved ? "recovery.finish" : planCommand?.unknown ? "recovery.retry" : "actions.save")}
             </Button>
           </Modal.Footer>
         </Modal.Dialog>
@@ -972,9 +1091,27 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
 
   return (
     <section className="@container/master flex min-h-0 flex-1 flex-col overflow-hidden" aria-labelledby={`volume-character-states-${fixedVolumeId}`}>
+      <div className={aiOpen && !aiMinimized ? "hidden" : "flex min-h-0 flex-1 flex-col"}>
       <h3 id={`volume-character-states-${fixedVolumeId}`} className={fixedVolumeDeleted ? "mb-4 text-sm font-semibold tracking-normal text-foreground" : "sr-only"}>
         {fixedVolumeDeleted ? t("trashSection.title") : t("volumeSection.title")}
       </h3>
+      {!editor && <div className="flex shrink-0 flex-wrap gap-2">
+        {planLocalError && <p role="alert" className="text-sm text-danger">{planLocalError}</p>}
+        {planDrafts.map((row) => <DraftChip key={row.key} label={characterNames.get(row.editor.characterId) ?? row.editor.characterId}
+          status={row.command?.saved ? "saved" : row.command?.unknown ? "pending" : "draft"} isDisabled={busy || planLoading}
+          onResume={() => { void (async () => {
+            try {
+              const fresh = (await readCharacterVolumePlanDrafts(planScope)).find((item) => item.key === row.key);
+              if (!fresh || planRef.current || contextKeyRef.current !== contextKey) return;
+              persistedPlans.current.set(fresh.key, fresh); planRef.current = fresh;
+              setDraft(fresh.fields); setPreviousPlanUse(fresh.previousPlanUse); setEditor(fresh.editor);
+              if (fresh.editor.source) { setSelectedStateId(fresh.editor.source.state_id); setDetailOpen(true); setSearch(""); setScopeFilter("all"); }
+              setEditorError(""); setEditorFieldErrors({}); setEditorConflict(false); setEditorConflictLatest(null); setPlanLocalError("");
+            } catch { setPlanLocalError(t("recovery.localFailed")); }
+          })(); }} onDiscard={row.command?.unknown ? undefined : async () => {
+            await writeCharacterVolumePlanDraft(planScope, row, row, true); await refreshPlanDrafts();
+          }} />)}
+      </div>}
       <div className={`workspace-toolbar ${detailOpen && selectedState ? "hidden @min-[800px]/master:flex" : "flex"} shrink-0 flex-wrap items-end gap-2 border-b border-border pb-3`}>
         {props.toolbarBefore}
         <label className="grid min-w-[140px] flex-[1_1_160px] gap-1.5 text-xs font-medium text-muted">
@@ -993,19 +1130,25 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
             {PARTICIPATION_SCOPES.map((scope) => <option key={scope} value={scope}>{t(`scope.${scope}`)}</option>)}
           </select>
         </label>
-        {fixedVolumeDeleted ? <p className="flex min-h-10 items-center text-sm text-muted">{t("filters.trash")}</p> : <label className="flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap text-sm text-foreground">
-          <input type="checkbox" disabled={busy} checked={showTrash} onChange={(event) => { const value = event.target.checked; void leaveFacts(() => setShowTrash(value)); }} className="size-4 accent-accent" />{t("filters.trash")}
-        </label>}
+        {fixedVolumeDeleted ? <p className="flex min-h-10 items-center text-sm text-muted">{t("filters.trash")}</p> : <TooltipHint text={t("filters.trash")}>
+          <Button isIconOnly size="sm" variant="ghost" aria-label={t("filters.trash")} aria-pressed={showTrash} isDisabled={busy} className={`size-11 shrink-0 sm:size-10 ${showTrash ? "border border-accent bg-selected text-accent" : "text-muted"}`} onPress={() => { const value = !showTrash; void leaveFacts(() => setShowTrash(value)); }}>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="size-4"><path d="M3 6h18M9 6V4h6v2M5 6l1 15h12l1-15M10 10v7M14 10v7" /></svg>
+          </Button>
+        </TooltipHint>}
         {!fixedVolumeDeleted && <>
-          <Button variant="outline" size="sm" isDisabled={busy || loading || Boolean(loadError) || !fixedVolume || props.generationDisabled} onPress={() => setAiOpen(true)}>{aiT("characters.open")}</Button>
-          <div className="flex items-center gap-1">
-            <Button variant="outline" size="sm" onPress={() => { setInitializeCharacterIds([]); setInitializeError(""); setInitializeOpen(true); createCommandRef.current = null; }} isDisabled={busy || loading || fixedVolumeOrderIndex === 1 || previousStateCharacterIds.length === 0}>{t("actions.initialize")}</Button>
-            {(fixedVolumeOrderIndex === 1 || previousStateCharacterIds.length === 0) && <TooltipHint text={fixedVolumeOrderIndex === 1 ? t("initialize.firstVolume") : t("initialize.noSourceStates")} />}
-          </div>
+          <Button ref={aiTriggerRef} variant="outline" size="sm" isDisabled={busy || loading || Boolean(loadError) || !fixedVolume || props.generationDisabled} onPress={() => { setAiMinimized(false); setAiOpen(true); }}>{aiT("characters.open")}</Button>
           {availableCreateCharacters.length > 0 && <Button variant="primary" size="sm" onPress={() => availableCreateCharacters[0] && fixedVolumeId && openCreate(availableCreateCharacters[0].character_id, fixedVolumeId)} isDisabled={busy || loading || !fixedVolume}>{t("actions.create")}</Button>}
         </>}
         <fieldset disabled={loading || Boolean(loadError)} className="contents">{props.toolbarAfter}</fieldset>
       </div>
+      {!fixedVolumeDeleted && (previousStateCharacterIds.length > 0 || initializeCommandRef.current) && <details className="shrink-0 border-b border-border py-2">
+        <summary className="cursor-pointer text-xs text-muted">{t("initialize.legacyTitle")}</summary>
+        <p className="mt-2 text-xs leading-6 text-muted">{t("initialize.legacyHint")}</p>
+        <Button variant="ghost" size="sm" isDisabled={busy || loading} onPress={() => {
+          setInitializeCharacterIds(initializeCommandRef.current?.characterIds ?? []);
+          setInitializeError(""); setInitializeOpen(true);
+        }}>{t(initializeCommandRef.current ? "initialize.resume" : "initialize.legacyAction")}</Button>
+      </details>}
       {props.beforeContent}
 
       {loadError && (
@@ -1017,7 +1160,15 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
       )}
       {loading && !workspaceReady ? (
         <div className="border-b border-border py-10 text-center text-sm text-muted" role="status">{t("loading")}</div>
-      ) : loadError && !savedReadFailed ? null : filteredStates.length === 0 ? (
+      ) : loadError && !savedReadFailed ? null : unplannedEntity ? (
+        <article aria-label={t("detail")} tabIndex={0} className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto bg-surface px-5 py-4 sm:px-7">
+          <div className="mb-3 flex flex-wrap items-center gap-3"><h3 className="min-w-0 break-words text-sm font-semibold">{unplannedEntity.name}</h3><Button size="sm" variant="ghost" isDisabled={busy} onPress={() => void leaveFacts(() => setDismissedEntity(requestedEntityKey))}>{t("actions.backToList")}</Button></div>
+          <CharacterFactsPanel novelId={props.novelId} characterId={unplannedEntity.character_id}
+            initialPosition={{ version: 1, intent: "volume_start", target_type: "volume", target_id: fixedVolumeId! }}
+            readOnly={Boolean(editor || saving)} onBusy={setFactsBusy}
+            beforeLeaveRef={factsBeforeLeaveRef} onChanged={async () => { await loadWorkspace(); }} />
+        </article>
+      ) : filteredStates.length === 0 ? (
         <div className="border-b border-dashed border-border py-10 text-center">
           <p className="text-sm font-medium text-foreground">
             {filtersActive ? t("empty.filteredTitle") : fixedVolumeDeleted ? t("empty.trashVolumeTitle") : t("empty.volumeTitle")}
@@ -1065,14 +1216,14 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
                 {selectedState.is_deleted ? <>
                   {selectedState.deletion_sources.includes("user") && <Button size="sm" variant="outline" isDisabled={busy} onPress={() => void leaveFacts(() => { setLifecycleIntent({ action: "restore", state: selectedState }); setLifecycleError(""); })}>{t("actions.restore")}</Button>}
                   <Button size="sm" variant="ghost" className="text-danger" isDisabled={busy} onPress={() => void leaveFacts(() => { setLifecycleIntent({ action: "hard-delete", state: selectedState }); setLifecycleError(""); })}>{t("actions.hardDelete")}</Button>
-                </> : <Button size="sm" variant="ghost" className="text-danger" isDisabled={busy} onPress={() => void leaveFacts(() => { setLifecycleIntent({ action: "soft-delete", state: selectedState }); setLifecycleError(""); })}>{t("actions.delete")}</Button>}
+                </> : <SectionActionButton action="trash" label={t("actions.delete")} size="sm" variant="ghost" className="text-danger" isDisabled={busy} onPress={() => void leaveFacts(() => { setLifecycleIntent({ action: "soft-delete", state: selectedState }); setLifecycleError(""); })} />}
               </div>
             </header>
             <div className="space-y-4">
               {STATE_SECTIONS.map((section) => <Fragment key={section}><DocumentSection number={section === "participation" ? "01" : "06"} title={t(SECTION_TITLES[section])}
                 actions={!selectedState.is_deleted && (editor?.source?.state_id === selectedState.state_id && editor.section === section ? <>
                   <SectionActionButton action="cancel" label={t("actions.cancel")} size="sm" variant="ghost" onPress={closeEditor} isDisabled={saving || conflictRefreshing} />
-                  <SectionActionButton action="save" label={saving ? t("actions.saving") : t("actions.save")} size="sm" variant="primary" onPress={() => void saveEditor()} isDisabled={saving || conflictRefreshing || editorConflict} />
+                  {planLocked ? <Button size="sm" variant="primary" onPress={() => void saveEditor()} isDisabled={saving || conflictRefreshing}>{t(planCommand?.saved ? "recovery.finish" : "recovery.retry")}</Button> : <SectionActionButton action="save" label={saving ? t("actions.saving") : t("actions.save")} size="sm" variant="primary" onPress={() => void saveEditor()} isDisabled={saving || conflictRefreshing || editorConflict} />}
                 </> : <SectionEditButton id={`character-state-edit-${selectedState.state_id}-${section}`} label={t("actions.edit")} isDisabled={busy} onPress={() => openEdit(selectedState, section)} />)}>
                 {editor?.source?.state_id === selectedState.state_id && editor.section === section ? renderEditorFields : <dl className="detail-fields grid min-w-0 gap-4">
                   {section === "participation" && <ReadOnlyField label={t("fields.character")} value={characterNames.get(selectedState.character_id) ?? selectedState.character_id} />}
@@ -1081,6 +1232,7 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
               </DocumentSection>
               {section === "participation" && <>
                 <CharacterFactsPanel novelId={props.novelId} characterId={selectedState.character_id} numberOffset={1}
+                  initialPosition={{ version: 1, intent: "volume_start", target_type: "volume", target_id: selectedState.volume_id }}
                   readOnly={fixedVolumeDeleted || selectedState.is_deleted || Boolean(editor) || legacyBusy}
                   onRead={setSelectedFacts}
                   onChanged={async () => {
@@ -1123,7 +1275,9 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
       {renderEditor}
       {renderLifecycle}
 
+      </div>
       {aiOpen && fixedVolume && <VolumeEntityCandidateWorkspace
+        minimized={aiMinimized} onMinimizedChange={setAiMinimized}
         key={`${props.novelId}:${fixedVolume.volume_id}:characters`}
         kind="characters" novelId={props.novelId} volume={fixedVolume}
         characters={characters} factions={[]} relations={relations}
@@ -1150,7 +1304,7 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
             setDraft(structuredClone(fields));
             setEditor({ characterId, volumeId: fixedVolume.volume_id, source, adopted: true });
             setEditorError(""); setEditorFieldErrors({}); setEditorConflict(false); setEditorConflictLatest(null);
-            createCommandRef.current = null;
+            beginPlan({ characterId, volumeId: fixedVolume.volume_id, source, adopted: true }, structuredClone(fields), "edited");
           } finally { if (contextKeyRef.current === contextKey) setAdoptBusy(false); }
         }}
         onAdoptCharacter={async (profile, candidateRef) => {
@@ -1166,7 +1320,7 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
             if (contextKeyRef.current === contextKey) setAdoptPreparation(preparation);
           } finally { if (contextKeyRef.current === contextKey) setAdoptBusy(false); }
         }}
-        onClose={() => { setAiOpen(false); void loadWorkspace(); }}
+        onClose={() => { setAiOpen(false); requestAnimationFrame(() => { if (aiTriggerRef.current?.getClientRects().length && !aiTriggerRef.current.closest("[inert]")) aiTriggerRef.current.focus({ preventScroll: true }); }); }}
         onSaved={(result) => {
           if (contextKeyRef.current !== contextKey) return;
           loadAbortRef.current?.abort();
@@ -1226,14 +1380,11 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
               </Modal.Header>
               <Modal.Body className="min-h-0 px-5 py-6 sm:px-7">
                 {initializeError && <RelationEditorErrorSummary message={initializeError} fieldErrors={{}} className="mb-5" />}
-                <fieldset disabled={initializing}>
+                {initializeCommandRef.current && <p role="status" className="mb-4 text-sm text-muted">{t("initialize.pending")}</p>}
+                <fieldset disabled={initializing || Boolean(initializeCommandRef.current)}>
                   <legend className="text-sm font-semibold text-foreground">{t("initialize.characters")}</legend>
                   <div className="mt-3 divide-y divide-border border-y border-border">
-                    {characters.filter((character) => (
-                      character.status === "active"
-                      && !character.is_deleted
-                      && previousStateCharacterIdSet.has(character.character_id)
-                    )).map((character) => {
+                    {initializeCharacters.map((character) => {
                       const checked = initializeCharacterIds.includes(character.character_id);
                       const exists = anyStateCharacterIds.has(character.character_id);
                       return (
@@ -1241,7 +1392,7 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
                           <input
                             type="checkbox"
                             checked={checked}
-                            disabled={exists}
+                            disabled={!checked && exists}
                             onChange={(event) => setInitializeCharacterIds((current) => event.target.checked
                               ? [...current, character.character_id]
                               : current.filter((id) => id !== character.character_id))}
@@ -1254,7 +1405,7 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
                         </label>
                       );
                     })}
-                    {previousStateCharacterIds.length === 0 && (
+                    {initializeCharacters.length === 0 && (
                       <p className="py-5 text-sm text-muted">{t("initialize.noSourceStates")}</p>
                     )}
                   </div>
@@ -1265,7 +1416,7 @@ export default function CharacterVolumeStateWorkspace(props: CharacterVolumeStat
               </Modal.Body>
               <Modal.Footer className="sticky bottom-0 flex justify-end gap-2 border-t border-border bg-surface px-5 py-4 sm:px-7">
                 <Button variant="ghost" onPress={() => setInitializeOpen(false)} isDisabled={initializing}>{t("actions.cancel")}</Button>
-                <Button variant="primary" onPress={() => void runInitialize()} isDisabled={initializing || initializeCharacterIds.length === 0}>{initializing ? t("actions.initializing") : t("actions.initialize")}</Button>
+                <Button variant="primary" onPress={() => void runInitialize()} isDisabled={initializing || initializeCharacterIds.length === 0}>{initializing ? t("actions.initializing") : t(initializeCommandRef.current ? "initialize.resume" : "initialize.legacyAction")}</Button>
               </Modal.Footer>
             </Modal.Dialog>
           </Modal.Container>

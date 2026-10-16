@@ -217,6 +217,7 @@ class NovelHardDeleteStatsV1(StrictResponseModel):
     location_generation_confirmation_receipts_deleted: int = Field(ge=0)
     volume_command_receipts_deleted: int = Field(ge=0)
     character_creation_batch_receipts_deleted: int = Field(default=0, ge=0)
+    faction_creation_batch_receipts_deleted: int = Field(default=0, ge=0)
     id_sequences_deleted: int = Field(ge=0)
     novel_deleted: Literal[1]
     cover_asset_deleted: Literal[0, 1]

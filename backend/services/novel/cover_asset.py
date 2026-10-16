@@ -20,7 +20,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 MAX_COVER_BYTES = 2 * 1024 * 1024
 MAX_COVER_DIMENSION = 4096
-COVER_DIR = Path(__file__).resolve().parents[3] / "static" / "covers"
+from backend.storage import COVERS_DIR as COVER_DIR
 
 _COVER_URL_RE = re.compile(
     r"^/static/covers/(?P<digest>[0-9a-f]{64})(?P<extension>\.jpg|\.png|\.webp)$"

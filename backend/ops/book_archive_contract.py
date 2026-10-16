@@ -26,9 +26,16 @@ REVISION_COLLECTIONS = (*COLLECTIONS, "chapter_revisions")
 FORESHADOWING_COLLECTIONS = (*REVISION_COLLECTIONS, "foreshadowings", "foreshadowing_creation_receipts")
 CHAPTER_RECORD_COLLECTIONS = (*FORESHADOWING_COLLECTIONS, "events", "chapter_reports", "entity_state_history", "chapter_record_confirmation_receipts")
 CHARACTER_BATCH_COLLECTIONS = (*CHAPTER_RECORD_COLLECTIONS, "character_creation_batch_receipts")
+FACTION_BATCH_COLLECTIONS = (*CHARACTER_BATCH_COLLECTIONS, "faction_creation_batch_receipts")
 # Dev 的势力归档占用 11；本分支的整批创建使用独立合同 12。
+FACTION_FACT_FORMAT_VERSION = 11
 CHARACTER_BATCH_FORMAT_VERSION = 12
-SUPPORTED_FORMAT_VERSIONS = (*range(1, 11), CHARACTER_BATCH_FORMAT_VERSION)
+COMBINED_FORMAT_VERSION = 13
+FACTION_VOLUME_START_FORMAT_VERSION = 14
+SUPPORTED_FORMAT_VERSIONS = tuple(range(1, 15))
+# v11/v12 是两条独立历史格式，不按版本大小互相放行扩展。
+FACTION_FACT_FORMAT_VERSIONS = (FACTION_FACT_FORMAT_VERSION, COMBINED_FORMAT_VERSION, FACTION_VOLUME_START_FORMAT_VERSION)
+CHARACTER_BATCH_FORMAT_VERSIONS = (CHARACTER_BATCH_FORMAT_VERSION, COMBINED_FORMAT_VERSION, FACTION_VOLUME_START_FORMAT_VERSION)
 
 # 与当前分配器和公开 ID 格式一致；序列保留删除过的 ID 和分配失败留下的空号。
 BUSINESS_IDS = {
@@ -139,6 +146,44 @@ def _snapshot_rows(rows: Any, location: str, novel_id: ObjectId, identity_field:
         identities.append(identity)
         seen.add(str(identity))
     return identities
+
+
+def _validate_faction_plan(document: dict, location: str, *, format_version: int) -> None:
+    """v14 新计划不含动态事实，原创建结果和摘要必须可独立复验。"""
+    from pydantic import ValidationError
+    from backend.llm.schemas.faction_volume_state_pydantic import FactionVolumePlanFieldsV1, FactionVolumePlanReadV1
+    from backend.db.write_contracts import canonical_request_hash
+
+    if format_version < 14:
+        raise ArchiveValidationError(location, "势力独立卷参与计划仅由 v14 承载，不能升级旧包")
+    dynamic = {"power_level", "resources", "public_stance", "influence_scope", "active_status"}
+    original = document.get("plan_creation_result")
+    if not isinstance(original, dict) or "plan_creation_result" in original:
+        raise ArchiveValidationError(location, "参与计划缺少独立的首次创建结果")
+    for row in (document, original):
+        if dynamic & row.keys() or row.get("content_contract") != "participation_plan_v1":
+            raise ArchiveValidationError(location, "参与计划不能保存实际状态或默认等级")
+        for field in ("creation_idempotency_key_hash", "creation_request_hash"):
+            if not isinstance(row.get(field), str) or re.fullmatch(r"[0-9a-f]{64}", row[field]) is None:
+                raise ArchiveValidationError(location, "参与计划及首次结果必须保留合法的原键与请求摘要")
+        public = {field: value for field, value in row.items() if field in FactionVolumePlanReadV1.model_fields}
+        for field in ("state_id", "novel_id", "volume_id", "source_state_id"):
+            if public.get(field) is not None:
+                public[field] = str(public[field])
+        try:
+            FactionVolumePlanReadV1.model_validate(public)
+        except ValidationError as exc:
+            raise ArchiveValidationError(location, "参与计划的公开内容或生命周期无效") from exc
+    immutable = ("_id", "state_id", "novel_id", "volume_id", "faction_id", "source_state_id", "created_at", "creation_idempotency_key_hash", "creation_request_hash")
+    if (any(original.get(field) != document.get(field) for field in immutable)
+            or original["version"] != 1 or original["is_deleted"] or original["created_at"] != original["updated_at"]):
+        raise ArchiveValidationError(location, "参与计划的首次结果身份、初始版本或审计不一致")
+    content = {field: original[field] for field in FactionVolumePlanFieldsV1.model_fields}
+    expected_hash = canonical_request_hash({"operation": "create_participation_plan", "novel_id": str(original["novel_id"]),
+        "volume_id": str(original["volume_id"]), "faction_id": original["faction_id"], "content": content,
+        **({"source_state_id": str(original["source_state_id"])} if original["source_state_id"] is not None else {})})
+    if original.get("creation_request_hash") != expected_hash or document["version"] == 1 and any(document[field] != original[field] for field in content):
+        raise ArchiveValidationError(location, "参与计划的首次内容、摘要或未更新原文不一致")
 
 
 def _validate_foreshadowing(document: dict, novel_id: ObjectId, location: str, by_id: dict, summary: dict, *, historical: bool = False) -> None:
@@ -1180,8 +1225,254 @@ def _validate_item_facts(documents: dict, by_id: dict, by_business: dict, locati
             required_sequences.add(entity)
 
 
+def _validate_faction_position_version(document: dict, location: str, format_version: int) -> None:
+    """按势力归档版本检查原记录和回执中的所有位置，不改写冻结内容。
+
+    Args:
+        document: 原势力历史或回执，尚未交给共享 DTO 解析。
+        location: 原文档在包内的位置。
+        format_version: 只有 v14 接受势力本卷起点。
+    Returns:
+        无；旧格式任何受管位置夹带本卷起点时明确拒绝。
+    """
+    if format_version == FACTION_VOLUME_START_FORMAT_VERSION:
+        return
+    positions = [("position", document.get("position"))]
+    request, result = document.get("request"), document.get("result")
+    data = request.get("data") if isinstance(request, dict) else None
+    basis = data.get("basis") if isinstance(data, dict) else None
+    if isinstance(basis, dict):
+        positions.append(("request.data.basis.position", basis.get("position")))
+        for field in ("reads", "targets", "field_sources"):
+            rows = basis.get(field)
+            if isinstance(rows, list):
+                positions.extend((f"request.data.basis.{field}.{index}.position", row.get("position"))
+                                 for index, row in enumerate(rows) if isinstance(row, dict))
+    record = result.get("record") if isinstance(result, dict) else None
+    if isinstance(record, dict):
+        positions.append(("result.record.position", record.get("position")))
+    for path, position in positions:
+        if isinstance(position, dict) and position.get("intent") == "volume_start":
+            raise ArchiveValidationError(f"{location}.{path}", "势力本卷开始位置需要 v14 备份格式")
+
+
+def _validate_faction_facts(documents: dict, by_id: dict, locations: dict, summary: dict, *, format_version: int) -> None:
+    """验证势力记录、逐字段处置及冻结原文，不把旧资料转成新事实。
+
+    Args:
+        documents: 按格式分派后的势力记录和回执。
+        by_id: 同书各集合的原 BSON 文档。
+        locations: 原文档在包内的位置。
+        summary: 累加回执与历史引用统计。
+        format_version: 本包版本；共享 DTO 扩展不能放宽旧包位置含义。
+    Returns:
+        无；原记录、读取依据、来源或身份不一致时拒绝归档。
+    """
+    import json
+    from backend.api.error_protocol import DomainApiError
+    from backend.db.write_contracts import canonical_request_hash
+    from backend.services.novel.faction_fact_contract import (
+        FACTION_FACT_PROFILE_FIELDS, FactionFactBasisV1,
+        parse_faction_fact_record, validate_faction_fact_receipt,
+    )
+    from backend.services.novel.faction_fact_reader import evaluate_faction_facts
+    from backend.services.novel.writing_position import PARENTS, writing_order
+
+    records, hashes, active = {}, {}, set()
+    for raw in documents["entity_state_history"]:
+        location = locations["entity_state_history", raw["_id"]]
+        _validate_faction_position_version(raw, location, format_version)
+        try:
+            row = parse_faction_fact_record(raw)
+        except (ValueError, TypeError, KeyError) as exc:
+            raise ArchiveValidationError(location, "势力记录的格式、身份或字段不正确") from exc
+        identity = row["history_id"]
+        records[identity] = row
+        hashes[identity] = canonical_request_hash({k: v for k, v in row.items() if k != "validity"})
+        _validate_character_fact_source(row, location, by_id, summary, relation_fact=True)
+        target = by_id["factions"].get(ObjectId(row["entity_id"]))
+        for field, validity in row["validity"].items():
+            if validity["state"] != "active":
+                continue
+            key = (ObjectId(row["entity_id"]), field, row["position"]["intent"], ObjectId(row["position"]["target_id"]))
+            if key in active:
+                raise ArchiveValidationError(location, "同一势力字段位置不能有两条活动记录")
+            active.add(key)
+            if (target is not None and row["position"]["intent"] == "book_start"
+                    and field in FACTION_FACT_PROFILE_FIELDS
+                    and (target.get(field) != row["after"][field]
+                         or field == "is_public" and type(target.get(field)) is not bool)):
+                raise ArchiveValidationError(location, "书初势力原文必须与主档镜像一致")
+
+    receipts, dispositions, bases = set(), {}, []
+    for raw in documents["chapter_record_confirmation_receipts"]:
+        location = locations["chapter_record_confirmation_receipts", raw["_id"]]
+        _validate_faction_position_version(raw, location, format_version)
+        try:
+            json.dumps(raw["request"], allow_nan=False)
+            json.dumps(raw["result"], allow_nan=False)
+            result = validate_faction_fact_receipt(raw)
+            basis = FactionFactBasisV1.model_validate(raw["request"]["data"]["basis"]).model_dump(mode="json", exclude_unset=True)
+        except (ValueError, TypeError, KeyError) as exc:
+            raise ArchiveValidationError(location, "势力回执须保留原请求、首次结果和正确摘要") from exc
+        _validate_character_fact_source(raw, location, by_id, summary, relation_fact=True)
+        row = result["record"]
+        if row is not None:
+            # 与 v10 相同，仅比较副本统一顶层 BSON 身份，保留原请求和结果中的写法。
+            original = {**row, **{key: str(ObjectId(row[key])) for key in ("history_id", "novel_id", "entity_id")}}
+            identity = original["history_id"]
+            if (identity in receipts or identity not in records
+                    or canonical_request_hash({k: v for k, v in original.items() if k != "validity"}) != hashes[identity]):
+                raise ArchiveValidationError(location, "势力记录必须对应唯一首次成功结果，原值和来源不能改写")
+            receipts.add(identity)
+        for change in result["validity_changes"]:
+            identity, field = change["history_id"], change["field"]
+            old = records.get(identity)
+            if ((identity, field) in dispositions or old is None or old["entity_id"] != result["entity_id"]
+                    or old["after_version"] >= result["after_version"] or old["validity"].get(field) != change["after"]):
+                raise ArchiveValidationError(location, "势力处置须对应更早同势力字段及当前终态")
+            dispositions[identity, field] = (result["after_version"], change["after"])
+        bases.append((basis, location))
+        summary["receipts"] += 1
+        summary["unique_keys"] += 1
+    if receipts != records.keys():
+        raise ArchiveValidationError("collections/entity_state_history.jsonl", "势力记录缺少唯一首次成功回执")
+    for identity, row in records.items():
+        location = locations["entity_state_history", ObjectId(identity)]
+        for field, validity in row["validity"].items():
+            if (validity["state"] != "active") != ((identity, field) in dispositions):
+                raise ArchiveValidationError(location, "势力字段替代或作废须保留完整回执")
+        for field in row["after"]:
+            previous = row["previous"].get(field)
+            references = [*row["resolves"].get(field, []), *([row["replaces"][field]] if field in row["replaces"] else []), *([previous] if previous else [])]
+            for ref in references:
+                old = records.get(ref)
+                if old is None or old["entity_id"] != row["entity_id"] or old["after_version"] >= row["after_version"] or field not in old["after"]:
+                    raise ArchiveValidationError(location, "势力来源和处置只能引用更早同势力同字段")
+            if previous and records[previous]["after"][field] != row["before"]["values"][field]:
+                raise ArchiveValidationError(location, "势力前值与原记录不一致")
+
+    legacy_identities, reference_identities = {}, {}
+    for basis, location in bases:
+        target = basis["target"]
+        target_version = target.get("version", 0)
+        expected_history = {identity for identity, row in records.items() if row["entity_id"] == target["entity_id"] and row["after_version"] <= target_version}
+        if len(basis["reads"]) != 1:
+            raise ArchiveValidationError(location, "势力准备必须保留唯一目标读取")
+        read = basis["reads"][0]
+        if {row["history_id"] for row in read["history"]} != expected_history:
+            raise ArchiveValidationError(location, "势力原读取须保留当时全部记录，不能漏读后假称未认领")
+        snapshots = []
+        for observation in read["history"]:
+            identity = observation["history_id"]
+            original = records[identity]
+            if (observation["entity_id"] != original["entity_id"] or observation["immutable_fingerprint"] != hashes[identity]
+                    or observation["validity"].keys() != original["validity"].keys()):
+                raise ArchiveValidationError(location, "势力原读取的身份、字段或记录摘要不一致")
+            for field, validity in observation["validity"].items():
+                change = dispositions.get((identity, field))
+                expected = change[1] if change and change[0] <= target_version else {"state": "active"}
+                if validity != expected:
+                    raise ArchiveValidationError(location, "势力原读取不能伪造当时有效状态")
+            snapshots.append({**original, "validity": observation["validity"]})
+        for snapshot in [*basis["targets"], *basis["field_sources"]]:
+            if canonical_request_hash({k: v for k, v in snapshot.items() if k != "validity"}) != hashes.get(snapshot["history_id"]):
+                raise ArchiveValidationError(location, "势力原值和处置快照不得改写")
+        directories = {kind: {} for kind in PARENTS}
+        seen = set()
+        for kind, rows in directories.items():
+            for entry in read["directory"]:
+                if entry["resource_type"] != kind:
+                    continue
+                identity, parent_id = ObjectId(entry["id"]), ObjectId(entry["parent_id"])
+                parent = PARENTS[kind]
+                if (kind, identity) in seen or (parent == "novel" and parent_id != ObjectId(read["novel_id"])) or (parent != "novel" and parent_id not in directories[parent]):
+                    raise ArchiveValidationError(location, "势力冻结目录的身份或完整父链不一致")
+                seen.add((kind, identity))
+                ancestors = {} if parent == "novel" else {k: v for k, v in directories[parent][parent_id].items() if k.endswith("_id")}
+                rows[identity] = {**ancestors, f"{parent}_id": parent_id, "order_index": entry["order_index"]}
+        position = read["position"]
+        if position["target_type"] == "novel":
+            order = () if ObjectId(position["target_id"]) == ObjectId(read["novel_id"]) else None
+        else:
+            anchored = directories[position["target_type"]].get(ObjectId(position["target_id"]))
+            order = writing_order(position["target_type"], anchored, directories) if anchored else None
+        if order is None or list(order) != position["order"]:
+            raise ArchiveValidationError(location, "势力原读取顺序与冻结目录不同")
+        expected_position = {**basis["position"], "version": 1}
+        if basis["kind"] == "change" and basis["operation"] != "void":
+            expected_position["intent"] = "chapter_before"
+        anchor_kind = basis["position"]["target_type"]
+        missing_anchor = (basis["operation"] == "void" and anchor_kind in {"chapter", "volume"}
+                          and ObjectId(basis["position"]["target_id"]) not in directories[anchor_kind])
+        if missing_anchor:
+            expected_position = {"version": 1, "intent": "book_start", "target_type": "novel", "target_id": read["novel_id"]}
+        if {k: v for k, v in position.items() if k != "order"} != expected_position:
+            raise ArchiveValidationError(location, "势力原读取必须对应准备位置，变化读取章前")
+        if anchor_kind in {"chapter", "volume"} and not missing_anchor:
+            for ref in basis["protected_sources"][1:]:
+                kind = ref["resource_type"]
+                frozen = directories[kind].get(ObjectId(ref["id"]))
+                if frozen is None or frozen[f"{PARENTS[kind]}_id"] != ObjectId(ref["parent_id"]):
+                    raise ArchiveValidationError(location, "势力预览来源父链必须等于原读取目录")
+        observations = {(row["chapter_id"], row["revision_id"]): row for row in read["sources"]}
+        needed = {(row["source"]["evidence"]["chapter_id"], row["source"]["evidence"]["revision_id"]) for row in snapshots if row["source"]["kind"] == "chapter"}
+        if set(observations) != needed or len(observations) != len(read["sources"]):
+            raise ArchiveValidationError(location, "势力原读取须保留全部且唯一的正文来源观察")
+        for source in observations.values():
+            if source["revision_valid"]:
+                revision = by_id["chapter_revisions"].get(ObjectId(source["revision_id"]))
+                if (revision is None or revision["chapter_id"] != ObjectId(source["chapter_id"])
+                        or revision["version"] != source["revision_version"] or revision["content_hash"] != source["revision_hash"]):
+                    raise ArchiveValidationError(location, "势力原有效来源须保留原章修订、版本和正文摘要")
+        source_checks = {}
+        for row in snapshots:
+            evidence = row["source"].get("evidence")
+            observed = observations[evidence["chapter_id"], evidence["revision_id"]] if evidence else None
+            source_checks[row["history_id"]] = bool(evidence is None or observed["parents_active"] and observed["revision_valid"]
+                and observed["content_hash"] == evidence["content_hash"] == observed["revision_hash"] and observed["revision_version"] == evidence["version"])
+        if target["kind"] == "existing":
+            try:
+                resolved = evaluate_faction_facts({**target, "_id": ObjectId(target["entity_id"]), "novel_id": ObjectId(target["novel_id"])}, snapshots, position, directories, source_checks)
+            except DomainApiError as exc:
+                raise ArchiveValidationError(location, "势力冻结原读取无法按原位置计算") from exc
+            fields = set(basis["fields"])
+            before = {key: {k: v for k, v in resolved[key].items() if k in fields} for key in ("values", "unknown")}
+            previous = {field: resolved["origins"].get(field) for field in fields}
+            blockers = {field: value for field, value in resolved["blockers"].items() if field in fields}
+            if basis["before"] != before or basis["previous"] != previous or basis["blockers"] != blockers:
+                raise ArchiveValidationError(location, "势力保存前值和阻断必须等于当时完整读取")
+        for legacy in basis["legacy_sources"]:
+            if legacy["kind"] == "profile":
+                continue
+            identity, volume_id = ObjectId(legacy["state_id"]), ObjectId(legacy["volume_id"])
+            binding = (legacy["faction_id"], volume_id)
+            if legacy_identities.setdefault(identity, binding) != binding:
+                raise ArchiveValidationError(location, "势力旧卷状态不能重绑原势力或卷")
+            state = _reference(identity, by_id["faction_volume_states"], location, summary, physical=True, historical=True)
+            if state is not None and (state["faction_id"] != binding[0] or state["volume_id"] != volume_id or type(state.get("version")) is not int or state["version"] < legacy["version"]):
+                raise ArchiveValidationError(location, "势力旧卷状态的身份、归属或版本与原预览不同")
+            volume = _reference(volume_id, by_id["volumes"], location, summary, physical=True, historical=True)
+            if volume is not None and legacy["volume"] is not None and (type(volume.get("version")) is not int or volume["version"] < legacy["volume"]["version"]):
+                raise ArchiveValidationError(location, "势力旧卷资料不能倒退原版本")
+        for observation in basis["reference_reads"]:
+            ref = observation["reference"]
+            if ref["entity_type"] not in {"character_volume_state", "faction_volume_state"}:
+                continue
+            name = ref["entity_type"] + "s"
+            identity = ObjectId(observation["entity_id"])
+            if identity != ObjectId(ref["entity_id"]):
+                raise ArchiveValidationError(location, "势力人工卷状态引用的物理身份不一致")
+            key = (name, identity)
+            if reference_identities.setdefault(key, ref["entity_id"]) != ref["entity_id"]:
+                raise ArchiveValidationError(location, "势力人工历史引用不能重绑")
+            actual = _reference(identity, by_id[name], location, summary, physical=True, historical=True)
+            if actual is not None and (type(actual.get("version")) is not int or actual["version"] < observation["version"]):
+                raise ArchiveValidationError(location, "势力人工历史引用版本不能倒退")
+
+
 def _validate_v9_history_identities(documents: dict, by_id: dict, by_business: dict, locations: dict,
-                                    summary: dict, sequence_minimum: dict, required_sequences: set, *, include_item_facts: bool = False) -> None:
+                                    summary: dict, sequence_minimum: dict, required_sequences: set, *, include_item_facts: bool = False, include_faction_facts: bool = False) -> None:
     """检查新旧记录是否重用了同一版本，或把业务编号换绑到另一个对象。
 
     Args:
@@ -1193,6 +1484,7 @@ def _validate_v9_history_identities(documents: dict, by_id: dict, by_business: d
         sequence_minimum: 含已删除身份的序列下限。
         required_sequences: 必须保留的序列类型。
         include_item_facts: v10 才增加物品身份检查，保持旧包的校验摘要不变。
+        include_faction_facts: 只在 v11/v13/v14 检查势力和人工引用身份。
     Returns:
         无；跨分支重用版本或重绑身份时拒绝。
     """
@@ -1207,8 +1499,8 @@ def _validate_v9_history_identities(documents: dict, by_id: dict, by_business: d
     for raw in documents["chapter_record_confirmation_receipts"]:
         location = locations["chapter_record_confirmation_receipts", raw["_id"]]
         schema, result = raw.get("schema_id"), raw["result"]
-        if schema in {"character.fact.receipt", "character_relation.fact.receipt"} or include_item_facts and schema == "item.fact.receipt":
-            kind = {"character.fact.receipt": "character", "character_relation.fact.receipt": "character_relation", "item.fact.receipt": "item"}[schema]
+        if schema in {"character.fact.receipt", "character_relation.fact.receipt"} or include_item_facts and schema == "item.fact.receipt" or include_faction_facts and schema == "faction.fact.receipt":
+            kind = {"character.fact.receipt": "character", "character_relation.fact.receipt": "character_relation", "item.fact.receipt": "item", "faction.fact.receipt": "faction"}[schema]
             if raw["operation"] == "void":
                 key = (kind, ObjectId(result["entity_id"]), result["after_version"])
                 if key in versions:
@@ -1220,6 +1512,14 @@ def _validate_v9_history_identities(documents: dict, by_id: dict, by_business: d
                 for reference in [*basis["read"]["references"], *basis["preview_references"]]:
                     if reference["entity_id"] is not None:
                         bindings.append((f"{reference['resource_type']}s", reference["entity_id"], reference["business_id"], reference["version"], location))
+                continue
+            if kind == "faction":
+                bindings.append(("factions", result["entity_id"], result["faction_id"], result["after_version"], location))
+                for reference in raw["request"]["data"]["basis"]["reference_reads"]:
+                    if reference["reference"]["entity_type"] in {"character_volume_state", "faction_volume_state"}:
+                        continue
+                    name = next(name for name, (_, entity, _) in BUSINESS_IDS.items() if entity == reference["reference"]["entity_type"])
+                    bindings.append((name, reference["entity_id"], reference["reference"]["entity_id"], reference["version"], location))
                 continue
             if kind == "character":
                 bindings.append(("characters", result["entity_id"], result["character_id"], result["after_version"], location))
@@ -1277,11 +1577,19 @@ def validate_documents(documents: dict[str, list[dict]], novel_id: ObjectId, *, 
         ID、父链、引用及五层数量摘要；不代表能安全导入任意数据库。
     """
     if type(format_version) is not int or format_version not in SUPPORTED_FORMAT_VERSIONS:
-        raise ArchiveValidationError("format_version", "本分支仅支持备份格式 1–10 和 12，不支持 Dev 势力格式 11")
-    if set(documents) not in (set(COLLECTIONS), set(REVISION_COLLECTIONS), set(FORESHADOWING_COLLECTIONS), set(CHAPTER_RECORD_COLLECTIONS), set(CHARACTER_BATCH_COLLECTIONS)):
+        raise ArchiveValidationError("format_version", "仅支持备份格式 1–14")
+    if set(documents) not in (set(COLLECTIONS), set(REVISION_COLLECTIONS), set(FORESHADOWING_COLLECTIONS), set(CHAPTER_RECORD_COLLECTIONS), set(CHARACTER_BATCH_COLLECTIONS), set(FACTION_BATCH_COLLECTIONS)):
         raise ArchiveValidationError("collections", "集合必须与当前版本白名单完全一致")
-    if "character_creation_batch_receipts" in documents and format_version != CHARACTER_BATCH_FORMAT_VERSION:
-        raise ArchiveValidationError("collections", "人物整批保存回执需要 v12 备份格式")
+    if "character_creation_batch_receipts" in documents and format_version not in CHARACTER_BATCH_FORMAT_VERSIONS:
+        raise ArchiveValidationError("collections", "人物整批保存回执需要 v12、v13 或 v14 备份格式")
+    if "faction_creation_batch_receipts" in documents and format_version != FACTION_VOLUME_START_FORMAT_VERSION:
+        raise ArchiveValidationError("collections", "势力整批保存回执需要 v14 备份格式")
+    if format_version in (FACTION_FACT_FORMAT_VERSION, *CHARACTER_BATCH_FORMAT_VERSIONS):
+        names = CHAPTER_RECORD_COLLECTIONS if format_version == FACTION_FACT_FORMAT_VERSION else CHARACTER_BATCH_COLLECTIONS
+        if format_version == FACTION_VOLUME_START_FORMAT_VERSION:
+            names = FACTION_BATCH_COLLECTIONS
+        if set(documents) != set(names):
+            raise ArchiveValidationError("collections", "集合必须与本版本白名单完全一致")
     if not isinstance(novel_id, ObjectId) or len(documents["novels"]) != 1:
         raise ArchiveValidationError("collections/novels.jsonl", "必须恰好包含 manifest 指定的一部作品")
     summary = {
@@ -1328,6 +1636,8 @@ def validate_documents(documents: dict[str, list[dict]], novel_id: ObjectId, *, 
             if name in ("character_volume_states", "faction_volume_states"):
                 if document.get("state_id") != identity:
                     raise ArchiveValidationError(f"{location}.state_id", "state_id 必须与 BSON _id 相同")
+                if name == "faction_volume_states" and ("content_contract" in document or "plan_creation_result" in document):
+                    _validate_faction_plan(document, location, format_version=format_version)
                 summary["business_ids"] += 1
 
             # 固定列举当前 indexes.py 中的标量唯一键，不加载索引模块或重写业务模型。
@@ -1592,8 +1902,86 @@ def validate_documents(documents: dict[str, list[dict]], novel_id: ObjectId, *, 
                 for row in rows:
                     if row.get("_id") != row["state_id"] or row.get("volume_id") != document["target_volume_id"]:
                         raise ArchiveValidationError(f"{location}.states", "状态快照 ID 或目标卷不一致")
+                if name == "faction_volume_state_initialization_receipts" and operation == "initialize_participation_plans_from_previous":
+                    from backend.db.write_contracts import canonical_request_hash
+                    from backend.llm.schemas.faction_volume_state_pydantic import FactionVolumeStateInitializeV1
+                    try:
+                        selected = FactionVolumeStateInitializeV1.model_validate({"faction_ids": document.get("faction_ids"), "skip_existing": False}).faction_ids
+                    except (ValueError, TypeError) as exc:
+                        raise ArchiveValidationError(location, "复制计划回执缺少原选择") from exc
+                    expected = {"operation": operation, "novel_id": str(novel_id), "target_volume_id": str(document["target_volume_id"]),
+                                "faction_ids": sorted(selected), "skip_existing": False}
+                    if (format_version < 14 or selected != sorted(selected) or document["source_volume_id"] == document["target_volume_id"]
+                            or [row.get("faction_id") for row in rows] != selected or document["request_hash"] != canonical_request_hash(expected)):
+                        raise ArchiveValidationError(location, "复制计划的原选择、请求摘要或完整结果不一致")
+                    source_ids = set()
+                    for index, row in enumerate(rows):
+                        if row.get("content_contract") != "participation_plan_v1":
+                            raise ArchiveValidationError(location, "新复制计划必须完整保留参与计划合同")
+                        if row.get("version") != 1 or {field: value for field, value in row.items() if field != "plan_creation_result"} != row.get("plan_creation_result"):
+                            raise ArchiveValidationError(location, "复制回执必须保持完整的首次创建结果，不能随当前计划更新")
+                        # 先删复制行再删来源是合法操作；原来源 ID 仍由首次创建摘要校验。
+                        source = _reference(row.get("source_state_id"), by_id["faction_volume_states"], f"{location}.states[{index}].source_state_id", summary, physical=True, historical=True)
+                        child_key = hashlib.sha256(f"faction-plan-copy:{document['idempotency_key_hash']}:{index}".encode()).hexdigest()
+                        if (source is not None and (source["volume_id"] != document["source_volume_id"] or source["faction_id"] != row["faction_id"])
+                                or row["source_state_id"] in identities or row["source_state_id"] in source_ids
+                                or row.get("creation_idempotency_key_hash") != child_key):
+                            raise ArchiveValidationError(location, "复制计划的来源身份或原子成员与原请求不一致")
+                        source_ids.add(row["source_state_id"])
             elif name == "volume_command_receipts":
-                if operation in ("create", "launch-package", "bulk-plan"):
+                if operation == "update_character_volume_plan":
+                    from backend.db.write_contracts import canonical_request_hash
+                    from backend.llm.schemas.character_volume_state_pydantic import CharacterVolumePlanUpdateV1, CharacterVolumeStateReadV1
+                    import unicodedata
+                    result, request = document.get("result"), document.get("request")
+                    if format_version < 14 or not isinstance(result, dict) or not isinstance(request, dict):
+                        raise ArchiveValidationError(location, "人物计划修改原成功回执只由 v14 承载")
+                    _snapshot_rows([result], f"{location}.result", novel_id, "state_id")
+                    # 回执恢复后会直接交给路由，未修改的字段也必须构成完整响应。
+                    public = {field: value for field, value in result.items() if field in CharacterVolumeStateReadV1.model_fields}
+                    for field in ("state_id", "novel_id", "volume_id", "source_state_id"):
+                        if public.get(field) is not None:
+                            public[field] = str(public[field])
+                    try:
+                        CharacterVolumeStateReadV1.model_validate(public)
+                    except (ValueError, TypeError) as exc:
+                        raise ArchiveValidationError(f"{location}.result", "首次人物计划修改响应不符合完整公开合同") from exc
+                    try:
+                        changes = CharacterVolumePlanUpdateV1.model_validate(request.get("changes")).model_dump(mode="json", exclude_unset=True)
+                    except (ValueError, TypeError) as exc:
+                        raise ArchiveValidationError(f"{location}.request", "原计划差量请求无效") from exc
+                    if (request != {"operation": operation, "novel_id": str(novel_id), "state_id": str(result["state_id"]), "changes": changes}
+                            or result.get("_id") != result["state_id"] or not isinstance(result["state_id"], ObjectId)
+                            or result.get("volume_id") != document.get("volume_id") or not isinstance(document.get("volume_id"), ObjectId)
+                            or result.get("version") not in (changes["expected_version"], changes["expected_version"] + 1)
+                            or any(result.get(field) != (unicodedata.normalize("NFKC", value).strip() if isinstance(value, str) else value) for field, value in changes.items() if field != "expected_version")
+                            or canonical_request_hash(request) != document["request_hash"]):
+                        raise ArchiveValidationError(f"{location}.result", "首次计划修改结果与原请求不一致")
+                    rows, identity_field, mapping = [result], "state_id", {"updated": str(result["state_id"])}
+                    volume_entity_receipt = True
+                elif operation == "update_faction_volume_plan":
+                    from backend.db.write_contracts import canonical_request_hash
+                    from backend.llm.schemas.faction_volume_state_pydantic import FactionVolumePlanUpdateV1
+                    result, request = document.get("result"), document.get("request")
+                    if format_version < 14 or not isinstance(result, dict) or not isinstance(request, dict):
+                        raise ArchiveValidationError(location, "势力计划修改原成功回执只由 v14 承载")
+                    _snapshot_rows([result], f"{location}.result", novel_id, "state_id")
+                    try:
+                        changes = FactionVolumePlanUpdateV1.model_validate(request.get("changes")).model_dump(mode="json", exclude_unset=True)
+                    except (ValueError, TypeError) as exc:
+                        raise ArchiveValidationError(f"{location}.request", "原计划差量请求无效") from exc
+                    if (request != {"operation": operation, "novel_id": str(novel_id), "state_id": str(result["state_id"]), "changes": changes}
+                            or result.get("_id") != result["state_id"] or not isinstance(result["state_id"], ObjectId)
+                            or result.get("volume_id") != document.get("volume_id") or not isinstance(document.get("volume_id"), ObjectId)
+                            or result.get("version") != changes["expected_version"] + 1
+                            or any(result.get(field) != value for field, value in changes.items() if field != "expected_version")
+                            or canonical_request_hash(request) != document["request_hash"]):
+                        raise ArchiveValidationError(f"{location}.result", "首次计划修改结果与原请求不一致")
+                    if "content_contract" in result:
+                        _validate_faction_plan(result, f"{location}.result", format_version=format_version)
+                    rows, identity_field, mapping = [result], "state_id", {"updated": str(result["state_id"])}
+                    volume_entity_receipt = True
+                elif operation in ("create", "launch-package", "bulk-plan"):
                     rows, mapping = document.get("volumes"), document.get("candidate_ref_map")
                 elif operation in ("create_characters_for_volume_by_ai", "create_factions_for_volume_by_ai"):
                     volume_entity_receipt = True
@@ -1605,6 +1993,15 @@ def validate_documents(documents: dict[str, list[dict]], novel_id: ObjectId, *, 
                     identity_field = "character_id" if operation.startswith("create_characters") else "faction_id"
                     _snapshot_rows(rows, f"{location}.result.data", novel_id, "state_id")
                     for index, row in enumerate(rows):
+                        if operation == "create_factions_for_volume_by_ai" and "content_contract" in row:
+                            if format_version < 14:
+                                raise ArchiveValidationError(f"{location}.result.data[{index}]", "势力卷参与计划回执只由 v14 承载")
+                            import json
+                            from backend.llm.schemas.faction_volume_state_pydantic import FactionVolumePlanReadV1
+                            try:
+                                FactionVolumePlanReadV1.model_validate_json(json.dumps(row, ensure_ascii=False))
+                            except (ValueError, TypeError) as exc:
+                                raise ArchiveValidationError(f"{location}.result.data[{index}]", "首次卷参与计划响应不符合完整公开合同") from exc
                         if not isinstance(row["state_id"], str):
                             raise ArchiveValidationError(f"{location}.result.data[{index}].state_id", "公开状态 ID 必须是 ObjectId 字符串")
                         for field in ("novel_id", "volume_id"):
@@ -1642,6 +2039,8 @@ def validate_documents(documents: dict[str, list[dict]], novel_id: ObjectId, *, 
                     raise ArchiveValidationError(f"{location}.{mapping_field}", "回执候选映射未覆盖成功快照")
             # 成功回执中的旧 ID 也占过号，不能因正式对象已永久删除就回退序列。
             for index, row in enumerate(rows or []):
+                if name == "faction_volume_state_initialization_receipts" and "content_contract" in row:
+                    _validate_faction_plan(row, f"{location}.states[{index}]", format_version=format_version)
                 for field, entity, prefix in BUSINESS_IDS.values():
                     if field in row:
                         # 两种关系都叫 relation_id；只有匹配的固定前缀才决定其序列。
@@ -1705,16 +2104,28 @@ def validate_documents(documents: dict[str, list[dict]], novel_id: ObjectId, *, 
             summary["receipts"] += 1
 
     if "events" in documents:
-        legacy_documents, legacy_by_id, fact_documents, relation_documents, item_documents = dict(documents), dict(by_id), {}, {}, {}
+        legacy_documents, legacy_by_id, fact_documents, relation_documents, item_documents, faction_documents = dict(documents), dict(by_id), {}, {}, {}, {}
         receipt_keys = set()
         for name in ("entity_state_history", "chapter_record_confirmation_receipts"):
-            legacy_rows, fact_rows, relation_rows, item_rows = [], [], [], []
+            legacy_rows, fact_rows, relation_rows, item_rows, faction_rows = [], [], [], [], []
             suffix = "" if name == "entity_state_history" else ".receipt"
             for row in documents[name]:
                 location = locations[name, row["_id"]]
                 marked = "schema_id" in row or "schema_version" in row
-                if format_version != CHARACTER_BATCH_FORMAT_VERSION and row.get("position", {}).get("intent") == "volume_start":
-                    raise ArchiveValidationError(location, "本卷开始位置需要 v12 备份格式")
+                if format_version not in CHARACTER_BATCH_FORMAT_VERSIONS and row.get("position", {}).get("intent") == "volume_start":
+                    raise ArchiveValidationError(location, "本卷开始位置需要 v12、v13 或 v14 备份格式")
+                if format_version not in CHARACTER_BATCH_FORMAT_VERSIONS and name == "chapter_record_confirmation_receipts":
+                    # 冻结读取也使用位置合同；旧格式不能从书初回执的嵌套读取夹带本卷起点。
+                    request = row.get("request")
+                    data = request.get("data") if isinstance(request, dict) else None
+                    basis = data.get("basis") if isinstance(data, dict) else None
+                    reads = basis.get("reads") if isinstance(basis, dict) else None
+                    if isinstance(reads, list):
+                        for index, read in enumerate(reads):
+                            position = read.get("position") if isinstance(read, dict) else None
+                            if isinstance(position, dict) and position.get("intent") == "volume_start":
+                                raise ArchiveValidationError(f"{location}.request.data.basis.reads.{index}.position",
+                                                             "冻结读取的本卷开始位置需要 v12、v13 或 v14 备份格式")
                 if not marked:
                     legacy_rows.append(row)
                 elif type(row.get("schema_version")) is not int or row["schema_version"] != 1:
@@ -1725,8 +2136,10 @@ def validate_documents(documents: dict[str, list[dict]], novel_id: ObjectId, *, 
                     relation_rows.append(row)
                 elif format_version >= 10 and row.get("schema_id") == f"item.fact{suffix}":
                     item_rows.append(row)
+                elif format_version in FACTION_FACT_FORMAT_VERSIONS and row.get("schema_id") == f"faction.fact{suffix}":
+                    faction_rows.append(row)
                 else:
-                    raise ArchiveValidationError(location, "人物记录要求 v8、关系记录要求 v9、物品记录要求 v10；旧格式和未知 schema 不能混入")
+                    raise ArchiveValidationError(location, "人物记录要求 v8、关系记录要求 v9、物品记录要求 v10、势力记录要求 v11 或 v13/v14；旧格式和未知 schema 不能混入")
                 if name == "chapter_record_confirmation_receipts":
                     key = row.get("idempotency_key_hash")
                     if not isinstance(key, str) or key in receipt_keys:
@@ -1734,7 +2147,7 @@ def validate_documents(documents: dict[str, list[dict]], novel_id: ObjectId, *, 
                     receipt_keys.add(key)
             legacy_documents[name] = legacy_rows
             legacy_by_id[name] = {row["_id"]: row for row in legacy_rows}
-            fact_documents[name], relation_documents[name], item_documents[name] = fact_rows, relation_rows, item_rows
+            fact_documents[name], relation_documents[name], item_documents[name], faction_documents[name] = fact_rows, relation_rows, item_rows, faction_rows
         _validate_chapter_records(legacy_documents, novel_id, legacy_by_id, by_business, locations, summary, sequence_minimum, required_sequences, format_version)
         if any(fact_documents.values()):
             _validate_character_facts(fact_documents, novel_id, by_id, by_business, locations, summary, sequence_minimum, required_sequences)
@@ -1742,10 +2155,16 @@ def validate_documents(documents: dict[str, list[dict]], novel_id: ObjectId, *, 
             _validate_relation_facts(relation_documents, by_id, locations, summary)
         if any(item_documents.values()):
             _validate_item_facts(item_documents, by_id, by_business, locations, summary, sequence_minimum, required_sequences)
+        if any(faction_documents.values()):
+            _validate_faction_facts(faction_documents, by_id, locations, summary, format_version=format_version)
         if format_version >= 9:
-            _validate_v9_history_identities(documents, by_id, by_business, locations, summary, sequence_minimum, required_sequences, include_item_facts=format_version >= 10)
+            _validate_v9_history_identities(documents, by_id, by_business, locations, summary, sequence_minimum, required_sequences, include_item_facts=format_version >= 10, include_faction_facts=format_version in FACTION_FACT_FORMAT_VERSIONS)
     elif any("chapter_report_head" in row for row in documents["chapters"]):
         raise ArchiveValidationError("collections/chapters.jsonl", "带报告 head 的章节必须使用包含全部章后记录的 v5 归档")
+
+    if "faction_creation_batch_receipts" in documents:
+        from backend.ops.book_archive_faction_batches import validate_faction_batches
+        validate_faction_batches(documents, novel_id, by_id, by_business, locations, summary, sequence_minimum, required_sequences)
 
     if "character_creation_batch_receipts" in documents:
         from backend.services.novel.character_fact_batch_contract import (

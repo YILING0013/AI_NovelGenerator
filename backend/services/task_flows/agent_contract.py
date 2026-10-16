@@ -58,6 +58,7 @@ class AgentNodeConfigV1(AgentModel):
     reference_unchanged_entities: bool = False
     index_structural_context: bool = False
     index_plot_children: bool = False
+    chapter_context_version: Literal[1] | None = Field(default=None, exclude_if=lambda value: value is None)
     tools: list[Literal["get_scope", "list_directory", "search_book", "search_entities", "read_entity", "read_volume_state", "read_previous", "load_skill"]] = Field(default_factory=lambda: list(AGENT_TOOL_NAMES), min_length=1, max_length=8)
     skills: list[AgentSkillV1] = Field(default_factory=lambda: [AgentSkillV1.model_validate(value) for value in DEFAULT_AGENT_SKILLS], max_length=20)
     schema_defs: dict[str, Any] = Field(default_factory=dict)
@@ -115,10 +116,32 @@ class PreparationMissingV1(AgentModel):
     message: str = Field(min_length=1, max_length=2000, description="说明已查到什么、为何现有资料不能支撑本次生成，以及作者需补什么；可复用的地点细节或可选建议不属于缺项。")
 
 
+class ChapterParentExcerptV1(AgentModel):
+    """从实际读过的祖先字段中采用一段连续原文，不接受拼接。"""
+
+    resource_type: Literal["novel", "volume", "arc", "scene"]
+    id: ObjectIdString
+    version: int = Field(ge=1)
+    field: Literal["plot", "worldview", "core_seed", "core_idea", "summary", "planning.continuity_notes",
+                   "planning.premise", "planning.major_conflict", "planning.goal", "planning.start_state", "planning.end_state"]
+    start: int = Field(ge=0)
+    end: int = Field(gt=0)
+    quote: str = Field(min_length=1)
+
+
+class ChapterSourcesV1(AgentModel):
+    """本章采用的祖先原文、已读前文和人物关系；空列表表示不采用。"""
+
+    parent_excerpts: list[ChapterParentExcerptV1] = Field(max_length=30)
+    previous_chapter_ids: list[ObjectIdString] = Field(max_length=100)
+    relation_ids: list[str] = Field(max_length=100)
+
+
 class PreparedContextV1(AgentModel):
     """下一步生成需要的固定资料报告；正式详情由服务端填入。"""
 
     schema_version: Literal[1] = 1
+    chapter_sources: ChapterSourcesV1 | None = Field(default=None, exclude_if=lambda value: value is None)
     target: PreparedTargetV1
     boundaries: str = Field(min_length=1, max_length=12000)
     selected_entities: WritingSelectionV1 = Field(default_factory=WritingSelectionV1)

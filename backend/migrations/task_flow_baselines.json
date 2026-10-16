@@ -1,0 +1,94 @@
+{
+  "source_commit": "b5acaccb4f16d77ca311148cb7304d0180c57af0",
+  "canonicalization": "Flow.model_dump(mode=json), exclude revision only",
+  "tasks": {
+    "create_characters_for_volume_by_ai": {
+      "id": "default_create_characters_for_volume_by_ai",
+      "sha256": [
+        "bc3f6b7e6386262d63bbc1e187c887614d2020a245868a5e2f0eece3eaf27252",
+        "f40e2e213d6372a9d57e3da3c0ec56f114d93fbffb24946697ed74ee1731090c",
+        "0057f53aa14b653b6e0d47da2b6a06380f8b9f5c4e71f7c471de39691ff0e946"
+      ]
+    },
+    "plan_arcs_by_ai": {
+      "id": "default_plan_arcs_by_ai",
+      "sha256": [
+        "06e5b541fc360969eafa0d3a4508b4114fece15aa89f8132c28681b891543acb",
+        "4060c5c29e47f7d6985b9334cd8aecad7d8a44afd59f07b4f75582fa832e1465",
+        "c62a48dd43a6f171e29ffcc5f146669afd83e4b8ccb833e2df08ce4893e74088"
+      ]
+    },
+    "plan_scenes_by_ai": {
+      "id": "default_plan_scenes_by_ai",
+      "sha256": [
+        "07f6e18640f23d7a4b3f94cc9ea475da489600b6bfeca8e6b0e6b14b736d2ab3",
+        "8631d8c845e423ac949d986402d2a6350a504cc3aa6426f94ce87a7608e5483c",
+        "61187be594add4b3be7a0d60aa52349f72ce8823ee24ca60f598ec7262152782"
+      ]
+    },
+    "plan_chapters_by_ai": {
+      "id": "default_plan_chapters_by_ai",
+      "sha256": [
+        "2cdd93cb187aee3b408eb1509fca9c461654391d19f551d0572fea330dadb2a7",
+        "c0c324360d8f2f24218c6eee092c5c1dc3d0412cb4fd3d9b36e7f8e7d9da3f17",
+        "79f6822023a8ca0ba7ca8fdb6a1f786c6bce083e137bb01d70afd7779e7f7e59"
+      ]
+    },
+    "write_chapter_by_ai": {
+      "id": "default_write_chapter_by_ai",
+      "sha256": [
+        "4c5b6818fe26a4ca28ff7826b2287aad158f28df0b52b36cedd8ec815ef24a5f",
+        "ee6419f12edeb8a044915dc6dc732253b1448ca2ce8de2cfb6acd5e6840f5af8",
+        "edc7196d8c02d96408d9489e19c2e0193c26bc6c7837cb121dd86ca268ae40ca",
+        "c8c8a6de1630327dec49838883f6855955ac02820a0b93a7a9961fe3b06d1728"
+      ],
+      "source_refs": [
+        "932bd1e^",
+        "47144ae^",
+        "1b4d5b4^",
+        "16d62e3"
+      ]
+    },
+    "create_characters_by_ai": {
+      "id": "default_create_characters_by_ai",
+      "sha256": [
+        "163283ed5fbd4fa0f03bc6db6124b010d56520433e0e0baabf522b5597f8a755"
+      ],
+      "source_refs": [
+        "b5acaccb4f16d77ca311148cb7304d0180c57af0"
+      ]
+    },
+    "create_factions_by_ai": {
+      "id": "default_create_factions_by_ai",
+      "sha256": [
+        "d23784e1eeefa7a8142f83c853d1b53e2f288ed0b8f0293cf564b5c30806881f"
+      ],
+      "source_refs": [
+        "b5acaccb4f16d77ca311148cb7304d0180c57af0"
+      ]
+    },
+    "create_items_by_ai": {
+      "id": "default_create_items_by_ai",
+      "sha256": [
+        "eb03f12ec409e6ef4c923a70dfcb896fb9279b3cd3f20f8b5401e8693607b302"
+      ],
+      "source_refs": [
+        "b5acaccb4f16d77ca311148cb7304d0180c57af0"
+      ]
+    },
+    "create_world_rules_by_ai": {
+      "id": "default_create_world_rules_by_ai",
+      "sha256": [
+        "af8d1b16c3cd6f7d21770933e35702c6ebd10ab1990eedc283d8532b82e77198"
+      ],
+      "source_refs": [
+        "b5acaccb4f16d77ca311148cb7304d0180c57af0"
+      ]
+    }
+  },
+  "historical_provenance": {
+    "source_commit": "16d62e33884ca7ecc8c1dbdca1be9dc540a56066",
+    "predecessor_commit": "e29c9f431d68f8f730e8240bd490375dd2720f44",
+    "derivation": "Exact builtin and exact _upgrade_story_flow output for allowlisted predecessor builtin; inherit name, editor, default_provider and previous node provider/model/parameters/timeout_seconds exactly as committed historical code. No normalization of user definitions."
+  }
+}

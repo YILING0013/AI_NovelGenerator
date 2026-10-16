@@ -4,135 +4,58 @@
 
 **English** · [简体中文](README.zh-CN.md)
 
-[Features](#features) · [AI workflows](#ai-workflows) · [Installation](#installation-and-startup) · [Report an issue](https://github.com/YILING0013/AI_NovelGenerator/issues/new/choose)
+Turn a story idea into a world, volumes, arcs, scenes, and manuscript.
+
+[Watch the demo](#watch-the-demo) · [Install and run](#install-and-run) · [Explore the interface](#explore-the-interface) · [Backups and upgrades](#backups-and-upgrades)
 
 </div>
 
-AI Novel Generator is a locally hosted application for fiction planning and writing. It provides story settings, hierarchical planning, chapter editing, entity management, and configurable AI generation workflows. Generated candidates can be reviewed and edited before saving.
+AI Novel Generator is a writing workspace that runs on your computer. Write by hand or ask AI for a candidate, then review, edit, and save it. Characters, factions, relationships, story plans, and prose live in one project, with a progress panel to guide the next step.
 
-The frontend uses Next.js, the backend uses FastAPI, and project data is stored in MongoDB. AI operations use model services configured by the user.
+Thanks to members of the [LINUX DO community](https://linux.do/) for providing community-run API resources that supported generation workflow testing during development.
 
-![Chapter editor](.github/assets/readme/writing.png)
+## Watch the demo
 
-Current `main` contains the rewritten application. The previous version is preserved on [`old`](https://github.com/YILING0013/AI_NovelGenerator/tree/old). Their data structures differ. Back up legacy data and use a separate database for this version.
+These clips follow the fictional project *Tidal Archives* from creation to its first saved chapter, recorded in the current application. **The demo uses preset model responses to show the workflow, not model quality.**
 
-The screenshots show the running application with the fictional demo novel *Letters from the Fog Harbor*, captured at a desktop 16:10 ratio. The application supports responsive mobile layouts, Chinese and English, and light and dark themes. Screenshots use the Chinese interface.
+**01 · Create a novel: idea → story direction → review and save**
 
-## Features
+![Enter an idea, generate novel information, and confirm the result](.github/assets/readme/demo-01-create.gif)
 
-### Novel management
+<details>
+<summary><strong>02 · Build the cast: factions, characters, and relationships</strong> (expand to play)</summary>
 
-The bookshelf supports creating, viewing, and managing projects. The novel information page stores the title, core idea, main plot, introduction, worldbuilding, writing style, narrative point of view, and intended length. These fields support manual editing; selected fields also support AI creation or revision.
+Generate and save core material, then explore character relationships and faction membership in the graph.
 
-![Novel information](.github/assets/readme/story.png)
+![Generate factions and characters, confirm relationships, and open the graph](.github/assets/readme/demo-02-characters.gif)
 
-### Story planning and the Snowflake Method
+</details>
 
-The application develops a story from its core into progressively more detailed plans. The built-in novel creation workflow expands an idea into a compressed story, extracts the core idea and seed, and generates the novel information. The core-seed prompt uses the first step of the Snowflake Method to describe the protagonist, conflict, action, and consequences.
+<details>
+<summary><strong>03 · Plan in layers: volume → arc → scene → chapter plan</strong> (expand to play)</summary>
 
-Subsequent content is organized as **volumes → arcs → scenes → chapter plans → prose**. Each level can be edited independently.
+Plan the volumes, develop the current volume, and confirm its participants. Then manually detail the first arc, scene, and chapter plan. This example skips optional rules and items and confirms an empty volume location list.
 
-| Level | Planning content | Demo example |
-| --- | --- | --- |
-| Story core | Main character, central event, objective, and consequences | A restorer receives a letter from her missing mother and investigates a ship that carries memories |
-| Volume | Stage objective, conflict, turning points, and starting and ending states | Investigate the ship's route and find evidence that her mother is alive |
-| Arc | Related events and their progression | Investigate disappearances and establish the connection between letters and harbor bells |
-| Scene | A specific event, participants, and change | An old letter arrives at the workshop on a rainy night |
-| Chapter plan | Chapter objective, beats, length, and content requirements | Identify the handwriting, examine the postmark, and end with a bell |
-| Prose | Chapter text based on the plan | Describe the letter's arrival at the workshop |
+![Follow writing progress through volume preparation, an arc, a scene, and the first chapter plan](.github/assets/readme/demo-03-planning.gif)
 
-![Volume planning](.github/assets/readme/volumes.png)
+</details>
 
-Volume planning also manages the characters, factions, and locations used in that volume. Arc, scene, and chapter generation use higher-level plans and related material as inputs.
+<details>
+<summary><strong>04 · Write the first chapter: generate → review → save</strong> (expand to play)</summary>
 
-### Chapter editing
+Generate prose from the saved chapter plan, review the candidate, and save the first chapter. The full novel is still in progress.
 
-The chapter editor includes the directory, chapter plan, manuscript, and chapter records. Manuscripts support manual editing and AI generation.
+![Generate the first chapter, review the candidate, and confirm the save](.github/assets/readme/demo-04-writing.gif)
 
-- **Chapter plans** store objectives, starting and ending states, key beats, target length, and required or excluded content.
-- **The manuscript editor** supports editing, saving, word counts, and draft export.
-- **Revision history** supports viewing, comparing, and restoring saved versions.
-- **Chapter records** check character psychology, relationships, item ownership, and world rules, and save changes confirmed by the user.
+</details>
 
-Generated candidates are saved after confirmation. Chapter records provide access to confirmed character and world states at specific story positions.
+## Install and run
 
-### Entities and relationships
+The main route below uses **Windows, PowerShell, and MongoDB in Docker**. Installation downloads dependencies; AI generation also requires a model service you configure yourself.
 
-Character cards store profiles, desires, fears, conflicts with the main plot, growth directions, and story roles. Character information can be confirmed and read at the beginning of the story, the start of a volume, or before and after a chapter.
+### 1. Prepare the environment and code
 
-![Character management](.github/assets/readme/characters.png)
-
-| Module | Managed content |
-| --- | --- |
-| Characters | Profiles, growth plans, information at story positions, and relationships |
-| Factions | Goals, public stances, hidden motives, resources, and character membership |
-| Locations | Place information and the locations used in each volume |
-| Items | Item profiles, owners, and transfer records |
-| World rules | Rules, applicable scope, restrictions, and costs |
-| Foreshadowing | Clues, related story records, and payoff status |
-| Relationship graph | Visual representation of characters, factions, and their relationships |
-| Novel assistant | Queries against the current project, discussion, and review of proposed changes |
-
-## AI workflows
-
-AI operations consist of nodes and connections. Nodes read project data, prepare context, call models, or return results. Connections define data transfer and execution order.
-
-Built-in schemes cover novel creation, character and faction generation, volume planning, arcs, scenes, chapter prose, and post-chapter checks. Each task's workflow can be edited on the canvas.
-
-![AI workflow editor](.github/assets/readme/workflow.png)
-
-### Node types
-
-| Node | Function |
-| --- | --- |
-| Input / Page context | Accept operation parameters or read data from the current novel and writing position |
-| Constant / Text template | Supply fixed content or insert input fields into a template |
-| Compose fields | Organize multiple inputs into specified fields |
-| AI generation | Call a model for text or structured output |
-| AI context preparation | Query and select related material from the current novel |
-| Condition / Merge | Select an execution path or collect branch results |
-| Subflow / For each | Call reusable steps or execute a workflow for each array item |
-| Output | Return the final candidate to the application page for review and saving |
-
-Custom workflows combine these node types. Inputs and outputs are defined by fields and types; more complex configurations involve JSON structures.
-
-### Node configuration
-
-Nodes support editing names, prompts, input and output fields, model settings, and generation parameters. Different AI nodes within a workflow can use different models.
-
-Prompts support input-field tokens. For example, the core-seed node reads the plot, genre, tone, audience, and intended length, then generates the story core according to its prompt. Changes to prompts and model settings apply to subsequent executions.
-
-![Node prompt configuration](.github/assets/readme/node.png)
-
-### Workflow editing
-
-1. Copy and name an existing workflow in the scheme panel.
-2. Add nodes or edit existing nodes.
-3. Use data connections to pass fields and execution connections to define order and branches.
-4. Configure prompts, fields, models, and generation parameters.
-5. Validate and save the scheme, then select it in the corresponding AI operation.
-
-The editor supports undo, redo, scheme revisions, and context previews. Context previews check inputs and connections without calling a model.
-
-## Installation and startup
-
-The application has a browser interface, a Python backend, and MongoDB storage. Windows users can manage the services with the desktop launcher, or start them in separate terminals.
-
-### Requirements
-
-| Dependency | Requirement |
-| --- | --- |
-| Python | 3.13 or 3.14, with a recent patch release |
-| Node.js and npm | Node.js 20.9 or later, using a maintained release |
-| MongoDB | A **replica set**; a single-node setup is provided below |
-| Docker | Needed for the bundled MongoDB setup; optional with an existing replica set |
-| Model service | Your own API key, endpoint, and model name |
-
-Saving arcs and chapters requires MongoDB multi-document transactions and a replica set.
-
-### 1. Install dependencies
-
-Run these commands in PowerShell:
+Install [Python 3.13](https://www.python.org/downloads/), [Node.js 24](https://nodejs.org/en/download), [Git](https://git-scm.com/downloads), and [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/). Start Docker Desktop and wait for its engine to run. Check that `python --version`, `node --version`, and `docker compose version` print their versions. The frontend requires Node.js 20.9 or later.
 
 ```powershell
 git clone https://github.com/YILING0013/AI_NovelGenerator.git
@@ -144,139 +67,138 @@ npm ci
 cd ..
 ```
 
-On macOS and Linux, the virtual environment interpreter is `.venv/bin/python`. See [manual startup](#manual-startup) below.
+### 2. Start a MongoDB replica set
 
-### 2. Prepare MongoDB
+Saving arcs, chapters, and related records requires MongoDB multi-document transactions, so **a replica set is required**. The bundled [compose.mongodb.yaml](compose.mongodb.yaml) runs MongoDB 8.0 as a single-node replica set named `rs0`, available at `127.0.0.1:27017`.
 
-If you already have a MongoDB replica set, configure its connection address directly. For the bundled Docker setup, first make sure local port `27017` is available:
+First check that another service is not using `27017` (on Windows: `netstat -ano | findstr :27017`). **An existing standalone Windows MongoDB service cannot simply be mixed with this Docker instance or started on the same port.** If you already have a writable replica set, use its connection address directly. Back up an existing standalone database before planning its conversion or a separate port. Do not delete volumes or recreate existing databases to resolve a port conflict.
+
+From the project root:
 
 ```powershell
 docker compose -f compose.mongodb.yaml up -d
 docker compose -f compose.mongodb.yaml exec mongodb mongosh
 ```
 
-Inside the MongoDB shell, run:
+**Only when using a new, empty data volume for the first time**, run this once inside the MongoDB shell:
 
 ```javascript
-rs.initiate({
-  _id: "rs0",
-  members: [{ _id: 0, host: "localhost:27017" }]
-})
+rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "localhost:27017" }] })
 exit()
 ```
 
-Run `rs.initiate` **only once for a new data volume**. Back in PowerShell, run `docker compose -f compose.mongodb.yaml ps` and check that the service is `healthy`.
+Back in PowerShell:
 
-On first setup, copy `backend/config/config_default.yaml` to `backend/config/config.yaml`. If your local configuration already exists, edit it instead of replacing your saved model settings.
-
-Set these values:
-
-```yaml
-mongodb_url: "mongodb://127.0.0.1:27017/?replicaSet=rs0&directConnection=true"
-mongo_database_name: "novel_generator"
-mongo_transaction_mode: "required"
+```powershell
+docker compose -f compose.mongodb.yaml ps
 ```
 
-The bundled configuration uses named volumes, publishes its port only on `127.0.0.1`, and has no database password. Restart the backend after changing its database connection.
+Wait until `mongodb` is **healthy**, meaning it is a writable primary. An uninitialized instance may show unhealthy; that is not a reason to erase its data. Subsequent starts need only `up -d`; do not initialize an existing replica set again.
 
-### 3. Start services
+Data persists in the named volumes `novel-generator-mongodb-data` and `novel-generator-mongodb-config`. `docker compose -f compose.mongodb.yaml stop` only stops the service. **Do not use `down -v` to remove these data volumes.**
 
-On Windows, double-click **`start.bat`**, then start the services in the desktop launcher. The launcher manages ports, logs, and service shutdown. Production mode builds the frontend on first use and after relevant source or configuration changes.
+### 3. Start the application and connect the database
 
-| Service | Default address |
+Double-click **`start.bat`** in the project root and start both services in the desktop launcher. It uses the installed `.venv`; production mode builds the frontend on first use and after relevant code or configuration changes. `start.bat` does not install dependencies or MongoDB.
+
+Open **http://127.0.0.1:3300** and go to **Settings → Database Configuration**. Choose “Replace connection,” enter and confirm the URI, then fill in the database name and save the settings:
+
+| Field | Value for the local Docker setup |
 | --- | --- |
-| Writing interface | <http://127.0.0.1:3300> |
-| Backend | <http://127.0.0.1:8200> |
-| API documentation | <http://127.0.0.1:8200/docs> |
+| MongoDB URI | `mongodb://127.0.0.1:27017/?replicaSet=rs0&directConnection=true` |
+| Database name | `novel_generator` |
 
-Closing the launcher stops the services it started. Stop services before changing ports. If a port is occupied, identify the existing process before starting another instance.
+The configuration file defaults `mongo_transaction_mode` to `required`. Keep this value; no manual edit is needed for a fresh installation.
 
-### 4. Model configuration and usage
+Once the connection checks pass, you can create a novel. The backend defaults to `http://127.0.0.1:8200`. For a port conflict, identify the existing service before changing ports in the launcher. Closing the launcher stops the services it started; Docker manages MongoDB separately.
 
-Open **Settings**, enter your provider's API key, endpoint, and model name, and enable that configuration. The project includes adapters for OpenAI, DeepSeek, Gemini, Claude, and corresponding compatible endpoints. Supported parameters depend on the adapter and provider.
+### 4. Configure a model and start writing
 
-Basic usage:
+Under **Settings → LLM Provider Management**, add and enable your service type, endpoint, API key, and model, then save. Choose and save a global default Provider under **Novel Generation Workflow Configuration**. Built-in workflows provide a starting point; individual nodes can also select their own model. The endpoint must support the selected adapter, parameters depend on the provider, and the provider charges for model usage.
 
-1. Create a novel, enter the idea and intended length, and confirm its information.
-2. Prepare core factions, characters, relationships, and world rules, following the progress panel.
-3. Plan the volumes, develop the current volume, and confirm its characters, factions, and locations.
-4. Break it into arcs, scenes, and chapter plans, then generate or write the first chapter.
-5. Edit and save the manuscript, then review relevant post-chapter changes.
+After creating a novel, follow **Writing Progress** to prepare core material, plan volumes and their participants, then detail arcs, scenes, and chapter plans. Review generated results before saving, or write the manuscript directly. Chapter records help review changes to characters, relationships, items, and world rules.
 
-The application includes built-in workflows. API keys are configured by the user, and model usage is billed by the selected provider.
+<details>
+<summary><strong>Command-line startup (including macOS / Linux)</strong></summary>
 
-### Manual startup
+Install the same dependencies and prepare a replica set. On macOS / Linux, create the environment with `python3 -m venv .venv`, then use `.venv/bin/python` instead of the Windows interpreter path. You do not need `start.bat`.
 
-From the project root, start the backend:
+Start the backend from the project root:
 
 ```powershell
 .\.venv\Scripts\python.exe main.py
 ```
 
-In another terminal, start the frontend:
+Open a second PowerShell terminal for the frontend:
 
 ```powershell
 cd frontend
+$env:NEXT_PUBLIC_API_BASE = "http://127.0.0.1:8200"
 npm run build
 npm run start -- --hostname 127.0.0.1 --port 3300
 ```
 
-For a custom backend address, set `NEXT_PUBLIC_API_BASE` before building. In PowerShell, for example: `$env:NEXT_PUBLIC_API_BASE = "http://127.0.0.1:8200"`. The desktop launcher sets this address for the ports it manages.
+On macOS / Linux, the equivalent environment command is `export NEXT_PUBLIC_API_BASE="http://127.0.0.1:8200"`. Set the address before building and rebuild after changing it. For development, use `npm run dev -- --hostname 127.0.0.1 --port 3300`.
 
-`NOVEL_GENERATOR_MONGODB_URL` and `NOVEL_GENERATOR_MONGO_DATABASE_NAME` can override the corresponding database settings.
-
-## Data, backups, and upgrades
-
-Novel data is stored in the configured MongoDB database and local files. AI actions send relevant context to the configured model service, which performs inference.
-
-| What to back up | Location |
-| --- | --- |
-| Novels, characters, plans, and writing records | MongoDB |
-| Model settings and API keys | `backend/config/config.yaml` |
-| Custom workflows and other runtime state | `data/` |
-| Uploaded assets, including covers | `static/` |
-
-Back up and stop services before updating code, reinstalling dependencies, and rebuilding the frontend. The legacy and rewritten versions use different data structures and should use separate databases.
-
-The application is intended for local use and has no public-facing user authentication. Do not directly expose it or an unauthenticated MongoDB deployment to the internet. Remove credentials, personal paths, and private manuscripts from public reports.
-
-<details>
-<summary><strong>Common questions</strong></summary>
-
-**Arc or chapter save failures**: Check that MongoDB is initialized as a writable replica set, then verify `mongodb_url` and `mongo_transaction_mode`. Restart the backend after configuration changes.
-
-**AI operation prerequisites**: The page lists the required steps. Changes to higher-level plans, plot, or related material may require review and confirmation.
-
-**Custom model endpoints**: Endpoint addresses and model names are configurable. The endpoint must support the selected adapter's request format. Output formats and parameters depend on the model service.
-
-**Interface support**: Responsive mobile layouts, light and dark themes, and Chinese and English are supported. This guide shows the desktop interface.
-
-**Legacy code and discussions**: The previous version is preserved on [`old`](https://github.com/YILING0013/AI_NovelGenerator/tree/old). Earlier issues and PRs were closed for the rewrite. Closure does not indicate that every historical report was resolved.
+`NOVEL_GENERATOR_BACKEND_PORT` changes the backend port. `NOVEL_GENERATOR_MONGODB_URL` and `NOVEL_GENERATOR_MONGO_DATABASE_NAME` override the database settings. Restart the backend after editing its configuration file directly.
 
 </details>
 
-## Project structure
+## Explore the interface
 
-```text
-backend/               API, data access, generation logic, and built-in prompts
-frontend/              Next.js writing interface
-desktop_launcher/      Desktop launcher and local service management
-.github/               Collaboration templates and README screenshots
-main.py                Backend entry point
-launcher.py            Launcher entry point
-start.bat              Windows startup script
-compose.mongodb.yaml   Local single-node MongoDB replica set
-requirements.txt       Python dependencies
-```
+The **character and faction graph** brings relationships and membership together. Filter the graph, zoom, drag nodes, and inspect their details.
 
-Built with **Next.js 16, React 19, HeroUI, React Flow, FastAPI, PyMongo, MongoDB, and PySide6**.
+![Three characters, two factions, and their relationships in Tidal Archives](.github/assets/readme/relationships.png)
 
-## Contributing
+<details>
+<summary><strong>Story information, characters, volume planning, and prose</strong></summary>
 
-Use the [Issue forms](https://github.com/YILING0013/AI_NovelGenerator/issues/new/choose) for reproducible problems and ideas. Include your version, environment, reproduction steps, expected and actual results, and redacted screenshots or logs.
+Novel information holds the story direction, worldbuilding, style, and target length. Character facts can be viewed at story positions. Planning develops from volumes into finer detail, while the manuscript editor provides word counts, saving, draft export, and revision history.
 
-Read the [contribution guide](.github/CONTRIBUTING.md) before opening a PR. Work from current `main`, explain the problem you are solving, and describe your validation. If a legacy issue still applies, open a current-version report and link the earlier discussion.
+![Novel information and story premise](.github/assets/readme/story.png)
+![Character profile and growth direction](.github/assets/readme/characters.png)
+![Volume overview and plan](.github/assets/readme/volumes.png)
+![First chapter manuscript with its saved status](.github/assets/readme/writing.png)
 
-## License
+</details>
 
-Licensed under the GNU Affero General Public License v3.0. See [LICENSE](LICENSE) for the full text.
+<details>
+<summary><strong>Editable AI workflows and prompts</strong></summary>
+
+Built-in workflows cover novel creation, reference material, planning, prose, and chapter checks. Edit nodes and connections on the canvas, or change prompts, inputs, outputs, and model settings. You can start writing with the built-ins before creating any custom workflow.
+
+![Novel creation workflow canvas and connections](.github/assets/readme/workflow.png)
+![Prompt configuration for an AI generation node](.github/assets/readme/node.png)
+
+</details>
+
+The interface supports Chinese and English, light and dark themes, and responsive layouts. These captures show the Chinese desktop interface. Built with Next.js 16, React 19, HeroUI, React Flow, FastAPI, PyMongo, and PySide6.
+
+## Backups and upgrades
+
+Current `main` is the rewritten application; the previous version is preserved on [`old`](https://github.com/YILING0013/AI_NovelGenerator/tree/old). Their data structures differ, so use separate databases. Book archives now export v14; older application versions cannot read these archives.
+
+| Data | Location |
+| --- | --- |
+| Novels, characters, plans, manuscripts, and writing records | Configured MongoDB database |
+| Database and model configuration, including API keys | `user_data/config/config.yaml` |
+| Custom workflows and uploaded covers | `user_data/task_flows/`, `user_data/static/` |
+| Exports, migration backups, and records | `user_data/exports/`, `user_data/backups/`, `user_data/migrations/` |
+| Launcher ports | `user_data/config/launcher_settings.json` |
+| Unsaved manuscript drafts | Local storage for the current browser and site address |
+
+The default user directory is `user_data/` under the project. Set `NOVEL_GENERATOR_USER_DATA_DIR` to use a separate directory.
+
+- **Before updating:** verify pending saves, export unsaved drafts, stop the application, and back up MongoDB and user files separately. Copying `user_data` or exporting one book is not a complete backup. Update the code, reinstall dependencies, and rebuild the frontend yourself.
+- **At startup:** migration handles supported old file locations and data only. Recognized, unchanged built-in workflows using the latest default revision are backed up and upgraded; custom workflows and pinned older revisions are preserved. The application does not install MongoDB, download new code, or convert arbitrary historical databases.
+- **If migration fails:** keep the original files, backups, and migration records, and resolve the reported conflict. Do not delete `user_data` or the database to retry. Generation recovery depends on the original backend process and page; refreshing or restarting does not guarantee recovery, and retrying a model call may incur another charge.
+
+This application is intended for local use and has no public-facing user authentication. The bundled MongoDB has no password and binds only to the loopback address. Do not expose either directly to the internet. AI operations send the necessary story context to your configured model service.
+
+## Feedback and contributions
+
+Report problems through [Issues](https://github.com/YILING0013/AI_NovelGenerator/issues/new/choose), including the version, environment, reproduction steps, and redacted screenshots or logs. Read the [contribution guide](.github/CONTRIBUTING.md) before contributing. Licensed under [GNU AGPL v3.0](LICENSE).
+
+## Star History
+
+[![GitHub star history for YILING0013/AI_NovelGenerator](https://api.star-history.com/svg?repos=YILING0013/AI_NovelGenerator&type=Date)](https://www.star-history.com/?repos=YILING0013%2FAI_NovelGenerator&type=date&legend=top-left)

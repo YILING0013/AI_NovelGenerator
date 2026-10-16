@@ -18,7 +18,7 @@ WRITING_TASKS = {
     "plan_chapters_by_ai": ("scene", "chapters"),
     "write_chapter_by_ai": ("chapter", "content"),
 }
-WRITING_SCOPE_FIELDS = {"target_type", "target_id", "mode", "expected_version", "selected_entities", "reading_intent", "reading_version"}
+WRITING_SCOPE_FIELDS = {"target_type", "target_id", "mode", "expected_version", "selected_entities", "reading_intent", "reading_version", "chapter_context_version", "chapter_selection_complete"}
 
 
 class WritingSelectionV1(StrictRequestModel):
@@ -48,6 +48,9 @@ class WritingGenerateInputV1(StrictRequestModel):
     reading_version: Literal[1] | None = None
     expected_version: int | None = Field(default=None, ge=1)
     selected_entities: WritingSelectionV1 = Field(default_factory=WritingSelectionV1)
+    # 由固定图修订设置；旧候选序列化和指纹不增加默认字段。
+    chapter_context_version: Literal[1] | None = Field(default=None, exclude_if=lambda value: value is None)
+    chapter_selection_complete: bool = Field(default=False, exclude_if=lambda value: not value)
     count_mode: Literal["auto", "fixed"] = Field(default="fixed", title="数量方式")
     count: int = Field(default=2, ge=0, le=20, title="生成数量")
     user_guidance: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(default="", max_length=5000, title="作者要求")
@@ -63,6 +66,10 @@ class WritingGenerateInputV1(StrictRequestModel):
                 raise ValueError("生成正文必须提供当前章版本")
         elif self.expected_version is not None:
             raise ValueError("追加规划不接受旧父级版本")
+        if (self.chapter_context_version is not None or self.chapter_selection_complete) and self.target_type != "chapter":
+            raise ValueError("本章资料模式只能用于章节正文")
+        if self.chapter_selection_complete and self.chapter_context_version != 1:
+            raise ValueError("最终选择必须绑定本章资料模式")
         return self
 
 

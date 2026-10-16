@@ -352,7 +352,7 @@ class CoreFactionsGenerationInputV2(ReasoningOptions, BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     novel_id: str = Field(pattern=r"^[0-9a-f]{24}$")
-    faction_count: int = Field(default=3, ge=1, le=6)
+    faction_count: int | None = Field(default=3, ge=1, le=6)
     independent_faction_count: int = Field(default=0, ge=0, le=6)
     user_guidance: str = Field(default="", max_length=2000)
     single_faction_integrity_score: int | None = Field(default=None, ge=0, le=10)
@@ -372,7 +372,7 @@ class CoreFactionsGenerationInputV2(ReasoningOptions, BaseModel):
     @model_validator(mode="after")
     def validate_generation_counts(self) -> "CoreFactionsGenerationInputV2":
         """校验数量约束并拒绝重复的正式关系目标。"""
-        if self.independent_faction_count > self.faction_count:
+        if self.faction_count is not None and self.independent_faction_count > self.faction_count:
             raise ValueError("本批不建立直接关系的势力数量不能大于本次创建势力数量")
         target_ids = [target.faction_id for target in self.existing_relation_targets]
         if len(target_ids) != len(set(target_ids)):

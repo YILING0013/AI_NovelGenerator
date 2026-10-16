@@ -16,17 +16,26 @@ from backend.services.novel.character_fact_contract import (
     CharacterFactReadPositionV1 as FactReadPositionV1,
     CharacterFactDirectoryEntryV1 as FactDirectoryEntryV1,
     CharacterFactSourceObservationV1 as FactSourceObservationV1,
-    CharacterFactAuthorSourceV1 as FactAuthorSourceV1,
+    CharacterFactChapterSourceV1,
     CharacterFactActiveV1 as FactActiveV1,
     CharacterFactReplacedV1 as FactReplacedV1,
     CharacterFactVoidedV1 as FactVoidedV1,
     _validate_protected_sources,
     CharacterFactPositionV1 as FactPositionV1,
     CharacterFactProtectedSourceV1 as FactProtectedSourceV1,
-    CharacterFactSourceV1 as FactSourceV1,
     CharacterFactUnknownReason as FactUnknownReason,
     CharacterFactValidityV1 as FactValidityV1,
 )
+
+
+class FactAuthorSourceV1(StrictResponseModel):
+    """物品起点由作者明确确认；补充说明可留空，不代填作者的话。"""
+
+    kind: Literal["author"]
+    note: str = Field(default="", max_length=2000)
+
+
+FactSourceV1 = Annotated[FactAuthorSourceV1 | CharacterFactChapterSourceV1, Field(discriminator="kind")]
 
 
 class ItemFactValuesV1(StrictResponseModel):

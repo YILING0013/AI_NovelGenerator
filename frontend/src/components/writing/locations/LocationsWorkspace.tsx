@@ -907,9 +907,7 @@ export default function LocationsWorkspace({
               </button>
             ))}
           </div>
-          <Button className="shrink-0" variant="ghost" size="sm" onPress={() => void loadWorkspace()} isDisabled={busy}>
-            {loading ? t("actions.refreshing") : t("actions.refresh")}
-          </Button>
+          <SectionActionButton action="refresh" label={loading ? t("actions.refreshing") : t("actions.refresh")} className="shrink-0" variant="ghost" size="sm" onPress={() => void loadWorkspace()} isDisabled={busy} />
         </div>
       </header>
 
@@ -1050,7 +1048,7 @@ export default function LocationsWorkspace({
                   <div className="flex flex-wrap gap-2">
                     {view === "locations" ? (
                       <>
-                        <Button size="sm" variant="ghost" className="text-danger" onPress={() => void openConfirm({ kind: "soft-delete", location: selectedLocation })} isDisabled={busy || Boolean(inlineSession)}>{t("actions.delete")}</Button>
+                        <SectionActionButton action="trash" label={t("actions.delete")} size="sm" variant="ghost" className="text-danger" onPress={() => void openConfirm({ kind: "soft-delete", location: selectedLocation })} isDisabled={busy || Boolean(inlineSession)} />
                       </>
                     ) : (
                       <>

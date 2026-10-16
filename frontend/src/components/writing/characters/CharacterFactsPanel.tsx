@@ -1,4 +1,6 @@
 "use client";
+import { TooltipHint } from "@/components/shared/TooltipHint";
+import { SectionActionButton } from "@/components/shared/SectionEditButton";
 
 import { useCallback, useContext, useEffect, useRef, useState, type RefObject } from "react";
 import { Button, Modal } from "@heroui/react";
@@ -8,6 +10,7 @@ import { RelationEditorErrorSummary } from "@/components/shared/RelationEditorPr
 import DocumentSection from "@/components/shared/DocumentSection";
 import ReadOnlyField from "@/components/shared/ReadOnlyField";
 import TagList from "@/components/shared/TagList";
+import DraftChip from "@/components/shared/DraftChip";
 import { apiGet, apiPost, ApiRequestError } from "@/lib/api";
 import type { CharacterFactField, CharacterFactPositionV1, CharacterFactPreviewInputV1, CharacterFactPreviewV1, CharacterFactReadResultV1, CharacterFactRecordV1, CharacterFactsAtPositionV1 } from "@/types/characterFacts";
 import type { HierarchyRecord } from "@/types/hierarchy";
@@ -17,12 +20,13 @@ import CharacterFactPositionPicker from "./CharacterFactPositionPicker";
 import { characterFactPositionKey, loadCharacterFactChapters } from "./characterFactPositions";
 import { CHARACTER_FACT_FIELDS, CHARACTER_FACT_SECTIONS } from "./characterFactFields";
 import { characterFactDraftScope, type CharacterFactDraftV1 } from "./characterFactDrafts";
-import { readCharacterFactDrafts } from "./characterFactStorage";
-import { readCharacterFactPreparations, useCharacterFactPreparationPersistence, type CharacterFactPreparationV1, type CharacterFactPreparationSetupV1 } from "./characterFactPreparation";
+import { readCharacterFactDrafts, writeCharacterFactDraft } from "./characterFactStorage";
+import { readCharacterFactPreparations, removeCharacterFactPreparation, useCharacterFactPreparationPersistence, type CharacterFactPreparationV1, type CharacterFactPreparationSetupV1 } from "./characterFactPreparation";
 
 interface CharacterFactsPanelProps {
   novelId: string; characterId: string; onChanged?: () => Promise<void> | void; readOnly?: boolean;
   initialPosition?: CharacterFactPositionV1; initialFields?: CharacterFactField[]; numberOffset?: number;
+  volumeStartPreview?: boolean;
   onRead?: (facts: CharacterFactsAtPositionV1 | null) => void;
   onBusy?: (value: boolean) => void; beforeLeaveRef?: RefObject<(() => Promise<void>) | null>;
 }
@@ -30,19 +34,19 @@ interface CharacterFactsPanelProps {
 type FactSetup = CharacterFactPreparationSetupV1;
 type ExistingPreparation = Extract<CharacterFactPreparationV1, { kind: "existing" }>;
 
-/** 功能：隔离不同人物的读取和本地编辑生命周期。Args: 当前小说与稳定人物。Returns: 原详情中的人物事实区。 */
+/** 功能：按人物和初始位置隔离读取及编辑。Args: 当前小说、人物和位置。Returns: 原详情中的人物事实区。 */
 export default function CharacterFactsPanel(props: CharacterFactsPanelProps) {
-  return <CharacterFactsContent key={`${props.novelId}:${props.characterId}`} {...props} />;
+  return <CharacterFactsContent key={`${props.novelId}:${props.characterId}:${characterFactPositionKey(props.initialPosition ?? null)}`} {...props} />;
 }
 
 /** 功能：在人物详情和卷工作台共用事实读取、历史与人工确认。Args: 原宿主范围及离开保护。Returns: 连续资料区，不建立新中心。 */
-function CharacterFactsContent({ novelId, characterId, onChanged, readOnly = false, initialPosition, initialFields, numberOffset = 0, onRead, onBusy, beforeLeaveRef }: CharacterFactsPanelProps) {
+function CharacterFactsContent({ novelId, characterId, onChanged, readOnly = false, initialPosition, initialFields, numberOffset = 0, volumeStartPreview = false, onRead, onBusy, beforeLeaveRef }: CharacterFactsPanelProps) {
   const t = useTranslations("writing.characterFacts");
   const active = useContext(RetainedViewActive);
   const base = `/api/character-facts/novel/${novelId}`;
   const scope = characterFactDraftScope(novelId);
   const [position, setPosition] = useState<CharacterFactPositionV1 | null>(initialPosition ?? null);
-  const [chapters, setChapters] = useState<HierarchyRecord[]>([]);
+  const [chapters, setChapters] = useState<HierarchyRecord[] | null>(null);
   const [directoryError, setDirectoryError] = useState("");
   const [result, setResult] = useState<CharacterFactReadResultV1 | null>(null);
   const [history, setHistory] = useState<CharacterFactRecordV1[]>([]);
@@ -73,6 +77,7 @@ function CharacterFactsContent({ novelId, characterId, onChanged, readOnly = fal
   const [drafts, setDrafts] = useState<CharacterFactDraftV1[]>([]);
   const [draft, setDraft] = useState<CharacterFactDraftV1 | null>(null);
   const [source, setSource] = useState<CharacterFactRecordV1 | null>(null);
+  const sourceRequest = useRef(0);
   const readCallback = useRef(onRead);
   readCallback.current = onRead;
   const request = useRef(0);
@@ -81,7 +86,7 @@ function CharacterFactsContent({ novelId, characterId, onChanged, readOnly = fal
   const dialogLeave = useRef<(() => Promise<void>) | null>(null);
   const fact = result?.characters.find((row) => row.character_id === characterId) ?? null;
   const busy = preparing || confirming;
-  const positionLabel = (anchor: CharacterFactPositionV1) => anchor.intent === "book_start" ? t("positions.book_start") : anchor.intent === "volume_start" ? t("positions.volume_start") : `${chapters.find((row) => row.chapter_id === anchor.target_id)?.title ?? anchor.target_id} · ${t(`positions.${anchor.intent}`)}`;
+  const positionLabel = (anchor: CharacterFactPositionV1) => anchor.intent === "book_start" ? t("positions.book_start") : anchor.intent === "volume_start" ? t("positions.volume_start") : `${chapters?.find((row) => row.chapter_id === anchor.target_id)?.title ?? anchor.target_id} · ${t(`positions.${anchor.intent}`)}`;
   const readDrafts = useCallback(async () => {
     const [rows, pending] = await Promise.allSettled([readCharacterFactDrafts(scope), readCharacterFactPreparations(novelId)]);
     if (!alive.current) return;
@@ -123,9 +128,9 @@ function CharacterFactsContent({ novelId, characterId, onChanged, readOnly = fal
     void readFacts(abort.signal).catch((failure) => {
       if (!abort.signal.aborted) { setError(failure.message); if (failure instanceof ApiRequestError && [403, 404].includes(failure.status)) { setResult(null); setHistory([]); readCallback.current?.(null); } }
     }).finally(() => { if (!abort.signal.aborted) setLoading(false); });
-    void readDrafts().catch((failure) => { if (!abort.signal.aborted) setError(failure.message); });
-    return () => { abort.abort(); request.current += 1; };
-  }, [active, readFacts, readDrafts, refresh]);
+    if (!volumeStartPreview) void readDrafts().catch((failure) => { if (!abort.signal.aborted) setError(failure.message); });
+    return () => { abort.abort(); request.current += 1; sourceRequest.current += 1; };
+  }, [active, readFacts, readDrafts, refresh, volumeStartPreview]);
   useEffect(() => {
     if (!active) return;
     const abort = new AbortController();
@@ -178,8 +183,9 @@ function CharacterFactsContent({ novelId, characterId, onChanged, readOnly = fal
     finally { preparePending.current = false; if (alive.current) setPreparing(false); }
   };
   const openSource = async (historyId: string) => {
-    try { const row = history.find((record) => record.history_id === historyId) ?? await apiGet<CharacterFactRecordV1>(`${base}/history/${historyId}`); if (alive.current) setSource(row); }
-    catch (failure) { if (alive.current) setError((failure as Error).message); }
+    const current = ++sourceRequest.current;
+    try { const row = history.find((record) => record.history_id === historyId) ?? await apiGet<CharacterFactRecordV1>(`${base}/history/${historyId}`); if (alive.current && current === sourceRequest.current) setSource(row); }
+    catch (failure) { if (alive.current && current === sourceRequest.current) setError((failure as Error).message); }
   };
   const readback = async () => { await readFacts(); await onChanged?.(); };
   const displayValue = (field: CharacterFactField) => {
@@ -190,21 +196,27 @@ function CharacterFactsContent({ novelId, characterId, onChanged, readOnly = fal
     if (!value.length) return t("cleared");
     return Array.isArray(value) ? <TagList values={value} /> : value;
   };
-  return <section className="mt-8 space-y-6" aria-label={t("panelTitle")}>
-    <div className="flex flex-wrap items-end gap-3"><div className="min-w-0 flex-1"><CharacterFactPositionPicker novelId={novelId} chapters={chapters} value={position} onChange={(next) => { setResult(null); setHistory([]); readCallback.current?.(null); setPosition(next); }} latest disabled={busy} /></div><Button variant="ghost" isDisabled={busy || loading} onPress={() => setRefresh((value) => value + 1)}>{t("refresh")}</Button></div>
-    {result && <p className="text-xs text-muted">{t("resolvedPosition", { position: positionLabel(result.position as CharacterFactPositionV1) })}</p>}
+  return <section className={volumeStartPreview ? "space-y-4" : "mt-8 space-y-6"} aria-label={t(volumeStartPreview ? "volumeStartTitle" : "panelTitle")}>
+    <div className={`workspace-toolbar flex flex-wrap gap-3 ${volumeStartPreview ? "items-center" : "items-end"}`}><div className="min-w-0 flex-1">{volumeStartPreview ? <h3 className="text-sm font-semibold">{t("volumeStartTitle")}</h3> : <CharacterFactPositionPicker novelId={novelId} chapters={chapters} value={position} onChange={(next) => { setResult(null); setHistory([]); readCallback.current?.(null); setPosition(next); }} latest disabled={busy} />}</div><SectionActionButton action="refresh" label={t("refresh")} variant="ghost" isDisabled={busy || loading} onPress={() => setRefresh((value) => value + 1)} /></div>
+    {result && !volumeStartPreview && <p className="text-xs text-muted">{t("resolvedPosition", { position: positionLabel(result.position as CharacterFactPositionV1) })}</p>}
     {loading && <p role="status">{t("loading")}</p>}
     {(error || directoryError) && <p role="alert" className="text-sm text-red-600 dark:text-red-300">{error || directoryError}</p>}
     {!loading && !fact && !error && <p>{t("missingCharacter")}</p>}
     {fact && Object.entries(CHARACTER_FACT_SECTIONS).map(([section, fields], index) => <DocumentSection key={section} number={String(numberOffset + index + 1).padStart(2, "0")} title={t(`sections.${section}`)} actions={!readOnly && <Button variant="ghost" size="sm" isDisabled={busy || loading || Boolean(error)} onPress={() => open("establish", initialFields?.length ? initialFields : [...fields])}>{t("editFacts")}</Button>}>
-      <dl className="detail-fields grid gap-5">{fields.map((field) => <div key={field} className="min-w-0">
+      <dl className="detail-fields grid gap-4">{fields.map((field) => <div key={field} className={`min-w-0 ${typeof fact.values[field] === "string" && (fact.values[field].length > 120 || fact.values[field].includes("\n")) ? "col-span-full" : ""}`}>
         <ReadOnlyField label={t(`fields.${field}`)} value={displayValue(field)} wide />
         {fact.origins[field] && <Button size="sm" variant="ghost" onPress={() => void openSource(fact.origins[field]!)}>{t("source")}</Button>}
         {fact.blockers[field]?.map((historyId) => <Button key={historyId} size="sm" variant="ghost" onPress={() => void openSource(historyId)}>{t("blockingSource")}</Button>)}
       </div>)}</dl>
     </DocumentSection>)}
-    {!readOnly && preparations.length > 0 && <div className="space-y-2"><h4 className="text-sm font-semibold">{t("preparationDrafts")}</h4>{preparations.map((row) => <Button key={row.key} variant="outline" size="sm" isDisabled={busy} onPress={() => { preparationStore.persisted.current.set(row.key, row.revision); preparationRef.current = row; setPreparation(row); setSetupError(""); }}>{row.setup.position ? positionLabel(row.setup.position) : t("choosePosition")}</Button>)}</div>}
-    {!readOnly && drafts.length > 0 && <div className="space-y-2"><h4 className="text-sm font-semibold">{t("retainedDrafts")}</h4>{drafts.map((row) => <Button key={row.key} variant="outline" size="sm" isDisabled={busy} onPress={() => { setDraft(row); preparationRef.current = null; setPreparation(null); }}>{t("resumeDraft", { position: row.positionLabel })}</Button>)}</div>}
+    {!readOnly && (preparations.length > 0 || drafts.length > 0) && <div className="flex flex-wrap gap-2" aria-label={t("retainedDrafts")}>
+      {preparations.map((row) => <DraftChip key={row.key} label={row.setup.position ? positionLabel(row.setup.position) : t("choosePosition")} isDisabled={busy || Boolean(preparation || draft)}
+        onResume={() => { preparationStore.persisted.current.set(row.key, row.revision); preparationRef.current = row; setPreparation(row); setSetupError(""); }}
+        onDiscard={async () => { await preparationStore.queue.current; await removeCharacterFactPreparation(novelId, row.key, row.revision); await readDrafts(); }} />)}
+      {drafts.map((row) => <DraftChip key={row.key} label={row.positionLabel} status={row.command?.saved ? "saved" : row.command ? row.command.unknown ? "pending" : "rejected" : "draft"} isDisabled={busy || Boolean(preparation || draft)}
+        onResume={() => { setDraft(row); preparationRef.current = null; setPreparation(null); }}
+        onDiscard={!row.command || row.command.saved && row.command.readbackDone ? async () => { await writeCharacterFactDraft(scope, row, row.revision, true); await readDrafts(); } : undefined} />)}
+    </div>}
     {history.length > 0 && <details><summary className="cursor-pointer py-2 text-sm text-accent">{t("history")}</summary><ol className="space-y-3">{history.map((record) => <li key={record.history_id} className="border-b border-border py-3"><div className="flex flex-wrap items-center gap-2"><span className="text-sm">{positionLabel(record.position)} · {t(`operations.${record.operation}`)}</span><Button size="sm" variant="ghost" onPress={() => setSource(record)}>{t("source")}</Button>{!readOnly && Object.values(record.validity).some((value) => value.state === "active") && <>
       <Button size="sm" variant="ghost" isDisabled={busy} onPress={() => open(record.position.intent === "book_start" ? "correct_initial" : "replace", CHARACTER_FACT_FIELDS.filter((field) => record.validity[field]?.state === "active"), record)}>{t(record.position.intent === "book_start" ? "operations.correct_initial" : "operations.replace")}</Button>
       <Button size="sm" variant="ghost" isDisabled={busy} onPress={() => open("void", CHARACTER_FACT_FIELDS.filter((field) => record.validity[field]?.state === "active"), record)}>{t("operations.void")}</Button>
@@ -215,7 +227,7 @@ function CharacterFactsContent({ novelId, characterId, onChanged, readOnly = fal
       {!setup.record && <label className="grid gap-2 text-xs text-muted">{t("operation")}<select className={INPUT} value={setup.operation} disabled={preparing} onChange={(event) => setSetup({ ...setup, operation: event.target.value as "establish" | "change", position: null, evidence: null, resolves: {} })}><option value="establish">{t("operations.establish")}</option><option value="change">{t("operations.change")}</option></select></label>}
       <fieldset disabled={preparing}><legend className="mb-2 text-xs font-medium text-muted">{t("selectedFields")}</legend><div className="grid gap-2 sm:grid-cols-2">{(setup.record ? CHARACTER_FACT_FIELDS.filter((field) => setup.record!.validity[field]?.state === "active") : CHARACTER_FACT_FIELDS).map((field) => <label key={field} className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={setup.fields.includes(field)} onChange={(event) => setSetup({ ...setup, fields: event.target.checked ? [...setup.fields, field] : setup.fields.filter((item) => item !== field), resolves: {} })} />{t(`fields.${field}`)}</label>)}</div></fieldset>
       <CharacterFactPositionPicker novelId={novelId} chapters={chapters} value={setup.position} onChange={(next) => setSetup({ ...setup, position: next, evidence: null, resolves: {} })} disabled={preparing || Boolean(setup.record)} afterOnly={setupKind === "change"} />
-      {setup.operation !== "void" && (setupKind === "start" ? <label className="grid gap-2 text-xs text-muted">{t("authorNote")}<textarea className={INPUT} value={setup.note} onChange={(event) => setSetup({ ...setup, note: event.target.value })} disabled={preparing} maxLength={2000} rows={3} /></label> : <EvidencePicker key={characterFactPositionKey(setup.position)} novelId={novelId} chapters={chapters.filter((chapter) => chapter.chapter_id === setup.position?.target_id)} value={setup.evidence} label={t("source")} disabled={preparing || !setup.position} onChange={(value) => { if (value === null) setSetup({ ...setup, evidence: null }); }} onSelectEvidence={(evidence) => setSetup({ ...setup, evidence })} />)}
+      {setup.operation !== "void" && (setupKind === "start" ? <label className="grid gap-2 text-xs text-muted"><TooltipHint label={t("authorNote")} text={t("authorNoteHelp")} /><textarea aria-label={t("authorNote")} className={INPUT} value={setup.note} onChange={(event) => setSetup({ ...setup, note: event.target.value })} disabled={preparing} maxLength={2000} rows={3} /></label> : <EvidencePicker key={characterFactPositionKey(setup.position)} novelId={novelId} chapters={chapters?.filter((chapter) => chapter.chapter_id === setup.position?.target_id) ?? []} value={setup.evidence} label={t("source")} disabled={preparing || !setup.position} onChange={(value) => { if (value === null) setSetup({ ...setup, evidence: null }); }} onSelectEvidence={(evidence) => setSetup({ ...setup, evidence })} />)}
       {setup.operation !== "void" && setupFacts && setup.fields.flatMap((field) => (setupFacts.blockers[field] ?? []).map((historyId) => <label key={`${field}:${historyId}`} className="flex items-start gap-2 text-sm"><input type="checkbox" checked={setup.resolves[field]?.includes(historyId) ?? false} onChange={(event) => { const ids = event.target.checked ? [...(setup.resolves[field] ?? []), historyId] : (setup.resolves[field] ?? []).filter((value) => value !== historyId); const resolves = { ...setup.resolves }; if (ids.length) resolves[field] = ids; else delete resolves[field]; setSetup({ ...setup, resolves }); }} />{t("resolveBlocking", { field: t(`fields.${field}`), id: historyId })}</label>))}
     </Modal.Body><Modal.Footer className="border-t border-border px-5 py-4"><Button variant="ghost" isDisabled={preparing} onPress={() => void closeSetup()}>{t("close")}</Button><Button variant="primary" isDisabled={preparing || !setup.fields.length} onPress={() => void preview()}>{t(preparing ? "loading" : "preview")}</Button></Modal.Footer></Modal.Dialog></Modal.Container></RetainedModalBackdrop>}
     {draft && <CharacterFactConfirmationDialog key={draft.key} novelId={novelId} initialDraft={draft} onReadback={readback} onBusy={setConfirming} beforeLeaveRef={dialogLeave} onRepreview={async (previous) => {

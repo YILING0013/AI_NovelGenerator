@@ -17,7 +17,7 @@ import type {
 } from "@/types/character";
 import DocumentSection from "@/components/shared/DocumentSection";
 import ReadOnlyField from "@/components/shared/ReadOnlyField";
-import SectionEditButton from "@/components/shared/SectionEditButton";
+import SectionEditButton, { SectionActionButton } from "@/components/shared/SectionEditButton";
 import SidebarEdgeHandle from "@/components/shared/SidebarEdgeHandle";
 import { RelationEditorErrorSummary } from "@/components/shared/RelationEditorPrimitives";
 import type { CharacterFactField, CharacterFactsAtPositionV1 } from "@/types/characterFacts";
@@ -254,9 +254,7 @@ export function WorkspaceHeader({
             </button>
           ))}
         </div>
-        <Button className="shrink-0" variant="ghost" size="sm" onPress={onRefresh} isDisabled={loading || saving}>
-          {loading ? t("loading") : t("refresh")}
-        </Button>
+        <SectionActionButton action="refresh" label={loading ? t("loading") : t("refresh")} className="shrink-0" variant="ghost" size="sm" onPress={onRefresh} isDisabled={loading || saving} />
       </div>
     </header>
   );
@@ -431,7 +429,7 @@ export function ProfilesView({
               setMobileDetailOpen(false);
               requestAnimationFrame(() => document.getElementById(`character-roster-${characterId}`)?.focus());
             })}>← {t("actions.backToRoster")}</button>
-            <CharacterDetail character={selected} busy={busy || actionId.includes(selected.character_id)} onSave={onSave} onToggleStatus={() => void leaveFacts(() => onToggleStatus(selected))} onDelete={() => void leaveFacts(() => onDelete(selected))} onFactsChanged={onFactsChanged} onFactsBusy={setFactsBusy} factsBeforeLeaveRef={factsBeforeLeaveRef} t={t} />
+            <CharacterDetail character={selected} busy={saving || factsBusy || actionId.includes(selected.character_id)} leavingFacts={leavingFacts} onSave={onSave} onToggleStatus={() => void leaveFacts(() => onToggleStatus(selected))} onDelete={() => void leaveFacts(() => onDelete(selected))} onFactsChanged={onFactsChanged} onFactsBusy={setFactsBusy} factsBeforeLeaveRef={factsBeforeLeaveRef} t={t} />
           </div>
         </div>
         </>
@@ -882,8 +880,8 @@ function BindingRow({
         ) : (
           <>
             {binding.membership_type !== "primary" && <Button size="sm" variant="ghost" onPress={onMakePrimary} isDisabled={busy || endpointBlocked}>{t("binding.makePrimary")}</Button>}
-            <Button size="sm" variant="ghost" onPress={onToggleActive} isDisabled={busy}>{binding.user_is_active ? t("actions.deactivate") : t("actions.activate")}</Button>
-            <Button size="sm" variant="ghost" className="text-danger" onPress={onDelete} isDisabled={busy}>{t("actions.delete")}</Button>
+            <SectionActionButton action={binding.user_is_active ? "deactivate" : "activate"} label={t(binding.user_is_active ? "actions.deactivate" : "actions.activate")} onPress={onToggleActive} isDisabled={busy} />
+            <SectionActionButton action="trash" label={t("actions.delete")} size="sm" variant="ghost" className="text-danger" onPress={onDelete} isDisabled={busy} />
           </>
         )}
       </div>}
@@ -960,7 +958,7 @@ export function ModalLayer({ title, description, onClose, footer, children, dism
   );
 }
 
-function CharacterDetail({ character, busy, onSave, onToggleStatus, onDelete, onFactsChanged, onFactsBusy, factsBeforeLeaveRef, t }: { character: CharacterResponseV1; busy: boolean; onSave: ProfilesViewProps["onSave"]; onToggleStatus: () => void; onDelete: () => void; onFactsChanged?: ProfilesViewProps["onFactsChanged"]; onFactsBusy: (busy: boolean) => void; factsBeforeLeaveRef: RefObject<(() => Promise<void>) | null>; t: CharactersTranslator }) {
+function CharacterDetail({ character, busy, leavingFacts, onSave, onToggleStatus, onDelete, onFactsChanged, onFactsBusy, factsBeforeLeaveRef, t }: { character: CharacterResponseV1; busy: boolean; leavingFacts: boolean; onSave: ProfilesViewProps["onSave"]; onToggleStatus: () => void; onDelete: () => void; onFactsChanged?: ProfilesViewProps["onFactsChanged"]; onFactsBusy: (busy: boolean) => void; factsBeforeLeaveRef: RefObject<(() => Promise<void>) | null>; t: CharactersTranslator }) {
   const [facts, setFacts] = useState<CharacterFactsAtPositionV1 | null>(null);
   const currentFacts = facts?.character_id === character.character_id ? facts : null;
   const hasLegacyProfileSection = currentFacts?.claimed_fields && ["appearance", "personality", "strengths", "weaknesses", "abilities"].some((field) => !currentFacts.claimed_fields.includes(field as CharacterFactField));
@@ -972,12 +970,13 @@ function CharacterDetail({ character, busy, onSave, onToggleStatus, onDelete, on
           <h2 className="sr-only">{character.name}</h2>
           <p className="mt-1 font-mono text-xs text-muted">{character.character_id}</p>
         </div>
+        {/* 离开草稿检查期间阻止重复操作并保留触发焦点，供确认框关闭时恢复。 */}
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="ghost" onPress={onToggleStatus} isDisabled={busy}>{character.status === "active" ? t("actions.deactivate") : t("actions.activate")}</Button>
-          <Button size="sm" variant="ghost" className="text-danger" onPress={onDelete} isDisabled={busy}>{t("actions.delete")}</Button>
+          <SectionActionButton action={character.status === "active" ? "deactivate" : "activate"} label={t(character.status === "active" ? "actions.deactivate" : "actions.activate")} onPress={onToggleStatus} isDisabled={busy} isPending={leavingFacts} />
+          <SectionActionButton action="trash" label={t("actions.delete")} size="sm" variant="ghost" className="text-danger" onPress={onDelete} isDisabled={busy} isPending={leavingFacts} />
         </div>
       </header>
-      <CharacterProfileSections claimedFactFields={currentFacts?.claimed_fields} character={character} busy={busy} onSave={onSave} t={t} />
+      <CharacterProfileSections claimedFactFields={currentFacts?.claimed_fields} character={character} busy={busy || leavingFacts} onSave={onSave} t={t} />
       <CharacterFactsPanel numberOffset={hasLegacyProfileSection ? 4 : 3} onRead={setFacts} novelId={character.novel_id} characterId={character.character_id} onChanged={onFactsChanged} readOnly={character.is_deleted} onBusy={onFactsBusy} beforeLeaveRef={factsBeforeLeaveRef} />
     </article>
   );
@@ -992,7 +991,7 @@ function RelationDetail({ relation, names, busy, designReadOnly, factsReadOnly, 
       <header>
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div><h2 className="sr-only">{names.source} {connector} {names.target}</h2><p className="font-mono text-xs text-muted">{relation.relation_id}</p><p className="mt-1 text-sm text-muted">{t(`relationDirection.${symmetric ? "symmetric" : "directed"}`)} · {relation.is_active ? t("status.active") : t("status.inactive")}</p></div>
-          <div className="flex flex-wrap gap-2"><Button size="sm" variant="ghost" onPress={onCopy} isDisabled={busy}>{t("actions.copyAsNew")}</Button><Button size="sm" variant="ghost" onPress={onToggleActive} isDisabled={busy}>{relation.user_is_active ?? relation.is_active ? t("actions.deactivate") : t("actions.activate")}</Button><Button size="sm" variant="ghost" className="text-danger" onPress={onDelete} isDisabled={busy}>{t("actions.delete")}</Button></div>
+          <div className="flex flex-wrap gap-2"><Button size="sm" variant="ghost" onPress={onCopy} isDisabled={busy}>{t("actions.copyAsNew")}</Button><SectionActionButton action={(relation.user_is_active ?? relation.is_active) ? "deactivate" : "activate"} label={t((relation.user_is_active ?? relation.is_active) ? "actions.deactivate" : "actions.activate")} onPress={onToggleActive} isDisabled={busy} /><SectionActionButton action="trash" label={t("actions.delete")} size="sm" variant="ghost" className="text-danger" onPress={onDelete} isDisabled={busy} /></div>
         </div>
         <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-surface-secondary"><div className="h-full rounded-full bg-accent" style={{ width: `${Math.max(0, Math.min(5, relation.intensity)) * 20}%` }} /></div>
       </header>

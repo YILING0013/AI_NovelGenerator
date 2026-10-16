@@ -10,7 +10,7 @@ from backend.api.error_protocol import DomainApiError
 from backend.db.base import BaseRepository
 from backend.db.errors import VersionConflictError
 from backend.services.novel.chapter_record_contract import ChapterRecordEvidenceV1
-from backend.services.novel.writing_context import COLLECTIONS, load_writing_parents
+from backend.services.novel.writing_context import COLLECTIONS, load_writing_parents, writing_order
 
 
 RECORD_COLLECTIONS = ("events", "chapter_reports", "entity_state_history", "chapter_record_confirmation_receipts")
@@ -134,3 +134,57 @@ async def count_novel_chapter_records(novel_id: ObjectId, *, session: AsyncClien
         counts[name] = await BaseRepository(name).collection.count_documents({"novel_id": novel_id}, session=session)
     counts["report_heads"] = await BaseRepository("chapters").collection.count_documents({"novel_id": novel_id, "chapter_report_head": {"$exists": True}}, session=session)
     return counts
+
+
+async def load_fact_source_observations(novel_key: ObjectId, records: list[dict], directories: dict, *, session) -> tuple[list[dict], dict, dict]:
+    """核验人物和势力记录共用的当前正文及原修订，不改变记录或建立修订。
+
+    Args:
+        novel_key: 本书物理身份。
+        records: 已通过各自严格合同的记录。
+        directories: 本次完整活动目录。
+        session: 调用方读取或确认会话。
+    Returns:
+        原来源观察、逐记录有效性和实际章节保护对象。
+    """
+    sources, source_validity, guards = {}, {}, {}
+    for record in records:
+        source = record["source"]
+        if source["kind"] == "author":
+            source_validity[record["history_id"]] = True
+            continue
+        evidence = source["evidence"]
+        source_key = (evidence["chapter_id"], evidence["revision_id"])
+        if source_key not in sources:
+            chapter = await BaseRepository("chapters").collection.find_one({
+                "_id": ObjectId(evidence["chapter_id"]), "novel_id": novel_key,
+            }, session=session)
+            revision = await BaseRepository("chapter_revisions").collection.find_one({
+                "_id": ObjectId(evidence["revision_id"]), "novel_id": novel_key,
+            }, session=session)
+            current_hash = hashlib.sha256(chapter["content"].encode("utf-8")).hexdigest() if chapter else None
+            revision_hash = hashlib.sha256(revision["content"].encode("utf-8")).hexdigest() if revision else None
+            parents_active = bool(chapter is not None and not chapter["is_deleted"]
+                                  and writing_order("chapter", chapter, directories) is not None)
+            revision_valid = bool(revision is not None and chapter is not None
+                                  and revision_hash == revision["content_hash"]
+                                  and revision["chapter_id"] == chapter["_id"]
+                                  and all(revision[field] == chapter[field]
+                                          for field in ("novel_id", "volume_id", "arc_id", "scene_id")))
+            sources[source_key] = ({
+                "chapter_id": evidence["chapter_id"], "exists": chapter is not None,
+                "content_hash": current_hash, "is_deleted": chapter["is_deleted"] if chapter else None,
+                "parents_active": parents_active, "revision_id": evidence["revision_id"],
+                "revision_hash": revision_hash, "revision_version": revision["version"] if revision else None,
+                "revision_valid": revision_valid,
+            }, revision)
+            if chapter is not None:
+                guards[("chapters", str(chapter["_id"]))] = chapter
+        observation, revision = sources[source_key]
+        source_validity[record["history_id"]] = bool(
+            observation["parents_active"] and observation["revision_valid"]
+            and observation["content_hash"] == evidence["content_hash"] == observation["revision_hash"]
+            and revision["version"] == evidence["version"]
+            and revision["content"][evidence["start"]:evidence["start"] + len(evidence["quote"])] == evidence["quote"]
+        )
+    return [sources[key][0] for key in sorted(sources)], source_validity, guards

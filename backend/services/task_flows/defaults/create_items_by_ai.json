@@ -17,7 +17,10 @@
           "maximum": 20,
           "minimum": 1,
           "title": "Item Count",
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "required": false
         },
         "allow_incremental": {
@@ -47,7 +50,10 @@
           "maximum": 20,
           "minimum": 1,
           "title": "Item Count",
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "required": false
         },
         "allow_incremental": {
@@ -81,7 +87,10 @@
           "type": "string"
         },
         "item_count": {
-          "type": "integer"
+          "type": [
+            "integer",
+            "null"
+          ]
         },
         "locations_json": {
           "type": "string"
@@ -117,7 +126,10 @@
           "type": "string"
         },
         "item_count": {
-          "type": "integer"
+          "type": [
+            "integer",
+            "null"
+          ]
         },
         "locations_json": {
           "type": "string"
@@ -497,7 +509,10 @@
           "maximum": 20,
           "minimum": 1,
           "title": "Item Count",
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "required": false
         },
         "param_allow_incremental": {

@@ -5,6 +5,7 @@ import { ApiRequestError } from "@/lib/api";
 import { freezeCharacterFactDraft } from "./characterFactDrafts";
 import { freezeCharacterRelationFactDraft } from "./characterRelationFactDrafts";
 import { freezeItemFactDraft } from "../items/itemFactDrafts";
+import { freezeFactionFactDraft } from "../factions/factionFactDrafts";
 import { writeFactDraft, writeFactReceipt } from "./factDraftStorage";
 import type { FactDomain, FactDraft, FactResult, FactDraftWriteResult } from "./factDraftStorage";
 import { writeCharacterFactDraft, writeCharacterFactReceipt } from "./characterFactStorage";
@@ -66,7 +67,8 @@ export async function confirmFact<D extends FactDraft>(options: {
   let stage: FactConfirmationStage = session.command?.saved ? "receipt" : "register";
   try {
     if (!session.command) session = (session.schema_id === "character.fact.draft" ? freezeCharacterFactDraft(session, options.key())
-      : session.schema_id === "character_relation.fact.draft" ? freezeCharacterRelationFactDraft(session, options.key()) : freezeItemFactDraft(session, options.key())) as D;
+      : session.schema_id === "character_relation.fact.draft" ? freezeCharacterRelationFactDraft(session, options.key())
+      : session.schema_id === "faction.fact.draft" ? freezeFactionFactDraft(session, options.key()) : freezeItemFactDraft(session, options.key())) as D;
     // 每次重发前都先登记本次未知结果；加版本让两个页面不能沿同一稿版本同时取得发送权。
     else if (!session.command.saved) session = { ...session, revision: session.revision + 1, command: { ...session.command, unknown: true } };
     options.update(session);

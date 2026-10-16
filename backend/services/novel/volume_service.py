@@ -880,8 +880,10 @@ class VolumeService:
                     or "character_relation_fact_reads" not in execution):
                 raise _volume_error("CHARACTER_RELATION_FACT_CONTRACT_REQUIRED", "原启动包未保存关系事实依据，请保留候选并重新生成", status_code=409)
             from backend.services.novel.writing_context import revalidate_position_fact_reads
+            if execution.get("faction_reading_contract") != "faction_facts_v1" or "faction_fact_reads" not in execution:
+                raise _volume_error("FACTION_FACT_CONTRACT_REQUIRED", "原启动包未保存势力事实依据，请保留候选并重新生成", status_code=409)
             original_reads = [*execution["character_fact_reads"], *execution["character_relation_fact_reads"],
-                              *execution.get("item_fact_reads", [])]
+                              *execution.get("item_fact_reads", []), *execution["faction_fact_reads"]]
             await revalidate_position_fact_reads(original_reads, session=session, protect=True)
             context = await load_volume_planning_context(
                 novel_id,

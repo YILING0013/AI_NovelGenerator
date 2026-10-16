@@ -11,6 +11,7 @@ export interface WorkspaceHistoryTraversal {
   session: string;
   from: number;
   to: number;
+  sourcePathname?: string;
 }
 
 /**
@@ -20,12 +21,12 @@ export interface WorkspaceHistoryTraversal {
  */
 export function WorkspacePages({ children }: { children: ReactNode }) {
   const historyTraversalRef = useRef<((event: PopStateEvent, traversal: WorkspaceHistoryTraversal | null) => void) | null>(null);
-  const historyPosition = useRef<{ session: string; index: number | null } | null>(null);
+  const historyPosition = useRef<{ session: string; index: number | null; pathname: string } | null>(null);
   useLayoutEffect(() => {
     const history = window.history;
     const originalPush = history.pushState;
     const originalReplace = history.replaceState;
-    const position = historyPosition.current ??= { session: crypto.randomUUID(), index: 0 };
+    const position = historyPosition.current ??= { session: crypto.randomUUID(), index: 0, pathname: window.location.pathname };
     let enabled = true;
     // Next 的 passive effect 捕获这些下层方法；无论 router.push 还是原生调用都只记一次。
     const pushState: History["pushState"] = (data, unused, url) => {
@@ -34,13 +35,20 @@ export function WorkspacePages({ children }: { children: ReactNode }) {
       const index = position.index === null ? 0 : position.index + 1;
       originalPush.call(history, { ...data, workspaceHistorySession: session, writingHierarchyIndex: index }, unused, url);
       position.session = session; position.index = index;
+      position.pathname = window.location.pathname;
     };
     const replaceState: History["replaceState"] = (data, unused, url) => {
       if (!enabled) return originalReplace.call(history, data, unused, url);
       const session = position.index === null ? crypto.randomUUID() : position.session;
-      const index = position.index ?? 0;
+      // Next 可在本监听器收到 popstate 前提交目标 URL；保留物理历史项的编号，不能覆盖成离开位置。
+      const entry = history.state;
+      const traversing = entry?.workspaceHistorySession === session && Number.isSafeInteger(entry?.writingHierarchyIndex) && entry.writingHierarchyIndex !== position.index;
+      const index = traversing ? entry.writingHierarchyIndex : position.index ?? 0;
       originalReplace.call(history, { ...data, workspaceHistorySession: session, writingHierarchyIndex: index }, unused, url);
-      position.session = session; position.index = index;
+      if (!traversing) {
+        position.session = session; position.index = index;
+        position.pathname = window.location.pathname;
+      }
     };
     history.pushState = pushState;
     history.replaceState = replaceState;
@@ -50,17 +58,19 @@ export function WorkspacePages({ children }: { children: ReactNode }) {
       const target = event.state?.workspaceHistorySession === position.session
         && Number.isSafeInteger(event.state?.writingHierarchyIndex) ? event.state.writingHierarchyIndex as number : null;
       const traversal = position.index !== null && target !== null
-        ? { session: position.session, from: position.index, to: target } : null;
+        ? { session: position.session, from: position.index, to: target, sourcePathname: position.pathname } : null;
       position.index = target;
+      position.pathname = window.location.pathname;
       historyTraversalRef.current?.(event, traversal);
     };
-    window.addEventListener("popstate", onPop);
+    // StartupGate 异步放行时 Next 已先注册监听；必须在捕获阶段先读取原位置。
+    window.addEventListener("popstate", onPop, true);
     return () => {
       // Next 可能仍持有旧包装；StrictMode 重装后旧闭包必须只透传，不能再次计数。
       enabled = false;
       if (history.pushState === pushState) history.pushState = originalPush;
       if (history.replaceState === replaceState) history.replaceState = originalReplace;
-      window.removeEventListener("popstate", onPop);
+      window.removeEventListener("popstate", onPop, true);
     };
   }, []);
   const locale = useLocale();

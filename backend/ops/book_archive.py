@@ -24,7 +24,9 @@ from backend.ops.book_archive_contract import (
     COLLECTIONS,
     REVISION_COLLECTIONS,
     FORESHADOWING_COLLECTIONS,
-    CHAPTER_RECORD_COLLECTIONS, CHARACTER_BATCH_COLLECTIONS, CHARACTER_BATCH_FORMAT_VERSION,
+    CHAPTER_RECORD_COLLECTIONS, CHARACTER_BATCH_COLLECTIONS, FACTION_BATCH_COLLECTIONS, CHARACTER_BATCH_FORMAT_VERSION,
+    FACTION_FACT_FORMAT_VERSION, COMBINED_FORMAT_VERSION, CHARACTER_BATCH_FORMAT_VERSIONS,
+    FACTION_VOLUME_START_FORMAT_VERSION,
     CORE_COLLECTIONS,
     ArchiveValidationError,
     validate_documents,
@@ -56,7 +58,7 @@ MAX_RECORDS = 100_000
 MAX_JSON_NODES = 1_000_000
 MAX_JSON_DEPTH = 64
 # 单书最多一张封面；中央目录也要先限大小，避免仅打开 ZIP 就耗尽内存。
-MAX_MEMBERS = len(CHARACTER_BATCH_COLLECTIONS) + 2
+MAX_MEMBERS = len(FACTION_BATCH_COLLECTIONS) + 2
 MAX_DIRECTORY_BYTES = 32 * 1024
 ARCHIVE_SCOPE = {
     "documents": "raw_bson",
@@ -84,7 +86,10 @@ CHAPTER_RECORD_EXPORT_SCOPE = {**FORESHADOWING_EXPORT_SCOPE, "chapter_records": 
 CHARACTER_FACT_EXPORT_SCOPE = {**CHAPTER_RECORD_EXPORT_SCOPE, "character_facts": "included"}
 CHARACTER_RELATION_FACT_EXPORT_SCOPE = {**CHARACTER_FACT_EXPORT_SCOPE, "character_relation_facts": "included"}
 ITEM_FACT_EXPORT_SCOPE = {**CHARACTER_RELATION_FACT_EXPORT_SCOPE, "item_facts": "included"}
+FACTION_FACT_EXPORT_SCOPE = {**ITEM_FACT_EXPORT_SCOPE, "faction_facts": "included"}
 CHARACTER_BATCH_EXPORT_SCOPE = {**ITEM_FACT_EXPORT_SCOPE, "character_creation_batch_receipts": "included"}
+COMBINED_EXPORT_SCOPE = {**FACTION_FACT_EXPORT_SCOPE, "character_creation_batch_receipts": "included"}
+FACTION_VOLUME_START_EXPORT_SCOPE = {**COMBINED_EXPORT_SCOPE, "faction_volume_start": "included", "faction_creation_batch_receipts": "included"}
 EXPORT_PROFILE = {
     "database_read": "pymongo_snapshot_session",
     "read_preference": "primary",
@@ -281,7 +286,7 @@ def load_verified_archive(path: str | Path) -> VerifiedArchive:
                     next_offset += 30 + local[9] + member.compress_size
                     if member.filename == "manifest.json":
                         limit = MAX_MANIFEST_BYTES
-                    elif member.filename in {f"collections/{name}.jsonl" for name in CHARACTER_BATCH_COLLECTIONS}:
+                    elif member.filename in {f"collections/{name}.jsonl" for name in FACTION_BATCH_COLLECTIONS}:
                         limit = MAX_COLLECTION_BYTES
                     elif _COVER_PATH.fullmatch(member.filename):
                         limit = MAX_COVER_BYTES
@@ -308,10 +313,10 @@ def load_verified_archive(path: str | Path) -> VerifiedArchive:
                 if not isinstance(manifest, dict):
                     raise ArchiveValidationError(location, "清单字段不符合固定版本")
                 if (manifest.get("format") != FORMAT or type(manifest.get("format_version")) is not int
-                        or manifest["format_version"] not in (FORMAT_VERSION, EXPORT_FORMAT_VERSION, REVISION_FORMAT_VERSION, FORESHADOWING_FORMAT_VERSION, CHAPTER_RECORD_FORMAT_VERSION, ITEM_OWNER_FORMAT_VERSION, CHARACTER_RELATION_STATE_FORMAT_VERSION, CHARACTER_FACT_FORMAT_VERSION, CHARACTER_RELATION_FACT_FORMAT_VERSION, ITEM_FACT_FORMAT_VERSION, CHARACTER_BATCH_FORMAT_VERSION)):
-                    raise ArchiveValidationError(location, "未知备份格式版本；本分支仅支持 1–10 和 12，不支持 Dev 势力格式 11")
+                        or manifest["format_version"] not in (FORMAT_VERSION, EXPORT_FORMAT_VERSION, REVISION_FORMAT_VERSION, FORESHADOWING_FORMAT_VERSION, CHAPTER_RECORD_FORMAT_VERSION, ITEM_OWNER_FORMAT_VERSION, CHARACTER_RELATION_STATE_FORMAT_VERSION, CHARACTER_FACT_FORMAT_VERSION, CHARACTER_RELATION_FACT_FORMAT_VERSION, ITEM_FACT_FORMAT_VERSION, FACTION_FACT_FORMAT_VERSION, CHARACTER_BATCH_FORMAT_VERSION, COMBINED_FORMAT_VERSION, FACTION_VOLUME_START_FORMAT_VERSION)):
+                    raise ArchiveValidationError(location, "未知备份格式版本；仅支持 1–14")
                 version = manifest["format_version"]
-                if version in (EXPORT_FORMAT_VERSION, REVISION_FORMAT_VERSION, FORESHADOWING_FORMAT_VERSION, CHAPTER_RECORD_FORMAT_VERSION, ITEM_OWNER_FORMAT_VERSION, CHARACTER_RELATION_STATE_FORMAT_VERSION, CHARACTER_FACT_FORMAT_VERSION, CHARACTER_RELATION_FACT_FORMAT_VERSION, ITEM_FACT_FORMAT_VERSION, CHARACTER_BATCH_FORMAT_VERSION):
+                if version in (EXPORT_FORMAT_VERSION, REVISION_FORMAT_VERSION, FORESHADOWING_FORMAT_VERSION, CHAPTER_RECORD_FORMAT_VERSION, ITEM_OWNER_FORMAT_VERSION, CHARACTER_RELATION_STATE_FORMAT_VERSION, CHARACTER_FACT_FORMAT_VERSION, CHARACTER_RELATION_FACT_FORMAT_VERSION, ITEM_FACT_FORMAT_VERSION, FACTION_FACT_FORMAT_VERSION, CHARACTER_BATCH_FORMAT_VERSION, COMBINED_FORMAT_VERSION, FACTION_VOLUME_START_FORMAT_VERSION):
                     keys.add("export_profile")
                 if set(manifest) != keys:
                     raise ArchiveValidationError(location, "清单字段不符合固定版本")
@@ -326,7 +331,7 @@ def load_verified_archive(path: str | Path) -> VerifiedArchive:
                     scope = REVISION_EXPORT_SCOPE
                 if version == FORESHADOWING_FORMAT_VERSION:
                     scope = FORESHADOWING_EXPORT_SCOPE
-                if version in (CHAPTER_RECORD_FORMAT_VERSION, ITEM_OWNER_FORMAT_VERSION, CHARACTER_RELATION_STATE_FORMAT_VERSION, CHARACTER_FACT_FORMAT_VERSION, CHARACTER_RELATION_FACT_FORMAT_VERSION, ITEM_FACT_FORMAT_VERSION, CHARACTER_BATCH_FORMAT_VERSION):
+                if version in (CHAPTER_RECORD_FORMAT_VERSION, ITEM_OWNER_FORMAT_VERSION, CHARACTER_RELATION_STATE_FORMAT_VERSION, CHARACTER_FACT_FORMAT_VERSION, CHARACTER_RELATION_FACT_FORMAT_VERSION, ITEM_FACT_FORMAT_VERSION, FACTION_FACT_FORMAT_VERSION, CHARACTER_BATCH_FORMAT_VERSION, COMBINED_FORMAT_VERSION, FACTION_VOLUME_START_FORMAT_VERSION):
                     scope = CHAPTER_RECORD_EXPORT_SCOPE
                 if version == CHARACTER_FACT_FORMAT_VERSION:
                     scope = CHARACTER_FACT_EXPORT_SCOPE
@@ -334,20 +339,28 @@ def load_verified_archive(path: str | Path) -> VerifiedArchive:
                     scope = CHARACTER_RELATION_FACT_EXPORT_SCOPE
                 if version == ITEM_FACT_FORMAT_VERSION:
                     scope = ITEM_FACT_EXPORT_SCOPE
+                if version == FACTION_FACT_FORMAT_VERSION:
+                    scope = FACTION_FACT_EXPORT_SCOPE
                 if version == CHARACTER_BATCH_FORMAT_VERSION:
                     scope = CHARACTER_BATCH_EXPORT_SCOPE
+                if version == COMBINED_FORMAT_VERSION:
+                    scope = COMBINED_EXPORT_SCOPE
+                if version == FACTION_VOLUME_START_FORMAT_VERSION:
+                    scope = FACTION_VOLUME_START_EXPORT_SCOPE
                 if manifest["scope"] != scope:
                     raise ArchiveValidationError(location, "清单必须如实声明本版本的验证范围与缺口")
-                if version in (EXPORT_FORMAT_VERSION, REVISION_FORMAT_VERSION, FORESHADOWING_FORMAT_VERSION, CHAPTER_RECORD_FORMAT_VERSION, ITEM_OWNER_FORMAT_VERSION, CHARACTER_RELATION_STATE_FORMAT_VERSION, CHARACTER_FACT_FORMAT_VERSION, CHARACTER_RELATION_FACT_FORMAT_VERSION, ITEM_FACT_FORMAT_VERSION, CHARACTER_BATCH_FORMAT_VERSION) and manifest["export_profile"] != EXPORT_PROFILE:
+                if version in (EXPORT_FORMAT_VERSION, REVISION_FORMAT_VERSION, FORESHADOWING_FORMAT_VERSION, CHAPTER_RECORD_FORMAT_VERSION, ITEM_OWNER_FORMAT_VERSION, CHARACTER_RELATION_STATE_FORMAT_VERSION, CHARACTER_FACT_FORMAT_VERSION, CHARACTER_RELATION_FACT_FORMAT_VERSION, ITEM_FACT_FORMAT_VERSION, FACTION_FACT_FORMAT_VERSION, CHARACTER_BATCH_FORMAT_VERSION, COMBINED_FORMAT_VERSION, FACTION_VOLUME_START_FORMAT_VERSION) and manifest["export_profile"] != EXPORT_PROFILE:
                     raise ArchiveValidationError(location, "导出方式声明不符合本版本要求")
                 collections = manifest["collections"]
                 names = REVISION_COLLECTIONS if version == REVISION_FORMAT_VERSION else COLLECTIONS
                 if version == FORESHADOWING_FORMAT_VERSION:
                     names = FORESHADOWING_COLLECTIONS
-                if version in (CHAPTER_RECORD_FORMAT_VERSION, ITEM_OWNER_FORMAT_VERSION, CHARACTER_RELATION_STATE_FORMAT_VERSION, CHARACTER_FACT_FORMAT_VERSION, CHARACTER_RELATION_FACT_FORMAT_VERSION, ITEM_FACT_FORMAT_VERSION, CHARACTER_BATCH_FORMAT_VERSION):
+                if version in (CHAPTER_RECORD_FORMAT_VERSION, ITEM_OWNER_FORMAT_VERSION, CHARACTER_RELATION_STATE_FORMAT_VERSION, CHARACTER_FACT_FORMAT_VERSION, CHARACTER_RELATION_FACT_FORMAT_VERSION, ITEM_FACT_FORMAT_VERSION, FACTION_FACT_FORMAT_VERSION, CHARACTER_BATCH_FORMAT_VERSION, COMBINED_FORMAT_VERSION, FACTION_VOLUME_START_FORMAT_VERSION):
                     names = CHAPTER_RECORD_COLLECTIONS
-                if version == CHARACTER_BATCH_FORMAT_VERSION:
+                if version in CHARACTER_BATCH_FORMAT_VERSIONS:
                     names = CHARACTER_BATCH_COLLECTIONS
+                if version == FACTION_VOLUME_START_FORMAT_VERSION:
+                    names = FACTION_BATCH_COLLECTIONS
                 if not isinstance(collections, dict) or set(collections) != set(names):
                     raise ArchiveValidationError(location, "集合必须与完整白名单一致，包括空集合")
                 assets = manifest["assets"]
@@ -436,7 +449,7 @@ def load_verified_archive(path: str | Path) -> VerifiedArchive:
                     "counts": {name: len(rows) for name, rows in documents.items()},
                     "checked_files": checked_files, "validation_summary": summary,
                     "scope": dict(scope),
-                    **({"export_profile": dict(EXPORT_PROFILE)} if version in (EXPORT_FORMAT_VERSION, REVISION_FORMAT_VERSION, FORESHADOWING_FORMAT_VERSION, CHAPTER_RECORD_FORMAT_VERSION, ITEM_OWNER_FORMAT_VERSION, CHARACTER_RELATION_STATE_FORMAT_VERSION, CHARACTER_FACT_FORMAT_VERSION, CHARACTER_RELATION_FACT_FORMAT_VERSION, ITEM_FACT_FORMAT_VERSION, CHARACTER_BATCH_FORMAT_VERSION) else {}),
+                    **({"export_profile": dict(EXPORT_PROFILE)} if version in (EXPORT_FORMAT_VERSION, REVISION_FORMAT_VERSION, FORESHADOWING_FORMAT_VERSION, CHAPTER_RECORD_FORMAT_VERSION, ITEM_OWNER_FORMAT_VERSION, CHARACTER_RELATION_STATE_FORMAT_VERSION, CHARACTER_FACT_FORMAT_VERSION, CHARACTER_RELATION_FACT_FORMAT_VERSION, ITEM_FACT_FORMAT_VERSION, FACTION_FACT_FORMAT_VERSION, CHARACTER_BATCH_FORMAT_VERSION, COMBINED_FORMAT_VERSION, FACTION_VOLUME_START_FORMAT_VERSION) else {}),
                 }
                 # 清单本身的实际字节也参与标识，不能只相信包中声明的哈希。
                 payload_identity = hashlib.sha256(json.dumps(

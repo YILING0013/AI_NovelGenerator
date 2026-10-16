@@ -151,7 +151,7 @@ class FinishArgs(AssistantModel):
 
 class FactReadArgs(AssistantModel):
     """查询真实位置的三类事实，不使用主档镜像推断剧情状态。"""
-    resource_type: Literal["character", "character_relation", "item"]
+    resource_type: Literal["character", "character_relation", "item", "faction"]
     ids: list[str] = Field(min_length=1, max_length=20)
     position: dict[str, Any] | None = None
 
@@ -159,8 +159,8 @@ class FactReadArgs(AssistantModel):
 TOOL_CONTRACTS = {
     "read_chapter_revision": (ChapterRevisionArgs, "读取当前作品的真实章节历史，可按 chapter_id 或作者说的全书 chapter_number 指定。返回真实章号和稳定身份，不传 version 时列版本；指定 version、start、length 返回不可变原文和服务端生成 evidence，可取其中原样子片段用于章后事实；摘要不能作证据。"),
     "reconcile_changes": (ReviewArgs, "修改冲突时先查原回执，再比较原值、拟改值、当前值。未知结果禁止另建；无重叠可重准备，真实冲突用人话 ask_user。"),
-    "query_facts": (FactReadArgs, "读取人物、人物关系或物品在明确位置的值和来源，未指定位置则读服务端解析的最新位置。"),
-    "stage_fact_change": (FactChangeRequest, "单项新人物/关系/物品、已认领状态修改使用此工具；批量人物/关系和卷人物计划使用对应 run_generation_task，不拆成逐项保存。先 query_facts，位置不明确则 ask_user。人工说明由服务器使用作者原话；章后依据须为真实不可变正文。不能提供 confirmed、basis 或伪造来源。"),
+    "query_facts": (FactReadArgs, "读取人物、人物关系、势力或物品在明确位置的值和来源，未指定位置则读服务端解析的最新位置。"),
+    "stage_fact_change": (FactChangeRequest, "单项新人物/关系/势力/物品及实际状态修改使用此工具；批量人物/关系/势力和卷参与计划使用对应 run_generation_task，不拆成逐项保存。先 query_facts，位置不明确则 ask_user。人工说明由服务器使用作者原话；章后依据须为真实不可变正文。不能提供 confirmed、basis 或伪造来源。"),
     "get_book_overview": (EmptyArgs, "读取当前小说的小型概览和各类资料数量，不展开正文。"),
     "list_resources": (CatalogueArgs, "按类型、文字、位置分页查询摘要目录；每页默认20、最多50条。"),
     "describe_resource": (KindArgs, "查看原业务创建、更新字段定义，准备修改前先了解字段。"),
@@ -260,9 +260,9 @@ async def execute_tool(name: str, arguments: dict, *, run: dict, state: dict, ke
         return {"title": revision["title"], "chapter": chapter, "evidence": evidence, "next_start": args.start + len(quote),
                 "has_more": args.start + len(quote) < len(revision["content"]), "notice": "这是指定历史修订的原始正文，不能用摘要替代。"}
     if name == "query_facts":
-        from backend.services.novel import character_fact_service, character_relation_fact_service, item_fact_service
-        service = {"character": character_fact_service, "character_relation": character_relation_fact_service, "item": item_fact_service}[args.resource_type]
-        id_field = {"character": "character_ids", "character_relation": "relation_ids", "item": "item_ids"}[args.resource_type]
+        from backend.services.novel import character_fact_service, character_relation_fact_service, item_fact_service, faction_fact_service
+        service = {"character": character_fact_service, "character_relation": character_relation_fact_service, "item": item_fact_service, "faction": faction_fact_service}[args.resource_type]
+        id_field = {"character": "character_ids", "character_relation": "relation_ids", "item": "item_ids", "faction": "faction_ids"}[args.resource_type]
         return await getattr(service, f"query_{args.resource_type}_facts")(novel_id, {id_field: args.ids, "position": args.position})
     if name == "stage_fact_change":
         change = await stage_fact_change(run, args, key=key)
@@ -336,7 +336,7 @@ async def execute_tool(name: str, arguments: dict, *, run: dict, state: dict, ke
         if change.get("kind") == "facts":
             target = change["fact_command"]["basis"]["target"]
             if target["kind"] == "existing":
-                targets = [(change["fact_type"], target.get({"character": "character_id", "character_relation": "relation_id", "item": "item_id"}[change["fact_type"]]) or target["entity_id"])]
+                targets = [(change["fact_type"], target.get({"character": "character_id", "character_relation": "relation_id", "item": "item_id", "faction": "faction_id"}[change["fact_type"]]) or target["entity_id"])]
         if not targets:
             targets = [(item["resource_type"], item["id"]) for item in change.get("sources", [])][:5]
         for kind, identity in list(dict.fromkeys(targets))[:10]:

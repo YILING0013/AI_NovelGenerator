@@ -84,7 +84,7 @@ export interface ItemHardDeleteResponseV1 {
 /** 物品 AI 生成请求中会写入 basis 的业务输入。 */
 export interface ItemsGenerationInputV1 extends ReasoningOptions {
   novel_id: string;
-  item_count: number;
+  item_count: number | null;
   allow_incremental: boolean;
   user_guidance: string;
   temperature: number | null;
@@ -97,7 +97,7 @@ export interface ItemsGenerationInputV1 extends ReasoningOptions {
 
 /** 物品 AI 普通与流式入口共用的请求。 */
 export interface ItemsGenerateRequestV1 extends ReasoningOptions {
-  item_count: number;
+  item_count: number | null;
   allow_incremental: boolean;
   user_guidance: string;
   temperature?: number | null;
@@ -222,9 +222,9 @@ function isItemsGenerationInput(value: unknown, novelId: string): value is Items
       "system_prompt",
     ])
     && value.novel_id === novelId
-    && Number.isInteger(value.item_count)
+    && (value.item_count === null || (Number.isInteger(value.item_count)
     && Number(value.item_count) >= 1
-    && Number(value.item_count) <= 20
+    && Number(value.item_count) <= 20))
     && typeof value.allow_incremental === "boolean"
     && typeof value.user_guidance === "string"
     && value.user_guidance.length <= 2000

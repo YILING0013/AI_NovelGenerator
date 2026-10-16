@@ -43,7 +43,7 @@ def resolve_format_review_provider(config: LLMConfig | None = None) -> str:
     if configured:
         if configured in llm_cfg.providers:
             prov = llm_cfg.providers[configured]
-            if prov.enabled and (prov.supports_json_schema or prov.is_deepseek):
+            if prov.enabled and ((prov.supports_json_schema and prov.resolved_structured_output_mode != "json_object") or (prov.resolved_structured_output_mode == "json_object" and prov.json_output_enabled)):
                 return configured
         logger.warning(
             "配置的 format_review_provider '%s' 不可用（不存在 / 未启用 / 不支持结构化输出），尝试自动查找",
@@ -52,7 +52,7 @@ def resolve_format_review_provider(config: LLMConfig | None = None) -> str:
 
     # 2. 自动查找
     for name, cfg in llm_cfg.providers.items():
-        if cfg.enabled and (cfg.supports_json_schema or cfg.is_deepseek):
+        if cfg.enabled and ((cfg.supports_json_schema and cfg.resolved_structured_output_mode != "json_object") or (cfg.resolved_structured_output_mode == "json_object" and cfg.json_output_enabled)):
             return name
 
     raise DomainApiError(

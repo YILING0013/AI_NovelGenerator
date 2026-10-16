@@ -28,6 +28,13 @@ def flow_fingerprint_inputs(task: str, generation_input: Any, snapshot: Mapping[
     if flow.task != task or flow_fingerprint(flow) != snapshot["definition_hash"]:
         raise ValueError("生成时的流程版本不存在或内容不一致")
     value = generation_input.model_dump(mode="json") if hasattr(generation_input, "model_dump") else dict(generation_input)
+    chapter_version = next((node.config.get("chapter_context_version") for node in flow.nodes if node.type == "agent" and node.config.get("chapter_context_version")), None)
+    if task == "write_chapter_by_ai" and (
+        value.get("chapter_context_version") != chapter_version
+        or snapshot["scope"].get("chapter_context_version") != chapter_version
+        or bool(value.get("chapter_selection_complete")) != bool(chapter_version)
+    ):
+        raise ValueError("候选的本章资料模式或最终选择与原方案不一致")
     value.pop("use_stream", None)
     scope = snapshot["scope"]
     if any(scope.get(key) != value[key] for key in ("novel_id", "volume_id", "target_type", "target_id") if key in value):

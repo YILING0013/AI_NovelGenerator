@@ -1,4 +1,6 @@
 "use client";
+
+import { downloadExport } from "@/lib/userExport";
 import { useAssistantResource } from "../assistant/AssistantContext";
 
 import { Button } from "@heroui/react";
@@ -144,7 +146,7 @@ export default function ChapterBodyEditor({ node, onSaved, onHistorySaved, onDir
         <Button size="sm" variant="ghost" isDisabled={loading || saving} onPress={() => {
           const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
           const url = URL.createObjectURL(blob); const link = document.createElement("a");
-          link.href = url; link.download = `${node.record.title}.txt`; link.click(); URL.revokeObjectURL(url);
+          link.href = url; link.download = `${node.record.title}.txt`; void downloadExport(link); URL.revokeObjectURL(url);
         }}>{t("exportDraft")}</Button>
         <Button size="sm" variant="ghost" isDisabled={!dirty || loading || saving} onPress={() => { void (async () => {
           await writes.current;

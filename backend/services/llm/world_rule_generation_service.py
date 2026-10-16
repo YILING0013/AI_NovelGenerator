@@ -8,6 +8,7 @@ from typing import Any
 
 from pymongo.asynchronous.client_session import AsyncClientSession
 
+from backend.services.novel.writing_context import faction_design_content
 from backend.db.repositories.character_repository import character_repo
 from backend.db.repositories.faction_relation_repository import faction_relation_repo
 from backend.db.repositories.faction_repository import faction_repo
@@ -177,7 +178,7 @@ class WorldRuleGenerationService:
             "characters": [
                 character_design_content(item, CHARACTER_PROMPT_FIELDS) for item in characters
             ],
-            "factions": [_project(item, FACTION_PROMPT_FIELDS) for item in factions],
+            "factions": [faction_design_content(item, FACTION_PROMPT_FIELDS) for item in factions],
             "faction_relations": [
                 _project(item, FACTION_RELATION_PROMPT_FIELDS)
                 for item in faction_relations
@@ -228,7 +229,7 @@ class WorldRuleGenerationService:
             全部业务约束通过时返回 None。
         """
         errors: list[str] = []
-        if len(result.core_world_rules) != generation_input.core_rule_count:
+        if generation_input.core_rule_count is not None and len(result.core_world_rules) != generation_input.core_rule_count:
             errors.append(
                 f"候选数量必须严格等于 {generation_input.core_rule_count}"
             )

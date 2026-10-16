@@ -6,7 +6,8 @@ import { useTranslations } from "next-intl";
 import { RetainedModalBackdrop, RetainedViewActive } from "@/components/layout/RetainedViews";
 import DocumentSection from "@/components/shared/DocumentSection";
 import ReadOnlyField from "@/components/shared/ReadOnlyField";
-import SectionEditButton from "@/components/shared/SectionEditButton";
+import DraftChip from "@/components/shared/DraftChip";
+import SectionEditButton, { SectionActionButton } from "@/components/shared/SectionEditButton";
 import SidebarEdgeHandle from "@/components/shared/SidebarEdgeHandle";
 import { ConfirmActionModal, RelationEditorErrorSummary, focusRelationEditorError } from "@/components/shared/RelationEditorPrimitives";
 import { apiGet, apiPatch, apiPost, ApiRequestError, type ApiFieldErrors } from "@/lib/api";
@@ -28,6 +29,7 @@ export default function ForeshadowingsWorkspace({ novelId, cleanupOnly = false, 
   initialView?: "active" | "trash"; requestedId?: string | null; onLocationChange?: (view: "active" | "trash", id: string | null) => void;
 }) {
   const t = useTranslations("writing.foreshadowings");
+  const draftT = useTranslations("writing.characterFacts");
   const active = useContext(RetainedViewActive);
   const id = useId();
   const scope = `${novelId}:foreshadowings`;
@@ -58,7 +60,6 @@ export default function ForeshadowingsWorkspace({ novelId, cleanupOnly = false, 
   const [mergeChoices, setMergeChoices] = useState<Partial<Record<typeof COMPARISON_FIELDS[number], "current" | "draft">>>({});
   const [readMessage, setReadMessage] = useState("");
   const [leave, setLeave] = useState<(() => void) | null>(null);
-  const [discard, setDiscard] = useState<ForeshadowingDraft | null>(null);
   const detailRef = useRef<HTMLElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const draftRef = useRef<ForeshadowingDraft | null>(null);
@@ -180,6 +181,19 @@ export default function ForeshadowingsWorkspace({ novelId, cleanupOnly = false, 
     if (pending.current) return;
     try { if (draftRef.current) await persist(draftRef.current); epoch.current += 1; setDraft(null); draftRef.current = null; setConfirm(false); setEditorError(""); await readDrafts(); }
     catch { setEditorError(t("localFailed")); }
+  };
+  const discardEditor = async () => {
+    if (pending.current || !draftRef.current || draftRef.current.command) return;
+    pending.current = true; setSaving(true);
+    try {
+      await queue.current;
+      const original = draftRef.current;
+      await writeForeshadowingDraft(scope, original, original.revision, true);
+      persisted.current.delete(original.key);
+      epoch.current += 1; draftRef.current = null; setDraft(null); setConfirm(false); setEditorError("");
+      await readDrafts();
+    } catch { setEditorError(t("localFailed")); }
+    finally { pending.current = false; setSaving(false); }
   };
   const navigate = (action: () => void) => {
     if (saving) return;
@@ -307,18 +321,22 @@ export default function ForeshadowingsWorkspace({ novelId, cleanupOnly = false, 
         };
         openDraft(currentRead, draft.mode, { ...draft, source: currentRead, command: undefined, plan, status: mergeChoices.status === "draft" ? draft.status : currentRead.status, planted_evidence: mergeChoices.planted_evidence === "draft" ? draft.planted_evidence : currentRead.planted_evidence, resolved_evidence: mergeChoices.resolved_evidence === "draft" ? draft.resolved_evidence : currentRead.resolved_evidence });
       }}>{t("editCurrentKeepDraft")}</Button>}
+      {!draft.command && <Button variant="ghost" isDisabled={saving} onPress={() => void discardEditor()}>{draftT("discardClose")}</Button>}
       <Button variant="ghost" isDisabled={saving} onPress={() => void closeEditor()}>{t("closeKeepDraft")}</Button>
     </div>
   </div>;
 
   return <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-surface">
-    <header className="flex shrink-0 items-center justify-between px-4 py-3 sm:px-6"><h2 className="text-sm font-medium">{t(cleanupOnly ? "cleanupTitle" : "heading")}</h2><Button size="sm" variant="ghost" isDisabled={saving} onPress={() => setRefresh((value) => value + 1)}>{t("refresh")}</Button></header>
+    <h2 className="sr-only">{t(cleanupOnly ? "cleanupTitle" : "heading")}</h2>
     {error && <div className="border-y border-danger px-4 py-3 sm:px-6"><RelationEditorErrorSummary message={error} /></div>}
-    <div role="tablist" aria-label={t("heading")} className="flex shrink-0 overflow-x-auto border-b border-border px-4 sm:px-6">{["active", "trash"].map((tab, index) => <button key={tab} role="tab" id={`${id}-${tab}-tab`} aria-selected={view === tab} aria-controls={`${id}-panel`} tabIndex={view === tab ? 0 : -1} disabled={saving} className={`min-h-11 shrink-0 border-b-2 px-4 text-sm focus-visible:outline-2 focus-visible:outline-accent ${view === tab ? "border-accent text-accent" : "border-transparent text-muted"}`} onClick={() => navigate(() => { setView(tab); setSelectedId(null); setMobileDetail(false); onLocationChange?.(tab as "active" | "trash", null); })} onKeyDown={(event) => {
+    <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 sm:px-6">
+    <div role="tablist" aria-label={t("heading")} className="flex min-w-0 flex-1 overflow-x-auto">{["active", "trash"].map((tab, index) => <button key={tab} role="tab" id={`${id}-${tab}-tab`} aria-selected={view === tab} aria-controls={`${id}-panel`} tabIndex={view === tab ? 0 : -1} disabled={saving} className={`min-h-11 shrink-0 border-b-2 px-4 text-sm focus-visible:outline-2 focus-visible:outline-accent ${view === tab ? "border-accent text-accent" : "border-transparent text-muted"}`} onClick={() => navigate(() => { setView(tab); setSelectedId(null); setMobileDetail(false); onLocationChange?.(tab as "active" | "trash", null); })} onKeyDown={(event) => {
       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
       event.preventDefault(); const next = event.key === "Home" ? "active" : event.key === "End" ? "trash" : index ? "active" : "trash";
       navigate(() => { setView(next); setSelectedId(null); setMobileDetail(false); onLocationChange?.(next as "active" | "trash", null); document.getElementById(`${id}-${next}-tab`)?.focus(); });
     }}>{t(tab)}</button>)}</div>
+    <SectionActionButton action="refresh" label={t("refresh")} size="sm" variant="ghost" isDisabled={saving} onPress={() => setRefresh((value) => value + 1)} />
+    </div>
     <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-${view}-tab`} className="@container/master flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-4 py-3 sm:px-6">
       <div className={`workspace-toolbar mb-3 flex shrink-0 flex-wrap items-end gap-3 ${mobileDetail ? "hidden @min-[800px]/master:flex" : ""}`}>
         <label className="grid min-w-0 flex-1 gap-1 text-xs text-muted">{t("search")}<input className={INPUT} value={q} disabled={saving} onChange={(event) => navigate(() => setQ(event.target.value))} /></label>
@@ -329,7 +347,11 @@ export default function ForeshadowingsWorkspace({ novelId, cleanupOnly = false, 
       {structureError && <p role="alert" className="mb-3 text-sm text-danger">{structureError}</p>}
       {readMessage && !draft && <p role="status" className="mb-3 text-sm">{readMessage}</p>}
       {localError && !draft && <RelationEditorErrorSummary message={localError} />}
-      {drafts.length > 0 && !draft && <details className="mb-3 shrink-0"><summary className="min-h-11 cursor-pointer text-sm">{t("retainedDrafts", { count: drafts.length })}</summary><ul className="workspace-scrollbar max-h-44 overflow-y-auto">{drafts.map((stored) => <li key={stored.key} className="flex min-w-0 flex-wrap items-center gap-2 py-2"><span className="min-w-0 flex-1 break-words">{stored.plan.title || t("create")} · {t(stored.command?.saved ? "savedPending" : stored.command ? "unknown" : "draft")}</span><Button variant="outline" isDisabled={cleanupOnly && !["delete", "hard-delete"].includes(stored.mode)} onPress={() => { openDraft(stored.source, stored.mode, stored); }}>{t("resume")}</Button><Button variant="ghost" onPress={() => setDiscard(stored)}>{t("discardDraft")}</Button></li>)}</ul></details>}
+      {drafts.length > 0 && !draft && <div className="workspace-scrollbar mb-3 flex max-h-44 shrink-0 flex-wrap gap-2 overflow-y-auto" aria-label={t("retainedDrafts", { count: drafts.length })}>
+        {drafts.map((stored) => <DraftChip key={stored.key} label={stored.plan.title || t("create")} status={stored.command?.saved ? "saved" : stored.command ? "pending" : "draft"} isDisabled={saving} isResumeDisabled={cleanupOnly && !["delete", "hard-delete"].includes(stored.mode)}
+          onResume={() => openDraft(stored.source, stored.mode, stored)}
+          onDiscard={!stored.command || stored.command.saved ? async () => { await queue.current; await writeForeshadowingDraft(scope, stored, stored.revision, true); await readDrafts(); } : undefined} />)}
+      </div>}
       <div className={`grid min-h-0 min-w-0 flex-1 overflow-hidden ${collapsed ? "@min-[800px]/master:grid-cols-[0_minmax(0,1fr)]" : "@min-[800px]/master:grid-cols-[minmax(240px,280px)_minmax(0,1fr)]"}`}>
         <div className={`relative min-h-0 min-w-0 ${mobileDetail ? "hidden @min-[800px]/master:block" : "block"}`}>
           <aside id={`${id}-roster`} aria-label={t("roster")} tabIndex={0} className={`workspace-scrollbar h-full min-h-0 overflow-y-auto focus-visible:outline-2 focus-visible:outline-accent ${mobileDetail ? "hidden" : "block"} ${collapsed ? "@min-[800px]/master:hidden" : "@min-[800px]/master:block"}`}>
@@ -349,7 +371,7 @@ export default function ForeshadowingsWorkspace({ novelId, cleanupOnly = false, 
             {selected && <>
               {(selected.status === "planned" || selected.status === "planted") && <p className="text-sm text-muted">{t("unresolved")}</p>}
               {(["planted", "resolved"] as const).map((kind, index) => <DocumentSection key={kind} number={`0${index + 2}`} title={t(`${kind}Evidence`)}><div className="grid gap-3">{selected[`${kind}_needs_review`] && <p role="status" className="border-y border-amber-500 py-3 text-sm">{t("reviewWarning")}</p>}{selected[`${kind}_evidence`] ? <><pre className="reading-copy min-w-0 whitespace-pre-wrap break-words">{selected[`${kind}_evidence`]!.quote}</pre><p className="text-xs text-muted">{t("version", { version: selected[`${kind}_evidence`]!.version })} · {t("start")} {selected[`${kind}_evidence`]!.start}</p><Button variant="outline" onPress={() => setReference(selected[`${kind}_evidence`]!)}>{t("openReference")}</Button></> : <p className="text-sm text-muted">{t("noEvidence")}</p>}</div></DocumentSection>)}
-              {!draft && <div className="flex flex-wrap gap-2">{!cleanupOnly && !selected.is_deleted && <Button variant="outline" onPress={() => openDraft(selected, "records")}>{t(selected.planted_needs_review || selected.resolved_needs_review ? "reviewRecords" : "record")}</Button>}{selected.is_deleted ? <>{!cleanupOnly && <Button variant="outline" onPress={() => openDraft(selected, "restore")}>{t("restore")}</Button>}<Button variant="danger-soft" onPress={() => openDraft(selected, "hard-delete")}>{t("hardDelete")}</Button></> : <Button variant="danger-soft" onPress={() => openDraft(selected, "delete")}>{t("delete")}</Button>}</div>}
+              {!draft && <div className="flex flex-wrap gap-2">{!cleanupOnly && !selected.is_deleted && <Button variant="outline" onPress={() => openDraft(selected, "records")}>{t(selected.planted_needs_review || selected.resolved_needs_review ? "reviewRecords" : "record")}</Button>}{selected.is_deleted ? <>{!cleanupOnly && <Button variant="outline" onPress={() => openDraft(selected, "restore")}>{t("restore")}</Button>}<Button variant="danger-soft" onPress={() => openDraft(selected, "hard-delete")}>{t("hardDelete")}</Button></> : <SectionActionButton action="trash" label={t("delete")} variant="danger-soft" onPress={() => openDraft(selected, "delete")} />}</div>}
             </>}
             {draft?.mode === "records" && <DocumentSection number="04" title={t("record")}><div ref={editorRef} className="grid gap-4">
               {!confirm && (editorError || localError) && <RelationEditorErrorSummary message={editorError || localError} fieldErrors={fieldErrors} />}
@@ -366,7 +388,6 @@ export default function ForeshadowingsWorkspace({ novelId, cleanupOnly = false, 
     {draft && !draft.source && <RetainedModalBackdrop isOpen onOpenChange={(open) => !open && void closeEditor()} isDismissable={!saving}><Modal.Container scroll="inside" size="lg"><Modal.Dialog className="w-full max-w-2xl"><Modal.Header className="px-5 py-4"><Modal.Heading>{t("create")}</Modal.Heading><Modal.CloseTrigger isDisabled={saving} aria-label={t("closeKeepDraft")} /></Modal.Header><Modal.Body className="px-5 py-5">{planForm}</Modal.Body><Modal.Footer className="sticky bottom-0 border-t border-border bg-surface-raised px-5 py-4">{draftActions}</Modal.Footer></Modal.Dialog></Modal.Container></RetainedModalBackdrop>}
     {confirm && draft && <ConfirmActionModal title={t(draft.mode === "records" ? "record" : draft.mode === "hard-delete" ? "hardDelete" : draft.mode === "delete" ? "delete" : draft.mode === "restore" ? "restore" : "save")} message={<div className="grid gap-3"><p>{t(draft.mode === "hard-delete" ? "hardDeleteMessage" : draft.mode === "delete" ? "deleteMessage" : draft.mode === "restore" ? "restoreMessage" : "confirmMessage")}</p>{draft.mode === "records" && <p>{t("status")}: {t(draft.status)}</p>}{["delete", "hard-delete"].includes(draft.mode) && draft.source && <ul className="break-words"><li>{t("planting_position")}: {positionLabel(draft.source.planting_position)}</li><li>{t("resolution_position")}: {positionLabel(draft.source.resolution_position)}</li>{[draft.source.planted_evidence, draft.source.resolved_evidence].filter(Boolean).map((evidence, index) => <li key={index}>{evidence!.chapter_id} · {t("version", { version: evidence!.version })} · {t("start")} {evidence!.start}</li>)}</ul>}</div>} confirmText={t("confirm")} cancelText={t("cancel")} isLoading={saving} danger={["delete", "hard-delete"].includes(draft.mode)} error={editorError || localError} onCancel={() => setConfirm(false)} onConfirm={() => void submit()} />}
     {reference && <RetainedModalBackdrop isOpen onOpenChange={(open) => !open && setReference(null)}><Modal.Container scroll="inside" size="lg"><Modal.Dialog className="w-full max-w-3xl"><Modal.Header className="px-5 py-4"><Modal.Heading>{t("openReference")}</Modal.Heading><Modal.CloseTrigger aria-label={t("close")} /></Modal.Header><Modal.Body className="px-5 py-5"><EvidencePicker key={`${reference.chapter_id}:${reference.version}:${reference.start}`} novelId={novelId} chapters={chapters} value={reference} readOnly label={t("openReference")} /></Modal.Body></Modal.Dialog></Modal.Container></RetainedModalBackdrop>}
-    {discard && <ConfirmActionModal title={t("discardDraft")} message={t("discardMessage")} confirmText={t("discardDraft")} cancelText={t("cancel")} error={localError} onCancel={() => setDiscard(null)} onConfirm={async () => { try { await writeForeshadowingDraft(scope, discard, discard.revision, true); setDiscard(null); await readDrafts(); } catch { setLocalError(t("localFailed")); } }} />}
     {leave && <ConfirmActionModal title={t("leaveTitle")} message={t("leaveMessage")} confirmText={t("closeKeepDraft")} cancelText={t("cancel")} error={editorError} onCancel={() => setLeave(null)} onConfirm={async () => { const action = leave; await closeEditor(); if (!draftRef.current) { setLeave(null); action(); } }} />}
   </div>;
 }

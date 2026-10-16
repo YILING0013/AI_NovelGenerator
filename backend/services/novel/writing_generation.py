@@ -30,8 +30,8 @@ def merge_writing_reads(contexts: list[dict[str, Any]]) -> dict[str, Any]:
     reads = {}
     for context in contexts:
         for read in context["reads"]:
-            if read["kind"] in {"character_facts", "character_relation_facts", "item_facts"}:
-                ids_field = {"character_facts": "character_ids", "character_relation_facts": "relation_ids", "item_facts": "item_ids"}[read["kind"]]
+            if read["kind"] in {"character_facts", "character_relation_facts", "item_facts", "faction_facts"}:
+                ids_field = {"character_facts": "character_ids", "character_relation_facts": "relation_ids", "item_facts": "item_ids", "faction_facts": "faction_ids"}[read["kind"]]
                 selection = {"novel_id": read["novel_id"], ids_field: read[ids_field],
                              "position": {name: read["position"][name] for name in ("version", "intent", "target_type", "target_id")}}
             else:
@@ -237,7 +237,7 @@ async def confirm_writing(task: str, parent_id: str, request: WritingConfirmV1, 
             merged_guards = {key: document for value in contexts for key, document in value["guards"].items() if key not in protected_agent_guards}
             timing.phase("来源版本保护")
             await protect_writing_sources({"guards": merged_guards, "fact_reads": [
-                read for read in basis.context_basis.model_dump(mode="json")["reads"] if read["kind"] in {"character_facts", "character_relation_facts", "item_facts"}
+                read for read in basis.context_basis.model_dump(mode="json")["reads"] if read["kind"] in {"character_facts", "character_relation_facts", "item_facts", "faction_facts"}
             ]}, session=session)
             timing.phase("业务保存（含引用与版本保护）")
             if task == "write_chapter_by_ai":

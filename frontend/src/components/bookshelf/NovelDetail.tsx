@@ -1,5 +1,6 @@
 ﻿/* eslint-disable @next/next/no-img-element */
 "use client";
+import { SectionActionButton } from "@/components/shared/SectionEditButton";
 
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
@@ -166,9 +167,7 @@ export default function NovelDetailPanel({
           <Button variant="outline" size="sm" onPress={() => setRecordsOpen(true)}>
             {tb("viewChapterRecords")}
           </Button>
-          <Button variant="ghost" size="sm" className="text-red-700 hover:bg-red-500/10 dark:text-red-300" onPress={() => setConfirmingDelete(true)}>
-            {t("delete")}
-          </Button>
+          <SectionActionButton action="trash" label={t("delete")} variant="ghost" size="sm" className="text-red-700 hover:bg-red-500/10 dark:text-red-300" onPress={() => setConfirmingDelete(true)} />
         </div>
       </header>
 

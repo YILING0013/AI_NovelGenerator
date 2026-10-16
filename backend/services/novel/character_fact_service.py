@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 from copy import deepcopy
 from typing import Any
 
@@ -25,7 +24,7 @@ from backend.services.novel.character_fact_contract import (
 )
 from backend.services.novel.character_fact_reader import evaluate_character_facts
 from backend.services.novel.chapter_record_source import (
-    RELATED_ENTITIES, load_chapter_record_source_in_session, protect_chapter_record_sources,
+    RELATED_ENTITIES, load_chapter_record_source_in_session, protect_chapter_record_sources, load_fact_source_observations,
 )
 from backend.services.novel.writing_context import (
     COLLECTIONS, PARENTS, load_writing_parents, resolve_writing_position, writing_order,
@@ -72,50 +71,11 @@ async def _load_character_fact_snapshot(novel_id, character_ids, position_scope,
             raise DomainApiError("CHARACTER_FACT_RECORD_INVALID", "人物确认记录的身份不一致，请检查记录", status_code=409)
         records.append(record)
 
-    sources = {}
-    source_validity = {}
+    sources, source_validity, source_guards = await load_fact_source_observations(novel_key, records, directories, session=session)
     guards = {("novels", novel_id): novel}
     for character in characters:
         guards[("characters", str(character["_id"]))] = character
-    for record in records:
-        source = record["source"]
-        if source["kind"] == "author":
-            source_validity[record["history_id"]] = True
-            continue
-        evidence = source["evidence"]
-        source_key = (evidence["chapter_id"], evidence["revision_id"])
-        if source_key not in sources:
-            chapter = await BaseRepository("chapters").collection.find_one({
-                "_id": ObjectId(evidence["chapter_id"]), "novel_id": novel_key,
-            }, session=session)
-            revision = await BaseRepository("chapter_revisions").collection.find_one({
-                "_id": ObjectId(evidence["revision_id"]), "novel_id": novel_key,
-            }, session=session)
-            current_hash = hashlib.sha256(chapter["content"].encode("utf-8")).hexdigest() if chapter else None
-            revision_hash = hashlib.sha256(revision["content"].encode("utf-8")).hexdigest() if revision else None
-            parents_active = bool(chapter is not None and not chapter["is_deleted"]
-                                  and writing_order("chapter", chapter, directories) is not None)
-            revision_valid = bool(revision is not None and chapter is not None
-                                  and revision_hash == revision["content_hash"]
-                                  and revision["chapter_id"] == chapter["_id"]
-                                  and all(revision[field] == chapter[field]
-                                          for field in ("novel_id", "volume_id", "arc_id", "scene_id")))
-            sources[source_key] = ({
-                "chapter_id": evidence["chapter_id"], "exists": chapter is not None,
-                "content_hash": current_hash, "is_deleted": chapter["is_deleted"] if chapter else None,
-                "parents_active": parents_active, "revision_id": evidence["revision_id"],
-                "revision_hash": revision_hash, "revision_version": revision["version"] if revision else None,
-                "revision_valid": revision_valid,
-            }, revision)
-            if chapter is not None:
-                guards[("chapters", str(chapter["_id"]))] = chapter
-        observation, revision = sources[source_key]
-        source_validity[record["history_id"]] = bool(
-            observation["parents_active"] and observation["revision_valid"]
-            and observation["content_hash"] == evidence["content_hash"] == observation["revision_hash"]
-            and revision["version"] == evidence["version"]
-            and revision["content"][evidence["start"]:evidence["start"] + len(evidence["quote"])] == evidence["quote"]
-        )
+    guards.update(source_guards)
 
     directory = [{"resource_type": kind, "id": str(row["_id"]),
                   "parent_id": str(row[f"{PARENTS[kind]}_id"]), "order_index": row["order_index"]}
@@ -129,7 +89,7 @@ async def _load_character_fact_snapshot(novel_id, character_ids, position_scope,
         "history": [{"history_id": row["history_id"], "entity_id": row["entity_id"],
                      "immutable_fingerprint": canonical_request_hash({key: value for key, value in row.items() if key != "validity"}),
                      "validity": row["validity"]} for row in records],
-        "sources": [sources[key][0] for key in sorted(sources)],
+        "sources": sources,
     }
     read["fingerprint"] = canonical_request_hash(read)
     active = [row for row in characters if not row["is_deleted"]]

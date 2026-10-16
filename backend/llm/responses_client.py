@@ -10,7 +10,9 @@ from typing import Any, AsyncGenerator
 from pydantic import BaseModel, ValidationError
 
 from backend.llm.base_client import _ThinkStreamFilter
+from backend.llm.exceptions import LLMConnectionError
 from backend.llm.exceptions import LLMError, LLMResponseError, LLMSchemaError
+from backend.llm.provider_probe import observe_provider_response
 from backend.llm.logger import LLMCall
 from backend.llm.json_guard import reject_duplicate_json_keys
 from backend.llm.models import LLMFunctionCallProbe, LLMRequest, LLMResponse, LLMToolCall, LLMToolDefinition, LLMToolResult, LLMToolTurn, TokenUsage
@@ -46,6 +48,30 @@ class ResponsesClient(OpenAICompatibleClient):
                     if part.type == "refusal":
                         raise LLMResponseError(part.refusal, provider=self.provider_name, model=model)
 
+    async def _create_response(self, params: dict[str, Any], *, stream: bool) -> Any:
+        """取得 Responses 的完整结果，流式结果以终止事件为准。
+
+        Args:
+            params: 现有构建器生成的请求参数。
+            stream: 是否使用流式请求。
+        Returns:
+            包含全部 output 项的 SDK 响应。
+        """
+        if not stream:
+            return await self._client.responses.create(**params)
+        response = None
+        events = await self._client.responses.create(**params, stream=True)
+        async with events:
+            async for event in events:
+                observe_provider_response(event, self.config.resolved_api_mode)
+                if event.type in {"response.completed", "response.incomplete", "response.failed"}:
+                    response = event.response
+                elif event.type == "error":
+                    raise LLMResponseError(event.message, provider=self.provider_name)
+        if response is None:
+            raise LLMConnectionError("Responses 响应流提前断开，请重试", provider=self.provider_name)
+        return response
+
     async def _generate(self, request: LLMRequest, schema: type[BaseModel] | None = None) -> LLMResponse:
         request = self._apply_defaults(request)
         model = self._resolve_model(request)
@@ -53,7 +79,8 @@ class ResponsesClient(OpenAICompatibleClient):
                      use_system_proxy=self.config.use_system_proxy) as call:
             start = time.perf_counter()
             try:
-                response = await self._client.responses.create(**self._build_params(request, schema=schema))
+                response = await self._create_response(self._build_params(request, schema=schema), stream=request.stream)
+                observe_provider_response(response, self.config.resolved_api_mode)
                 self._check_response(response, model)
                 content = response.output_text
                 if schema is not None or request.json_output_schema is not None:
@@ -114,6 +141,7 @@ class ResponsesClient(OpenAICompatibleClient):
                 stream = await self._client.responses.create(**self._build_params(request), stream=True)
                 async with stream:
                     async for event in stream:
+                        observe_provider_response(event, self.config.resolved_api_mode)
                         call.chunk_count += 1
                         if event.type == "response.output_text.delta":
                             call.chunks.append(event.delta)
@@ -128,7 +156,7 @@ class ResponsesClient(OpenAICompatibleClient):
                         elif event.type == "error":
                             raise LLMResponseError(event.message, provider=self.provider_name, model=model)
                 if not finished:
-                    raise LLMResponseError("响应流提前断开，请重试", provider=self.provider_name, model=model)
+                    raise LLMConnectionError("响应流提前断开，请重试", provider=self.provider_name, model=model)
                 if request.json_output_schema is not None:
                     reject_duplicate_json_keys("".join(call.chunks))
                 tail = stream_filter.finish()
@@ -165,7 +193,8 @@ class ResponsesClient(OpenAICompatibleClient):
                 {"type": "function", **tool.model_dump(), **({} if self.config.is_deepseek else {"strict": False})}
                 for tool in tools
             ])
-            response = await self._client.responses.create(**params)
+            response = await self._create_response(params, stream=request.stream)
+            observe_provider_response(response, self.config.resolved_api_mode)
             self._check_response(response, model)
             messages.extend(item.model_dump(mode="json", exclude_none=True, warnings=False) for item in response.output)
             calls = []

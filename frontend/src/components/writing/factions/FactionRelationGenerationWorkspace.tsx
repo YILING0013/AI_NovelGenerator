@@ -83,9 +83,9 @@ export function FactionRelationGenerationPreview({
   const factionNames = new Map(factions.map((faction) => [faction.faction_id, faction.name]));
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface">
-      <div className="@container workspace-scrollbar min-h-0 w-full min-w-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/30" tabIndex={0} aria-label={t("relationCandidate.title")}>
-        <header className="border-b border-border pb-4">
+    <div className="@container/candidates flex h-full min-h-0 flex-col overflow-hidden bg-surface">
+      <div className="@container workspace-scrollbar flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-y-auto @min-[800px]/candidates:overflow-hidden px-4 py-5 sm:px-6 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/30" tabIndex={0} aria-label={t("relationCandidate.title")}>
+        <header className="shrink-0 border-b border-border pb-4">
           <div className="flex flex-wrap items-baseline gap-x-5 gap-y-2">
             <h2 className="text-lg font-semibold text-foreground">
               {t("relationCandidate.title")}
@@ -110,15 +110,15 @@ export function FactionRelationGenerationPreview({
         </header>
 
         {activeRelation && (
-          <section className="py-5" aria-labelledby="relation-candidate-list-heading">
+          <section className="flex min-h-0 shrink-0 flex-col py-5 @min-[800px]/candidates:flex-1 @min-[800px]/candidates:shrink @min-[800px]/candidates:overflow-hidden" aria-labelledby="relation-candidate-list-heading">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h3 id="relation-candidate-list-heading" className="text-sm font-semibold text-foreground">
                 {t("relationCandidate.chooseRelation")}
               </h3>
               <span className="text-xs text-muted">{t("candidate.selectedCount", { count: value.selectedRelationRefs.length })}</span>
             </div>
-            <div className="grid min-w-0 gap-5 @min-[800px]:grid-cols-[260px_minmax(0,1fr)]">
-              <ul className="workspace-scrollbar max-h-64 divide-y divide-border overflow-y-auto border border-border bg-surface-secondary/45 @min-[800px]:max-h-[65vh]">
+            <div className="grid min-h-0 min-w-0 gap-5 @min-[800px]/candidates:flex-1 @min-[800px]/candidates:overflow-hidden @min-[800px]/candidates:grid-cols-[260px_minmax(0,1fr)]">
+              <ul className="workspace-scrollbar min-h-0 max-h-64 divide-y divide-border overflow-y-auto border border-border bg-surface-secondary/45 @min-[800px]/candidates:max-h-none">
                 {value.relations.map((relation, index) => {
                   const selectedForCommit = value.selectedRelationRefs.includes(relation.relation_ref);
                   return (
@@ -153,7 +153,7 @@ export function FactionRelationGenerationPreview({
                   );
                 })}
               </ul>
-              <div ref={detailRef} className="workspace-scrollbar min-w-0 bg-surface pb-4 @min-[800px]:max-h-[65vh] @min-[800px]:overflow-y-auto @min-[800px]:px-3">
+              <div ref={detailRef} className="workspace-scrollbar min-h-0 min-w-0 bg-surface pb-4 @min-[800px]/candidates:max-h-none @min-[800px]/candidates:overflow-y-auto @min-[800px]/candidates:px-3">
                 <h3 className="mb-4 text-[22px] font-semibold leading-7 [overflow-wrap:anywhere]">{factionNames.get(activeRelation.source_faction_id) ?? activeRelation.source_faction_id} → {factionNames.get(activeRelation.target_faction_id) ?? activeRelation.target_faction_id}</h3>
                 <FactionRelationCandidateEditor value={activeRelation} factions={factions} relationTypeLabels={relationTypeLabels} disabled={saving} onChange={(relation) => onChange(activeIndex, relation)} t={t} />
               </div>

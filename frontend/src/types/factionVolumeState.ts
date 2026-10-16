@@ -19,7 +19,13 @@ export interface FactionVolumeStateFields {
 }
 
 /** 势力卷级状态的公开正式响应。 */
-export interface FactionVolumeStateReadV1 extends FactionVolumeStateFields {
+export interface FactionVolumeStateReadV1 extends Omit<FactionVolumeStateFields, "power_level" | "resources" | "public_stance" | "influence_scope" | "active_status"> {
+  content_contract?: "participation_plan_v1";
+  power_level: number | null;
+  resources: string[] | null;
+  public_stance: string | null;
+  influence_scope: string | null;
+  active_status: FactionVolumeActiveStatus | null;
   state_id: string;
   novel_id: string;
   volume_id: string;
@@ -61,3 +67,6 @@ export interface FactionVolumeStateHardDeleteV1 {
   deleted: true;
   state_id: string;
 }
+
+/** 实际剧情状态独立记录；本卷参与计划只包含这些设计字段。 */
+export type FactionVolumePlanFieldsV1 = Pick<FactionVolumeStateFields, "participation_scope" | "current_goal" | "start_state" | "planned_end_state" | "hidden_agenda">;

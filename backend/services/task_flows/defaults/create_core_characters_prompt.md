@@ -11,11 +11,11 @@
 已有全书核心角色（只作去重和整体平衡参考，禁止重复输出）:
 {existing_core_characters_json}
 
-本次必须新增角色数量: {character_count}
+本次数量参数（null/None 由 AI 决定）: {character_count}
 用户补充要求: {user_guidance}
 
 硬性规则:
-1. core_characters 数量必须严格等于本次新增数量；只生成能跨卷持续影响主线的全书级角色。
+1. 指定整数时 core_characters 数量必须严格等于本次新增数量；只生成能跨卷持续影响主线的全书级角色。
 2. 不生成卷级、篇章级、章节级或场景级临时人物，不输出首次出场卷/章节，也不输出正式 char_ ID。
 3. character_ref 只能使用 character_01、character_02 这类本次候选引用，并在本次结果内唯一。
 4. 每个 core_characters 元素必须且只能包含:
@@ -33,3 +33,5 @@
    public_status、loyalty_level、reason 必须非 null，loyalty_level 为 1 到 5；role_title 允许为 null。
 10. initial_state、relationship_with_protagonist 只描述故事开局的状态与关系；后续相爱、决裂、和解或结局归宿放在 growth_direction、arc_seed，不提前写成已是恋人、仇敌或已有终局认知。设定中开局已存在的关系按原设定保留。
 11. identity 写设定支持的身份与职业。普通救援机构、公共职业或亲属关系本身不是秘密组织、秘密身份或幕后利益链的依据；不因是亲属就无据增加知情、参与、指使或偿还他人过错的责任。已有小说设定或用户明确要求支持的秘密与矛盾可以保留和展开，不为增加戏剧性硬造秘密。
+
+数量参数 character_count 为 null 或 None 时，由你根据故事实际需要决定数量，至少 1 个、最多 50 个；不要把上限当成目标，也不要默认凑满。指定整数时严格遵守该数量。

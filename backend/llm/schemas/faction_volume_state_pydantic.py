@@ -130,9 +130,10 @@ class FactionVolumeStateReadV1(StrictResponseModel):
     planned_end_state: str = Field(max_length=2000)
     power_level: int = Field(ge=1, le=5)
     resources: list[ResourceText] = Field(max_length=20)
-    public_stance: str = Field(max_length=1000)
+    # 旧未定位原文只读保留，不能用新写入长度拦住名册与无关计划修改。
+    public_stance: str
     hidden_agenda: str = Field(max_length=1000)
-    influence_scope: str = Field(max_length=1000)
+    influence_scope: str
     active_status: FactionStateStatus
     source_state_id: ObjectIdString | None
     version: int = Field(ge=1)
@@ -161,10 +162,53 @@ class FactionVolumeStateReadV1(StrictResponseModel):
         return self
 
 
+class FactionVolumePlanFieldsV1(StrictRequestModel):
+    """卷参与设计只保存计划，不补实力、资源或剧情状态。"""
+
+    participation_scope: ParticipationScope
+    current_goal: str = Field(min_length=1, max_length=1000)
+    start_state: str = Field(min_length=1, max_length=2000)
+    planned_end_state: str = Field(default="", max_length=2000)
+    hidden_agenda: str = Field(default="", max_length=1000)
+
+
+class FactionVolumePlanUpdateV1(StrictRequestModel):
+    """普通卷计划编辑只提交实际改动的计划字段。"""
+
+    expected_version: int = Field(ge=1)
+    participation_scope: ParticipationScope | None = None
+    current_goal: str | None = Field(default=None, min_length=1, max_length=1000)
+    start_state: str | None = Field(default=None, min_length=1, max_length=2000)
+    planned_end_state: str | None = Field(default=None, max_length=2000)
+    hidden_agenda: str | None = Field(default=None, max_length=1000)
+
+    @model_validator(mode="after")
+    def validate_changes(self) -> "FactionVolumePlanUpdateV1":
+        """拒绝空提交及显式 null；未提交旧原文不重新校验。"""
+        fields = self.model_fields_set - {"expected_version"}
+        if not fields or any(getattr(self, name) is None for name in fields):
+            raise ValueError("卷参与计划需要至少一个非 null 的实际修改")
+        return self
+
+
+class FactionVolumePlanReadV1(FactionVolumeStateReadV1):
+    """新卷计划显式标识事实缺席；旧完整状态响应合同保持原样。"""
+
+    content_contract: Literal["participation_plan_v1"]
+    power_level: None = None
+    resources: None = None
+    public_stance: None = None
+    influence_scope: None = None
+    active_status: None = None
+
+
+FactionVolumeReadV1: TypeAlias = FactionVolumeStateReadV1 | FactionVolumePlanReadV1
+
+
 class FactionVolumeStateListV1(StrictResponseModel):
     """卷列表和势力历史共用的严格响应外壳。"""
 
-    data: list[FactionVolumeStateReadV1]
+    data: list[FactionVolumeStateReadV1 | FactionVolumePlanReadV1]
 
 
 class FactionVolumeStateInitializeResultV1(StrictResponseModel):
@@ -172,7 +216,7 @@ class FactionVolumeStateInitializeResultV1(StrictResponseModel):
 
     source_volume_id: ObjectIdString
     target_volume_id: ObjectIdString
-    states: list[FactionVolumeStateReadV1]
+    states: list[FactionVolumeStateReadV1 | FactionVolumePlanReadV1]
 
 
 class FactionVolumeStateHardDeleteV1(StrictResponseModel):

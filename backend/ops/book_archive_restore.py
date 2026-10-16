@@ -17,9 +17,12 @@ from pymongo.read_concern import ReadConcern
 from pymongo.write_concern import WriteConcern
 
 from backend.ops.book_archive import load_verified_archive
-from backend.ops.book_archive_contract import ArchiveValidationError, FORESHADOWING_COLLECTIONS, CHARACTER_BATCH_COLLECTIONS as COLLECTIONS
+from backend.ops.book_archive_contract import (
+    ArchiveValidationError, FORESHADOWING_COLLECTIONS, FACTION_FACT_FORMAT_VERSION, CHARACTER_BATCH_FORMAT_VERSION,
+    FACTION_BATCH_COLLECTIONS as COLLECTIONS, COMBINED_FORMAT_VERSION,
+)
 from backend.ops.book_archive_cover import ArchiveCoverError, publish_cover, verify_cover
-from backend.ops.book_archive_indexes import BOOK_INDEXES, V4_BOOK_INDEXES, V7_BOOK_INDEXES, V8_BOOK_INDEXES, V10_BOOK_INDEXES, index_catalog_digest
+from backend.ops.book_archive_indexes import BOOK_INDEXES, V4_BOOK_INDEXES, V7_BOOK_INDEXES, V8_BOOK_INDEXES, V10_BOOK_INDEXES, V11_BOOK_INDEXES, V12_BOOK_INDEXES, V13_BOOK_INDEXES, index_catalog_digest
 from backend.ops.book_archive_warnings import driver_warning_guard
 
 
@@ -180,7 +183,14 @@ async def restore_empty(
             # Mongo 写入必将顶层 _id 放首位；不允许“恢复成功”却悄悄改变包中顺序。
             if any(next(iter(doc)) != "_id" for rows in payload.documents.values() for doc in rows):
                 raise ArchiveRestoreError("UNSUPPORTED_DOCUMENT_ORDER", "archive", "MongoDB 会移动顶层 _id；本版只接受 _id 已在首位的文档，不改写包内字段顺序")
-            raw_documents = {name: [BSON.encode(doc) for doc in payload.documents.get(name, [])] for name in COLLECTIONS}
+            # 两条独立历史格式按原目录恢复；不为 v11 补建人物批次集合。
+            restore_indexes = {FACTION_FACT_FORMAT_VERSION: V11_BOOK_INDEXES,
+                               CHARACTER_BATCH_FORMAT_VERSION: V12_BOOK_INDEXES,
+                               COMBINED_FORMAT_VERSION: V13_BOOK_INDEXES}.get(payload.report["format_version"],
+                                   V13_BOOK_INDEXES if payload.report["format_version"] < 14 else BOOK_INDEXES)
+            # 原恢复回执比较完整 BSON；集合字段顺序沿用归档白名单，不能改成索引字典顺序。
+            raw_documents = {name: [BSON.encode(doc) for doc in payload.documents.get(name, [])]
+                             for name in COLLECTIONS if name in restore_indexes}
             cover_entry = next((entry for entry in payload.report["checked_files"]
                                 if entry["path"].startswith("static/covers/")), None)
             cover_content = None if cover_entry is None else payload.cover_bytes[cover_entry["path"]]
@@ -196,8 +206,8 @@ async def restore_empty(
                 "novel_id": payload.report["novel_id"], "source_revision": payload.report["source_revision"],
                 "collections": {name: {"count": len(raw_documents[name]), "raw_document_digests": sorted(
                     hashlib.sha256(raw).hexdigest() for raw in raw_documents[name]
-                )} for name in COLLECTIONS},
-                "index_catalog_digest": index_catalog_digest(),
+                )} for name in raw_documents},
+                "index_catalog_digest": index_catalog_digest(restore_indexes),
                 "cover": cover_entry,
             }
             receipt_bytes = BSON.encode(receipt)
@@ -221,7 +231,7 @@ async def restore_empty(
             if catalog:
                 observed = await _read_receipt(database) if RESTORE_COLLECTION in catalog else None
                 # 旧恢复回执的集合清单和索引摘要一起保留；只读核验，不补写新集合。
-                candidates = [(receipt_bytes, BOOK_INDEXES)]
+                candidates = [(receipt_bytes, restore_indexes)]
                 for version, old_indexes in ((10, V10_BOOK_INDEXES), (8, V8_BOOK_INDEXES), (7, V7_BOOK_INDEXES)):
                     if payload.report["format_version"] <= version:
                         old_receipt = {**receipt, "collections": {name: entry for name, entry in receipt["collections"].items() if name in old_indexes},
@@ -258,11 +268,11 @@ async def restore_empty(
                 await database.create_collection(RESTORE_COLLECTION, session=session, check_exists=False)
                 # 固定回执尽早参加同一事务，只串行化遵守本协议的恢复；不是外部客户端的锁。
                 await database[RESTORE_COLLECTION].insert_one(RawBSONDocument(receipt_bytes), session=session)
-                for name in COLLECTIONS:
+                for name in raw_documents:
                     await database.create_collection(name, session=session, check_exists=False)
-                    await database[name].create_indexes(BOOK_INDEXES[name], session=session)
+                    await database[name].create_indexes(restore_indexes[name], session=session)
                 location = "transaction_insert"
-                for name in COLLECTIONS:
+                for name in raw_documents:
                     if await database[name].find_one({}, session=session) is not None:
                         raise ArchiveRestoreError("TARGET_NOT_FRESH", location, "事务内目标集合已有文档，停止恢复")
                     if raw_documents[name]:
@@ -286,7 +296,7 @@ async def restore_empty(
                             raise
                 location = "verification"
                 report["verification_state"] = "failed"
-                await _verify_restored(database, raw_documents, receipt_bytes, cover_content, cover_entry, target_covers_dir)
+                await _verify_restored(database, raw_documents, receipt_bytes, cover_content, cover_entry, target_covers_dir, index_catalog=restore_indexes)
                 report["verification_state"] = "passed"
                 report["status"] = "restored"
         except (Exception, asyncio.CancelledError) as exc:
@@ -330,7 +340,7 @@ async def restore_empty(
                     if observed == receipt_bytes:
                         report["database_state"] = "committed"
                         report["verification_state"] = "failed"
-                        await _verify_restored(database, raw_documents, receipt_bytes, cover_content, cover_entry, target_covers_dir)
+                        await _verify_restored(database, raw_documents, receipt_bytes, cover_content, cover_entry, target_covers_dir, index_catalog=restore_indexes)
                         report["verification_state"] = "passed"
                         if allow_reconciled_success:
                             error = None

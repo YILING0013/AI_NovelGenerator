@@ -12,6 +12,7 @@ from backend.services.llm.candidate_contract import CandidateBasisV1
 from backend.services.novel.character_fact_contract import CharacterFactReadV1
 from backend.services.novel.character_relation_fact_contract import CharacterRelationFactReadV1
 from backend.services.novel.item_fact_contract import ItemFactReadV1
+from backend.services.novel.faction_fact_contract import FactionFactReadV1
 
 
 class WritingReadV1(StrictRequestModel):
@@ -26,7 +27,7 @@ class WritingContextBasisV1(StrictRequestModel):
     """仅散列实际业务内容，不使用祖先统计版本。"""
 
     version: Literal[1] = 1
-    reads: list[WritingReadV1 | CharacterFactReadV1 | CharacterRelationFactReadV1 | ItemFactReadV1] = Field(min_length=1, max_length=200)
+    reads: list[WritingReadV1 | CharacterFactReadV1 | CharacterRelationFactReadV1 | ItemFactReadV1 | FactionFactReadV1] = Field(min_length=1, max_length=200)
 
 
 class WritingCandidateBasisV1(CandidateBasisV1):

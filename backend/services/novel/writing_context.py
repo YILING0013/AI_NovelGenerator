@@ -29,6 +29,7 @@ from backend.services.novel.writing_contract import WritingContextBasisV1, Writi
 from backend.services.novel.character_fact_contract import CHARACTER_FACT_FIELDS, CharacterFactsAtPositionV1
 from backend.services.novel.character_relation_fact_contract import CHARACTER_RELATION_FACT_FIELDS, CharacterRelationFactsAtPositionV1
 from backend.services.novel.item_fact_contract import ITEM_FACT_FIELDS, ItemFactsAtPositionV1
+from backend.services.novel.faction_fact_contract import FACTION_FACT_FIELDS, FactionFactsAtPositionV1
 from backend.services.novel.writing_position import PARENTS, fact_position_visible, writing_order
 
 
@@ -42,6 +43,13 @@ ENTITY_FIELDS = {
 }
 PLAN_FIELDS = ("title", "subtitle", "summary", "goal", "theme", "planning", "plot")
 NOVEL_FIELDS = ("title", "summary", "genre", "tags", "plot", "tone", "target_audience", "core_idea", "core_seed", "worldview", "writing_style", "narrative_pov", "era_background", "words_per_chapter")
+# 只允许补读真实祖先的这些原文字段，不开放任意文档路径。
+CHAPTER_PARENT_FIELDS = {
+    "novel": ("plot", "worldview", "core_seed", "core_idea", "summary"),
+    "volume": ("plot", "summary", "planning.premise", "planning.major_conflict", "planning.start_state", "planning.end_state"),
+    "arc": ("plot", "summary", "planning.goal", "planning.start_state", "planning.end_state", "planning.continuity_notes"),
+    "scene": ("summary", "planning.goal", "planning.start_state", "planning.end_state", "planning.continuity_notes"),
+}
 # 只把作者能够编辑的资料送入模型；内部锁、统计和审计字段不属于内容依据。
 ENTITY_CONTENT_FIELDS = {
     "character": set(CharacterCreateRequestV1.model_fields) - {"sort_order"} | {"status"},
@@ -165,6 +173,42 @@ def character_relation_design_content(document: dict[str, Any], fields: Sequence
     return result
 
 
+def faction_design_content(document: dict[str, Any], fields: Sequence[str]) -> dict[str, Any]:
+    """全书设计区分索引、计划和未定位的势力原文。
+
+    Args:
+        document: 当前主档，不据此推断书初或当前位置事实。
+        fields: 原消费者的字段白名单，不增加原文材料。
+    Returns:
+        原索引和计划，以及单列的未定位资料。
+    """
+    allowed = POSITION_INDEX_FIELDS["faction"] | POSITION_PLAN_FIELDS["faction"] | {"faction_id", "version"}
+    result = {name: document.get(name) for name in fields if name in allowed}
+    result["unlocated_profile"] = {name: document.get(name) for name in fields if name not in allowed}
+    result["content_semantics"] = "whole_book_design_with_unlocated_profile"
+    return result
+
+
+def faction_position_content(document: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
+    """合并势力的位置事实与设计，未知时不补主档或卷状态。
+
+    Args:
+        document: 当前主档，仅取身份、管理状态和明确设计。
+        facts: 共享读取器的同一势力十一字段结果。
+    Returns:
+        生成、搜索、数量和摘要共用的安全资料。
+    """
+    parsed = FactionFactsAtPositionV1.model_validate(facts)
+    if (parsed.entity_id != str(document["_id"]) or parsed.faction_id != document["faction_id"]
+            or parsed.name != document["name"]):
+        raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "势力身份在读取期间已变化，请重新读取", status_code=409)
+    value = position_content(document, "faction")
+    value["facts"] = parsed.model_dump(exclude={"entity_id", "faction_id", "name", "version"}, exclude_unset=True)
+    value["content_semantics"] = "position_facts_and_design_plan"
+    value["omitted_unlocated_fields"] = [name for name in value["omitted_unlocated_fields"] if name not in FACTION_FACT_FIELDS]
+    return value
+
+
 def character_position_content(document: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
     """合并人物的明确位置事实与设计字段，保留未定位字段标记但不补裸值。
 
@@ -280,7 +324,7 @@ async def read_character_relation_context(novel_id: str, relation_ids: list[str]
 
 
 async def revalidate_position_fact_reads(reads: list[dict[str, Any]], *, session: AsyncClientSession | None = None, protect: bool = False) -> None:
-    """按人物、关系或物品种类复验原读取，拒绝未支持的事实种类。
+    """按人物、关系、物品或势力种类复验原读取，拒绝未知种类。
 
     Args:
         reads: 原生成累计读取，不能用今天的新查询替换。
@@ -289,7 +333,7 @@ async def revalidate_position_fact_reads(reads: list[dict[str, Any]], *, session
     Returns:
         无；读取发生变化时保留原稿并报错。
     """
-    characters, relations, items = [], [], []
+    characters, relations, items, factions = [], [], [], []
     for read in reads:
         if read.get("kind") == "character_facts":
             characters.append(read)
@@ -297,6 +341,8 @@ async def revalidate_position_fact_reads(reads: list[dict[str, Any]], *, session
             relations.append(read)
         elif read.get("kind") == "item_facts":
             items.append(read)
+        elif read.get("kind") == "faction_facts":
+            factions.append(read)
         else:
             raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "事实读取种类不受支持，请保留草稿并重新读取", status_code=409)
     if characters:
@@ -308,6 +354,9 @@ async def revalidate_position_fact_reads(reads: list[dict[str, Any]], *, session
     if items:
         from backend.services.novel.item_fact_service import revalidate_item_fact_reads
         await revalidate_item_fact_reads(items, session=session, protect=protect)
+    if factions:
+        from backend.services.novel.faction_fact_service import revalidate_faction_fact_reads
+        await revalidate_faction_fact_reads(factions, session=session, protect=protect)
 
 
 def resolve_writing_position(scope: dict[str, Any], directories: dict[str, dict[ObjectId, dict[str, Any]]]) -> dict[str, Any]:
@@ -474,6 +523,45 @@ def current_missing(chain: list[tuple[str, dict[str, Any]]]) -> list[dict[str, s
     return missing + [{"field": field, "message": f"请填写当前部分的{labels[field]}"} for field, value in required.items() if not isinstance(value, str) or not value.strip()]
 
 
+def chapter_scope_content(plans: list[dict], neighbors: dict) -> dict:
+    """构造本章自动资料，供正式读取和 get_scope 共用，不修改完整来源。
+
+    Args:
+        plans: 已读取的真实父链。
+        neighbors: 当前章相邻规划。
+    Returns:
+        局部规划、上层边界和可补读字段目录。
+    """
+    local, available = [], []
+    for part in plans:
+        kind = part["resource_type"]
+        if kind in CHAPTER_PARENT_FIELDS:
+            fields = []
+            for path in CHAPTER_PARENT_FIELDS[kind]:
+                value = part
+                for key in path.split("."):
+                    value = value.get(key) if isinstance(value, dict) else None
+                if isinstance(value, str) and value.strip():
+                    fields.append(path)
+            available.append({"resource_type": kind, "id": part["id"], "title": part.get("title", ""), "fields": fields})
+        if kind == "novel":
+            value = {key: part[key] for key in ("resource_type", "id", "title", "genre", "tone", "writing_style", "narrative_pov", "era_background", "target_audience", "words_per_chapter", "content_semantics") if key in part}
+        elif kind in {"volume", "arc"}:
+            value = {key: part[key] for key in ("resource_type", "id", "title", "order_index", "content_semantics") if key in part}
+            allowed = ("premise", "major_conflict", "end_state") if kind == "volume" else ("goal", "end_state", "continuity_notes")
+            value["planning"] = {key: part["planning"][key] for key in allowed if key in (part.get("planning") or {})}
+        else:
+            value = dict(part)
+        local.append(value)
+    adjacent = {}
+    for side, part in neighbors.items():
+        adjacent[side] = None if part is None else {
+            **{key: part[key] for key in ("resource_type", "id", "title", "content_semantics") if key in part},
+            "planning": {key: part["planning"][key] for key in ("goal", "start_state", "end_state", "must_avoid") if key in (part.get("planning") or {})},
+        }
+    return {"plan": local, "neighbors": adjacent, "parent_sources": available}
+
+
 async def load_writing_context(task: str, parameters: dict[str, Any], scope: dict[str, Any], *, session: AsyncClientSession | None = None, check_ready: bool = True, parent_chain: list[tuple[str, dict[str, Any]]] | None = None) -> dict[str, Any]:
     """构建四类任务共享的受控上下文，包含可复查的空查询。
 
@@ -517,6 +605,7 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
     character_facts = {}
     relation_facts = {}
     item_facts = {}
+    faction_facts = {}
 
     def remember(kind: str, document: dict[str, Any]) -> dict[str, Any]:
         if kind == "character":
@@ -524,6 +613,11 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
             if facts is None:
                 raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "人物在读取期间已变化，请重新读取", status_code=409)
             value = character_position_content(document, facts)
+        elif kind == "faction":
+            facts = faction_facts.get(document["faction_id"])
+            if facts is None:
+                raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "势力在读取期间已变化，请重新读取", status_code=409)
+            value = faction_position_content(document, facts)
         elif kind == "character_relation":
             facts = relation_facts.get(document["relation_id"])
             if facts is None:
@@ -593,6 +687,8 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
         value = remember("chapter", document)
         previous_basis = {"id": value["id"], "order": list(key), "summary": document.get("summary", ""), "content": document["content"]}
         previous = {"kind": "written_excerpt", "chapter_id": value["id"], "title": document["title"], "plan_summary": document.get("summary", ""), "excerpt": document["content"][-6000:], "truncated": len(document["content"]) > 6000}
+        if request.chapter_context_version == 1:
+            previous.update(excerpt_start=max(0, len(document["content"]) - 6000), content_fingerprint=canonical_request_hash(document["content"]))
     observe("previous_written", {**target_scope, "position": position}, previous_basis)
 
     edit_target = None
@@ -603,11 +699,12 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
     observe("edit_target", {"id": request.target_id if request.target_type == "chapter" else None}, edit_target)
 
     selected = request.selected_entities.model_dump()
+    local_chapter = request.chapter_context_version == 1
     volume_id = next(document["_id"] for part, document in chain if part == "volume")
     volume = next(document for part, document in chain if part == "volume")
     participant_states = {}
     # 尚未给出局部选择时，以已确认的卷参与状态作为整理资料的起点。
-    if not any(selected.values()):
+    if not local_chapter and not any(selected.values()):
         participants = []
         for kind, field in (("character_volume_state", "character_id"), ("faction_volume_state", "faction_id")):
             rows = await BaseRepository(RESOURCE_COLLECTIONS[kind]).collection.find({"novel_id": ObjectId(request.novel_id), "volume_id": volume_id, "is_deleted": False}, session=session).sort(field, 1).to_list(length=None)
@@ -617,12 +714,18 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
         selected["location_ids"] = list(volume.get("location_ids", []))
         observe("volume_participants", {"novel_id": request.novel_id, "volume_id": str(volume_id)}, participants)
     # 上级已经明确选定的资料自然进入当前任务，不要求作者再次粘贴 ID。
-    for _, document in chain:
+    for _, document in ([] if local_chapter else chain):
         planning = document.get("planning") or {}
         for field in selected:
             selected[field] = list(dict.fromkeys([*selected[field], *planning.get(field, [])]))
         pov = planning.get("pov_character_id")
         if pov and pov not in selected["character_ids"]:
+            selected["character_ids"].append(pov)
+    if local_chapter:
+        pov = (target.get("planning") or {}).get("pov_character_id")
+        if pov and pov not in selected["character_ids"]:
+            if request.chapter_selection_complete:
+                raise DomainApiError("WRITING_MATERIAL_MISSING", "整理结果缺少本章视角人物，请继续整理", status_code=409)
             selected["character_ids"].append(pov)
     from backend.services.novel.character_fact_service import read_character_facts
     fact_result = await read_character_facts(request.novel_id, selected["character_ids"], target_scope, session=session)
@@ -631,6 +734,12 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
     reads.extend(fact_result["reads"])
     item_facts, item_reads, _ = await read_item_context(request.novel_id, selected["item_ids"], target_scope, session=session)
     reads.extend(item_reads)
+    from backend.services.novel.faction_fact_service import read_faction_facts
+    faction_result = await read_faction_facts(request.novel_id, selected["faction_ids"], target_scope, session=session)
+    if faction_result["position"] != position:
+        raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "势力读取期间目录位置已变化，请重新读取", status_code=409)
+    faction_facts = {row["faction_id"]: row for row in faction_result["factions"]}
+    reads.extend(faction_result["reads"])
     entities = []
     for field, identities in selected.items():
         collection, kind, identity_field, status_field = ENTITY_FIELDS[field]
@@ -712,6 +821,26 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
                 search_results.append(value)
     observe("literal_search", {**target_scope, "text": request.search_text, "range": request.search_scope}, search_results)
     public = {"position": position, "plan": plans, "neighbors": neighbors, "existing_children": children, "previous_written": previous, "selected_entities": entities, "relations": relations, "volume_states": volume_states, "search_results": search_results, "edit_target": edit_target, "user_guidance": request.user_guidance, "count": request.count, "count_mode": request.count_mode, "target_word_count": request.target_word_count, "truncation": {"previous_excerpt_limit": 6000, "previous_truncated": bool(previous and previous["truncated"])}}
+    if local_chapter:
+        public.update(chapter_scope_content(plans, neighbors))
+        public["edit_target"] = {"id": request.target_id, "content": target["content"], "content_semantics": "edit_target"}
+        public["required_entities"] = selected if not request.chapter_selection_complete else {}
+        public["candidate_entities"] = []
+        if not request.chapter_selection_complete:
+            scene = next(document for kind, document in chain if kind == "scene")
+            for field, (collection, kind, id_field, _) in ENTITY_FIELDS.items():
+                identities = (scene.get("planning") or {}).get(field, [])
+                if not identities:
+                    continue
+                rows = await BaseRepository(collection).collection.find({"novel_id": ObjectId(request.novel_id), id_field: {"$in": identities}, "is_deleted": False}, session=session).to_list(length=None)
+                for row in rows:
+                    public["candidate_entities"].append({"resource_type": kind, "id": row[id_field], "name": row.get("name", "")})
+                    sources[(kind, row[id_field])] = {"resource_type": kind, "id": row[id_field], "version": row["version"]}
+                    guards[(collection, str(row["_id"]))] = row
+            observe("selected_entities", {**target_scope, "scene_candidates": (scene.get("planning") or {})}, public["candidate_entities"])
+        # 搜索和已读关系保留在依据中；正文只使用整理后明确采用的记录。
+        public["search_results"] = []
+        public["relations"] = []
     if len(json.dumps(public, ensure_ascii=False)) > 200000:
         raise DomainApiError("WRITING_CONTEXT_TOO_LARGE", "所选规划和资料过长，请缩小范围；作者要求未被截断", status_code=422)
     # 目录和正文分开读取；其他祖先移动也可能让前文成为未来正文。
@@ -772,15 +901,15 @@ async def get_writing_readiness(novel_id: str, target_type: str, target_id: str)
     chain = await load_writing_parents(novel_id, target_type, target_id)
     task = next(name for name, (kind, _) in WRITING_TASKS.items() if kind == target_type)
     scope = {"novel_id": novel_id, "target_type": target_type, "target_id": target_id}
-    if target_type == "chapter":
-        scope["expected_version"] = chain[-1][1]["version"]
     blockers = []
-    try:
-        await load_writing_context(task, {}, scope, check_ready=False)
-    except DomainApiError as exc:
-        if exc.code != "WRITING_REFERENCE_UNAVAILABLE":
-            raise
-        blockers.append({"code": exc.code, "message": exc.message})
+    # 章入口尚未选择方案，只检查活动父链和章计划；选材与体积由所选图正式生成时检查。
+    if target_type != "chapter":
+        try:
+            await load_writing_context(task, {}, scope, check_ready=False)
+        except DomainApiError as exc:
+            if exc.code != "WRITING_REFERENCE_UNAVAILABLE":
+                raise
+            blockers.append({"code": exc.code, "message": exc.message})
     missing = current_missing(chain)
     if target_type != "chapter":
         missing.extend(await writing_plot_missing(chain))

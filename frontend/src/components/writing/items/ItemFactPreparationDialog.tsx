@@ -1,5 +1,8 @@
 "use client";
 
+import { TooltipHint } from "@/components/shared/TooltipHint";
+import { downloadExport } from "@/lib/userExport";
+
 import { useContext, useEffect, useRef, useState, type RefObject } from "react";
 import { Button, Modal } from "@heroui/react";
 import { useTranslations } from "next-intl";
@@ -19,7 +22,7 @@ import type { ChapterRecordDraft } from "../chapter-records/chapterRecordDrafts"
 /** 功能：在原工作台填写物品起点或变化，先保留本地稿再进入确认。Args: 已落盘原稿、目录及引用选项。Returns: 可关闭恢复的准备弹窗。 */
 export default function ItemFactPreparationDialog({ initialPreparation, chapters, choices, referenceErrors, isOpen = true, onPrepared, onReturnedToCheck, onClose, onDiscarded, onBusy, beforeLeaveRef }: {
   isOpen?: boolean; referenceErrors?: { character?: string; faction?: string; location?: string };
-  initialPreparation: ItemFactPreparationV1; chapters: HierarchyRecord[]; choices: ItemFactChoices;
+  initialPreparation: ItemFactPreparationV1; chapters: HierarchyRecord[] | null; choices: ItemFactChoices;
   onPrepared: (draft: ItemFactDraftV1 | ItemFactBatchDraftV1) => void; onClose: () => void;
   onDiscarded: () => void;
   onReturnedToCheck: (draft: ChapterRecordDraft) => void;
@@ -101,7 +104,6 @@ export default function ItemFactPreparationDialog({ initialPreparation, chapters
     const invalid: ApiFieldErrors = {};
     if (original.operation !== "void") {
       if (!original.position) invalid.position = [f("positionRequired")];
-      if (original.kind === "start" && !original.note.trim()) invalid.note = [f("noteRequired")];
       if (original.kind !== "start" && !original.evidence) invalid.evidence = [f("evidenceRequired")];
     } else if (!original.reason.trim()) invalid.reason = [f("reasonRequired")];
     for (const [index, candidate] of (original.candidate ? [original.candidate] : original.generation?.candidates ?? []).entries()) {
@@ -114,7 +116,7 @@ export default function ItemFactPreparationDialog({ initialPreparation, chapters
     pending.current = true; setBusy(true); setError("");
     try {
       await persist(original);
-      const label = original.position?.intent === "book_start" ? t("positions.book_start") : `${chapters.find((row) => row.chapter_id === original.position?.target_id)?.title ?? original.position?.target_id} · ${t(`positions.${original.position?.intent ?? original.record!.position.intent}`)}`;
+      const label = original.position?.intent === "book_start" ? t("positions.book_start") : `${chapters?.find((row) => row.chapter_id === original.position?.target_id)?.title ?? original.position?.target_id} · ${t(`positions.${original.position?.intent ?? original.record!.position.intent}`)}`;
       let confirmation: ItemFactDraftV1 | ItemFactBatchDraftV1;
       if (original.generation) {
         const response = await apiPost<ItemFactBatchPreviewV1>(`/api/item-facts/novel/${original.novelId}/batch/preview`, { generation: original.generation, position: original.position, note: original.note });
@@ -156,11 +158,10 @@ export default function ItemFactPreparationDialog({ initialPreparation, chapters
     <Modal.Header className="border-b border-border px-5 py-4 sm:px-6"><Modal.Heading>{f(draft.generation ? "prepareBatch" : `operations.${draft.operation}`)}</Modal.Heading><Modal.CloseTrigger aria-label={empty ? f("closeEmpty") : t("closeKeep")} isDisabled={blocked} /></Modal.Header>
     <Modal.Body className="space-y-5 px-5 py-5 sm:px-6">
       <div ref={errorRef}>{error && <RelationEditorErrorSummary message={conflict ? f("localConflict") : error} fieldErrors={fieldErrors} />}</div>
-      {draft.generation && <p className="text-sm leading-6 text-muted">{f("batchStartingPoint")}</p>}
       {draft.operation !== "void" && <CharacterFactPositionPicker required error={fieldErrors.position?.[0]} novelId={draft.novelId} chapters={chapters} value={draft.position} disabled={blocked || Boolean(draft.ownerOnly) || Boolean(draft.record) || draft.operation === "correct_initial"} afterOnly={draft.kind === "change"} onChange={(position) => update({ ...draft, position, evidence: null, resolves: [] })} />}
       {draft.operation === "void" ? <label className="grid min-w-0 gap-2 text-xs font-medium text-muted"><span>{t("reason")}<span aria-hidden="true" className="ml-1 text-danger">*</span></span><textarea name="reason" required aria-required="true" aria-label={t("reason")} aria-invalid={Boolean(fieldErrors.reason)} aria-describedby={fieldErrors.reason ? `${draft.key}-reason-error` : undefined} className={INPUT} rows={3} maxLength={2000} value={draft.reason} disabled={blocked} onChange={(event) => update({ ...draft, reason: event.target.value })} />{fieldErrors.reason && <span id={`${draft.key}-reason-error`} className="text-danger">{fieldErrors.reason[0]}</span>}</label>
-        : draft.kind === "start" ? <label className="grid min-w-0 gap-2 text-xs font-medium text-muted"><span>{t("authorNote")}<span aria-hidden="true" className="ml-1 text-danger">*</span></span><textarea name="note" required aria-required="true" aria-label={t("authorNote")} aria-invalid={Boolean(fieldErrors.note)} aria-describedby={fieldErrors.note ? `${draft.key}-note-error` : undefined} className={INPUT} rows={3} maxLength={2000} value={draft.note} disabled={blocked} onChange={(event) => update({ ...draft, note: event.target.value })} />{fieldErrors.note && <span id={`${draft.key}-note-error`} className="text-danger">{fieldErrors.note[0]}</span>}</label>
-        : <div tabIndex={-1} aria-label={t("source")} aria-invalid={Boolean(fieldErrors.evidence)} aria-describedby={fieldErrors.evidence ? `${draft.key}-evidence-error` : undefined}><EvidencePicker key={draft.position?.target_id ?? "none"} novelId={draft.novelId} chapters={chapters.filter((row) => row.chapter_id === draft.position?.target_id)} value={draft.evidence} disabled={blocked || !draft.position} label={t("source")} onChange={(value) => { if (!value) update({ ...draft, evidence: null }); }} onSelectEvidence={(evidence) => update({ ...draft, evidence })} />{fieldErrors.evidence && <p id={`${draft.key}-evidence-error`} className="mt-2 text-xs text-danger">{fieldErrors.evidence[0]}</p>}</div>}
+        : draft.kind === "start" ? <div className="grid min-w-0 gap-2 text-xs font-medium text-muted"><span><TooltipHint label={t("authorNote")} text={f("noteHelp")} /></span><textarea name="note" aria-label={t("authorNote")} aria-invalid={Boolean(fieldErrors.note)} aria-describedby={fieldErrors.note ? `${draft.key}-note-error` : undefined} className={INPUT} rows={3} maxLength={2000} value={draft.note} disabled={blocked} onChange={(event) => update({ ...draft, note: event.target.value })} />{fieldErrors.note && <span id={`${draft.key}-note-error`} className="text-danger">{fieldErrors.note[0]}</span>}</div>
+        : <div tabIndex={-1} aria-label={t("source")} aria-invalid={Boolean(fieldErrors.evidence)} aria-describedby={fieldErrors.evidence ? `${draft.key}-evidence-error` : undefined}><EvidencePicker key={draft.position?.target_id ?? "none"} novelId={draft.novelId} chapters={chapters?.filter((row) => row.chapter_id === draft.position?.target_id) ?? []} value={draft.evidence} disabled={blocked || !draft.position} label={t("source")} onChange={(value) => { if (!value) update({ ...draft, evidence: null }); }} onSelectEvidence={(evidence) => update({ ...draft, evidence })} />{fieldErrors.evidence && <p id={`${draft.key}-evidence-error`} className="mt-2 text-xs text-danger">{fieldErrors.evidence[0]}</p>}</div>}
       {draft.candidate ? <ItemFieldsForm value={draft.candidate} referenceErrors={referenceErrors} fieldErrors={fieldErrors} characters={choices.characters as Parameters<typeof ItemFieldsForm>[0]["characters"]} factions={choices.factions as Parameters<typeof ItemFieldsForm>[0]["factions"]} locations={choices.locations as Parameters<typeof ItemFieldsForm>[0]["locations"]} disabled={blocked} errorIdPrefix={draft.key} onChange={(candidate) => update({ ...draft, candidate, after: { lifecycle_status: candidate.lifecycle_status, owner_character_id: candidate.owner_character_id, controlling_faction_id: candidate.controlling_faction_id, current_location_id: candidate.current_location_id } })} />
         : draft.generation ? <ul className="divide-y divide-border">{draft.generation.candidates.map((row, index) => <li key={row.candidate_ref} className="min-w-0 py-3"><details open={index === 0 || Object.keys(fieldErrors).some((field) => field.startsWith(`candidates.${index}.`))}><summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold [overflow-wrap:anywhere]">{row.name || f("untitledDraft")}</summary><ItemFieldsForm value={row} fieldErrors={Object.fromEntries(Object.entries(fieldErrors).filter(([field]) => field.startsWith(`candidates.${index}.`)).map(([field, messages]) => [field.replace(`candidates.${index}.`, ""), messages]))} characters={choices.characters as Parameters<typeof ItemFieldsForm>[0]["characters"]} factions={choices.factions as Parameters<typeof ItemFieldsForm>[0]["factions"]} locations={choices.locations as Parameters<typeof ItemFieldsForm>[0]["locations"]} referenceErrors={referenceErrors} disabled={blocked} errorIdPrefix={`${draft.key}-${row.candidate_ref}`} onChange={(fields) => update({ ...draft, generation: { ...draft.generation!, candidates: draft.generation!.candidates.map((candidate) => candidate.candidate_ref === row.candidate_ref ? { ...candidate, ...fields } : candidate) } })} /></details></li>)}</ul>
         : draft.operation !== "void" && <ItemFactValues value={draft.after} choices={choices} disabled={blocked} ownerOnly={draft.ownerOnly} onChange={(after) => update({ ...draft, after })} />}
@@ -172,7 +173,7 @@ export default function ItemFactPreparationDialog({ initialPreparation, chapters
     </Modal.Body>
     <Modal.Footer className="flex flex-wrap justify-end gap-2 border-t border-border px-5 py-4 sm:px-6">
       {draft.origin && !draft.returnedToCheck && <Button variant="outline" isDisabled={blocked} onPress={() => void returnToCheck()}>{f("returnToCheck")}</Button>}
-      {(conflict || draft.returnedToCheck) && <Button variant="outline" isDisabled={busy} onPress={() => { const url = URL.createObjectURL(new Blob([JSON.stringify(current.current, null, 2)], { type: "application/json" })); const link = document.createElement("a"); link.href = url; link.download = `item-preparation-${current.current.key}.json`; link.click(); URL.revokeObjectURL(url); setExported(true); }}>{t("exportDraft")}</Button>}
+      {(conflict || draft.returnedToCheck) && <Button variant="outline" isDisabled={busy} onPress={() => { const url = URL.createObjectURL(new Blob([JSON.stringify(current.current, null, 2)], { type: "application/json" })); const link = document.createElement("a"); link.href = url; link.download = `item-preparation-${current.current.key}.json`; void downloadExport(link); URL.revokeObjectURL(url); setExported(true); }}>{t("exportDraft")}</Button>}
       {exported && <Button variant="outline" isDisabled={busy} onPress={onClose}>{f("closeAfterCopy")}</Button>}
       {!empty && !draft.origin && !draft.returnedToCheck && <Button variant="ghost" className="text-danger" isDisabled={blocked} onPress={() => setConfirmDiscard(true)}>{f("discardPreparation")}</Button>}
       <Button variant="ghost" isDisabled={busy || conflict} onPress={() => void close()}>{empty ? f("closeEmpty") : t("closeKeep")}</Button><Button variant="primary" isDisabled={blocked || reading || Boolean(readError) || !valuesValid} onPress={() => void preview()}>{t(busy ? "loading" : "preview")}</Button>

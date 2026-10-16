@@ -10,7 +10,7 @@ import {
   type JsonSchema,
   type TaskFlow,
 } from "@/types/taskFlow";
-import { Button } from "@heroui/react";
+import { Button, Tooltip } from "@heroui/react";
 import { type Connection, type XYPosition } from "@xyflow/react";
 import { useTranslations } from "next-intl";
 import {
@@ -916,14 +916,16 @@ export function TaskFlowEditor({
       }}
     >
       <div
-        className="workspace-scrollbar flex min-h-11 shrink-0 items-center gap-1 overflow-x-auto border-b border-border px-2"
-        role="tablist"
+        className="workspace-scrollbar flex shrink-0 items-center gap-2 overflow-x-auto border-b border-border px-2 py-1"
+        role="group"
         aria-label={t("canvasHelp.panels")}
         onKeyDown={(event) => {
           if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key))
             return;
+          const tabList = (event.target as HTMLElement).closest('[role="tablist"]');
+          if (!tabList) return;
           const tabs = Array.from(
-            event.currentTarget.querySelectorAll<HTMLButtonElement>(
+            tabList.querySelectorAll<HTMLButtonElement>(
               "[role='tab']",
             ),
           );
@@ -944,39 +946,40 @@ export function TaskFlowEditor({
           tabs[next]?.click();
         }}
       >
-        {(
-          [
-            "canvas",
-            "list",
-            "library",
-            ...(schemePanel ? ["scheme" as const] : []),
-            "properties",
-            ...(diagnosticsPanel ? ["diagnostics" as const] : []),
-          ] as const
-        ).map((item) => (
-          <button
-            type="button"
-            key={item}
-            id={`${tabId}-${item}-tab`}
-            role="tab"
-            aria-selected={(panel === "canvas" ? view : panel) === item}
-            aria-controls={`${tabId}-${item === "list" ? "canvas" : item}-panel`}
-            tabIndex={(panel === "canvas" ? view : panel) === item ? 0 : -1}
-            className={`min-h-11 shrink-0 rounded-lg px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${(panel === "canvas" ? view : panel) === item ? "bg-selected" : "hover:bg-surface-secondary"}`}
-            onClick={() => showPanel(item)}
-          >
-            {t(
-              item === "list"
-                ? "nodeList"
-                : item === "library"
-                  ? "nodeLibrary"
-                  : item === "scheme"
-                    ? "canvasHelp.scheme"
-                    : item === "diagnostics"
-                      ? "canvasHelp.diagnostics"
-                      : item,
-            )}
-          </button>
+        {([
+          { name: "view", selected: view, items: ["canvas", "list"] },
+          { name: "leftPanel", selected: leftTab, items: ["library", ...(schemePanel ? ["scheme" as const] : [])] },
+          { name: "rightPanel", selected: rightTab, items: ["properties", ...(diagnosticsPanel ? ["diagnostics" as const] : [])] },
+        ] as const).map((group, index) => (
+          <div key={group.name} className={`shrink-0 ${index > 0 ? "border-l border-border pl-2" : ""}`}>
+            <div role="tablist" aria-label={t(`canvasHelp.${group.name}`)} className={`flex items-center gap-1 ${group.name === "view" ? "rounded-lg border border-border bg-surface-secondary p-0.5" : ""}`}>
+              {group.items.map((item) => (
+                <button
+                  type="button"
+                  key={item}
+                  id={`${tabId}-${item}-tab`}
+                  role="tab"
+                  aria-selected={group.selected === item}
+                  aria-controls={`${tabId}-${item === "list" ? "canvas" : item}-panel`}
+                  tabIndex={group.selected === item ? 0 : -1}
+                  className={`min-h-11 shrink-0 rounded-md px-2.5 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:min-h-8 ${group.selected === item ? group.name === "view" ? "bg-accent text-accent-foreground shadow-sm" : "bg-selected text-accent" : "text-muted hover:bg-surface-secondary hover:text-foreground"}`}
+                  onClick={() => showPanel(item)}
+                >
+                  {t(
+                    item === "list"
+                      ? "nodeList"
+                      : item === "library"
+                        ? "nodeLibrary"
+                        : item === "scheme"
+                          ? "canvasHelp.scheme"
+                          : item === "diagnostics"
+                            ? "canvasHelp.diagnostics"
+                            : item,
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
         ))}
         <div className="ml-auto hidden shrink-0 items-center gap-1 @min-[1080px]/flow-editor:flex">
           <TooltipHint text={t("canvasHelp.toggleLibrary")}>
@@ -1057,8 +1060,9 @@ export function TaskFlowEditor({
                   key={type}
                   className={`mb-1 flex min-h-11 items-center rounded-lg border ${placing === type ? "border-accent bg-selected" : "border-transparent hover:bg-surface-secondary"}`}
                 >
-                  <button
-                    type="button"
+                  <TooltipHint text={t(`nodeHelp.${type}`)} className="w-full">
+                  <Tooltip.Trigger
+                    tabIndex={0}
                     draggable
                     aria-pressed={placing === type}
                     className="min-h-11 min-w-0 flex-1 cursor-grab px-3 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:cursor-grabbing"
@@ -1069,6 +1073,9 @@ export function TaskFlowEditor({
                       );
                       event.dataTransfer.effectAllowed = "copy";
                     }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.currentTarget.click(); }
+                    }}
                     onClick={() => {
                       if (focusInvalidFlowJson()) return;
                       setPlacing(type);
@@ -1077,11 +1084,8 @@ export function TaskFlowEditor({
                     }}
                   >
                     {t(`types.${type}`)}
-                  </button>
-                  <TooltipHint
-                    text={t(`nodeHelp.${type}`)}
-                    className="mr-2 shrink-0"
-                  />
+                  </Tooltip.Trigger>
+                  </TooltipHint>
                 </div>
               ))}
             </div>

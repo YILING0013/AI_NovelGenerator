@@ -9,6 +9,7 @@ import unicodedata
 from pydantic import Field, field_validator, model_validator
 
 from backend.llm.generation_options import ReasoningOptions
+from backend.services.novel.character_fact_contract import CharacterFactReadPositionV1
 from backend.api.contracts import (
     LocalCandidateRef,
     ObjectIdString,
@@ -37,6 +38,47 @@ def normalize_volume_text(value: str) -> str:
         完成 NFKC、空白折叠与跨 Python/JavaScript 一致的小写文本。
     """
     return re.sub(r"\s+", " ", unicodedata.normalize("NFKC", value).strip()).lower()
+
+
+class VolumeLaunchContextIssueV1(StrictResponseModel):
+    """本卷开始时一项资料未知的具体原因。"""
+
+    field: str
+    reason: Literal["nonexistent", "unclaimed", "before_start", "voided", "needs_review", "unresolved_reference"]
+    blocking_source_ids: list[ObjectIdString]
+
+
+class VolumeLaunchContextEntityV1(StrictResponseModel):
+    """只供启动表单辨认对象、问题和来源，不包含资料正文。"""
+
+    entity_type: Literal["character", "faction", "character_relation"]
+    entity_id: str
+    name: str
+    issues: list[VolumeLaunchContextIssueV1]
+    source_ids: list[ObjectIdString]
+
+
+class VolumeLaunchContextCountsV1(StrictResponseModel):
+    """实际参与本次读取的资料数量。"""
+
+    characters: int = Field(ge=0)
+    factions: int = Field(ge=0)
+    character_relations: int = Field(ge=0)
+    faction_relations: int = Field(ge=0)
+    bindings: int = Field(ge=0)
+    world_rules: int = Field(ge=0)
+    volumes: int = Field(ge=1)
+
+
+class VolumeLaunchContextV1(StrictResponseModel):
+    """卷启动资料提醒；不能用于生成或采用确认。"""
+
+    novel_id: ObjectIdString
+    volume_id: ObjectIdString
+    volume_title: str
+    position: CharacterFactReadPositionV1
+    counts: VolumeLaunchContextCountsV1
+    entities: list[VolumeLaunchContextEntityV1]
 
 
 class VolumePlanningV1(StrictRequestModel):

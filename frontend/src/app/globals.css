@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import "tailwindcss" source("../");
 @import "@heroui/react/styles";
 
 @custom-variant dark (&:is(.dark *));
@@ -228,6 +228,18 @@ body {
   min-height: 2.25rem;
 }
 
+/* 草稿标签在桌面保持紧凑，触屏下仍留足点按区域。 */
+.draft-chip .button {
+  height: auto;
+  min-height: 2rem;
+}
+
+@media (max-width: 639px) {
+  .draft-chip .button {
+    min-height: 2.75rem;
+  }
+}
+
 /* 搜索、筛选和操作按钮共用高度；只作用于工具栏，不改变编辑表单和弹窗。 */
 .workspace-toolbar {
   --workspace-toolbar-height: 2.5rem;
@@ -265,9 +277,10 @@ body {
   box-shadow: var(--overlay-shadow);
 }
 
-/* 标题、正文和按钮区各自管理内边距，关闭按钮与标题同一行，避免盖住操作。 */
+/* 标题、正文和按钮区各自管理内边距，标题和关闭按钮分别靠两侧。 */
 .modal__header {
   flex-direction: row;
+  justify-content: space-between;
 }
 
 .modal__header,
@@ -278,6 +291,8 @@ body {
 .modal__header .modal__close-trigger {
   position: static;
   flex-shrink: 0;
+  margin-inline-start: auto;
+  align-self: center;
 }
 
 .modal__header + .modal__body,

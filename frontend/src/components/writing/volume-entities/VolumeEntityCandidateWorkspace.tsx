@@ -1,29 +1,34 @@
 "use client";
 
-import { Button, Modal } from "@heroui/react";
+import { downloadExport } from "@/lib/userExport";
+
+import { Button } from "@heroui/react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { RetainedModalBackdrop } from "@/components/layout/RetainedViews";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { RetainedViewActive } from "@/components/layout/RetainedViews";
 import { RelationEditorErrorSummary, focusRelationEditorError } from "@/components/shared/RelationEditorPrimitives";
 import type { GenerationParamsValue } from "@/components/shared/GenerationParamsCollapse";
 import { TaskFlowForm, TaskFlowProgress } from "@/components/task-flows/TaskFlowForm";
 import type { TaskFlowRunMode } from "@/types/taskFlow";
 import { useTaskFlow } from "@/hooks/useTaskFlow";
-import { apiGet, apiPost, ApiRequestError, type ApiFieldErrors } from "@/lib/api";
+import { apiGet, apiPostJson, ApiRequestError, type ApiFieldErrors } from "@/lib/api";
 import type { CharacterProfileFields, CharacterRelationResponseV1, CharacterResponseV1 } from "@/types/character";
 import type { CoreFaction } from "@/types/novel";
 import type { FlowRef } from "@/types/taskFlow";
 import type { VolumeReadV2 } from "@/types/volume";
+import type { FactionVolumeStateReadV1 } from "@/types/factionVolumeState";
 import type { CharacterVolumePlanFieldsV1, CharacterVolumeStateReadV1 } from "@/types/characterVolumeState";
-import { parseVolumeEntityPreview, type VolumeCharacterCandidate, type VolumeEntityCandidate, type VolumeEntityConfirmResult, type VolumeEntityKind, type VolumeEntityPreview, type VolumeFactionCandidate } from "@/types/volumeEntity";
+import { CHARACTER_PLAN_CONTRACT, volumeCharacterDesignForm, editVolumeCharacterDesign, hasExplicitFactionValues, volumeFactionFacts, editVolumeFactionFact, parseVolumeEntityPreview, type VolumeCharacterCandidate, type VolumeEntityCandidate, type VolumeEntityConfirmResult, type VolumeEntityKind, type VolumeEntityPreview, type VolumeFactionCandidate } from "@/types/volumeEntity";
 import CharacterProfileForm from "../characters/forms/CharacterProfileForm";
+import CharacterFactFieldsEditor from "../characters/CharacterFactFieldsEditor";
 import CharacterVolumeStateForm from "../characters/CharacterVolumeStateForm";
+import FactionFactFieldsEditor from "../factions/FactionFactFieldsEditor";
 import FactionVolumeStateForm from "../factions/FactionVolumeStateForm";
 import VolumeFactionProfileForm from "./VolumeFactionProfileForm";
 import { readCharacterVolumeCandidateDraft, writeCharacterVolumeCandidateDraft, type CharacterVolumeCandidateEntry, type CharacterVolumeCandidateResolution } from "./characterVolumeCandidateDrafts";
 
 interface EntityDraft {
-  preview: VolumeEntityPreview | null;
+  preview: unknown;
   flow_ref: FlowRef | null;
   inputs: Record<string, unknown>;
   params: GenerationParamsValue;
@@ -35,23 +40,32 @@ interface EntityDraft {
 // 本地存储暂时不可用时，关闭重开也不能再次确认已知成功的原请求。
 const confirmedCommands = new Set<string>();
 
-/** 功能：生成、审核并确认当前卷的新档案及参与状态。Args: props 当前卷、正式对象和保存回调。Returns: 两种实体共用的候选审核弹窗；生成和审核不写作品。 */
-export default function VolumeEntityCandidateWorkspace({ kind, novelId, volume, characters, factions, relations, onClose, onSaved, adoptionOpen = false }: {
+/** 功能：生成、审核并确认当前卷的新档案及参与状态。Args: props 当前卷、正式对象和保存回调。Returns: 两种实体共用的页内候选审核；生成和审核不写作品。 */
+export default function VolumeEntityCandidateWorkspace({ kind, novelId, volume, characters, factions, relations, onClose, onSaved, adoptionOpen = false, minimized, onMinimizedChange }: {
   kind: VolumeEntityKind; novelId: string; volume: VolumeReadV2;
   characters: CharacterResponseV1[]; factions: CoreFaction[]; relations: CharacterRelationResponseV1[];
   onClose: () => void; onSaved: (result: VolumeEntityConfirmResult, names: Record<string, string>) => void;
   onAdoptCharacter?: (profile: CharacterProfileFields, candidateRef: string) => Promise<void>;
   onAdoptPlan?: (characterId: string, fields: CharacterVolumePlanFieldsV1) => Promise<void>;
   adoptionOpen?: boolean;
+  minimized: boolean;
+  onMinimizedChange: (minimized: boolean) => void;
 }) {
+  const active = useContext(RetainedViewActive);
+  const pageRef = useRef<HTMLElement>(null);
   const t = useTranslations("writing.volumeEntitiesAi");
-  const planT = useTranslations("writing.characterVolumeStates");
+  const planT = useTranslations(kind === "characters" ? "writing.characterVolumeStates" : "writing.factionVolumeStates");
   const characterT = useTranslations("writing.characters");
   const flow = useTaskFlow(`create_${kind}_for_volume_by_ai`);
   const { loading: flowLoading, select: selectFlow, setInputs, setParams } = flow;
   const [preview, setPreview] = useState<VolumeEntityPreview | null>(null);
+  const [retainedDraft, setRetainedDraft] = useState<EntityDraft | null>(null);
+  const previewRef = useRef(preview); previewRef.current = preview;
+  const editorRef = useRef<HTMLDivElement>(null);
   const [selectedRef, setSelectedRef] = useState("");
   const [running, setRunning] = useState(false);
+  useEffect(() => { if (active && !minimized) { const frame = requestAnimationFrame(() => pageRef.current?.focus()); return () => cancelAnimationFrame(frame); } }, [active, minimized]);
+  const [cancelled, setCancelled] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [restored, setRestored] = useState(false);
@@ -64,7 +78,7 @@ export default function VolumeEntityCandidateWorkspace({ kind, novelId, volume, 
   const [formalFactions, setFormalFactions] = useState(factions);
   const [formalRelations, setFormalRelations] = useState(relations);
   const [refreshing, setRefreshing] = useState(false);
-  const [planSnapshot, setPlanSnapshot] = useState<{ source: string; rows: CharacterVolumeStateReadV1[] } | null>(null);
+  const [planSnapshot, setPlanSnapshot] = useState<{ source: string; rows: (CharacterVolumeStateReadV1 | FactionVolumeStateReadV1)[] } | null>(null);
   const [planError, setPlanError] = useState("");
   const [adoptedChanges, setAdoptedChanges] = useState("");
   const [completed, setCompleted] = useState(false);
@@ -86,7 +100,8 @@ export default function VolumeEntityCandidateWorkspace({ kind, novelId, volume, 
   const selectedIndex = selected ? candidates.indexOf(selected) : -1;
   const retryOnly = Boolean(command.current) && (kind === "characters" || !stale || command.current?.unknown !== false);
   const locked = saving || adoptionOpen;
-  const readOnly = locked || stale || draftConflict || Boolean(command.current);
+  const legacyFactionCandidate = kind === "factions" && Boolean(preview) && !command.current && !hasExplicitFactionValues(preview);
+  const readOnly = locked || stale || draftConflict || Boolean(command.current) || legacyFactionCandidate;
   const availableCharacters = formalCharacters.filter((item) => !item.is_deleted && item.status === "active");
   const availableFactions = formalFactions.filter((item) => !item.is_deleted && item.active_status === "active" && (item.level_type === "core" || item.volume_id === volume.volume_id));
   const names = new Map(kind === "characters" ? formalCharacters.map((item) => [item.character_id, item.name]) : formalFactions.map((item) => [item.faction_id, item.name]));
@@ -94,30 +109,32 @@ export default function VolumeEntityCandidateWorkspace({ kind, novelId, volume, 
     .filter(([field]) => field.startsWith(`candidates.${selectedIndex}.${prefix}.`))
     .map(([field, messages]) => [field.slice(`candidates.${selectedIndex}.${prefix}.`.length), messages]));
   const itemName = (item: VolumeEntityCandidate) => item.profile?.name ?? names.get("character_id" in item ? item.character_id! : item.faction_id!) ?? t("existing");
-  const existingPlans = kind === "characters" ? (candidates as VolumeCharacterCandidate[]).filter((row) => row.character_id && row.state_expected_version !== null) : [];
-  const planSource = JSON.stringify(existingPlans.map((row) => [row.character_id, row.state_expected_version]));
+  const identityOf = (row: VolumeEntityCandidate | CharacterVolumeStateReadV1 | FactionVolumeStateReadV1) => "character_id" in row ? row.character_id : row.faction_id;
+  const planField = (row: object, field: string) => (row as Record<string, unknown>)[field];
+  const existingPlans = candidates.filter((row) => identityOf(row) && row.state_expected_version !== null);
+  const planSource = JSON.stringify(existingPlans.map((row) => [identityOf(row), row.state_expected_version]));
   useEffect(() => {
     if (planSource === "[]" || retryOnly) return;
     let active = true;
     setPlanError("");
-    void apiGet<{ data: CharacterVolumeStateReadV1[] }>(`/api/character-volume-states/novel/${novelId}/volume/${volume.volume_id}`)
+    void apiGet<{ data: (CharacterVolumeStateReadV1 | FactionVolumeStateReadV1)[] }>(`/api/${kind === "characters" ? "character" : "faction"}-volume-states/novel/${novelId}/volume/${volume.volume_id}`)
       .then((response) => {
         const expected = JSON.parse(planSource) as [string, number][];
-        if (!Array.isArray(response.data) || expected.some(([id, expectedVersion]) => !response.data.some((row) => row.character_id === id && row.version === expectedVersion && !row.is_deleted))) throw new Error(t("planChanged"));
+        if (!Array.isArray(response.data) || expected.some(([id, expectedVersion]) => !response.data.some((row) => identityOf(row) === id && row.version === expectedVersion && !row.is_deleted))) throw new Error(t(kind === "factions" ? "factions.planChanged" : "planChanged"));
         if (active) setPlanSnapshot({ source: planSource, rows: response.data });
       }).catch((failure) => { if (active) setPlanError(failure instanceof Error ? failure.message : t("loadFailed")); });
     return () => { active = false; };
-  }, [novelId, volume.volume_id, planSource, retryOnly, t]);
-  const planFields = { participation_scope: "participationScope", current_goal: "currentGoal", start_state: "startState", planned_end_state: "plannedEndState", relationship_focus_ids: "relationshipFocus", arc_progress: "arcProgress" } as const;
+  }, [novelId, volume.volume_id, planSource, retryOnly, t, kind]);
+  const planFields: Record<string, string> = { participation_scope: "participationScope", current_goal: "currentGoal", start_state: "startState", planned_end_state: "plannedEndState", ...(kind === "characters" ? { relationship_focus_ids: "relationshipFocus", arc_progress: "arcProgress" } : { hidden_agenda: "hiddenAgenda" }) };
   const planChanges = existingPlans.flatMap((row) => {
-    const before = planSnapshot?.source === planSource ? planSnapshot.rows.find((saved) => saved.character_id === row.character_id) : undefined;
+    const before = planSnapshot?.source === planSource ? planSnapshot.rows.find((saved) => identityOf(saved) === identityOf(row)) : undefined;
     if (!before) return [];
-    const changes = (Object.keys(planFields) as (keyof CharacterVolumePlanFieldsV1)[]).filter((field) => JSON.stringify(before[field]) !== JSON.stringify(row.state[field]));
+    const changes = Object.keys(planFields).filter((field) => JSON.stringify(planField(before, field)) !== JSON.stringify(planField(row.state, field)));
     return changes.length ? [{ row, before, changes }] : [];
   });
-  const changeKey = JSON.stringify(planChanges.map(({ row, before, changes }) => [row.character_id, before.version, changes.map((field) => [field, before[field], row.state[field]])]));
-  const planReviewBlocked = !retryOnly && existingPlans.length > 0 && (Boolean(planError) || planSnapshot?.source !== planSource || planChanges.length > 0 && adoptedChanges !== changeKey);
-  const planValue = (field: keyof CharacterVolumePlanFieldsV1, value: CharacterVolumePlanFieldsV1[keyof CharacterVolumePlanFieldsV1]) => {
+  const changeKey = JSON.stringify(planChanges.map(({ row, before, changes }) => [identityOf(row), before.version, changes.map((field) => [field, planField(before, field), planField(row.state, field)])]));
+  const planReviewBlocked = !retryOnly && existingPlans.length > 0 && (Boolean(planError) || planSnapshot?.source !== planSource || kind === "characters" && planChanges.length > 0 && adoptedChanges !== changeKey);
+  const planValue = (field: string, value: unknown) => {
     if (field === "participation_scope") return planT(`scope.${String(value)}`);
     if (Array.isArray(value)) return value.map((id) => {
       const relation = formalRelations.find((item) => item.relation_id === id);
@@ -153,10 +170,16 @@ export default function VolumeEntityCandidateWorkspace({ kind, novelId, volume, 
           if (active) setRestored(true);
           return;
         }
+        // 先恢复冻结命令；展示合同变化不能使原键、原体或未知状态丢失。
+        command.current = stored.value.command; version.current = stored.base_version;
         const savedPreview = stored.value.preview;
-        if (savedPreview && !parseVolumeEntityPreview(savedPreview, kind, novelId, volume.volume_id)) throw new Error(t("invalidResult"));
-        setPreview(savedPreview); setup.current = stored.value; command.current = stored.value.command; version.current = stored.base_version;
-        setStale(stored.value.stale || Boolean(savedPreview && !savedPreview.basis.content_fingerprint && !stored.value.command && stored.base_version !== initialVersion.current));
+        const parsed = parseVolumeEntityPreview(savedPreview, kind, novelId, volume.volume_id);
+        if (!parsed && (savedPreview || stored.value.command)) {
+          setRetainedDraft(stored.value); setPreview(null); setRestored(true);
+        } else {
+          setPreview(parsed); setup.current = stored.value;
+        }
+        setStale(stored.value.stale || Boolean(parsed && !parsed.basis.content_fingerprint && !stored.value.command && stored.base_version !== initialVersion.current));
       } else setRestored(true);
     }).catch((failure) => { if (active) { setStorageError(failure instanceof Error ? failure.message : t("draftFailed")); setRestored(true); } })
       .finally(() => { if (active) setLoading(false); });
@@ -164,25 +187,25 @@ export default function VolumeEntityCandidateWorkspace({ kind, novelId, volume, 
   }, [key, kind, novelId, volume.volume_id, t, saveLocalDraft]);
 
   useEffect(() => {
-    if (loading || flowLoading || !setup.current) return;
+    if (loading || (!command.current && flowLoading) || !setup.current) return;
     const session = activeSession.current;
     const stored = setup.current; setup.current = null;
     void (async () => {
-      if (stored.flow_ref) await selectFlow(stored.flow_ref);
+      if (stored.flow_ref && !stored.command) await selectFlow(stored.flow_ref);
       if (activeSession.current !== session) return;
       setInputs(stored.inputs); setParams(stored.params); setRestored(true);
     })();
   }, [loading, flowLoading, selectFlow, setInputs, setParams]);
 
   useEffect(() => {
-    if (loading || saving || !restored || completed || cleanupVersion.current !== null || blockedDraft.current) return;
+    if (loading || saving || !restored || completed || retainedDraft || command.current || cleanupVersion.current !== null || blockedDraft.current) return;
     const draft: EntityDraft = { preview, flow_ref: flow.definition ? { id: flow.definition.id, revision: flow.definition.revision } : null, inputs: flow.inputs, params: flow.params, command: command.current, stale };
     const draftVersion = version.current;
     writes.current = writes.current.then(() => {
       if (blockedDraft.current) throw new Error(t("draftConflict"));
       return saveLocalDraft(draftVersion, draft);
     }).catch((failure) => setStorageError(failure instanceof Error ? failure.message : t("draftFailed")));
-  }, [key, loading, saving, restored, completed, preview, flow.definition, flow.inputs, flow.params, stale, t, saveLocalDraft]);
+  }, [key, loading, saving, restored, completed, retainedDraft, preview, flow.definition, flow.inputs, flow.params, stale, t, saveLocalDraft]);
 
   const refreshSources = async () => {
     setRefreshing(true); setError("");
@@ -205,7 +228,8 @@ export default function VolumeEntityCandidateWorkspace({ kind, novelId, volume, 
   };
 
   const generate = async (retry: TaskFlowRunMode = false) => {
-    if (controller.current || running) return;
+    if (controller.current || running || command.current || retainedDraft) return;
+    setCancelled(false);
     const abort = new AbortController(); controller.current = abort;
     setRunning(true); setError(""); setErrors({}); setStale(false);
     try {
@@ -232,29 +256,35 @@ export default function VolumeEntityCandidateWorkspace({ kind, novelId, volume, 
 
   const updateCandidate = (item: VolumeEntityCandidate) => {
     if (!preview || readOnly) return;
-    setPreview({ ...preview, candidate: { [kind]: candidates.map((old) => old.candidate_ref === item.candidate_ref ? item : old) } });
+    const next = { ...preview, candidate: { [kind]: candidates.map((old) => old.candidate_ref === item.candidate_ref ? item : old) } };
+    previewRef.current = next; setPreview(next);
     setErrors({});
   };
 
   const confirm = async () => {
-    if (!preview || locked || blockedDraft.current || planReviewBlocked || stale && !retryOnly || completed) return;
+    if ((!preview && !command.current) || locked || blockedDraft.current || legacyFactionCandidate || planReviewBlocked || stale && !retryOnly || completed) return;
     const original = command.current;
     const request = original ? JSON.parse(original.payload) : kind === "characters" ? {
-      contract: "participation_plan_v1", basis: preview.basis,
+      contract: CHARACTER_PLAN_CONTRACT, basis: preview!.basis,
       candidates: (candidates as VolumeCharacterCandidate[]).map((row) => ({
         ...row, state: { participation_scope: row.state.participation_scope, current_goal: row.state.current_goal,
           start_state: row.state.start_state, planned_end_state: row.state.planned_end_state,
           relationship_focus_ids: row.state.relationship_focus_ids, arc_progress: row.state.arc_progress },
       })),
-    } : { candidates, basis: preview.basis };
-    const payload = JSON.stringify(request);
-    if (original && original.payload !== payload) { setError(t("retryConfirmation")); return; }
+    } : { contract: "participation_plan_v1", basis: preview!.basis,
+      candidates: (candidates as VolumeFactionCandidate[]).map((row) => ({ ...row,
+        state: { participation_scope: row.state.participation_scope, current_goal: row.state.current_goal,
+          start_state: row.state.start_state, planned_end_state: row.state.planned_end_state, hidden_agenda: row.state.hidden_agenda },
+        ...(row.profile ? { initial_facts: volumeFactionFacts(row) } : {}),
+      })),
+    };
+    const payload = original?.payload ?? JSON.stringify(request);
     setSaving(true); setError(""); setErrors({});
     const session = activeSession.current;
     const pendingCommand = original ? { ...original, unknown: true } : { payload, key: crypto.randomUUID(), unknown: true };
     command.current = pendingCommand;
     const draftVersion = version.current;
-    const draft: EntityDraft = { preview, flow_ref: flow.definition ? { id: flow.definition.id, revision: flow.definition.revision } : null, inputs: flow.inputs, params: flow.params, command: pendingCommand, stale };
+    const draft: EntityDraft = { ...(retainedDraft ?? (original ? ownedDraft.current?.value : null) ?? { preview, flow_ref: flow.definition ? { id: flow.definition.id, revision: flow.definition.revision } : null, inputs: flow.inputs, params: flow.params, stale }), command: pendingCommand };
     let previous: CharacterVolumeCandidateEntry | null = null;
     let registered: CharacterVolumeCandidateEntry | null = null;
     let result: VolumeEntityConfirmResult;
@@ -267,7 +297,7 @@ export default function VolumeEntityCandidateWorkspace({ kind, novelId, volume, 
       registered = ownedDraft.current;
       if (activeSession.current !== session) return;
       setStorageError("");
-      result = await apiPost<VolumeEntityConfirmResult>(`/api/novels/${novelId}/volumes/${volume.volume_id}/${kind}/confirm`, request, { headers: { "Idempotency-Key": pendingCommand.key } });
+      result = await apiPostJson<VolumeEntityConfirmResult>(`/api/novels/${novelId}/volumes/${volume.volume_id}/${kind}/confirm`, payload, { headers: { "Idempotency-Key": pendingCommand.key } });
       if (result.novel_id !== novelId || result.volume_id !== volume.volume_id || !Array.isArray(result.data)
         || !result.mapping || typeof result.mapping !== "object" || Array.isArray(result.mapping)
         || result.data.some((item) => !item || typeof item !== "object" || item.novel_id !== novelId || item.volume_id !== volume.volume_id
@@ -314,19 +344,29 @@ export default function VolumeEntityCandidateWorkspace({ kind, novelId, volume, 
     onSaved(result, savedNames);
   };
 
+  const cancelGeneration = () => { controller.current?.abort(); setCancelled(true); };
   const close = async () => {
+    // 收起页内流程时仍接收同一任务；只有明确停止才中止生成。
+    if (running) { onMinimizedChange(true); return; }
     controller.current?.abort();
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && editorRef.current?.contains(focused)) focused.blur();
+    if (previewRef.current !== preview) {
+      const draft: EntityDraft = { preview: previewRef.current, flow_ref: flow.definition ? { id: flow.definition.id, revision: flow.definition.revision } : null,
+        inputs: flow.inputs, params: flow.params, command: command.current, stale };
+      writes.current = writes.current.then(() => saveLocalDraft(version.current, draft)).catch((failure) => setStorageError(failure instanceof Error ? failure.message : t("draftFailed")));
+    }
     await writes.current;
     if (blockedDraft.current) { setStorageError(t("draftConflict")); return; }
     onClose();
   };
   const exportDraft = () => {
-    const blob = new Blob([JSON.stringify(preview, null, 2)], { type: "application/json;charset=utf-8" });
+    const blob = new Blob([JSON.stringify(retainedDraft ? { ...retainedDraft, command: command.current } : preview, null, 2)], { type: "application/json;charset=utf-8" });
     const url = URL.createObjectURL(blob); const link = document.createElement("a");
-    link.href = url; link.download = `${volume.title}-${kind}-candidate.json`; link.click(); URL.revokeObjectURL(url);
+    link.href = url; link.download = `${volume.title}-${kind}-candidate.json`; void downloadExport(link); URL.revokeObjectURL(url);
   };
   const revise = async () => {
-    if (locked || command.current?.unknown !== false) return;
+    if (locked || retainedDraft || command.current?.unknown !== false) return;
     try {
       await writes.current;
       if (blockedDraft.current) throw new Error(t("draftConflict"));
@@ -341,71 +381,82 @@ export default function VolumeEntityCandidateWorkspace({ kind, novelId, volume, 
       await writes.current;
       if (blockedDraft.current) throw new Error(t("draftConflict"));
       await saveLocalDraft(version.current, null, command.current?.unknown === false ? { kind: "revise" } : undefined);
-      await flow.discard(); command.current = null; setPreview(null); setStale(false); setError(""); setErrors({});
+      await flow.discard();
+      if (retainedDraft) await flow.refresh();
+      command.current = null; setRetainedDraft(null); setPreview(null); setStale(false); setError(""); setErrors({});
       version.current = currentVolume.version;
     } catch (failure) { setStorageError(failure instanceof Error ? failure.message : t("draftFailed")); }
   };
 
   if (completed) return null;
-  return <RetainedModalBackdrop isOpen onOpenChange={(open) => { if (!open && !locked) void close(); }} isDismissable={!locked && !draftConflict} isKeyboardDismissDisabled={locked || draftConflict}>
-    <Modal.Container size="full" scroll="inside" className="p-0 sm:p-4">
-      <Modal.Dialog className="h-[100dvh] w-full sm:h-auto sm:max-h-[90vh] sm:max-w-5xl">
-        <Modal.Header className="flex items-start justify-between gap-3 border-b border-border px-5 py-4 sm:px-7">
-          <Modal.Heading className="text-lg font-semibold">{t(`${kind}.title`)} · {volume.title}</Modal.Heading>
-          <Modal.CloseTrigger aria-label={t("close")} isDisabled={locked || draftConflict} />
-        </Modal.Header>
-        <Modal.Body className="workspace-scrollbar min-h-0 px-5 py-5 sm:px-7">
+  if (minimized) return <section aria-label={t("backgroundTitle")} className="shrink-0 space-y-3 border-t border-border px-4 py-3">
+    <p role="status" className="text-sm">{t(running ? "backgroundRunning" : cancelled ? "cancelled" : preview ? "backgroundReady" : "generateFailed")}</p>
+    <TaskFlowProgress flow={flow} running={running} failed={Boolean(error)} />
+    <Button size="sm" variant="outline" onPress={() => onMinimizedChange(false)}>{t("openGeneration")}</Button>
+    {running && <Button size="sm" variant="ghost" onPress={cancelGeneration}>{t("cancel")}</Button>}
+  </section>;
+  return <section ref={pageRef} tabIndex={-1} aria-label={t(`${kind}.title`)} className="@container/volumeCandidates flex min-h-0 flex-1 flex-col overflow-hidden bg-surface outline-none" onKeyDown={(event) => { if (event.key === "Escape" && !locked && !draftConflict) { event.stopPropagation(); void close(); } }}>
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-6">
+          <h3 className="text-base font-semibold">{t(`${kind}.title`)} · {volume.title}</h3>
+          <Button size="sm" variant="ghost" onPress={() => void close()} isDisabled={locked || draftConflict}>{t("close")}</Button>
+        </header>
+        <div ref={editorRef} className={`workspace-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-3 sm:px-6 ${preview && !planChanges.length ? "@min-[800px]/volumeCandidates:overflow-hidden" : ""}`}>
           {error && <RelationEditorErrorSummary message={error} fieldErrors={errors} className="mb-4" />}
           {storageError && <p role="alert" className="mb-4 border-y border-danger/40 py-3 text-sm text-danger">{storageError}</p>}
+          {cancelled && <p role="status" className="mb-4 text-sm text-muted">{t("cancelled")}</p>}
+          {legacyFactionCandidate && <p role="alert" className="mb-4 text-sm">{t("factions.explicitFactsRequired")}</p>}
           {stale && <p role="alert" className="mb-4 border-y border-amber-500/50 py-3 text-sm">{t("stale")}</p>}
-          {preview && kind === "characters" && <p className="mb-3 text-sm text-muted">{t("characterStart", { title: volume.title })}</p>}
+          {preview && <p className="mb-3 text-sm text-muted">{t(kind === "characters" ? "characterStart" : "factionStart", { title: volume.title })}</p>}
           {retryOnly && command.current?.unknown !== false && !saving && <p role="status" className="mb-4 border-y border-amber-500/50 py-3 text-sm">{t("retryConfirmation")}</p>}
           {!retryOnly && planError && <p role="alert" className="mb-4 text-danger">{planError}</p>}
-          {!retryOnly && planChanges.length > 0 && <section aria-label={t("planChanges", { count: planChanges.length })} className="mb-5 space-y-3 border-y border-border py-4">
-            <h3 className="text-sm font-semibold">{t("planChanges", { count: planChanges.length })}</h3>
+          {!retryOnly && planChanges.length > 0 && <section aria-label={t(kind === "factions" ? "factions.planChanges" : "planChanges", { count: planChanges.length })} className="mb-5 space-y-3 border-y border-border py-4">
+            <h3 className="text-sm font-semibold">{t(kind === "factions" ? "factions.planChanges" : "planChanges", { count: planChanges.length })}</h3>
             {planChanges.map(({ row, before, changes }) => <div key={row.candidate_ref} className="space-y-2">
               <p className="font-medium">{itemName(row)}</p>
               <dl className="space-y-2">{changes.map((field) => <div key={field}>
                 <dt className="text-xs text-muted">{planT(`fields.${planFields[field]}`)}</dt>
-                <dd className="grid gap-2 sm:grid-cols-2 reading-copy"><span>{t("beforeValue", { value: planValue(field, before[field]) })}</span><span>{t("afterValue", { value: planValue(field, row.state[field]) })}</span></dd>
+                <dd className="grid gap-2 sm:grid-cols-2 reading-copy"><span>{t("beforeValue", { value: planValue(field, planField(before, field)) })}</span><span>{t("afterValue", { value: planValue(field, planField(row.state, field)) })}</span></dd>
               </div>)}</dl>
             </div>)}
-            <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={adoptedChanges === changeKey} disabled={readOnly} onChange={(event) => setAdoptedChanges(event.target.checked ? changeKey : "")} />{t("adoptPlanChanges", { count: planChanges.length })}</label>
+            {kind === "characters" && <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={adoptedChanges === changeKey} disabled={readOnly} onChange={(event) => setAdoptedChanges(event.target.checked ? changeKey : "")} />{t("adoptPlanChanges", { count: planChanges.length })}</label>}
           </section>}
-          {loading ? <p role="status">{t("loading")}</p> : !preview ? <>
-            <div className="mb-4 flex justify-end"><Button size="sm" variant="ghost" isDisabled={running || refreshing} onPress={() => void refreshSources()}>{t("refreshSources")}</Button></div>
-            <TaskFlowForm flow={flow} disabled={running || refreshing} showError={error !== flow.error} fieldChoices={{ selected_existing_ids: kind === "characters" ? availableCharacters.map((item) => ({ value: item.character_id, label: item.name })) : availableFactions.map((item) => ({ value: item.faction_id, label: item.name })) }} />
-          </> : <div className="@container">
-            <div className="grid min-w-0 gap-6 @min-[800px]:grid-cols-[240px_minmax(0,1fr)]">
-            <nav aria-label={t("candidates", { count: candidates.length })} className="min-w-0 space-y-2 border-b border-border pb-4 @min-[800px]:border-r @min-[800px]:border-b-0 @min-[800px]:pr-4">
+          {loading ? <p role="status">{t("loading")}</p> : retainedDraft ? <section className="space-y-3">
+            <p role="status">{t("retainedDraft")}</p>
+            <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-words text-xs">{JSON.stringify({ ...retainedDraft, command: command.current }, null, 2)}</pre>
+          </section> : !preview ? <>
+            <TaskFlowForm toolbarActions={<Button size="sm" variant="ghost" isDisabled={running || refreshing} onPress={() => void refreshSources()}>{t("refreshSources")}</Button>} flow={flow} disabled={running || refreshing} showError={error !== flow.error} fieldChoices={{ selected_existing_ids: kind === "characters" ? availableCharacters.map((item) => ({ value: item.character_id, label: item.name })) : availableFactions.map((item) => ({ value: item.faction_id, label: item.name })) }} />
+          </> : <div className="@container min-h-0 shrink-0 @min-[800px]/volumeCandidates:flex-1 @min-[800px]/volumeCandidates:shrink">
+            <div className="grid min-h-0 min-w-0 gap-6 @min-[800px]/volumeCandidates:h-full @min-[800px]/volumeCandidates:grid-cols-[240px_minmax(0,1fr)]">
+            <nav aria-label={t("candidates", { count: candidates.length })} tabIndex={0} className="workspace-scrollbar min-h-0 min-w-0 max-h-64 overflow-y-auto space-y-2 border-b border-border pb-4 @min-[800px]/volumeCandidates:max-h-none @min-[800px]/volumeCandidates:border-r @min-[800px]/volumeCandidates:border-b-0 @min-[800px]/volumeCandidates:pr-4">
               <p className="text-xs font-medium text-muted">{t("candidates", { count: candidates.length })}</p>
               {candidates.map((item) => <button key={item.candidate_ref} type="button" aria-label={itemName(item)} aria-pressed={selected?.candidate_ref === item.candidate_ref} disabled={locked} onClick={() => setSelectedRef(item.candidate_ref)} className={`min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm focus-visible:outline-2 focus-visible:outline-accent ${selected?.candidate_ref === item.candidate_ref ? "bg-selected text-foreground" : "hover:bg-surface-raised"}`}>
                 <span className="block break-words font-medium">{itemName(item)}</span><span className="text-xs text-muted">{t(item.profile ? "new" : "existing")}</span>
               </button>)}
               <Button size="sm" variant="ghost" isDisabled={readOnly || !selected} onPress={() => { if (!selected) return; setPreview({ ...preview, candidate: { [kind]: candidates.filter((item) => item.candidate_ref !== selected.candidate_ref) } }); setSelectedRef(""); }}>{t("remove")}</Button>
             </nav>
-            {selected && <div key={selected.candidate_ref} className="min-w-0 space-y-8">
+            {selected && <div key={selected.candidate_ref} className="workspace-scrollbar min-h-0 min-w-0 space-y-8 @min-[800px]/volumeCandidates:overflow-y-auto">
               {kind === "characters" ? <>
-                {(selected as VolumeCharacterCandidate).profile && <CharacterProfileForm value={(selected as VolumeCharacterCandidate).profile!} disabled={readOnly} fieldErrors={fieldErrors("profile")} t={characterT} onChange={(profile) => updateCandidate({ ...selected as VolumeCharacterCandidate, profile: { ...(selected as VolumeCharacterCandidate).profile!, ...profile } })} />}
+                {(selected as VolumeCharacterCandidate).profile && <CharacterProfileForm designOnly value={volumeCharacterDesignForm((selected as VolumeCharacterCandidate).profile!)} disabled={readOnly} fieldErrors={fieldErrors("profile")} t={characterT} onChange={(profile) => updateCandidate({ ...selected as VolumeCharacterCandidate, profile: editVolumeCharacterDesign((selected as VolumeCharacterCandidate).profile!, profile) })} />}
+                {(selected as VolumeCharacterCandidate).profile && <section aria-label={t("characters.initialFacts")} className="space-y-5 border-t border-border pt-6"><h3 className="text-sm font-semibold">{t("characters.initialFacts")}</h3><CharacterFactFieldsEditor values={(selected as VolumeCharacterCandidate).initial_facts ?? {}} disabled={readOnly} fieldErrors={fieldErrors("initial_facts")} onChange={(initial_facts) => updateCandidate({ ...selected as VolumeCharacterCandidate, initial_facts })} /></section>}
                 <div className="border-t border-border pt-6"><CharacterVolumeStateForm value={(selected as VolumeCharacterCandidate).state} characterId={(selected as VolumeCharacterCandidate).character_id ?? ""} relations={formalRelations} characterNames={new Map(formalCharacters.map((item) => [item.character_id, item.name]))} disabled={readOnly} fieldErrors={fieldErrors("state")} errorIdPrefix={`volume-character-${selected.candidate_ref}`} autoFocusCurrentGoal={false} onChange={(state) => updateCandidate({ ...selected as VolumeCharacterCandidate, state })} /></div>
               </> : <>
                 {(selected as VolumeFactionCandidate).profile && <VolumeFactionProfileForm value={(selected as VolumeFactionCandidate).profile!} factions={availableFactions} disabled={readOnly} errors={fieldErrors("profile")} onChange={(profile) => updateCandidate({ ...selected as VolumeFactionCandidate, profile })} />}
-                <div className="border-t border-border pt-6"><FactionVolumeStateForm value={(selected as VolumeFactionCandidate).state} disabled={readOnly} fieldErrors={fieldErrors("state")} errorIdPrefix={`volume-faction-${selected.candidate_ref}`} autoFocusCurrentGoal={false} onChange={(state) => updateCandidate({ ...selected as VolumeFactionCandidate, state })} /></div>
+                {(selected as VolumeFactionCandidate).profile && <section aria-label={t("factions.initialFacts")} className="space-y-5 border-t border-border pt-6"><h3 className="text-sm font-semibold">{t("factions.initialFacts")}</h3><FactionFactFieldsEditor disabled={readOnly} values={volumeFactionFacts(selected as VolumeFactionCandidate)} onChange={(field, value) => updateCandidate(editVolumeFactionFact(selected as VolumeFactionCandidate, field, value))} /></section>}
+                <div className="border-t border-border pt-6"><FactionVolumeStateForm planOnly value={(selected as VolumeFactionCandidate).state} disabled={readOnly} fieldErrors={fieldErrors("state")} errorIdPrefix={`volume-faction-${selected.candidate_ref}`} autoFocusCurrentGoal={false} onChange={(state) => updateCandidate({ ...selected as VolumeFactionCandidate, state })} /></div>
               </>}
             </div>}
             </div>
           </div>}
-          <TaskFlowProgress flow={flow} running={running} failed={Boolean(error) && !preview} onRetry={() => void generate(true)} onContinue={(additionalRounds) => void generate({ continuation: true, additionalRounds })} onDiscard={() => { void flow.discard(); setError(""); }} />
-        </Modal.Body>
-        <Modal.Footer className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t border-border bg-surface-raised px-5 py-4 sm:px-7">
-          <Button size="sm" variant="ghost" isDisabled={locked || draftConflict} onPress={() => void close()}>{running ? t("cancel") : t("closeKeep")}</Button>
+          {!retainedDraft && <TaskFlowProgress flow={flow} running={running} failed={Boolean(error) && !preview} onRetry={() => void generate(true)} onContinue={(additionalRounds) => void generate({ continuation: true, additionalRounds })} onDiscard={() => { void flow.discard(); setError(""); }} />}
+        </div>
+        <footer className="shrink-0 flex flex-wrap justify-end gap-2 border-t border-border bg-surface-raised px-5 py-4 sm:px-7">
+          <Button size="sm" variant="ghost" isDisabled={locked || draftConflict} onPress={() => { if (running) cancelGeneration(); else void close(); }}>{running ? t("cancel") : t("closeKeep")}</Button>
           {draftConflict && !preview && <Button size="sm" variant="ghost" onPress={onClose}>{t("close")}</Button>}
-          {preview && <Button size="sm" variant="ghost" isDisabled={locked} onPress={() => { exportDraft(); if (draftConflict) onClose(); }}>{t(draftConflict ? "draftConflictExport" : "export")}</Button>}
+          {(preview || retainedDraft) && <Button size="sm" variant="ghost" isDisabled={locked} onPress={() => { exportDraft(); if (draftConflict) onClose(); }}>{t(draftConflict ? "draftConflictExport" : "export")}</Button>}
           {preview && command.current?.unknown === false && (kind === "characters" || !stale) && <Button size="sm" variant="outline" isDisabled={locked || draftConflict} onPress={() => void revise()}>{t("reviseRejected")}</Button>}
           {preview && <Button size="sm" variant="outline" isDisabled={locked || draftConflict || Boolean(command.current && command.current.unknown !== false)} onPress={() => void discard()}>{t("discard")}</Button>}
-          <Button size="sm" variant="primary" isDisabled={loading || !restored || running || locked || draftConflict || refreshing || planReviewBlocked || (preview ? stale && !retryOnly : flow.loading || !flow.definition)} onPress={() => void (preview ? confirm() : generate())}>{saving ? t("saving") : preview ? retryOnly ? t("retrySave") : t("confirm") : t("generate")}</Button>
-        </Modal.Footer>
-      </Modal.Dialog>
-    </Modal.Container>
-  </RetainedModalBackdrop>;
+          {retainedDraft && (!command.current || command.current.unknown === false) && <Button size="sm" variant="outline" isDisabled={locked || draftConflict} onPress={() => void discard()}>{t("regenerateRetained")}</Button>}
+          {(!retainedDraft || command.current) && <Button size="sm" variant="primary" isDisabled={loading || !restored || running || locked || draftConflict || refreshing || legacyFactionCandidate || planReviewBlocked || (!retryOnly && (preview ? stale : flow.loading || !flow.definition))} onPress={() => void (preview || command.current ? confirm() : generate())}>{saving ? t("saving") : retryOnly ? t("retrySave") : preview ? t("confirm") : t("generate")}</Button>}
+        </footer>
+  </section>;
 }

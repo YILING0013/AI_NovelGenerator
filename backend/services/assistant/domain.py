@@ -137,7 +137,11 @@ async def execute_operation(novel_id: str, operation: ChangeOperation, *, identi
             entity_kind = kind.removesuffix("_volume_state")
             volume_id, entity_id = fields.pop("volume_id"), fields.pop(f"{entity_kind}_id")
             data = spec.create.model_validate(fields)
-            result = await ENTITY_SERVICES[kind][0].upsert_state(novel_id, volume_id, entity_id, data, idempotency_key=key, session=session)
+            if kind == "faction_volume_state":
+                from backend.services.novel.faction_volume_plan_service import create_faction_volume_plan
+                result = await create_faction_volume_plan(novel_id, volume_id, entity_id, data, idempotency_key=key, session=session)
+            else:
+                result = await ENTITY_SERVICES[kind][0].upsert_state(novel_id, volume_id, entity_id, data, idempotency_key=key, session=session)
         else:
             data = spec.create.model_validate({**fields, **({"novel_id": novel_id} if kind == "volume" else {})}).model_dump(mode="json", exclude_unset=True)
             if kind in PARENT_KIND:
@@ -172,7 +176,10 @@ async def execute_operation(novel_id: str, operation: ChangeOperation, *, identi
             if field != "expected_version" and definition.is_required() and field not in payload:
                 payload[field] = current[field]
         data = RESOURCES[kind].update.model_validate({**payload, "expected_version": expected}).model_dump(mode="json", exclude_unset=True)
-        if kind == "novel":
+        if kind == "faction_volume_state":
+            from backend.services.novel.faction_volume_plan_service import update_faction_volume_plan
+            result = await update_faction_volume_plan(novel_id, identity, data, session=session)
+        elif kind == "novel":
             result = await NovelService.update_novel(novel_id, data, session=session)
         elif kind == "volume":
             result = await VolumeService.update_volume_info(identity, data, session=session)

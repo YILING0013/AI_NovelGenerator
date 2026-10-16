@@ -8,6 +8,7 @@ from typing import Any
 from bson import ObjectId
 from pymongo.asynchronous.client_session import AsyncClientSession
 
+from backend.services.novel.writing_context import faction_design_content
 from backend.api.error_protocol import DomainApiError
 from backend.db.repositories.character_repository import character_repo
 from backend.db.repositories.faction_repository import faction_repo
@@ -209,7 +210,7 @@ async def load_item_generation_context(
             _project(item, WORLD_RULE_PROMPT_FIELDS) for item in world_rules
         ],
         "characters": [character_design_content(item, CHARACTER_PROMPT_FIELDS) for item in characters],
-        "factions": [_project(item, FACTION_PROMPT_FIELDS) for item in factions],
+        "factions": [faction_design_content(item, FACTION_PROMPT_FIELDS) for item in factions],
         "locations": [_project(item, LOCATION_PROMPT_FIELDS) for item in locations],
         "existing_items": [_project(item, ITEM_PROMPT_FIELDS) for item in items],
         "item_count": generation_input.item_count,

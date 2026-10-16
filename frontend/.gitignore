@@ -11,6 +11,7 @@
 # Next.js
 /.next/
 /out/
+/output/
 /build
 next-env.d.ts
 

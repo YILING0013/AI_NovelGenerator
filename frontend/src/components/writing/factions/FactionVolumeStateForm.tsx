@@ -8,15 +8,18 @@ import type {
   FactionVolumeActiveStatus,
   FactionVolumeParticipationScope,
   FactionVolumeStateFields,
+  FactionVolumePlanFieldsV1,
 } from "@/types/factionVolumeState";
 
-interface FactionVolumeStateFormProps {
-  value: FactionVolumeStateFields;
-  onChange: (value: FactionVolumeStateFields) => void;
+type EditableFields = FactionVolumePlanFieldsV1 & Partial<FactionVolumeStateFields>;
+interface FactionVolumeStateFormProps<T extends EditableFields> {
+  value: T;
+  onChange: (value: T) => void;
   disabled?: boolean;
   fieldErrors?: ApiFieldErrors;
   errorIdPrefix: string;
   autoFocusCurrentGoal?: boolean;
+  planOnly?: boolean;
   section?: "participation" | "agenda";
 }
 
@@ -36,7 +39,7 @@ const TEXTAREA_CLASS = `${INPUT_CLASS} min-h-28 resize-y leading-6`;
  * @param props 正式字段草稿、错误与禁用状态。
  * @returns 只包含业务字段、不持有主档版本或提交状态的表单节点。
  */
-export default function FactionVolumeStateForm({
+export default function FactionVolumeStateForm<T extends EditableFields>({
   value,
   onChange,
   disabled = false,
@@ -44,7 +47,8 @@ export default function FactionVolumeStateForm({
   errorIdPrefix,
   autoFocusCurrentGoal = true,
   section,
-}: FactionVolumeStateFormProps) {
+  planOnly = false,
+}: FactionVolumeStateFormProps<T>) {
   const t = useTranslations("writing.factionVolumeStates");
 
   const updateText = (field: keyof FactionVolumeStateFields, nextValue: string) => {
@@ -78,7 +82,7 @@ export default function FactionVolumeStateForm({
             </select>
             <FieldError id={`${errorIdPrefix}-participation_scope-error`} messages={fieldErrors.participation_scope} />
           </label>
-          <label className="grid gap-1.5 text-xs font-medium text-muted">
+          {!planOnly && <label className="grid gap-1.5 text-xs font-medium text-muted">
             <span>{t("fields.activeStatus")}</span>
             <select
               name="active_status"
@@ -97,8 +101,8 @@ export default function FactionVolumeStateForm({
               ))}
             </select>
             <FieldError id={`${errorIdPrefix}-active_status-error`} messages={fieldErrors.active_status} />
-          </label>
-          <label className="grid gap-1.5 text-xs font-medium text-muted">
+          </label>}
+          {!planOnly && <label className="grid gap-1.5 text-xs font-medium text-muted">
             <span>{t("fields.powerLevel")}</span>
             <input
               name="power_level"
@@ -114,8 +118,8 @@ export default function FactionVolumeStateForm({
               aria-describedby={fieldErrors.power_level ? `${errorIdPrefix}-power_level-error` : undefined}
             />
             <FieldError id={`${errorIdPrefix}-power_level-error`} messages={fieldErrors.power_level} />
-          </label>
-          <label className="grid gap-1.5 text-xs font-medium text-muted">
+          </label>}
+          {!planOnly && <label className="grid gap-1.5 text-xs font-medium text-muted">
             <span>{t("fields.influenceScope")}</span>
             <textarea
               name="influence_scope"
@@ -128,7 +132,7 @@ export default function FactionVolumeStateForm({
               aria-describedby={fieldErrors.influence_scope ? `${errorIdPrefix}-influence_scope-error` : undefined}
             />
             <FieldError id={`${errorIdPrefix}-influence_scope-error`} messages={fieldErrors.influence_scope} />
-          </label>
+          </label>}
           <label className="grid gap-1.5 text-xs font-medium text-muted col-span-full">
             <span>{t("fields.currentGoal")}</span>
             <textarea
@@ -180,7 +184,7 @@ export default function FactionVolumeStateForm({
           {t("form.agendaTitle")}
         </h3>}
         <div className={`${section ? "" : "mt-5"} grid gap-5 detail-fields`}>
-          <label className="grid gap-1.5 text-xs font-medium text-muted">
+          {!planOnly && <label className="grid gap-1.5 text-xs font-medium text-muted">
             <span>{t("fields.publicStance")}</span>
             <textarea
               name="public_stance"
@@ -193,7 +197,7 @@ export default function FactionVolumeStateForm({
               aria-describedby={fieldErrors.public_stance ? `${errorIdPrefix}-public_stance-error` : undefined}
             />
             <FieldError id={`${errorIdPrefix}-public_stance-error`} messages={fieldErrors.public_stance} />
-          </label>
+          </label>}
           <label className="grid gap-1.5 text-xs font-medium text-muted">
             <span>{t("fields.hiddenAgenda")}</span>
             <textarea
@@ -209,11 +213,11 @@ export default function FactionVolumeStateForm({
             <FieldError id={`${errorIdPrefix}-hidden_agenda-error`} messages={fieldErrors.hidden_agenda} />
           </label>
         </div>
-        <TagInput
+        {!planOnly && <TagInput
           className="mt-5"
           name="resources"
           label={t("fields.resources")}
-          values={value.resources}
+          values={value.resources ?? []}
           onChange={(resources) => onChange({ ...value, resources })}
           getRemoveAriaLabel={(tag) => t("removeResource", { tag })}
           placeholder={t("resourcePlaceholder")}
@@ -221,7 +225,7 @@ export default function FactionVolumeStateForm({
           maxItems={20}
           disabled={disabled}
           error={fieldErrors.resources?.join(" ")}
-        />
+        />}
       </section>}
     </div>
   );

@@ -1410,6 +1410,7 @@
         "model": "",
         "parameters": {},
         "prompt_file": "plan_scenes_by_ai_story_prompt.md",
+        "append_output_schema": true,
         "schema_prompt_file": "plan_scenes_by_ai_output.md",
         "text_prompt_file": "plan_scenes_by_ai_output.md"
       }

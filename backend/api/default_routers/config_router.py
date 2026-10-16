@@ -14,6 +14,7 @@ from backend.config.config import (
     project_config_for_read,
     restore_config_snapshot,
     update_config,
+    validate_provider_alias,
 )
 from backend.db.mongo import connect_to_mongo
 from backend.llm.config import LLMProviderType, LLMApiMode, StructuredOutputMode
@@ -78,7 +79,13 @@ class ProviderConfigPatch(ReasoningOptions):
     use_system_proxy: bool | None = None
     supports_streaming: bool | None = None
     supports_json_schema: bool | None = None
+    supports_json_output: bool | None = None
     supports_function_calling: bool | None = None
+    # 模型或接口资料，只校验数值，不改变任何请求预算。
+    context_window_tokens: int | None = Field(default=None, gt=0, le=9007199254740991, strict=True, description="上下文总容量，未知留空")
+    input_token_limit: int | None = Field(default=None, gt=0, le=9007199254740991, strict=True, description="单次输入上限，未知留空")
+    output_token_limit: int | None = Field(default=None, gt=0, le=9007199254740991, strict=True, description="模型或接口输出上限，未知留空")
+
     temperature: float | None = Field(default=None, ge=0, le=2)
     top_p: float | None = Field(default=None, ge=0, le=1)
     max_tokens: int | None = Field(default=None, gt=0)
@@ -117,8 +124,10 @@ class ProviderRenameRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True, strict=True)
 
-    source: str = Field(alias="from", pattern=r"^[A-Za-z0-9_]+$")
-    target: str = Field(alias="to", pattern=r"^[A-Za-z0-9_]+$")
+    source: str = Field(alias="from")
+    target: str = Field(alias="to")
+
+    _validate_aliases = field_validator("source", "target")(validate_provider_alias)
 
 
 class ConfigPatch(BaseModel):

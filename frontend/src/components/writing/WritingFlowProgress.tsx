@@ -93,12 +93,13 @@ export default function WritingFlowProgress({ novelId, readiness, activeHref, di
             const scene_id = scene.scene_id!;
             const chapters = (await apiGet<{ data: HierarchyRecord[] }>(`/api/chapters/scene/${scene_id}`)).data.sort((a, b) => a.order_index - b.order_index);
             if (!chapters.length) return at(4, t("chapterPreparation"), "chapter-editor", { volume_id, arc_id, scene_id });
-            const next = chapters.find((row) => row.word_count === 0);
-            if (next) return at(4, t("writeChapter", { title: next.title }), "chapter-editor", { volume_id, arc_id, scene_id, chapter_id: next.chapter_id! });
+            const next = chapters.find((row) => !(row.word_count > 0));
+            if (next) return at(4, t("writeChapter", { number: next.chapter_number ?? next.order_index }), "chapter-editor", { volume_id, arc_id, scene_id, chapter_id: next.chapter_id! });
           }
         }
       }
-      at(5, t("nextVolume"), "volume-planning", { view: "overview" });
+      volumeTitle = undefined;
+      at(5, t("plannedChaptersComplete"), "chapter-editor");
     } catch (failure) { if (request.current === id) { setError(failure instanceof Error ? failure.message : String(failure)); onProgressChange?.(null); } }
     finally { if (request.current === id) setLoading(false); }
   }, [novelId, readiness, reviewed, t, onProgressChange]);
@@ -115,11 +116,16 @@ export default function WritingFlowProgress({ novelId, readiness, activeHref, di
   return <section aria-label={t("progress")} className="min-w-0 space-y-2 border-t border-border px-3 py-2">
     <div className="flex min-w-0 items-center justify-between gap-2">
       <p className="min-w-0 [overflow-wrap:anywhere] text-xs text-muted">{t("progress")}</p>
-      <Button size="sm" variant="ghost" className="min-h-11 shrink-0" aria-expanded={expanded} aria-controls={progressId} onPress={() => setExpanded(!expanded)}>{t(expanded ? "collapseProgress" : "expandProgress")}</Button>
+      <Tooltip delay={300} closeDelay={0}>
+        <Button isIconOnly size="sm" variant="ghost" className="size-11 shrink-0 text-muted" aria-label={t(expanded ? "collapseProgress" : "expandProgress")} aria-expanded={expanded} aria-controls={progressId} onPress={() => setExpanded(!expanded)}>
+          <svg aria-hidden="true" className={`size-4 transition-transform motion-reduce:transition-none ${expanded ? "" : "rotate-180"}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 15 6-6 6 6" /></svg>
+        </Button>
+        <Tooltip.Content className="z-[100] rounded-lg border border-border bg-surface-raised px-3 py-2 text-xs text-foreground shadow-lg">{t(expanded ? "collapseProgress" : "expandProgress")}</Tooltip.Content>
+      </Tooltip>
     </div>
     {error ? <div role="alert" className="space-y-2 text-sm"><p>{error}</p><Button size="sm" variant="outline" onPress={() => void load()}>{t("retry")}</Button></div>
-      : step ? <div className="flex min-w-0 flex-wrap items-center gap-2"><p className="min-w-0 flex-[1_1_10rem] [overflow-wrap:anywhere] text-sm" role="status">{step.title}</p>
-        {!here && <Button size="sm" variant="outline" className="h-auto min-h-11 max-w-full whitespace-normal [overflow-wrap:anywhere]" isDisabled={disabled || loading} onPress={() => onNavigate(step.href)}>{t("goToStep")}</Button>}
+      : step ? <div className="flex min-w-0 flex-wrap items-center gap-x-2"><p className="min-w-0 flex-1 [overflow-wrap:anywhere] text-sm" role="status">{step.title}</p>
+        {!here && <Button size="sm" variant="ghost" className="min-h-11 shrink-0 px-1 text-xs text-muted hover:text-accent" isDisabled={disabled || loading} onPress={() => onNavigate(step.href)}>{t("goToStep")}</Button>}
         {here && step.optional && <Button size="sm" variant="outline" className="h-auto min-h-11 max-w-full whitespace-normal [overflow-wrap:anywhere]" isDisabled={disabled || loading} onPress={() => void continueOptional()}>{t("continueOptional")}</Button>}
       </div> : <p role="status" className="text-sm text-muted">{t("loading")}</p>}
     <div id={progressId} hidden={!expanded}>

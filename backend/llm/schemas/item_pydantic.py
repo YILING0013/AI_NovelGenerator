@@ -137,7 +137,7 @@ class ItemCreateV1(StrictRequestModel):
 class ItemsGenerateRequestV1(ReasoningOptions, StrictRequestModel):
     """小说物品候选预览请求，不接收正式事实副本。"""
 
-    item_count: int = Field(default=6, ge=1, le=20)
+    item_count: int | None = Field(default=6, ge=1, le=20)
     allow_incremental: bool = True
     user_guidance: str = Field(default="", max_length=2000)
     temperature: float | None = Field(default=None, ge=0, le=2)
@@ -153,7 +153,7 @@ class ItemsGenerationInputV1(ReasoningOptions, StrictRequestModel):
     """随 basis 回传并供确认时重算的物品生成输入。"""
 
     novel_id: ObjectIdString
-    item_count: int = Field(ge=1, le=20)
+    item_count: int | None = Field(ge=1, le=20)
     allow_incremental: bool
     user_guidance: str = Field(max_length=2000)
     temperature: float | None = Field(default=None, ge=0, le=2)

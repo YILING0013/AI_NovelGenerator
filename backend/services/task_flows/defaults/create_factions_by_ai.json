@@ -17,7 +17,10 @@
           "maximum": 6,
           "minimum": 1,
           "title": "Faction Count",
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "required": false,
           "$defs": {
             "ExistingFactionRelationTargetV2": {
@@ -269,7 +272,10 @@
           "maximum": 6,
           "minimum": 1,
           "title": "Faction Count",
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "required": false,
           "$defs": {
             "ExistingFactionRelationTargetV2": {
@@ -522,7 +528,10 @@
           "type": "string"
         },
         "faction_count": {
-          "type": "integer"
+          "type": [
+            "integer",
+            "null"
+          ]
         },
         "generation_strategy": {
           "type": "string"
@@ -585,7 +594,10 @@
           "type": "string"
         },
         "faction_count": {
-          "type": "integer"
+          "type": [
+            "integer",
+            "null"
+          ]
         },
         "generation_strategy": {
           "type": "string"
@@ -1896,7 +1908,10 @@
           "maximum": 6,
           "minimum": 1,
           "title": "Faction Count",
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "required": false,
           "$defs": {
             "ExistingFactionRelationTargetV2": {

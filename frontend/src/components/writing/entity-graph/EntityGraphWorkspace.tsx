@@ -9,6 +9,7 @@ import {
 } from "react";
 import { Button, Popover } from "@heroui/react";
 import SidebarEdgeHandle from "@/components/shared/SidebarEdgeHandle";
+import { SectionActionButton } from "@/components/shared/SectionEditButton";
 import { useLocale, useTranslations } from "next-intl";
 import ForceGraphViewport, { type ForceGraphViewportHandle } from "./ForceGraphViewport";
 import {
@@ -323,14 +324,7 @@ export default function EntityGraphWorkspace({ mode, novelId }: EntityGraphWorks
             >
               {statusLabel}
             </span>
-            <button
-              type="button"
-              onClick={() => void refresh()}
-              disabled={status === "loading" || status === "refreshing"}
-              className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-surface-secondary disabled:cursor-wait disabled:opacity-55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/45"
-            >
-              {t("actions.refresh")}
-            </button>
+            <SectionActionButton action="refresh" label={t("actions.refresh")} onPress={() => void refresh()} isDisabled={status === "loading" || status === "refreshing"} />
           </div>
         </div>
       </header>

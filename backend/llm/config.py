@@ -13,7 +13,7 @@ from backend.llm.generation_options import ReasoningOptions
 # 支持的客户端类别
 LLMProviderType = Literal["openai", "gemini", "claude", "deepseek"]
 LLMApiMode = Literal["auto", "responses", "chat_completions", "interactions", "generate_content"]
-StructuredOutputMode = Literal["auto", "json_schema", "tool_call"]
+StructuredOutputMode = Literal["auto", "json_schema", "json_object", "tool_call"]
 
 
 class LLMProviderConfig(ReasoningOptions):
@@ -34,9 +34,15 @@ class LLMProviderConfig(ReasoningOptions):
     use_system_proxy: bool = Field(default=False, description="是否允许 SDK 读取系统代理配置")
     supports_streaming: bool = Field(default=True, description="是否支持流式输出")
     supports_json_schema: bool = Field(default=False, description="是否支持 JSON Schema 输出")
+    supports_json_output: bool | None = Field(default=None, description="JSON Output 开关；未设置时保留旧兼容配置")
     supports_function_calling: bool = Field(default=False, description="是否支持 function calling")
     api_mode: LLMApiMode = Field(default="auto", description="调用接口；自动模式为官方地址选择新版接口")
-    structured_output_mode: StructuredOutputMode = Field(default="auto", description="Claude 结构化输出方式")
+    structured_output_mode: StructuredOutputMode = Field(default="auto", description="结构化输出方式")
+
+    # 模型或接口资料，只校验数值，不改变任何请求预算。
+    context_window_tokens: int | None = Field(default=None, gt=0, le=9007199254740991, strict=True, description="上下文总容量，未知留空")
+    input_token_limit: int | None = Field(default=None, gt=0, le=9007199254740991, strict=True, description="单次输入上限，未知留空")
+    output_token_limit: int | None = Field(default=None, gt=0, le=9007199254740991, strict=True, description="模型或接口输出上限，未知留空")
 
     # 生成参数默认值（请求未指定时使用，请求级别优先）
     temperature: float | None = Field(default=None, ge=0, le=2, description="默认采样温度")
@@ -81,22 +87,42 @@ class LLMProviderConfig(ReasoningOptions):
         return "responses" if official else "chat_completions"
 
     @property
-    def uses_native_schema(self) -> bool:
-        """返回当前接口是否可以探测原生 Schema，避免把 JSON Output 当成 Schema。
+    def resolved_structured_output_mode(self) -> str:
+        """解析实际输出格式，保留旧自动配置的行为。
 
         Returns:
-            DeepSeek Responses 或其他原生结构化接口返回 True。
+            json_object、json_schema 或 tool_call。
         """
-        if self.is_deepseek:
-            return self.resolved_api_mode == "responses"
-        return not (self.type == "claude" and self.structured_output_mode == "tool_call")
+        if self.structured_output_mode != "auto":
+            if self.structured_output_mode == "json_object" and self.type not in {"openai", "deepseek"}:
+                raise ValueError("JSON Output 仅用于 OpenAI 兼容接口")
+            return self.structured_output_mode
+        return "json_object" if self.is_deepseek and self.resolved_api_mode == "chat_completions" else "json_schema"
+
+    @property
+    def json_output_enabled(self) -> bool:
+        """保留旧 JSON Output 配置，并尊重后续手动开关。
+
+        Returns:
+            当前是否启用 JSON Output。
+        """
+        return self.supports_json_output if self.supports_json_output is not None else self.resolved_structured_output_mode == "json_object"
+
+    @property
+    def uses_native_schema(self) -> bool:
+        """区分原生 Schema 与仅保证 JSON 对象的输出方式。
+
+        Returns:
+            当前选择原生 Schema 时为 True。
+        """
+        return self.resolved_structured_output_mode == "json_schema"
 
 
 class LLMConfig(BaseModel):
     """LLM 总体配置，包含默认服务商与所有服务商列表。"""
 
     default_provider: str = Field(default="openai_gpt4o_mini", description="默认服务商别名")
-    format_review_provider: str = Field(default="", description="格式审校服务商别名，需支持 JSON Schema 或 DeepSeek JSON Output")
+    format_review_provider: str = Field(default="", description="格式审校服务商别名，需支持 JSON Schema 或 JSON Output")
     providers: dict[str, LLMProviderConfig] = Field(default_factory=dict, description="服务商配置映射（key 为别名）")
 
 

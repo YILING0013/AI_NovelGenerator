@@ -6,7 +6,7 @@ import { RetainedModalBackdrop, RetainedViewActive, RetainedViews } from "@/comp
 
 import { Button, Modal } from "@heroui/react";
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useContext, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type RefObject } from "react";
 
 import {
   ConfirmActionModal,
@@ -50,6 +50,8 @@ interface VolumeWorkspaceProps {
   initialView?: VolumeWorkspaceView;
   requestedVolumeId?: string | null;
   focusPlot?: boolean;
+  requestedEntityId?: string | null;
+  onProcessLaunchContext?: (kind: "character" | "faction", id: string, volumeId: string) => void;
   onViewChange?: (view: VolumeWorkspaceView) => void;
   onVolumeIdChange?: (volumeId: string | null, replace?: boolean) => void;
   onLocationChange?: (view: VolumeWorkspaceView, volumeId: string | null, replace?: boolean) => void;
@@ -98,7 +100,6 @@ const INPUT_CLASS =
   "min-h-11 w-full rounded-xl border border-border bg-background/80 px-3.5 py-2.5 text-sm text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted/55 focus:border-accent focus:ring-2 focus:ring-accent/15 disabled:cursor-not-allowed disabled:opacity-60";
 const FILTER_CLASS =
   "min-h-10 min-w-0 w-full rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted/55 focus:border-accent focus:ring-2 focus:ring-accent/15";
-const TAB_PREFIX = "volume-workspace";
 
 const EMPTY_DRAFT: VolumeDraft = {
   title: "",
@@ -121,6 +122,8 @@ export default function VolumeWorkspace({
   novelId,
   initialView = "overview",
   requestedVolumeId = null,
+  requestedEntityId = null,
+  onProcessLaunchContext,
   focusPlot = false,
   onViewChange,
   onVolumeIdChange,
@@ -133,6 +136,7 @@ export default function VolumeWorkspace({
   const plotT = useTranslations("writing.plot");
   const locale = useLocale();
   const active = useContext(RetainedViewActive);
+  const tabPrefix = `volume-workspace-${useId()}`;
   const [storedVolumes, setVolumes] = useState<VolumeReadV2[]>([]);
   const [storedTrashVolumes, setTrashVolumes] = useState<VolumeReadV2[]>([]);
   const [loadedNovelId, setLoadedNovelId] = useState<string | null>(null);
@@ -784,11 +788,11 @@ export default function VolumeWorkspace({
             {VOLUME_VIEWS.map((view, index) => (
               <button
                 key={view}
-                id={`${TAB_PREFIX}-${view}-tab`}
+                id={`${tabPrefix}-${view}-tab`}
                 type="button"
                 role="tab"
                 aria-selected={initialView === view}
-                aria-controls={`${TAB_PREFIX}-${view}-panel`}
+                aria-controls={`${tabPrefix}-${view}-panel`}
                 tabIndex={initialView === view ? 0 : -1}
                 disabled={Boolean(editor) || stateBusy || preparationBusy || leavingCharacters}
                 onClick={() => void changeView(view)}
@@ -801,7 +805,7 @@ export default function VolumeWorkspace({
                       ? VOLUME_VIEWS.length - 1
                       : (index + (event.key === "ArrowRight" ? 1 : -1) + VOLUME_VIEWS.length) % VOLUME_VIEWS.length;
                   const nextView = VOLUME_VIEWS[nextIndex];
-                  void changeView(nextView).then((changed) => { if (changed) document.getElementById(`${TAB_PREFIX}-${nextView}-tab`)?.focus(); });
+                  void changeView(nextView).then((changed) => { if (changed) document.getElementById(`${tabPrefix}-${nextView}-tab`)?.focus(); });
                 }}
                 className={`flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-1 text-sm font-medium transition-colors ${initialView === view ? "border-accent text-accent" : "border-transparent text-muted hover:border-border hover:text-foreground"}`}
               >
@@ -814,17 +818,15 @@ export default function VolumeWorkspace({
               </button>
             ))}
           </div>
-          <Button className="mb-1 shrink-0" variant="ghost" size="sm" onPress={() => void loadWorkspace()} isDisabled={loading || saving || Boolean(actionVolumeId) || candidateBusy || stateBusy || preparationBusy || leavingCharacters}>
-            {loading ? t("actions.refreshing") : t("actions.refresh")}
-          </Button>
+          <SectionActionButton action="refresh" label={loading ? t("actions.refreshing") : t("actions.refresh")} className="mb-1 shrink-0" variant="ghost" size="sm" onPress={() => void loadWorkspace()} isDisabled={loading || saving || Boolean(actionVolumeId) || candidateBusy || stateBusy || preparationBusy || leavingCharacters} />
         </div>
       </header>
 
       <RetainedViews key={novelId} activeKey={initialView}>
       <div
-        id={`${TAB_PREFIX}-${initialView}-panel`}
+        id={`${tabPrefix}-${initialView}-panel`}
         role="tabpanel"
-        aria-labelledby={`${TAB_PREFIX}-${initialView}-tab`}
+        aria-labelledby={`${tabPrefix}-${initialView}-tab`}
         className="@container/master flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-3 sm:px-6"
       >
         {entityView ? <>
@@ -836,10 +838,12 @@ export default function VolumeWorkspace({
               <VolumePreparation volume={selectedVolume} stage={initialView} refreshKey={refreshKey} disabled={stateBusy || leavingCharacters} toolbarBefore={volumeSelector} onBusyChange={setPreparationBusy} onSaved={acceptSavedVolume} onGoToStage={(stage) => void changeView(stage)} beforeConfirm={initialView === "characters" ? async () => { await characterBeforeLeaveRef.current?.(); } : undefined}>
                 {initialView !== "locations" ? ({ confirmAction, canGenerate, error }) => <div className="flex min-h-0 flex-1 flex-col" inert={preparationBusy}>
                   {initialView === "characters" ? <CharacterVolumeStateWorkspace
+                    requestedEntityId={requestedEntityId}
                     novelId={novelId} fixedVolumeId={selectedVolume.volume_id} fixedVolumeTitle={selectedVolume.title} fixedVolumeOrderIndex={selectedVolume.order_index}
                     fixedVolumeDeleted={selectedVolume.is_deleted} volumeVersion={selectedVolume.version} refreshKey={refreshKey} onBusyChange={setStateBusy} onFormalFactsChanged={refreshVolume} beforeLeaveRef={characterBeforeLeaveRef}
                     toolbarBefore={volumeSelector} toolbarAfter={confirmAction} beforeContent={error} generationDisabled={!canGenerate}
                   /> : <FactionVolumeStateWorkspace
+                    requestedEntityId={requestedEntityId}
                     novelId={novelId} fixedVolumeId={selectedVolume.volume_id} fixedVolumeTitle={selectedVolume.title} fixedVolumeOrderIndex={selectedVolume.order_index}
                     fixedVolumeDeleted={selectedVolume.is_deleted} volumeVersion={selectedVolume.version} refreshKey={refreshKey} onBusyChange={setStateBusy} onFormalFactsChanged={refreshVolume}
                     toolbarBefore={volumeSelector} toolbarAfter={confirmAction} beforeContent={error} generationDisabled={!canGenerate}
@@ -865,6 +869,7 @@ export default function VolumeWorkspace({
               disabled={loading || saving || Boolean(actionVolumeId) || Boolean(editor) || Boolean(confirmIntent)}
               onReviewingChange={setCandidateReviewing}
               onBusyChange={setCandidateBusy}
+              onProcessLaunchContext={onProcessLaunchContext && selectedVolume ? (kind, id) => onProcessLaunchContext(kind, id, selectedVolume.volume_id) : undefined}
               onLaunchConfirmed={() => {
                 onFormalFactsChanged?.();
                 void loadWorkspace();
@@ -923,7 +928,6 @@ export default function VolumeWorkspace({
         ) : filteredVolumes.length === 0 ? (
           <div className="border-y border-dashed border-border px-5 py-14 text-center">
             <p className="text-sm font-medium text-foreground">{filtersActive ? t("empty.filteredTitle") : initialView === "trash" ? t("empty.trashTitle") : t("empty.volumesTitle")}</p>
-            {!filtersActive && initialView === "overview" && <Button className="mt-5" variant="primary" size="sm" onPress={openCreate} isDisabled={mutationBlocked}>{t("actions.createFirst")}</Button>}
           </div>
         ) : (
           <div className={`grid min-h-[520px] flex-1 grid-cols-[minmax(0,1fr)] overflow-visible border-y border-border bg-surface transition-[grid-template-columns] duration-200 ease-out motion-reduce:transition-none @min-[800px]/master:min-h-0 @min-[800px]/master:gap-x-2 ${listCollapsed ? "@min-[800px]/master:grid-cols-[0px_minmax(0,1fr)]" : "@min-[800px]/master:grid-cols-[280px_minmax(0,1fr)]"}`}>
@@ -1031,7 +1035,7 @@ export default function VolumeWorkspace({
                           </>
                         ) : (
                           <>
-                            <Button size="sm" variant="ghost" className="text-danger" onPress={() => void openDeleteConfirm(selectedVolume, "soft-delete")} isDisabled={mutationBlocked || Boolean(editor)}>{t("actions.delete")}</Button>
+                            <SectionActionButton action="trash" label={t("actions.delete")} size="sm" variant="ghost" className="text-danger" onPress={() => void openDeleteConfirm(selectedVolume, "soft-delete")} isDisabled={mutationBlocked || Boolean(editor)} />
                           </>
                         )}
                       </div>

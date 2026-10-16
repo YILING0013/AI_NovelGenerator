@@ -31,7 +31,7 @@ WorldRuleTag = Annotated[str, Field(min_length=1)]
 class CoreWorldRulesGenerateRequestV1(ReasoningOptions, StrictRequestModel):
     """核心世界规则候选预览请求，不接收任何正式事实副本。"""
 
-    core_rule_count: int = Field(default=6, ge=1, le=20)
+    core_rule_count: int | None = Field(default=6, ge=1, le=20)
     allow_incremental: bool = False
     user_guidance: str = Field(default="", max_length=2000)
     temperature: float | None = Field(default=None, ge=0, le=2)
@@ -47,7 +47,7 @@ class CoreWorldRulesGenerationInputV1(ReasoningOptions, StrictRequestModel):
     """随 basis 原样回传、用于确认时重算指纹的生成输入。"""
 
     novel_id: str = Field(pattern=r"^[0-9a-f]{24}$")
-    core_rule_count: int = Field(ge=1, le=20)
+    core_rule_count: int | None = Field(ge=1, le=20)
     allow_incremental: bool
     user_guidance: str = Field(max_length=2000)
     temperature: float | None = Field(default=None, ge=0, le=2)
@@ -219,7 +219,7 @@ class CoreWorldRulesConfirmV1(StrictRequestModel):
         }
         if self.expected_versions != expected:
             raise ValueError("expected_versions 必须精确匹配 basis.source_refs")
-        if len(self.candidates) > self.basis.generation_input.core_rule_count:
+        if len(self.candidates) > (self.basis.generation_input.core_rule_count or 20):
             raise ValueError("确认候选数量不能超过原始生成数量")
         return self
 

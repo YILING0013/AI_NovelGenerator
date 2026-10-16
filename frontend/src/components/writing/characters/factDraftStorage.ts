@@ -3,11 +3,12 @@ import type { WritingDraft } from "@/lib/writingDrafts";
 import type { CharacterFactCommandV1, CharacterFactDraftV1 } from "./characterFactDrafts";
 import type { CharacterRelationFactCommandV1, CharacterRelationFactDraftV1 } from "./characterRelationFactDrafts";
 import type { ItemFactCommandV1, ItemFactDraftV1, ItemFactBatchCommandV1, ItemFactBatchDraftV1 } from "../items/itemFactDrafts";
+import type { FactionFactCommandV1, FactionFactDraftV1 } from "../factions/factionFactDrafts";
 
 /** 人物、关系和物品共用原本地事务；域只决定标记和范围，不能互换原稿。 */
-export type FactDomain = "character" | "character_relation" | "item" | "item_batch";
-export type FactDraft = CharacterFactDraftV1 | CharacterRelationFactDraftV1 | ItemFactDraftV1 | ItemFactBatchDraftV1;
-export type FactCommand = CharacterFactCommandV1 | CharacterRelationFactCommandV1 | ItemFactCommandV1 | ItemFactBatchCommandV1;
+export type FactDomain = "character" | "character_relation" | "item" | "item_batch" | "faction";
+export type FactDraft = CharacterFactDraftV1 | CharacterRelationFactDraftV1 | ItemFactDraftV1 | ItemFactBatchDraftV1 | FactionFactDraftV1;
+export type FactCommand = CharacterFactCommandV1 | CharacterRelationFactCommandV1 | ItemFactCommandV1 | ItemFactBatchCommandV1 | FactionFactCommandV1;
 export type FactResult<D extends FactDraft> = NonNullable<NonNullable<D["command"]>["saved"]>;
 type CommandEntry = WritingDraft<FactCommand> & { draft_key: string };
 
@@ -16,6 +17,7 @@ const domains = {
   character_relation: { scope: "character-relation-facts", error: "CHARACTER_RELATION_FACT", draft: "character_relation.fact.draft", command: "character_relation.fact.command" },
   item: { scope: "item-facts", error: "ITEM_FACT", draft: "item.fact.draft", command: "item.fact.command" },
   item_batch: { scope: "item-fact-batches", error: "ITEM_FACT_BATCH", draft: "item.fact.batch.draft", command: "item.fact.batch.command" },
+  faction: { scope: "faction-facts", error: "FACTION_FACT", draft: "faction.fact.draft", command: "faction.fact.command" },
 } as const;
 
 export interface FactDraftWriteResult<D extends FactDraft> {
@@ -58,6 +60,20 @@ function matchesReceipt(command: FactCommand, receipt: FactResult<FactDraft>): b
     });
   }
   const target = command.body.basis.target;
+  if (command.schema_id === "faction.fact.command") {
+    const faction = command.body.basis.target;
+    if (!("faction_id" in receipt) || receipt.schema_version !== 1 || receipt.operation !== command.body.operation
+      || receipt.novel_id !== faction.novel_id || receipt.entity_id !== faction.entity_id
+      || (faction.kind === "new" ? receipt.before_version !== null || receipt.after_version !== 1
+        : receipt.faction_id !== faction.faction_id || receipt.before_version !== faction.version || receipt.after_version !== faction.version + 1)) return false;
+    const record = receipt.record;
+    return command.body.operation === "void" ? record === null : record !== null
+      && record.schema_id === "faction.fact" && record.entity_id === receipt.entity_id && record.faction_id === receipt.faction_id
+      && record.operation === receipt.operation && record.after_version === receipt.after_version
+      && JSON.stringify(record.position) === JSON.stringify(command.body.basis.position)
+      && Object.keys(record.after).length === Object.keys(command.body.after).length
+      && Object.entries(command.body.after).every(([field, value]) => JSON.stringify(record.after[field as keyof typeof record.after]) === JSON.stringify(value));
+  }
   if (command.schema_id === "item.fact.command") {
     if (!("item_id" in receipt) || receipt.schema_version !== 1 || receipt.novel_id !== target.novel_id
       || receipt.entity_id !== target.entity_id || receipt.operation !== command.body.operation) return false;
@@ -148,6 +164,7 @@ export async function writeFactDraft<D extends FactDraft>(domain: FactDomain, sc
           const previous = current.result as WritingDraft<D> | undefined;
           if (remove && !previous && operation?.value.saved && command?.readbackDone) { result = { saved: operation.value.saved as FactResult<D>, written: false }; return; }
           if (previous && (previous.scope !== scope || previous.value.schema_id !== config.draft || previous.value.schema_version !== 1)) { abort(); return; }
+          if (previous?.value.schema_id === "faction.fact.draft" && previous.value.reprepared && JSON.stringify(draft) !== JSON.stringify(previous.value)) { abort(); return; }
           if ((previous?.value.revision ?? null) !== expectedRevision) { abort(); return; }
           if (previous && (previous.value.schema_id === "item.fact.draft" || previous.value.schema_id === "item.fact.batch.draft")
             && (previous.value.reprepared || previous.value.returnedToCheck) && JSON.stringify(draft) !== JSON.stringify(previous.value)) { abort(); return; }

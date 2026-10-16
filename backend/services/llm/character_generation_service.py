@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from backend.services.novel.writing_context import faction_design_content
 from backend.db.repositories.faction_repository import faction_repo
 from backend.db.repositories.novel_repository import novel_repo
 from backend.llm.schemas.character_pydantic import (
@@ -182,7 +183,7 @@ class CharacterGenerationService:
                     f"小说字段 {field} 超过 8000 字符",
                 )
 
-        faction_projections = [_project(item, FACTION_PROMPT_FIELDS) for item in factions]
+        faction_projections = [faction_design_content(item, FACTION_PROMPT_FIELDS) for item in factions]
         character_projections = [
             character_design_content(item, CHARACTER_PROMPT_FIELDS) for item in core_characters
         ]
@@ -389,7 +390,7 @@ class CharacterGenerationService:
             校验通过时不返回内容。
         """
         errors: list[str] = []
-        if len(result.core_characters) != request.character_count:
+        if request.character_count is not None and len(result.core_characters) != request.character_count:
             errors.append(
                 f"候选数量必须严格等于 {request.character_count}"
             )

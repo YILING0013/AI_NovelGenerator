@@ -1,5 +1,7 @@
 "use client";
 
+import { downloadExport } from "@/lib/userExport";
+
 import { useContext, useEffect, useRef, useState, type RefObject } from "react";
 import { Button, Modal } from "@heroui/react";
 import { useTranslations } from "next-intl";
@@ -99,7 +101,7 @@ export default function CharacterFactConfirmationDialog({ novelId, initialDraft,
   };
   const exportDraft = () => {
     const url = URL.createObjectURL(new Blob([JSON.stringify(draftRef.current, null, 2)], { type: "application/json" }));
-    const link = document.createElement("a"); link.href = url; link.download = `character-fact-${draftRef.current.key}.json`; link.click(); URL.revokeObjectURL(url);
+    const link = document.createElement("a"); link.href = url; link.download = `character-fact-${draftRef.current.key}.json`; void downloadExport(link); URL.revokeObjectURL(url);
   };
   return <RetainedModalBackdrop isOpen isDismissable={!busy} onOpenChange={(open) => { if (!open) void close(); }}>
     <Modal.Container size="full" scroll="inside" className="p-0 sm:p-4"><Modal.Dialog className="h-[100dvh] w-full sm:h-auto sm:max-h-[min(90vh,960px)] sm:max-w-5xl">

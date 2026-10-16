@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import {
@@ -17,8 +17,10 @@ import {
   TextArea,
   TextField,
 } from "@heroui/react";
+import { TooltipHint } from "@/components/shared/TooltipHint";
 import { ReasoningControls } from "@/components/shared/ReasoningControls";
 import { apiPost } from "@/lib/api";
+import { isValidProviderAlias } from "@/lib/validation";
 import type {
   AppConfig,
   ProviderCapabilityResult,
@@ -29,6 +31,7 @@ import type {
 import {
   getProviderAliasesForSelection,
   getProviderApiMode,
+  getProviderOutputMode,
   isProviderSelectable,
   newProviderConfig,
   removeProviderAlias,
@@ -106,8 +109,6 @@ const TEST_STEPS: { capability: ProviderTestCapability; labelKey: string }[] = [
   { capability: "function_calling", labelKey: "test.functionCalling" },
 ];
 
-const ALIAS_REGEX = /^[a-zA-Z0-9_]+$/;
-
 /**
  * 提供 LLM Provider 的主从配置工作台。
  *
@@ -142,6 +143,14 @@ export function ProviderCard({
   const [showGenParams, setShowGenParams] = useState(false);
   const [pendingDeleteAlias, setPendingDeleteAlias] = useState("");
   const [testStates, setTestStates] = useState<Record<string, ProviderTestRunState>>({});
+
+  const latestConfig = useRef(config);
+  useEffect(() => { latestConfig.current = config; }, [config]);
+  const testRequests = useRef<Record<string, symbol>>({});
+  useEffect(() => () => {
+    // 切换设置分类会卸载组件，旧请求不能再写回父层草稿。
+    testRequests.current = {};
+  }, []);
 
   const providers = config.llm.providers;
   const providerAliases = Object.keys(providers);
@@ -227,11 +236,11 @@ export function ProviderCard({
 
   const addProvider = () => {
     const trimmed = newAlias.trim();
-    if (!trimmed || !ALIAS_REGEX.test(trimmed)) {
+    if (!isValidProviderAlias(trimmed)) {
       setAliasError(t("aliasRule"));
       return;
     }
-    if (trimmed in providers) {
+    if (Object.hasOwn(providers, trimmed)) {
       setAliasError(t("aliasDuplicate"));
       return;
     }
@@ -267,7 +276,7 @@ export function ProviderCard({
 
   const confirmRename = (alias: string) => {
     const trimmed = renameValue.trim();
-    if (!trimmed || !ALIAS_REGEX.test(trimmed)) {
+    if (!isValidProviderAlias(trimmed)) {
       setRenameError(t("aliasRule"));
       return;
     }
@@ -275,7 +284,7 @@ export function ProviderCard({
       cancelRename();
       return;
     }
-    if (trimmed in providers) {
+    if (Object.hasOwn(providers, trimmed)) {
       setRenameError(t("aliasDuplicate"));
       return;
     }
@@ -315,6 +324,8 @@ export function ProviderCard({
   const runProviderTest = async (alias: string) => {
     const provider = providers[alias];
     if (!provider) return;
+    const requestId = Symbol();
+    testRequests.current[alias] = requestId;
 
     setPendingDeleteAlias("");
     setTestStates((current) => ({
@@ -337,8 +348,17 @@ export function ProviderCard({
           keyUpdate.action === "preserve" && provider.api_key_configured,
       });
 
-      // 测试只回填当前表单，是否写入磁盘仍交给顶部保存按钮。
-      updateProvider(alias, response.recommendations);
+      if (testRequests.current[alias] !== requestId) return;
+      const current = latestConfig.current;
+      // 测试期间编辑过该配置时，旧结果不能覆盖新参数或手动开关。
+      if (current.llm.providers[alias] !== provider) {
+        setTestStates((states) => ({ ...states, [alias]: { status: "error", activeStep: 0, error: t("test.stale") } }));
+        return;
+      }
+      // 合并最新表单，保留其他 Provider 的编辑；是否写盘仍交给保存按钮。
+      onChange({ ...current, llm: { ...current.llm, providers: {
+        ...current.llm.providers, [alias]: { ...provider, ...response.recommendations },
+      } } });
       setTestStates((current) => ({
         ...current,
         [alias]: {
@@ -348,6 +368,7 @@ export function ProviderCard({
         },
       }));
     } catch (error) {
+      if (testRequests.current[alias] !== requestId) return;
       setTestStates((current) => ({
         ...current,
         [alias]: {
@@ -560,7 +581,7 @@ function ProviderList({
             key={item}
             type="button"
             onClick={() => onFilterChange(item)}
-            className={`min-h-11 rounded-full px-3 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 sm:min-h-10 ${
+            className={`min-h-11 rounded-full px-3 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 sm:min-h-8 sm:rounded-lg ${
               filter === item
                 ? "bg-accent text-accent-foreground"
                 : "border border-border text-muted hover:bg-surface-secondary/55 hover:text-foreground"
@@ -795,6 +816,7 @@ function ProviderDetail({
           <SectionTitle title={t("connection.title")} />
           <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
             <Select
+              className="gap-1.5"
               selectedKey={provider.type}
               onSelectionChange={(key) => {
                 if (!key) return;
@@ -807,8 +829,8 @@ function ProviderDetail({
                 });
               }}
             >
-              <Label className="text-sm text-muted">{t("type")}</Label>
-              <Select.Trigger className="min-h-11 items-center rounded-xl border border-border bg-background/80 px-3 py-2 text-sm shadow-none hover:border-accent/55 focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/15">
+              <Label className="flex h-5 items-center text-sm leading-5 text-muted">{t("type")}</Label>
+              <Select.Trigger className="h-11 min-h-11 items-center rounded-xl border border-border bg-background/80 px-3 py-0 text-sm shadow-none hover:border-accent/55 focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/15">
                 <Select.Value className="min-w-0 truncate leading-5" />
               </Select.Trigger>
               <Select.Popover>
@@ -822,23 +844,24 @@ function ProviderDetail({
               </Select.Popover>
             </Select>
 
-            {provider.type !== "claude" && <Select selectedKey={provider.api_mode ?? "auto"}
+            {provider.type !== "claude" && <div className="flex flex-col gap-1.5">
+              <TooltipHint className="h-5 text-sm leading-5 text-muted [&_button]:h-5! [&_button]:min-h-0!" label={t("apiMode")} text={t(provider.type === "gemini" ? "apiModeHelpGemini" : "apiModeHelp")} />
+              <Select className="gap-0" aria-label={t("apiMode")} selectedKey={provider.api_mode ?? "auto"}
               onSelectionChange={(key) => onChange({ api_mode: String(key) as ProviderConfig["api_mode"] })}>
-              <Label className="text-sm text-muted">{t("apiMode")}</Label>
-              <Select.Trigger className="min-h-11 rounded-xl border border-border bg-background/80 px-3 py-2 text-sm shadow-none"><Select.Value /></Select.Trigger>
+              <Select.Trigger className="h-11 min-h-11 items-center rounded-xl border border-border bg-background/80 px-3 py-0 text-sm shadow-none"><Select.Value className="min-w-0 truncate leading-5" /></Select.Trigger>
               <Select.Popover><ListBox>
                 <ListBoxItem id="auto">{t("apiAuto", { mode: getProviderApiMode({ ...provider, api_mode: "auto" }) })}</ListBoxItem>
                 {(provider.type === "gemini" ? ["interactions", "generate_content"] : ["responses", "chat_completions"]).map((mode) => <ListBoxItem key={mode} id={mode}>{mode === "responses" ? "Responses" : mode === "interactions" ? "Interactions" : mode === "chat_completions" ? "Chat Completions" : "Generate Content"}</ListBoxItem>)}
               </ListBox></Select.Popover>
-            </Select>}
-            {provider.type === "claude" && <Select selectedKey={provider.structured_output_mode ?? "auto"}
+            </Select></div>}
+            {["claude", "openai", "deepseek"].includes(provider.type) && <Select selectedKey={provider.structured_output_mode ?? "auto"}
               onSelectionChange={(key) => onChange({ structured_output_mode: String(key) as ProviderConfig["structured_output_mode"] })}>
               <Label className="text-sm text-muted">{t("structuredOutputMode")}</Label>
               <Select.Trigger className="min-h-11 rounded-xl border border-border bg-background/80 px-3 py-2 text-sm shadow-none"><Select.Value /></Select.Trigger>
               <Select.Popover><ListBox>
-                <ListBoxItem id="auto">{t("nativeSchema")}</ListBoxItem>
+                <ListBoxItem id="auto">{t("outputAuto")}</ListBoxItem>
                 <ListBoxItem id="json_schema">JSON Schema</ListBoxItem>
-                <ListBoxItem id="tool_call">{t("legacyToolOutput")}</ListBoxItem>
+                {provider.type === "claude" ? <ListBoxItem id="tool_call">{t("legacyToolOutput")}</ListBoxItem> : <ListBoxItem id="json_object">JSON Output</ListBoxItem>}
               </ListBox></Select.Popover>
             </Select>}
 
@@ -1002,12 +1025,13 @@ function ProviderDetail({
 
         <section className="py-6 @[840px]/provider:pl-6">
           <SectionTitle title={t("test.title")} />
+          <p className="mt-3 text-xs text-muted">{t("test.budget", { count: provider.max_tokens ?? 4096 })}</p>
           <div className="mt-3 divide-y divide-border border-y border-border">
             {TEST_STEPS.map((step, index) => (
               <TestStepRow
                 key={step.capability}
                 label={t(
-                  step.capability === "json_schema" && provider.type === "deepseek" && getProviderApiMode(provider) !== "responses"
+                  step.capability === "json_schema" && getProviderOutputMode(provider) === "json_object"
                     ? "test.jsonOutput"
                     : step.labelKey
                 )}
@@ -1021,7 +1045,7 @@ function ProviderDetail({
           </div>
           {testState?.status === "done" && testState.response && (
             <div className="mt-3 border-t border-border pt-3">
-              <div className="text-sm font-medium text-foreground">{testState.response.summary}</div>
+              <div className="text-sm font-medium text-foreground">{t("test.summary", { passed: testState.response.results.filter((result) => result.status === "passed").length, total: testState.response.results.length })}</div>
               <p className="mt-1 text-xs text-muted">{t("test.appliedHint")}</p>
             </div>
           )}
@@ -1032,6 +1056,24 @@ function ProviderDetail({
           )}
         </section>
       </div>
+
+      <section className="border-b border-border py-6">
+        <SectionTitle title={t("capacity.title")} />
+        <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 md:grid-cols-3">
+          {(["context_window_tokens", "input_token_limit", "output_token_limit"] as const).map((field) => (
+            <NumberField key={field} value={provider[field] ?? NaN} minValue={1} maxValue={Number.MAX_SAFE_INTEGER} step={1}
+              formatOptions={{ useGrouping: false, maximumFractionDigits: 0 }}
+              onChange={(value) => onChange({ [field]: Number.isNaN(value) ? null : value })}>
+              <Label className="text-sm text-muted">{t(`capacity.${field}`)}</Label>
+              <NumberField.Group className="grid-cols-1"><NumberField.Input placeholder={t("capacity.unknown")} className="min-w-0 border-border" /></NumberField.Group>
+            </NumberField>
+          ))}
+        </div>
+        <details className="mt-3 text-xs text-muted">
+          <summary className="cursor-pointer py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30">{t("capacity.helpTitle")}</summary>
+          <p className="mt-2 leading-5">{t("capacity.help")}</p>
+        </details>
+      </section>
 
       <section className="border-b border-border py-6">
         <SectionTitle title={t("capabilities.title")} />
@@ -1048,9 +1090,9 @@ function ProviderDetail({
             onChange={(value) => onChange({ supports_streaming: value })}
           />
           <CapabilitySwitch
-            label={t("supportsJsonSchema")}
-            selected={provider.supports_json_schema}
-            onChange={(value) => onChange({ supports_json_schema: value })}
+            label={t(getProviderOutputMode(provider) === "json_object" ? "test.jsonOutput" : "supportsJsonSchema")}
+            selected={getProviderOutputMode(provider) === "json_object" ? provider.supports_json_output ?? true : provider.supports_json_schema}
+            onChange={(value) => onChange(getProviderOutputMode(provider) === "json_object" ? { supports_json_output: value } : { supports_json_schema: value })}
           />
           <CapabilitySwitch
             label={t("supportsFunctionCalling")}
@@ -1073,7 +1115,7 @@ function ProviderDetail({
         </button>
         {showGenParams && (
           <div id="provider-generation-parameters" className="mt-4 space-y-4 border-t border-border pt-4">
-            <ReasoningControls value={provider} providerType={provider.type} onChange={onChange} />
+            <ReasoningControls value={provider} providerType={provider.type} apiMode={getProviderApiMode(provider)} onChange={onChange} />
             <OptionalSliderParam
               label={t("genParams.temperature")}
               value={provider.temperature}
@@ -1219,6 +1261,21 @@ function TestStepRow({
             {result && <div className="text-xs text-muted">{result.duration_ms}ms</div>}
           </div>
           <p className="mt-1 break-words text-xs text-muted">{message}</p>
+          {result?.details && <details className="mt-2 text-xs text-muted">
+            <summary className="cursor-pointer py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30">{t("test.parameters")}</summary>
+            <div className="mt-2 space-y-2">
+              <p>{t(`test.reasoningStatus.${result.details.reasoning_status}`)}</p>
+              <p>{result.details.reasoning_evidence.length
+                ? t("test.evidence", { types: result.details.reasoning_evidence.map((evidence) => t(`test.evidenceTypes.${evidence}`)).join(" · ") })
+                : t("test.noEvidence")}</p>
+              <p>{result.details.reasoning_tokens === null ? t("test.tokensUnknown") : t("test.reasoningTokens", { count: result.details.reasoning_tokens })}</p>
+              {result.details.parameters_adjusted && <p className="text-foreground">{t("test.parametersAdjusted")}</p>}
+              {Object.keys(result.details.sent_parameters).length > 0
+                ? <pre className="max-w-full overflow-x-auto whitespace-pre-wrap break-all rounded-lg bg-surface-secondary p-3 text-foreground">{JSON.stringify(result.details.sent_parameters, null, 2)}</pre>
+                : <p>{t("test.noParameters")}</p>}
+            </div>
+          </details>}
+
         </div>
       </div>
     </div>

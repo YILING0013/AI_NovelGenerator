@@ -412,7 +412,7 @@ async def confirm_plot(task: str, target_id: str, request: PlotConfirmV1, *, ide
             raise DomainApiError("PLOT_SOURCE_CONFLICT_REVIEW_REQUIRED", "请逐项核对疑似冲突的来源并确认当前候选", status_code=422)
         await protect_writing_sources({"guards": {key: doc for item in contexts for key, doc in item["guards"].items()},
                                        "fact_reads": [read for read in basis.context_basis.model_dump(mode="json")["reads"]
-                                                      if read["kind"] in {"character_facts", "character_relation_facts"}]}, session=session)
+                                                      if read["kind"] in {"character_facts", "character_relation_facts", "item_facts", "faction_facts"}]}, session=session)
         candidate = validate_plot_candidate(task, request.candidate.model_dump(mode="json"), data, confirming=True)
         fields = {"plot": candidate["plot"]}
         if not data["context"]["has_children"]:

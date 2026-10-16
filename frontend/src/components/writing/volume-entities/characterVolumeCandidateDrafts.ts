@@ -4,11 +4,11 @@ import { openTaskFlowDatabase } from "@/lib/taskFlowCache";
 import type { WritingDraft } from "@/lib/writingDrafts";
 import type { GenerationParamsValue } from "@/components/shared/GenerationParamsCollapse";
 import type { FlowRef } from "@/types/taskFlow";
-import type { VolumeEntityPreview } from "@/types/volumeEntity";
 
 /** 卷人物和势力批次稿沿用现有结构；缺 unknown 的旧命令仍按未知处理。 */
 export interface CharacterVolumeCandidateDraft {
-  preview: VolumeEntityPreview | null;
+  // 历史原稿仅保留展示，不由当前候选合同解析后重写。
+  preview: unknown;
   flow_ref: FlowRef | null;
   inputs: Record<string, unknown>;
   params: GenerationParamsValue;

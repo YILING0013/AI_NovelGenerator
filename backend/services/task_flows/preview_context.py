@@ -46,7 +46,7 @@ from backend.services.novel.plot_contract import PLOT_TASKS
 from backend.services.novel.chapter_check_contract import CHAPTER_CHECK_TASK, CHAPTER_ITEM_OWNER_CHECK_TASK, CHAPTER_ITEM_OWNER_FACTS_CHECK_TASK, CHAPTER_CHARACTER_RELATION_STATE_CHECK_TASK, CHAPTER_CHARACTER_RELATION_FACTS_CHECK_TASK, CHAPTER_WORLD_RULES_CHECK_TASK
 from backend.services.novel.plot_service import load_plot_context, plot_prompt_context
 from backend.services.novel.writing_context import (
-    NOVEL_FIELDS, load_writing_context, load_writing_parents, volume_missing_fields, position_content,
+    NOVEL_FIELDS, load_writing_context, load_writing_parents, volume_missing_fields, position_content, chapter_scope_content,
 )
 from backend.services.task_flows.defaults import builtin_flow
 from backend.services.task_flows.preview_examples import missing_example
@@ -162,6 +162,19 @@ async def load_preview_context(task: str, parameters: dict[str, Any], scope: dic
                 if kind == target_type:
                     break
             sample["edit_target"] = {**sample["plan"][-1], "content": "当前章节已保存正文的假设示例。"} if target_type == "chapter" else None
+            if scope.get("chapter_context_version") == 1:
+                sample.update(chapter_scope_content(sample["plan"], sample.get("neighbors", {})))
+                sample["edit_target"] = {key: sample["edit_target"][key] for key in ("id", "content")}
+                sample["required_entities"] = {}
+                sample["candidate_entities"] = []
+                sample["selected_entities"] = []
+                sample["volume_states"] = []
+                sample["relations"] = []
+                sample["search_results"] = []
+                if params.get("prepared_context"):
+                    from .agent_contract import PreparedContextV1
+                    from .book_tools import assemble_chapter_context
+                    sample = assemble_chapter_context(sample, PreparedContextV1.model_validate(params["prepared_context"]), {})
             if task in PLOT_TASKS:
                 sample.update(has_children=False, planning_editable=True)
             sample.update({name: params[name] for name in ("user_guidance", "count", "target_word_count") if name in params})
@@ -353,6 +366,8 @@ async def load_preview_context(task: str, parameters: dict[str, Any], scope: dic
             chain = await load_writing_parents(novel_id, target_type, target_id)
             selected_entities = {field: scope.get(f"selected_{field}", []) for field in ("character_ids", "faction_ids", "location_ids", "item_ids", "rule_ids")}
             writing_scope = {"novel_id": novel_id, "target_type": target_type, "target_id": target_id, "selected_entities": selected_entities}
+            if scope.get("chapter_context_version") == 1:
+                writing_scope["chapter_context_version"] = 1
             if target_type == "chapter" or task in PLOT_TASKS:
                 writing_scope["expected_version"] = chain[-1][1]["version"]
             # 沿用正式资料读取及父链检查，只跳过尚未填写的规划前提。
@@ -360,7 +375,21 @@ async def load_preview_context(task: str, parameters: dict[str, Any], scope: dic
                 writing_scope.pop("selected_entities")
                 data = await load_plot_context(task, {"user_guidance": params.get("user_guidance", "")}, writing_scope, check_ready=False)
             else:
-                data = await load_writing_context(task, params, writing_scope, check_ready=False)
+                data = await load_writing_context(task, {key: value for key, value in params.items() if key != "prepared_context"}, writing_scope, check_ready=False)
+                if scope.get("chapter_context_version") == 1 and params.get("prepared_context"):
+                    from .agent_contract import PreparedContextV1
+                    from .book_tools import assemble_chapter_context
+                    report = PreparedContextV1.model_validate(params["prepared_context"])
+                    # 预览不执行工具，也不拿假设 ID 查询数据库。实际补读资料须在运行时取得。
+                    context = data["context"]
+                    chosen = {(kind, identity) for field, kind in (("character_ids", "character"), ("faction_ids", "faction"), ("location_ids", "location"), ("item_ids", "item"), ("rule_ids", "world_rule"))
+                              for identity in getattr(report.selected_entities, field)}
+                    available = {(value["resource_type"], value["id"]) for value in context["selected_entities"]}
+                    if chosen - available:
+                        raise DomainApiError("PREVIEW_CONTEXT_UNREAD", "预览没有执行工具，新增采用资料尚未读取；请在原生成页面完成资料整理后核对", status_code=422)
+                    context["selected_entities"] = [value for value in context["selected_entities"] if (value["resource_type"], value["id"]) in chosen]
+                    context["volume_states"] = [value for value in context["volume_states"] if ("character", value.get("character_id")) in chosen or ("faction", value.get("faction_id")) in chosen]
+                    data["context"] = assemble_chapter_context(context, report, {})
             values, refs = {"writing_context": data["context"]}, data["source_refs"]
             for item in data["missing"]:
                 parts = item["field"].split(".")
@@ -373,6 +402,8 @@ async def load_preview_context(task: str, parameters: dict[str, Any], scope: dic
                 values["writing_context"] = plot_prompt_context(data["context"], target_type, target_id)
         else:
             values = {"writing_context": {"plan": [{"resource_type": "novel", "id": novel_id, **{name: novel[name] for name in NOVEL_FIELDS if name in novel}}], "truncation": {"previous_excerpt_limit": 6000, "previous_truncated": False}, **{name: params[name] for name in ("user_guidance", "count", "target_word_count") if name in params}}}
+            if scope.get("chapter_context_version") == 1:
+                values["writing_context"].update(chapter_scope_content(values["writing_context"]["plan"], {}))
             missing.append({"port": "writing_context", "path": ["plan", "1"], "note": "尚未选择需要查看的卷、篇章、场景或章节", "example": {"resource_type": target_type, "title": "示例当前部分", "planning": {"goal": "本部分要实现的目标", "start_state": "开始时的情形", "end_state": "结束时的情形"}}})
             examples = {
                 "neighbors": {"previous": None, "next": None},
@@ -384,6 +415,10 @@ async def load_preview_context(task: str, parameters: dict[str, Any], scope: dic
             }
             if task in PLOT_TASKS:
                 examples.update(has_children=False, planning_editable=True)
+            if scope.get("chapter_context_version") == 1 and params.get("prepared_context"):
+                examples.pop("previous_written")
+                examples.pop("search_results")
+                examples["previous_text"] = [{"id": "0123456789abcdef01234567", "title": "示例前章", "excerpt": "示例前章正文尾段。", "truncated": False}]
             missing.extend({"port": "writing_context", "path": [name], "note": "选定当前部分后读取对应资料", "example": example} for name, example in examples.items())
         origins["writing_context"] = [{"path": [name], "origin": "user_input", "parameter": name} for name in ("user_guidance", "count", "target_word_count") if name in values["writing_context"]]
 

@@ -3,7 +3,7 @@
   "id": "default_write_chapter_by_ai",
   "task": "write_chapter_by_ai",
   "revision": 1,
-  "name": "逐级生成本章正文",
+  "name": "本章正文（局部资料）",
   "default_provider": "",
   "nodes": [
     {
@@ -432,6 +432,122 @@
               "maxItems": 100,
               "title": "Previous Text",
               "type": "array"
+            },
+            "chapter_sources": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "description": "本章采用的祖先原文、已读前文和人物关系；空列表表示不采用。",
+                  "properties": {
+                    "parent_excerpts": {
+                      "items": {
+                        "additionalProperties": false,
+                        "description": "从实际读过的祖先字段中采用一段连续原文，不接受拼接。",
+                        "properties": {
+                          "resource_type": {
+                            "enum": [
+                              "novel",
+                              "volume",
+                              "arc",
+                              "scene"
+                            ],
+                            "title": "Resource Type",
+                            "type": "string"
+                          },
+                          "id": {
+                            "maxLength": 24,
+                            "minLength": 24,
+                            "pattern": "^[0-9a-fA-F]{24}$",
+                            "title": "Id",
+                            "type": "string"
+                          },
+                          "version": {
+                            "minimum": 1,
+                            "title": "Version",
+                            "type": "integer"
+                          },
+                          "field": {
+                            "enum": [
+                              "plot",
+                              "worldview",
+                              "core_seed",
+                              "core_idea",
+                              "summary",
+                              "planning.continuity_notes",
+                              "planning.premise",
+                              "planning.major_conflict",
+                              "planning.goal",
+                              "planning.start_state",
+                              "planning.end_state"
+                            ],
+                            "title": "Field",
+                            "type": "string"
+                          },
+                          "start": {
+                            "minimum": 0,
+                            "title": "Start",
+                            "type": "integer"
+                          },
+                          "end": {
+                            "exclusiveMinimum": 0,
+                            "title": "End",
+                            "type": "integer"
+                          },
+                          "quote": {
+                            "minLength": 1,
+                            "title": "Quote",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "resource_type",
+                          "id",
+                          "version",
+                          "field",
+                          "start",
+                          "end",
+                          "quote"
+                        ],
+                        "title": "ChapterParentExcerptV1",
+                        "type": "object"
+                      },
+                      "maxItems": 30,
+                      "title": "Parent Excerpts",
+                      "type": "array"
+                    },
+                    "previous_chapter_ids": {
+                      "items": {
+                        "maxLength": 24,
+                        "minLength": 24,
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "type": "string"
+                      },
+                      "maxItems": 100,
+                      "title": "Previous Chapter Ids",
+                      "type": "array"
+                    },
+                    "relation_ids": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "maxItems": 100,
+                      "title": "Relation Ids",
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "parent_excerpts",
+                    "previous_chapter_ids",
+                    "relation_ids"
+                  ],
+                  "title": "ChapterSourcesV1",
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
             }
           },
           "required": [
@@ -447,7 +563,7 @@
       },
       "values": {},
       "config": {
-        "prompt": "当前任务：write_chapter_by_ai。先使用工具核对本次资料，再给出可直接执行的整理报告。已有对象先读取详情，只有缺少职责时才建议新增。\n本任务必须完成以下整理，不以是否调用 load_skill 为前提。技能中的末卷收束须服从本章位置与后续保留；卷状态须按适用时间阅读，不能凭“优先”覆盖同一时点的真实来源冲突：\n1. 按本次 position 和资料标记阅读 plan：design_plan 是作者设计和规划，不证明结果已经发生；各层 start_state / end_state 是该层计划起止，不能直接当成本章当前状态。未提供的旧动态资料保持未知，不推定为初始事实。previous_written 和 read_previous 返回的是当前位置允许读取的已保存正文。\n2. 先读本章相关前文与人物、卷状态、物品和规则。最近前文可能只有尾段，必要时用 read_previous 分页补读，search_book 可检索规划和剧情，其中正文只检索当前位置以前的章节；按 matched_fields 区分规划命中和正文命中。缺失或截断部分没读到的信息保持未知，不推断从未发生。\n3. 在 boundaries 简述“本章必达”和“后续保留”：本章目标应以行动和结果完成，不能用以后再调查替代；后续章的高潮、收束行动和终局方案不得提前兑现。\n4. 在 coverage 简述“已发生”“人物已知”“仍保有”，只列影响本章的事件、相关人物如何获知、尚存或已消耗的记忆、物品、资格及能力限制。作者设定的秘密不等于人物已知；已丧失或已支付的资源不能再次当作尚存代价。初次非自愿失控不等于可重复的主动能力，主动使用限制也不能否定已保存的失控事件。没有依据，不增加免费能力、替代代价或无铺垫解法。\n5. 上述相关项目注明实际读到的来源类别、ID、字段和短引文；没有来源或缺少定位信息就说明，不编造引文，不复制整个档案。模型整理只是阅读结论，不称为已核实事实。对适用时间、人物知情或资源保有仍不确定的项目明确保留不确定性；来源确实矛盾时并列双方位置与原话，不静默覆盖，也不脑补例外掩盖冲突。作者的明确方向和不违背已有依据的合理创作仍可采用。\n本次资料和作者参数见下方“实际输入”。",
+        "prompt": "当前任务：write_chapter_by_ai。先使用工具核对本次资料，再给出可直接执行的整理报告。已有对象先读取详情，只有缺少职责时才建议新增。\n当前任务：只为本章正文整理必需资料。先调用 get_scope 核对本章、当前场景、相邻边界和读取位置。required_entities 必须读后采用；candidate_entities 是轻量候选，不要求全部采用。按本章行动、作者原话和前文查找必要配角，并读取实际采用的实体及人物势力卷计划。缺少上层约束依据时才按 parent_sources 补读对应祖先字段，不默认遍读全书、整卷、整篇。\n明确本章必达与后续保留，区分章前确认事实和未来计划、人物已知与作者秘密、已消耗与仍持有的资源；未知和待复核不得用主档旧值补齐。前文尾段不等于完整正文；必要资料无法读取时使用 missing_required。\n在 chapter_sources 中填写实际采用的祖先连续原文（版本、start、end、quote）、额外前文章节 ID 和关系 ID，未采用填空列表。boundaries、coverage 和采用理由仅供作者查看，不会代替原文送入正文。不要在这些说明里复制整份资料。\n本次资料和作者参数见下方“实际输入”。",
         "provider": "",
         "model": "",
         "parameters": {},
@@ -469,8 +585,8 @@
           {
             "id": "story_boundaries",
             "name": "剧情边界",
-            "description": "核对主线、当前位置、上下部分与已保存下级。",
-            "instructions": "先读取当前范围和目录。卷剧情承接全书剧情，篇章剧情承接本卷剧情；保留相邻已定起止。下级只补尚未覆盖的剧情，不重复已保存内容。末卷给出收束，不虚构下一卷。"
+            "description": "核对本章目标、当前场景和相邻边界，按需补读上层原文。",
+            "instructions": "先用 get_scope 核对本章局部资料。当前章计划保持完整，卷与篇终点只作后续边界，不能提前完成。只有当前行动确实缺少上层约束时才按父链字段补读，并采用已读原文的连续范围。不为齐全遍读全书和整卷目录。"
           },
           {
             "id": "people_factions",
@@ -488,9 +604,10 @@
             "id": "continuity",
             "name": "前文衔接",
             "description": "读取当前位置以前的正文并检查衔接。",
-            "instructions": "阅读已写前文，区分正式正文和规划；保持已发生事件、人物状态和因果。工具没有返回的正文不要编造。说明尚未覆盖的剧情与拆分建议。"
+            "instructions": "保持相邻前文已经发生的事件、人物状态与因果。前文工具按章节翻页，每章默认返回尾段；必要时可以检索已写正文中的具体事件。采用某前章时保留该章实际读到的不同片段，不能声称尾段就是全文。必要依据读不到时沿用缺项报告，不编造。"
           }
-        ]
+        ],
+        "chapter_context_version": 1
       }
     },
     {
@@ -846,6 +963,122 @@
               "maxItems": 100,
               "title": "Previous Text",
               "type": "array"
+            },
+            "chapter_sources": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "description": "本章采用的祖先原文、已读前文和人物关系；空列表表示不采用。",
+                  "properties": {
+                    "parent_excerpts": {
+                      "items": {
+                        "additionalProperties": false,
+                        "description": "从实际读过的祖先字段中采用一段连续原文，不接受拼接。",
+                        "properties": {
+                          "resource_type": {
+                            "enum": [
+                              "novel",
+                              "volume",
+                              "arc",
+                              "scene"
+                            ],
+                            "title": "Resource Type",
+                            "type": "string"
+                          },
+                          "id": {
+                            "maxLength": 24,
+                            "minLength": 24,
+                            "pattern": "^[0-9a-fA-F]{24}$",
+                            "title": "Id",
+                            "type": "string"
+                          },
+                          "version": {
+                            "minimum": 1,
+                            "title": "Version",
+                            "type": "integer"
+                          },
+                          "field": {
+                            "enum": [
+                              "plot",
+                              "worldview",
+                              "core_seed",
+                              "core_idea",
+                              "summary",
+                              "planning.continuity_notes",
+                              "planning.premise",
+                              "planning.major_conflict",
+                              "planning.goal",
+                              "planning.start_state",
+                              "planning.end_state"
+                            ],
+                            "title": "Field",
+                            "type": "string"
+                          },
+                          "start": {
+                            "minimum": 0,
+                            "title": "Start",
+                            "type": "integer"
+                          },
+                          "end": {
+                            "exclusiveMinimum": 0,
+                            "title": "End",
+                            "type": "integer"
+                          },
+                          "quote": {
+                            "minLength": 1,
+                            "title": "Quote",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "resource_type",
+                          "id",
+                          "version",
+                          "field",
+                          "start",
+                          "end",
+                          "quote"
+                        ],
+                        "title": "ChapterParentExcerptV1",
+                        "type": "object"
+                      },
+                      "maxItems": 30,
+                      "title": "Parent Excerpts",
+                      "type": "array"
+                    },
+                    "previous_chapter_ids": {
+                      "items": {
+                        "maxLength": 24,
+                        "minLength": 24,
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "type": "string"
+                      },
+                      "maxItems": 100,
+                      "title": "Previous Chapter Ids",
+                      "type": "array"
+                    },
+                    "relation_ids": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "maxItems": 100,
+                      "title": "Relation Ids",
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "parent_excerpts",
+                    "previous_chapter_ids",
+                    "relation_ids"
+                  ],
+                  "title": "ChapterSourcesV1",
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
             }
           },
           "required": [
@@ -874,327 +1107,6 @@
       "inputs": {
         "writing_context": {
           "type": "string"
-        },
-        "prepared_context": {
-          "additionalProperties": false,
-          "description": "下一步生成需要的固定资料报告；正式详情由服务端填入。",
-          "properties": {
-            "schema_version": {
-              "const": 1,
-              "default": 1,
-              "title": "Schema Version",
-              "type": "integer"
-            },
-            "target": {
-              "additionalProperties": false,
-              "description": "由服务端固定的小说和操作位置。",
-              "properties": {
-                "novel_id": {
-                  "maxLength": 24,
-                  "minLength": 24,
-                  "pattern": "^[0-9a-fA-F]{24}$",
-                  "title": "Novel Id",
-                  "type": "string"
-                },
-                "target_type": {
-                  "enum": [
-                    "volume",
-                    "arc",
-                    "scene",
-                    "chapter"
-                  ],
-                  "title": "Target Type",
-                  "type": "string"
-                },
-                "target_id": {
-                  "maxLength": 24,
-                  "minLength": 24,
-                  "pattern": "^[0-9a-fA-F]{24}$",
-                  "title": "Target Id",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "novel_id",
-                "target_type",
-                "target_id"
-              ],
-              "title": "PreparedTargetV1",
-              "type": "object"
-            },
-            "boundaries": {
-              "maxLength": 12000,
-              "minLength": 1,
-              "title": "Boundaries",
-              "type": "string"
-            },
-            "selected_entities": {
-              "additionalProperties": false,
-              "description": "作者选中的资料；不提供任意数据库读取参数。",
-              "properties": {
-                "character_ids": {
-                  "items": {
-                    "type": "string"
-                  },
-                  "maxItems": 50,
-                  "title": "Character Ids",
-                  "type": "array"
-                },
-                "faction_ids": {
-                  "items": {
-                    "type": "string"
-                  },
-                  "maxItems": 50,
-                  "title": "Faction Ids",
-                  "type": "array"
-                },
-                "location_ids": {
-                  "items": {
-                    "type": "string"
-                  },
-                  "maxItems": 50,
-                  "title": "Location Ids",
-                  "type": "array"
-                },
-                "item_ids": {
-                  "items": {
-                    "type": "string"
-                  },
-                  "maxItems": 50,
-                  "title": "Item Ids",
-                  "type": "array"
-                },
-                "rule_ids": {
-                  "items": {
-                    "type": "string"
-                  },
-                  "maxItems": 50,
-                  "title": "Rule Ids",
-                  "type": "array"
-                }
-              },
-              "title": "WritingSelectionV1",
-              "type": "object"
-            },
-            "selection_reasons": {
-              "items": {
-                "additionalProperties": false,
-                "description": "采用已读实体的具体原因。",
-                "properties": {
-                  "resource_type": {
-                    "enum": [
-                      "character",
-                      "faction",
-                      "location",
-                      "item",
-                      "world_rule"
-                    ],
-                    "title": "Resource Type",
-                    "type": "string"
-                  },
-                  "id": {
-                    "maxLength": 100,
-                    "minLength": 1,
-                    "title": "Id",
-                    "type": "string"
-                  },
-                  "reason": {
-                    "maxLength": 2000,
-                    "minLength": 1,
-                    "title": "Reason",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "resource_type",
-                  "id",
-                  "reason"
-                ],
-                "title": "EntitySelectionReasonV1",
-                "type": "object"
-              },
-              "maxItems": 250,
-              "title": "Selection Reasons",
-              "type": "array"
-            },
-            "entity_needs": {
-              "items": {
-                "additionalProperties": false,
-                "description": "当前资料无法承担的一项剧情职责。",
-                "properties": {
-                  "resource_type": {
-                    "enum": [
-                      "character",
-                      "faction",
-                      "location",
-                      "item",
-                      "world_rule"
-                    ],
-                    "title": "Resource Type",
-                    "type": "string"
-                  },
-                  "role": {
-                    "maxLength": 1000,
-                    "minLength": 1,
-                    "title": "Role",
-                    "type": "string"
-                  },
-                  "reason": {
-                    "maxLength": 2000,
-                    "minLength": 1,
-                    "title": "Reason",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "resource_type",
-                  "role",
-                  "reason"
-                ],
-                "title": "EntityNeedV1",
-                "type": "object"
-              },
-              "maxItems": 150,
-              "title": "Entity Needs",
-              "type": "array"
-            },
-            "new_counts": {
-              "additionalProperties": false,
-              "description": "各类新实体建议数量，最终仍由相应领域上限校验。",
-              "properties": {
-                "character": {
-                  "default": 0,
-                  "maximum": 30,
-                  "minimum": 0,
-                  "title": "Character",
-                  "type": "integer"
-                },
-                "faction": {
-                  "default": 0,
-                  "maximum": 30,
-                  "minimum": 0,
-                  "title": "Faction",
-                  "type": "integer"
-                },
-                "location": {
-                  "default": 0,
-                  "maximum": 30,
-                  "minimum": 0,
-                  "title": "Location",
-                  "type": "integer"
-                },
-                "item": {
-                  "default": 0,
-                  "maximum": 30,
-                  "minimum": 0,
-                  "title": "Item",
-                  "type": "integer"
-                },
-                "world_rule": {
-                  "default": 0,
-                  "maximum": 30,
-                  "minimum": 0,
-                  "title": "World Rule",
-                  "type": "integer"
-                }
-              },
-              "title": "EntityNewCountsV1",
-              "type": "object"
-            },
-            "suggested_count": {
-              "description": "本次应新增的下级数量。仍有未覆盖剧情时为1至20；全部剧情已被现有下级覆盖时必须为0。遵守本次输入明确给定的固定数量，auto时自主估计。",
-              "maximum": 20,
-              "minimum": 0,
-              "title": "Suggested Count",
-              "type": "integer"
-            },
-            "coverage": {
-              "description": "分别说明已有下级已覆盖什么、还剩什么；当前没有下级时不能声称剧情已经覆盖。",
-              "maxLength": 12000,
-              "minLength": 1,
-              "title": "Coverage",
-              "type": "string"
-            },
-            "remaining": {
-              "description": "是否还有需要本次生成的未覆盖内容。true表示仍需生成，suggested_count必须大于0；false表示已有内容完整覆盖、无需新增，suggested_count必须为0。不是‘资料是否还需补齐’。",
-              "title": "Remaining",
-              "type": "boolean"
-            },
-            "missing_required": {
-              "items": {
-                "additionalProperties": false,
-                "description": "作者需要在指定位置补齐的内容。",
-                "properties": {
-                  "field": {
-                    "maxLength": 200,
-                    "minLength": 1,
-                    "title": "Field",
-                    "type": "string"
-                  },
-                  "message": {
-                    "maxLength": 2000,
-                    "minLength": 1,
-                    "title": "Message",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "field",
-                  "message"
-                ],
-                "title": "PreparationMissingV1",
-                "type": "object"
-              },
-              "maxItems": 100,
-              "title": "Missing Required",
-              "type": "array"
-            },
-            "entity_details": {
-              "items": {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              "maxItems": 250,
-              "title": "Entity Details",
-              "type": "array"
-            },
-            "volume_states": {
-              "items": {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              "maxItems": 500,
-              "title": "Volume States",
-              "type": "array"
-            },
-            "relations": {
-              "items": {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              "maxItems": 500,
-              "title": "Relations",
-              "type": "array"
-            },
-            "previous_text": {
-              "items": {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              "maxItems": 100,
-              "title": "Previous Text",
-              "type": "array"
-            }
-          },
-          "required": [
-            "target",
-            "boundaries",
-            "suggested_count",
-            "coverage",
-            "remaining"
-          ],
-          "title": "PreparedContextV1",
-          "type": "object"
         }
       },
       "outputs": {
@@ -1574,6 +1486,122 @@
               "maxItems": 100,
               "title": "Previous Text",
               "type": "array"
+            },
+            "chapter_sources": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "description": "本章采用的祖先原文、已读前文和人物关系；空列表表示不采用。",
+                  "properties": {
+                    "parent_excerpts": {
+                      "items": {
+                        "additionalProperties": false,
+                        "description": "从实际读过的祖先字段中采用一段连续原文，不接受拼接。",
+                        "properties": {
+                          "resource_type": {
+                            "enum": [
+                              "novel",
+                              "volume",
+                              "arc",
+                              "scene"
+                            ],
+                            "title": "Resource Type",
+                            "type": "string"
+                          },
+                          "id": {
+                            "maxLength": 24,
+                            "minLength": 24,
+                            "pattern": "^[0-9a-fA-F]{24}$",
+                            "title": "Id",
+                            "type": "string"
+                          },
+                          "version": {
+                            "minimum": 1,
+                            "title": "Version",
+                            "type": "integer"
+                          },
+                          "field": {
+                            "enum": [
+                              "plot",
+                              "worldview",
+                              "core_seed",
+                              "core_idea",
+                              "summary",
+                              "planning.continuity_notes",
+                              "planning.premise",
+                              "planning.major_conflict",
+                              "planning.goal",
+                              "planning.start_state",
+                              "planning.end_state"
+                            ],
+                            "title": "Field",
+                            "type": "string"
+                          },
+                          "start": {
+                            "minimum": 0,
+                            "title": "Start",
+                            "type": "integer"
+                          },
+                          "end": {
+                            "exclusiveMinimum": 0,
+                            "title": "End",
+                            "type": "integer"
+                          },
+                          "quote": {
+                            "minLength": 1,
+                            "title": "Quote",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "resource_type",
+                          "id",
+                          "version",
+                          "field",
+                          "start",
+                          "end",
+                          "quote"
+                        ],
+                        "title": "ChapterParentExcerptV1",
+                        "type": "object"
+                      },
+                      "maxItems": 30,
+                      "title": "Parent Excerpts",
+                      "type": "array"
+                    },
+                    "previous_chapter_ids": {
+                      "items": {
+                        "maxLength": 24,
+                        "minLength": 24,
+                        "pattern": "^[0-9a-fA-F]{24}$",
+                        "type": "string"
+                      },
+                      "maxItems": 100,
+                      "title": "Previous Chapter Ids",
+                      "type": "array"
+                    },
+                    "relation_ids": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "maxItems": 100,
+                      "title": "Relation Ids",
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "parent_excerpts",
+                    "previous_chapter_ids",
+                    "relation_ids"
+                  ],
+                  "title": "ChapterSourcesV1",
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
             }
           },
           "required": [
@@ -1696,14 +1724,6 @@
       "source": "prepare",
       "source_port": "prepared_context",
       "target": "prepared_data",
-      "target_port": "prepared_context",
-      "source_path": []
-    },
-    {
-      "id": "prepare-prepared_context-generate-prepared_context",
-      "source": "prepare",
-      "source_port": "prepared_context",
-      "target": "generate",
       "target_port": "prepared_context",
       "source_path": []
     },

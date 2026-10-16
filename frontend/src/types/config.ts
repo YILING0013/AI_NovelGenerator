@@ -2,7 +2,7 @@ import { REASONING_FIELDS, type ReasoningOptions } from "@/types/generation";
 
 export interface ProviderConfig extends ReasoningOptions {
   api_mode?: "auto" | "responses" | "chat_completions" | "interactions" | "generate_content";
-  structured_output_mode?: "auto" | "json_schema" | "tool_call";
+  structured_output_mode?: "auto" | "json_schema" | "json_object" | "tool_call";
   type: "openai" | "deepseek" | "gemini" | "claude";
   base_url: string;
   /** 服务端读取模型永不返回已保存密钥明文。 */
@@ -17,7 +17,12 @@ export interface ProviderConfig extends ReasoningOptions {
   use_system_proxy: boolean;
   supports_streaming: boolean;
   supports_json_schema: boolean;
+  supports_json_output?: boolean | null;
   supports_function_calling: boolean;
+  // 模型或接口资料，不参与生成预算计算。
+  context_window_tokens?: number | null;
+  input_token_limit?: number | null;
+  output_token_limit?: number | null;
   // 生成参数默认值（可选）
   temperature?: number | null;
   top_p?: number | null;
@@ -53,6 +58,17 @@ export function getProviderApiMode(provider: ProviderConfig): string {
   return provider.type === "gemini" ? (official ? "interactions" : "generate_content") : (official ? "responses" : "chat_completions");
 }
 
+/** 功能：解析实际结构化输出配置。Args: provider 当前配置。Returns: 与后端请求格式相同的模式；自动旧配置保持原义。 */
+export function getProviderOutputMode(provider: ProviderConfig): "json_schema" | "json_object" | "tool_call" {
+  if (provider.structured_output_mode && provider.structured_output_mode !== "auto") return provider.structured_output_mode;
+  return provider.type === "deepseek" && getProviderApiMode(provider) === "chat_completions" ? "json_object" : "json_schema";
+}
+
+/** 功能：判断格式审校可用能力，尊重当前模式及手动开关。Args: provider 当前配置。Returns: 是否可生成并校验结构化结果。 */
+export function supportsStructuredOutput(provider: ProviderConfig): boolean {
+  return getProviderOutputMode(provider) === "json_object" ? provider.supports_json_output ?? true : provider.supports_json_schema;
+}
+
 export type ProviderTestCapability =
   | "connection"
   | "streaming"
@@ -67,11 +83,19 @@ export interface ProviderCapabilityResult {
   status: ProviderTestStatus;
   duration_ms: number;
   message: string;
+  details?: {
+    sent_parameters: Record<string, string | number | boolean>;
+    parameters_adjusted: boolean;
+    reasoning_status: "not_sent" | "sent" | "rejected" | "unknown";
+    reasoning_tokens: number | null;
+    reasoning_evidence: ("usage" | "native_block" | "signature")[];
+  } | null;
 }
 
 export interface ProviderCapabilityRecommendation {
   supports_streaming: boolean;
   supports_json_schema: boolean;
+  supports_json_output?: boolean | null;
   supports_function_calling: boolean;
 }
 
@@ -80,6 +104,8 @@ export interface ProviderTestResponse {
   provider_type: string;
   model: string;
   summary: string;
+  api_mode?: string;
+  output_budget?: number;
   results: ProviderCapabilityResult[];
   recommendations: ProviderCapabilityRecommendation;
 }
@@ -155,6 +181,9 @@ export function newProviderConfig(): ProviderConfig {
     temperature: null,
     top_p: null,
     max_tokens: null,
+    context_window_tokens: null,
+    input_token_limit: null,
+    output_token_limit: null,
     system_prompt: null,
     presence_penalty: null,
     frequency_penalty: null,
@@ -202,8 +231,9 @@ export function buildConfigSavePayload(
       const fields = [
         "type", "api_mode", "structured_output_mode", "base_url", "default_model", "enabled",
         "timeout_seconds", "max_retries", "max_concurrency", "use_system_proxy", "supports_streaming",
-        "supports_json_schema", "supports_function_calling", "temperature", "top_p", "max_tokens",
+        "supports_json_schema", "supports_json_output", "supports_function_calling", "temperature", "top_p", "max_tokens",
         "system_prompt", "presence_penalty", "frequency_penalty", ...REASONING_FIELDS,
+        "context_window_tokens", "input_token_limit", "output_token_limit",
       ] as const;
       const providerPatch: ProviderConfigPatch = Object.fromEntries(fields.flatMap((field) => {
         // 输入保持原样；仅比较和提交时把空白 Prompt 归一为空值。

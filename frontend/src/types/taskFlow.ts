@@ -124,6 +124,11 @@ export interface AgentContinuation {
   call_count: number;
   expires_at: string;
   last_error?: string | Record<string, unknown> | null;
+  reason?: "budget" | "network";
+  resume_rounds?: number;
+  flow_recovery?: boolean;
+  running?: boolean;
+  result_ready?: boolean;
 }
 /** 原入口执行方式；只有显式选择继续时才发送续跑令牌。 */
 export type TaskFlowRunMode = boolean | "repair" | { continuation: true; additionalRounds: number };

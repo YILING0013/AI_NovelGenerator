@@ -24,17 +24,10 @@ from backend.db.transaction import run_mongo_write_unit
 from backend.db.utils import get_utc_now, to_object_id
 from backend.llm.exceptions import LLMSchemaError
 from backend.llm.schemas.novel_pydantic import (
-    CORE_FACTIONS_RESULT_SCHEMA_ID,
-    CORE_FACTIONS_RESULT_SCHEMA_VERSION,
     CoreFactionsResultSchema,
     GenerateCoreFactionsRequestV2,
 )
 from backend.llm.schemas.character_pydantic import FACTION_BUSINESS_ID_PATTERN
-from backend.services.llm.faction_generation_contract import (
-    CORE_FACTIONS_STEP,
-    CORE_FACTIONS_WORKFLOW,
-    compute_core_factions_input_fingerprint,
-)
 from backend.services.novel.character_service import (
     _CompensationRecord,
     _DependencyReconcileCasMiss,
@@ -690,7 +683,7 @@ class FactionService:
         Raises:
             LLMSchemaError: 数量、名称或关系引用不满足要求时抛出。
         """
-        if len(result.core_factions) != req.faction_count:
+        if req.faction_count is not None and len(result.core_factions) != req.faction_count:
             raise LLMSchemaError(f"core_factions 数量必须等于 {req.faction_count}")
 
         try:
@@ -1032,73 +1025,10 @@ class FactionService:
                 )
             return existing
 
-        async def _create(session: AsyncClientSession | None) -> dict[str, Any]:
-            """在同一个写入单元内校验小说、生成业务 ID 并插入阵营。"""
-            state_lock = await acquire_state_write_lock(novel_id, session=session)
-            try:
-                await novel_repo.get_novel_by_id(novel_id, session=session)
-                replay = await _find_replay(session)
-                if replay is not None:
-                    return replay
-                owned_volume_id = await FactionService._validate_scope_and_parent(
-                    novel_id,
-                    level_type=payload["level_type"],
-                    volume_id=payload["volume_id"],
-                    parent_faction_id=payload["parent_faction_id"],
-                    session=session,
-                )
-                await FactionService._ensure_unique_active_name(
-                    novel_id,
-                    payload["name"],
-                    level_type=payload["level_type"],
-                    volume_id=owned_volume_id,
-                    session=session,
-                )
-                create_payload = dict(payload)
-                create_payload["novel_id"] = novel_id
-                create_payload["volume_id"] = owned_volume_id
-                # 正式业务 ID 只能由可靠序列分配，禁止客户端绕过终身不复用约束。
-                create_payload["faction_id"] = await faction_repo._get_next_faction_id(
-                    novel_id,
-                    session=session,
-                )
-                if create_payload.get("sort_order") is None:
-                    # 同一父级与归属卷内尾部追加，避免不同工作台层级互相影响顺序。
-                    sibling_count = await faction_repo.count_documents(
-                        {
-                            "novel_id": to_object_id(novel_id),
-                            "level_type": payload["level_type"],
-                            "parent_faction_id": payload["parent_faction_id"],
-                            "volume_id": owned_volume_id,
-                        },
-                        session=session,
-                    )
-                    create_payload["sort_order"] = (sibling_count + 1) * 10
-                create_payload["creation_idempotency_key_hash"] = key_hash
-                create_payload["creation_request_hash"] = request_hash
-                await faction_repo.create_faction(create_payload, session=session)
-                return await faction_repo.get_faction(
-                    novel_id,
-                    create_payload["faction_id"],
-                    session=session,
-                )
-            finally:
-                await release_state_write_lock(
-                    novel_id,
-                    state_lock,
-                    session=session,
-                )
-
-        if session is not None:
-            return await _create(session)
-        try:
-            return await run_mongo_write_unit(_create, "create_faction")
-        except DuplicateKeyError:
-            # 唯一索引决定并发赢家；输家只回放，不执行第二次业务创建。
-            replay = await _find_replay(None)
-            if replay is not None:
-                return replay
-            raise
+        replay = await _find_replay(session)
+        if replay is not None:
+            return replay
+        raise GenerationDomainError("FACTION_FACT_REQUIRED", "新势力请先选择剧情起点并确认资料；旧请求没有成功记录，原稿应保留", status_code=409)
 
     @staticmethod
     async def bulk_create_core_factions_with_relations(novel_id: str, data: Any, *, idempotency_key: str, session: AsyncClientSession | None=None) -> Dict[str, Any]:
@@ -1215,271 +1145,10 @@ class FactionService:
                 ],
             }
 
-        async def _confirm(session: AsyncClientSession | None) -> Dict[str, Any]:
-            """在单个 Mongo 写入单元内校验依据并续写缺失 ref。"""
-            basis = source["basis"]
-            generation_input = source["generation_input"]
-            if (
-                basis.get("novel_id") != novel_id
-                or generation_input.get("novel_id") != novel_id
-            ):
-                raise NotFoundError("核心势力候选不属于当前小说")
-            if (
-                basis.get("workflow") != CORE_FACTIONS_WORKFLOW
-                or basis.get("step") != CORE_FACTIONS_STEP
-                or basis.get("schema_id") != CORE_FACTIONS_RESULT_SCHEMA_ID
-                or basis.get("schema_version") != CORE_FACTIONS_RESULT_SCHEMA_VERSION
-            ):
-                raise ValueError("核心势力确认的 workflow/step/schema 契约不匹配")
-
-            existing_by_ref, existing_relations_by_ref = await _load_existing(session)
-            if (
-                set(existing_by_ref) == set(selected_faction_refs)
-                and set(existing_relations_by_ref) == set(selected_relation_refs)
-            ):
-                return _build_result(existing_by_ref, existing_relations_by_ref)
-            novel = await novel_repo.get_novel_by_id(novel_id, session=session)
-            current_versions: dict[tuple[str, str], int] = {
-                ("novel", novel_id): int(novel["version"])
-            }
-            basis_faction_ids: set[str] = set()
-            basis_relation_ids: set[str] = set()
-            for item in basis.get("source_refs", []):
-                resource_type = str(item["resource_type"])
-                resource_id = str(item["id"])
-                if resource_type == "novel":
-                    if resource_id != novel_id:
-                        raise NotFoundError("核心势力候选引用了其他小说")
-                    current = novel
-                elif resource_type == "faction":
-                    basis_faction_ids.add(resource_id)
-                    current = await faction_repo.get_faction(
-                        novel_id,
-                        resource_id,
-                        session=session,
-                    )
-                elif resource_type == "faction_relation":
-                    basis_relation_ids.add(resource_id)
-                    current = await faction_relation_repo.get_relation(
-                        novel_id,
-                        resource_id,
-                        session=session,
-                    )
-                else:
-                    raise ValueError(f"不支持的 basis resource_type={resource_type}")
-                current_versions[(resource_type, resource_id)] = int(
-                    current["version"]
-                )
-
-            for item in basis.get("source_refs", []):
-                identity = (str(item["resource_type"]), str(item["id"]))
-                if current_versions.get(identity) != int(item["version"]):
-                    raise DuplicateKeyError("核心势力候选依据版本冲突")
-            current_fingerprint = compute_core_factions_input_fingerprint(
-                generation_input,
-                basis.get("source_refs", []),
-                flow_snapshot=basis.get("flow_snapshot"),
-            )
-            if current_fingerprint != basis.get("input_fingerprint"):
-                raise DuplicateKeyError("核心势力候选输入指纹冲突")
-
-            all_core_factions = await faction_repo.get_active_core_factions(
-                novel_id,
-                session=session,
-            )
-            batch_faction_ids = {
-                str(item["faction_id"]) for item in existing_by_ref.values()
-            }
-            current_formal_factions = [
-                item
-                for item in all_core_factions
-                if str(item.get("faction_id")) not in batch_faction_ids
-            ]
-            if {
-                str(item["faction_id"]) for item in current_formal_factions
-            } != basis_faction_ids:
-                raise DuplicateKeyError("核心势力候选依据中的正式势力集合已变化")
-            current_formal_relations = [
-                item
-                for item in await faction_relation_repo.get_relations_by_novel(
-                    novel_id,
-                    active_only=True,
-                    session=session,
-                )
-                if item.get("batch_idempotency_key_hash") != key_hash
-                and item.get("source_faction_id") in basis_faction_ids
-                and item.get("target_faction_id") in basis_faction_ids
-            ]
-            if {
-                str(item["relation_id"]) for item in current_formal_relations
-            } != basis_relation_ids:
-                raise DuplicateKeyError("核心势力候选依据中的正式关系集合已变化")
-
-            existing_name_keys = {
-                item["normalized_name"] for item in current_formal_factions
-            }
-            missing_factions = [
-                item
-                for item in selected_factions
-                if item["faction_ref"] not in existing_by_ref
-            ]
-            missing_name_pairs = [
-                normalize_faction_name(item.get("name")) for item in missing_factions
-            ]
-            duplicate_names = [
-                display_name
-                for display_name, normalized_name in missing_name_pairs
-                if normalized_name in existing_name_keys
-            ]
-            if duplicate_names:
-                raise DuplicateKeyError(
-                    f"同一小说下已存在同名核心势力: {', '.join(sorted(duplicate_names))}"
-                )
-
-            allocated_ids = await id_sequence_repo.allocate_many(
-                novel_id,
-                "faction",
-                "fac",
-                len(missing_factions),
-                session=session,
-            ) if missing_factions else []
-            faction_ref_map = {
-                ref: str(item["faction_id"])
-                for ref, item in existing_by_ref.items()
-            }
-            faction_ref_map.update(
-                {
-                    faction["faction_ref"]: faction_id
-                    for faction, faction_id in zip(missing_factions, allocated_ids)
-                }
-            )
-
-            relation_payloads = [
-                FactionService._normalize_generated_relation(
-                    relation,
-                    faction_ref_map=faction_ref_map,
-                    existing_faction_ids=basis_faction_ids,
-                )
-                for relation in selected_relations
-            ]
-            created_faction_records: list[dict[str, Any]] = []
-            relations_committed_this_attempt = False
-            try:
-                has_faction_marker = any(
-                    item.get("core_batch_command_marker") is True
-                    for item in existing_by_ref.values()
-                )
-                candidate_position = {
-                    ref: index
-                    for index, ref in enumerate(selected_faction_refs, start=1)
-                }
-                for index, (faction, faction_id) in enumerate(
-                    zip(missing_factions, allocated_ids)
-                ):
-                    faction_ref = str(faction["faction_ref"])
-                    payload = FactionService._normalize_generated_core_faction(
-                        faction,
-                        faction_id=faction_id,
-                        sort_order=(
-                            len(current_formal_factions)
-                            + candidate_position[faction_ref]
-                        ) * 10,
-                    )
-                    payload.update(
-                        {
-                            "novel_id": novel_id,
-                            "core_batch_idempotency_key_hash": key_hash,
-                            "core_batch_request_hash": request_hash,
-                            "core_batch_local_ref": faction_ref,
-                        }
-                    )
-                    if not has_faction_marker and index == 0:
-                        payload["core_batch_command_marker"] = True
-                    faction_oid = await faction_repo.create_faction(
-                        payload,
-                        session=session,
-                    )
-                    created_faction_records.append(
-                        {
-                            "_id": to_object_id(faction_oid),
-                            "novel_id": to_object_id(novel_id),
-                            "faction_id": faction_id,
-                            "version": 1,
-                        }
-                    )
-                    existing_by_ref[faction_ref] = await faction_repo.get_faction(
-                        novel_id,
-                        faction_id,
-                        session=session,
-                    )
-
-                missing_relation_payloads: list[dict[str, Any]] = []
-                has_relation_marker = any(
-                    item.get("batch_command_marker") is True
-                    for item in existing_relations_by_ref.values()
-                )
-                for relation, payload in zip(selected_relations, relation_payloads):
-                    relation_ref = str(relation["relation_ref"])
-                    if relation_ref in existing_relations_by_ref:
-                        continue
-                    payload.update(
-                        {
-                            "batch_idempotency_key_hash": key_hash,
-                            "batch_request_hash": request_hash,
-                            "batch_local_ref": relation_ref,
-                            "batch_request_kind": "core_ai_confirmation",
-                        }
-                    )
-                    if not has_relation_marker and not missing_relation_payloads:
-                        payload["batch_command_marker"] = True
-                    missing_relation_payloads.append(payload)
-                if missing_relation_payloads:
-                    created_relations = await FactionRelationService.bulk_create_relations(
-                        novel_id,
-                        missing_relation_payloads,
-                        session=session,
-                    )
-                    # standalone 下关系已成功返回后，端点护栏也已推进；若后续组装
-                    # 响应异常，保留带批次元数据的完整事实供同键精确续写。
-                    relations_committed_this_attempt = True
-                    for relation in created_relations:
-                        existing_relations_by_ref[
-                            str(relation["batch_local_ref"])
-                        ] = relation
-            except Exception:
-                if (
-                    session is None
-                    and created_faction_records
-                    and not relations_committed_this_attempt
-                ):
-                    await faction_repo.delete_factions_created_exact(
-                        list(reversed(created_faction_records))
-                    )
-                raise
-
-            if (
-                set(existing_by_ref) != set(selected_faction_refs)
-                or set(existing_relations_by_ref) != set(selected_relation_refs)
-            ):
-                raise DuplicateKeyError("核心势力确认批次未形成完整 ref 映射")
-            return _build_result(existing_by_ref, existing_relations_by_ref)
-
-        if session is not None:
-            return await _confirm(session)
-
-        try:
-            return await run_mongo_write_unit(
-                _confirm,
-                "bulk_create_core_factions_with_relations",
-            )
-        except DuplicateKeyError:
-            factions_by_ref, relations_by_ref = await _load_existing(None)
-            if (
-                set(factions_by_ref) == set(selected_faction_refs)
-                and set(relations_by_ref) == set(selected_relation_refs)
-            ):
-                return _build_result(factions_by_ref, relations_by_ref)
-            raise
+        factions_by_ref, relations_by_ref = await _load_existing(session)
+        if set(factions_by_ref) == set(selected_faction_refs) and set(relations_by_ref) == set(selected_relation_refs):
+            return _build_result(factions_by_ref, relations_by_ref)
+        raise GenerationDomainError("FACTION_FACT_REQUIRED", "旧批次没有完整成功记录；请保留原请求，新批次需先确认剧情起点", status_code=409)
 
     @staticmethod
     async def get_factions_by_novel(novel_id: str) -> List[Dict[str, Any]]:
@@ -1631,6 +1300,11 @@ class FactionService:
 
         async def _update(session: AsyncClientSession | None) -> Dict[str, Any]:
             """在同一个写入单元内更新阵营及其关系、绑定派生状态。"""
+            from backend.services.novel.faction_fact_contract import FACTION_FACT_PROFILE_FIELDS
+            from backend.services.novel.faction_fact_service import ensure_faction_fields_unmanaged
+            fact_fields = sorted(FACTION_FACT_PROFILE_FIELDS & filtered_update.keys())
+            if fact_fields:
+                await ensure_faction_fields_unmanaged(novel_id, [faction_id], fact_fields, session=session)
             state_lock = await acquire_state_write_lock(novel_id, session=session)
             state_lock_releasable = True
             try:
@@ -1824,7 +1498,7 @@ class FactionService:
         if session is not None:
             return await _update(session)
 
-        return await run_mongo_write_unit(_update, "update_faction_info")
+        return await run_mongo_write_unit(_update, "update_faction_info", require_transaction=bool({"faction_type", "positioning", "organization_style", "core_values", "is_public", "public_stance", "influence_scope"} & filtered_update.keys()))
 
     @staticmethod
     async def batch_update_sort_order(novel_id: str, items: list[dict[str, int | str]], *, session: AsyncClientSession | None=None) -> list[Dict[str, Any]]:

@@ -15,17 +15,10 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
-CONFIG_DIR = Path(__file__).resolve().parent
-DEFAULT_CONFIG_PATH = CONFIG_DIR / "config_default.yaml"
-CONFIG_PATH = CONFIG_DIR / "config.yaml"
+from backend.storage import CONFIG_DIR
 
-_FALLBACK_DEFAULT_CONFIG: Dict[str, Any] = {
-    "config_version": 1,
-    "mongodb_url": "mongodb://localhost:27017",
-    "mongo_database_name": "my_database",
-    "mongo_timeout_ms": 5000,
-    "mongo_transaction_mode": "auto",
-}
+DEFAULT_CONFIG_PATH = Path(__file__).with_name("config_default.yaml")
+CONFIG_PATH = CONFIG_DIR / "config.yaml"
 
 _config_lock = RLock()
 _cached_config: Dict[str, Any] | None = None
@@ -35,7 +28,7 @@ _REPLACE_DICT_PATHS: set[tuple[str, ...]] = {
 }
 _PROVIDER_RENAMES_KEY = "_provider_renames"
 _API_VERSION_RE = re.compile(r"^v\d+(?:[a-z0-9._-]+)?$", re.IGNORECASE)
-_PROVIDER_ALIAS_RE = re.compile(r"^[A-Za-z0-9_]+$")
+_PROVIDER_ALIAS_INVALID_RE = re.compile(r"[\x00-\x1f\x7f-\x9f\u2028\u2029]")
 _MASKED_SECRET_RE = re.compile(r"^(?:\*{3,}|•{3,}|已配置|configured)$", re.IGNORECASE)
 _SECRET_UPDATE_ACTIONS = {"preserve", "replace", "clear"}
 _OPENAI_ENDPOINT_SUFFIXES: tuple[tuple[str, ...], ...] = (
@@ -229,6 +222,22 @@ def _extract_provider_rename_operations(updates: Dict[str, Any]) -> list[tuple[s
     return operations
 
 
+def validate_provider_alias(alias: str) -> str:
+    """校验直接用于配置和方案引用的 Provider 名称。
+
+    Args:
+        alias: 已去除首尾空白的名称。
+
+    Returns:
+        通过长度、日志字符及对象键检查的原名称。
+    """
+    if (not 1 <= len(alias) <= 100 or alias != alias.strip()
+            or _PROVIDER_ALIAS_INVALID_RE.search(alias)
+            or alias in {"__proto__", "constructor", "prototype"}):
+        raise ValueError("Provider 名称须为 1–100 个字符，不能有首尾空白、控制字符或使用保留名称")
+    return alias
+
+
 def _apply_provider_rename_operations(config: Dict[str, Any], operations: list[tuple[str, str]]) -> Dict[str, Any]:
     """将 Provider 重命名操作应用到配置与所有引用字段。
 
@@ -249,8 +258,8 @@ def _apply_provider_rename_operations(config: Dict[str, Any], operations: list[t
 
     providers = llm_config.get("providers")
     for old_alias, new_alias in operations:
-        if not _PROVIDER_ALIAS_RE.fullmatch(old_alias) or not _PROVIDER_ALIAS_RE.fullmatch(new_alias):
-            raise ValueError("Provider 别名仅允许字母、数字和下划线")
+        validate_provider_alias(old_alias)
+        validate_provider_alias(new_alias)
         if old_alias == new_alias:
             continue
 
@@ -441,8 +450,7 @@ def _validate_provider_references(config_data: Dict[str, Any]) -> None:
         raise ValueError("llm.providers 必须为配置对象")
     aliases = set(providers)
     for alias in aliases:
-        if not _PROVIDER_ALIAS_RE.fullmatch(str(alias)):
-            raise ValueError(f"Provider 别名仅允许字母、数字和下划线: {alias}")
+        validate_provider_alias(alias)
 
     references: list[tuple[str, Any]] = [
         ("llm.default_provider", llm_config.get("default_provider")),
@@ -574,7 +582,7 @@ def ensure_config_files() -> None:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
     if not DEFAULT_CONFIG_PATH.exists():
-        _write_yaml(DEFAULT_CONFIG_PATH, _FALLBACK_DEFAULT_CONFIG)
+        raise FileNotFoundError("内置默认配置缺失，请重新获取完整程序。")
 
     if not CONFIG_PATH.exists():
         default_config = _read_yaml(DEFAULT_CONFIG_PATH)

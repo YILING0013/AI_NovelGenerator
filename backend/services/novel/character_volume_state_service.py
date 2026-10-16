@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import unicodedata
 from collections.abc import Mapping, Sequence
+from copy import deepcopy
 from datetime import datetime
 from typing import Any, Literal
 
@@ -30,6 +31,7 @@ from backend.db.repositories.character_volume_state_repository import (
 )
 from backend.db.repositories.novel_repository import novel_repo
 from backend.db.repositories.volume_repository import volume_repo
+from backend.db.repositories.volume_command_receipt_repository import volume_command_receipt_repo
 from backend.db.transaction import run_mongo_write_unit
 from backend.db.utils import get_utc_now, to_object_id
 from backend.db.write_contracts import (
@@ -720,6 +722,7 @@ class CharacterVolumeStateService:
         state_id: str,
         request: Any,
         *,
+        idempotency_key: str | None = None,
         session: AsyncClientSession | None = None,
     ) -> dict[str, Any]:
         """局部修改本卷参与和计划，保留已有三个处境字段的原值。
@@ -728,12 +731,37 @@ class CharacterVolumeStateService:
             novel_id: 当前小说 ID。
             state_id: 当前状态物理 ID。
             request: 预期版本及明确提交的参与或计划字段。
+            idempotency_key: 人工保存的原请求键；已有内部事务调用可省略。
             session: 调用方的必需事务，提供时不另开事务。
         Returns:
             CAS 后状态；没有实际变化时返回原状态。
         """
         payload = CharacterVolumePlanUpdateV1.model_validate(request).model_dump(mode="json", exclude_unset=True)
-        return await CharacterVolumeStateService.update_state(novel_id, state_id, payload, session=session)
+        if idempotency_key is None:
+            return await CharacterVolumeStateService.update_state(novel_id, state_id, payload, session=session)
+        original = {"operation": "update_character_volume_plan", "novel_id": novel_id,
+                    "state_id": state_id, "changes": payload}
+        fingerprint = build_idempotency_fingerprint(idempotency_key, original)
+
+        async def write(current_session):
+            if current_session is None or not current_session.in_transaction:
+                raise TransactionNotSupportedError("人物计划保存必须使用事务")
+            # 原成功先于当前版本和目标读取；回放不再修改计划。
+            receipt = await volume_command_receipt_repo.find_receipt(novel_id, fingerprint.key_hash, session=current_session)
+            await _check_state_command_novel(novel_id, session=current_session)
+            if receipt is not None:
+                if receipt.get("operation") != original["operation"] or receipt.get("request_hash") != fingerprint.request_hash:
+                    raise IdempotencyConflictError("本次人物计划请求键已用于其他内容，请保留原请求")
+                return deepcopy(receipt["result"])
+            saved = await CharacterVolumeStateService.update_state(novel_id, state_id, payload, session=current_session)
+            await volume_command_receipt_repo.create_receipt({"novel_id": novel_id, "volume_id": saved["volume_id"],
+                "operation": original["operation"], "idempotency_key_hash": fingerprint.key_hash,
+                "request_hash": fingerprint.request_hash, "request": original, "result": deepcopy(saved)}, session=current_session)
+            return saved
+
+        if session is not None:
+            return await write(session)
+        return await run_mongo_write_unit(write, "update_character_volume_plan", require_transaction=True)
 
     @staticmethod
     async def get_state(novel_id: str, state_id: str) -> dict[str, Any]:

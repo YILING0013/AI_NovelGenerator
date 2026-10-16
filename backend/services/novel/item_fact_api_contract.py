@@ -32,7 +32,7 @@ class ItemFactBatchPreviewInputV1(StrictRequestModel):
 
     generation: ItemBulkGeneratedRequestV1
     position: FactPositionV1
-    note: str = Field(min_length=1, max_length=2000)
+    note: str = Field(default="", max_length=2000)
 
 
 class ItemFactBatchPreviewEntryV1(StrictResponseModel):

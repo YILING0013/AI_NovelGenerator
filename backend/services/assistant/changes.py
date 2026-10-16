@@ -124,6 +124,32 @@ async def check_character_fields(change: dict, *, session=None, protect: bool = 
         )
 
 
+async def check_faction_fields(change: dict, *, session=None, protect=False) -> None:
+    """整组在写入前检查势力旧动态字段，计划与生命周期不改事实含义。
+
+    Args:
+        change: 作者原操作组。
+        session: 可选原保存事务。
+        protect: 真正执行时保护空历史范围。
+    Returns:
+        无；新势力必须走明确位置的事实或原子批次。
+    """
+    from backend.services.novel.faction_fact_contract import FACTION_FACT_PROFILE_FIELDS
+    from backend.services.novel.faction_fact_service import ensure_faction_fields_unmanaged
+    selected = {}
+    for operation in change.get("operations", []):
+        if operation["resource_type"] != "faction":
+            continue
+        if operation["action"] == "create":
+            raise DomainApiError("FACTION_FACT_REQUIRED", "新势力请使用明确剧情位置的事实工具或整批生成入口；原稿保留", status_code=409)
+        if operation["action"] == "update":
+            fields = {field.split(".")[0] for field in operation.get("fields", {})} & FACTION_FACT_PROFILE_FIELDS
+            if fields:
+                selected.setdefault(operation["id"], set()).update(fields)
+    for identity, fields in selected.items():
+        await ensure_faction_fields_unmanaged(str(change["novel_id"]), [identity], sorted(fields), session=session, protect=protect)
+
+
 async def check_relation_fields(change: dict, *, session=None, protect: bool = False) -> None:
     """整组先拒绝新关系和已认领状态，设计字段仍可正常编辑。
 
@@ -208,7 +234,7 @@ async def guard_pending_writes(novel_id: str, proposed: dict, *, exclude_id=None
         if change.get("kind") == "facts":
             kind = change["fact_type"]
             target = change.get("fact_command", {}).get("basis", {}).get("target", {})
-            identity = change.get("fact_target") or target.get({"character": "character_id", "character_relation": "relation_id", "item": "item_id"}[kind])
+            identity = change.get("fact_target") or target.get({"character": "character_id", "character_relation": "relation_id", "item": "item_id", "faction": "faction_id"}[kind])
             if identity:
                 refs.add((kind, identity))
             else:
@@ -422,6 +448,7 @@ async def stage_changes(novel_id: str, session_id: str, run_id: str, operations:
             await check_relation_fields(existing)
             await check_item_fields(existing)
             await check_character_fields(existing)
+            await check_faction_fields(existing)
         return existing
     serialized = [operation.model_dump(mode="json") for operation in operations]
     creation_context = {"contract_version": 1, "semantics": "book_management"}
@@ -430,6 +457,7 @@ async def stage_changes(novel_id: str, session_id: str, run_id: str, operations:
     await check_relation_fields({"novel_id": novel_id, "operations": serialized})
     await check_item_fields({"novel_id": novel_id, "operations": serialized})
     await check_character_fields({"novel_id": novel_id, "operations": serialized})
+    await check_faction_fields({"novel_id": novel_id, "operations": serialized})
     source_map = {(source["resource_type"], source["id"]): source for source in sources}
     before, diffs, temporary = {}, [], set()
     for operation in operations:
@@ -497,6 +525,7 @@ async def edit_change(novel_id: str, change_id: str, request: ChangeEdit) -> dic
     await check_relation_fields(change)
     await check_item_fields(change)
     await check_character_fields(change)
+    await check_faction_fields(change)
     if change["kind"] == "generation":
         from .generation import validate_creation
         await validate_creation(change)
@@ -516,6 +545,7 @@ async def edit_change(novel_id: str, change_id: str, request: ChangeEdit) -> dic
         await check_relation_fields({**change, **updates})
         await check_item_fields({**change, **updates})
         await check_character_fields({**change, **updates})
+        await check_faction_fields({**change, **updates})
         diffs = []
         for operation in request.operations:
             original = change["before"].get(f"{operation.resource_type}:{operation.id}", {})
@@ -608,7 +638,7 @@ async def execute_group(change: dict, *, session) -> dict:
     novel_id, identities, results = str(change["novel_id"]), {}, []
     guard_creation(change)
     if change["kind"] == "facts":
-        from backend.services.novel import character_fact_service, character_relation_fact_service, item_fact_service
+        from backend.services.novel import character_fact_service, character_relation_fact_service, item_fact_service, faction_fact_service
         policy = change.get("fact_policy", {})
         run = await BaseRepository("assistant_runs").collection.find_one({"_id": change["run_id"], "novel_id": change["novel_id"]}, session=session)
         if not run or policy.get("version") not in {1, 2} or policy.get("request_hash") != run["request_hash"]:
@@ -626,15 +656,16 @@ async def execute_group(change: dict, *, session) -> dict:
                 raise DomainApiError("ASSISTANT_FACT_POSITION_CHANGED", "章节名称或顺序已变化，原位置选择已保留，请核对后继续", status_code=409)
         await check_sources(change, session=session, protect=True)
         kind = change["fact_type"]
-        service = {"character": character_fact_service, "character_relation": character_relation_fact_service, "item": item_fact_service}[kind]
+        service = {"character": character_fact_service, "character_relation": character_relation_fact_service, "item": item_fact_service, "faction": faction_fact_service}[kind]
         result = await getattr(service, f"confirm_{kind}_facts")(novel_id, {**change["fact_command"], "confirmed": True},
             idempotency_key=f"assistant:{change['_id']}:{change['revision']}:fact", session=session)
-        business_id = result[{"character": "character_id", "character_relation": "relation_id", "item": "item_id"}[kind]]
+        business_id = result[{"character": "character_id", "character_relation": "relation_id", "item": "item_id", "faction": "faction_id"}[kind]]
         current = public_content(kind, await get_resource(novel_id, ResourceRef(resource_type=kind, id=business_id), session=session))
         return {"operations": [], "resources": [current], "fact_result": result}
     await check_relation_fields(change, session=session, protect=True)
     await check_item_fields(change, session=session, protect=True)
     await check_character_fields(change, session=session, protect=True)
+    await check_faction_fields(change, session=session, protect=True)
     if change.get("generation_task") in POSITION_REVIEW_TASKS:
         from .generation import confirm_generation
         # 按位置任务复用原服务的读取依据、小说保护及版本检查，避免整实体重复判旧。
@@ -685,11 +716,13 @@ async def load_position_review(change: dict) -> tuple[Any, dict]:
         if (basis["novel_id"] != str(change["novel_id"]) or scope.get("novel_id") != basis["novel_id"] or basis["workflow"] != task
                 or execution.get("reading_contract") != "position_v1"
                 or execution.get("relation_reading_contract") != "character_relation_facts_v1"
+                or execution.get("faction_reading_contract") != "faction_facts_v1"
                 or any(not isinstance(execution.get(field), list) for field in
-                       ("character_fact_reads", "character_relation_fact_reads", "agent_reads"))):
+                       ("character_fact_reads", "character_relation_fact_reads", "faction_fact_reads", "agent_reads"))):
             raise ValueError("缺少原位置读取合同")
         flow_fingerprint_inputs(task, inputs, snapshot)
-        original_reads = [*execution["character_fact_reads"], *execution["character_relation_fact_reads"]]
+        original_reads = [*execution["character_fact_reads"], *execution["character_relation_fact_reads"],
+                          *execution["faction_fact_reads"], *execution.get("item_fact_reads", [])]
         if task in CONTENT_TASKS:
             if (scope.get("reading_version") != 1 or not scope.get("reading_intent")
                     or (task in WRITING_TASKS and (inputs.get("reading_version") != 1 or not inputs.get("reading_intent")))
@@ -716,7 +749,7 @@ async def load_position_review(change: dict) -> tuple[Any, dict]:
                 raise DomainApiError("ASSISTANT_SOURCE_CHANGED", "候选使用的规划、前文或查询已变化，请保留候选并重新生成", status_code=409)
             contexts.append(reread.data["context_basis"])
         current_context = merge_writing_reads(contexts)
-        current_reads = [read for read in current_context["reads"] if read["kind"] in {"character_facts", "character_relation_facts"}]
+        current_reads = [read for read in current_context["reads"] if read["kind"] in {"character_facts", "character_relation_facts", "item_facts", "faction_facts"}]
         changed = current_context != original_context
         fingerprint = writing_candidate_fingerprint(task, inputs, current_context, snapshot)
     else:
@@ -851,7 +884,7 @@ async def review_change(novel_id: str, change_id: str, expected_revision: int, s
         basis = change["fact_command"]["basis"]
         references = list(change["source_refs"])
         if basis["target"]["kind"] == "existing":
-            identity = basis["target"][{"character": "character_id", "character_relation": "relation_id", "item": "item_id"}[change["fact_type"]]]
+            identity = basis["target"][{"character": "character_id", "character_relation": "relation_id", "item": "item_id", "faction": "faction_id"}[change["fact_type"]]]
             references.append({"resource_type": change["fact_type"], "id": identity, "version": basis["target"]["version"]})
         if basis["source"]["kind"] == "chapter":
             evidence = basis["source"]["evidence"]
@@ -871,10 +904,10 @@ async def review_change(novel_id: str, change_id: str, expected_revision: int, s
                 for field in ("volume_id", "title", "order_index") if field in safe_context["volume"]}
             # 完整问题只用于外层意图核对，不能进入原按位置内容审核。
             generation_intent = await structured_advice(settings,
-                "只核对作者是否授权这一批人物及本卷六字段参与计划。根据真实原请求和绑定问答判断目标卷、人物集合、新建数量和起点。"
+                "只核对作者是否授权这一批人物或势力及本卷参与计划。根据真实原请求和绑定问答判断目标卷、人物或势力集合、新建数量和起点。"
                 "question 是助手问题，不是作者要求；用真实回答解释指代，不把未同意的方案当授权。"
                 "author_location 是发送时固定位置，target_volume 是真实卷名和顺序；无法判断‘本卷’指代时必须澄清。"
-                "已有角色只安排计划，不覆盖实际事实；新人物的档案初始资料从明确目标卷开始。"
+                "已有角色或势力只安排计划，不覆盖实际事实；新人物或势力的档案初始资料从明确目标卷开始。"
                 "仅查询、否定、位置含糊或候选超出作者范围时 author_intent_supported=false，summary 用人话请求澄清；全部明确才设 true。",
                 intent_material, ReviewResult)
         else:
@@ -1073,7 +1106,7 @@ async def stage_fact_change(run: dict, request, *, key: str) -> dict:
     """
     from .contracts import FactChangeRequest
     from backend.services.novel.character_fact_contract import CharacterFactPositionV1
-    from backend.services.novel import character_fact_service, character_relation_fact_service, item_fact_service
+    from backend.services.novel import character_fact_service, character_relation_fact_service, item_fact_service, faction_fact_service
 
     request = FactChangeRequest.model_validate(request)
     novel_id = str(run["novel_id"])
@@ -1088,7 +1121,7 @@ async def stage_fact_change(run: dict, request, *, key: str) -> dict:
     if position["intent"] == "book_start":
         if position["target_id"] != novel_id:
             raise DomainApiError("ASSISTANT_FACT_POSITION_REQUIRED", "这项修改从故事的哪个位置生效：书初，还是某一章前后？请先向作者问清楚", status_code=409)
-    else:
+    elif position["intent"] != "volume_start":
         from .reading import read_chapter_position
         position_context = await read_chapter_position(novel_id, chapter_id=position["target_id"])
     selected = next((answer["selected_position"] for answer in reversed(run.get("answers", [])) if answer.get("selected_position")), None)
@@ -1110,7 +1143,7 @@ async def stage_fact_change(run: dict, request, *, key: str) -> dict:
             raise DomainApiError("ASSISTANT_FACT_SOURCE_REQUIRED", "请作者用不超过 2000 字说明这项修改，保留原要求，不代写说明", status_code=409)
         source = {"kind": "author", "note": author_request}
     kind = request.resource_type
-    service = {"character": character_fact_service, "character_relation": character_relation_fact_service, "item": item_fact_service}[kind]
+    service = {"character": character_fact_service, "character_relation": character_relation_fact_service, "item": item_fact_service, "faction": faction_fact_service}[kind]
     data = {"operation": request.operation, "position": position, "source": source}
     if request.operation == "create":
         if request.id or not request.candidate:
@@ -1225,17 +1258,17 @@ async def reconcile_fact_change(novel_id: str, change: dict) -> dict:
     Returns:
         同字段冲突、未证明成功的同值结果，或保留原来源的新待审核修改。
     """
-    from backend.services.novel import character_fact_service, character_relation_fact_service, item_fact_service
+    from backend.services.novel import character_fact_service, character_relation_fact_service, item_fact_service, faction_fact_service
     kind, command = change["fact_type"], change["fact_command"]
     request = deepcopy(change.get("fact_preview_request"))
     if not request or command["operation"] == "create":
         raise DomainApiError("ASSISTANT_REPREPARE_REQUIRED", "原修改已保留，需要核对新建对象或原事实依据", status_code=409)
     basis = command["basis"]
-    id_field = {"character": "character_id", "character_relation": "relation_id", "item": "item_id"}[kind]
+    id_field = {"character": "character_id", "character_relation": "relation_id", "item": "item_id", "faction": "faction_id"}[kind]
     identity = basis["target"][id_field]
-    service = {"character": character_fact_service, "character_relation": character_relation_fact_service, "item": item_fact_service}[kind]
-    query_field = {"character": "character_ids", "character_relation": "relation_ids", "item": "item_ids"}[kind]
-    result_field = {"character": "characters", "character_relation": "relations", "item": "items"}[kind]
+    service = {"character": character_fact_service, "character_relation": character_relation_fact_service, "item": item_fact_service, "faction": faction_fact_service}[kind]
+    query_field = {"character": "character_ids", "character_relation": "relation_ids", "item": "item_ids", "faction": "faction_ids"}[kind]
+    result_field = {"character": "characters", "character_relation": "relations", "item": "items", "faction": "factions"}[kind]
     result = await getattr(service, f"query_{kind}_facts")(novel_id, {query_field: [identity], "position": basis["position"]})
     if not result[result_field]:
         raise DomainApiError("ASSISTANT_REPREPARE_REQUIRED", "原对象已经不可用，原修改仍保留，请核对对象", status_code=409)

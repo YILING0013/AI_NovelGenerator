@@ -67,3 +67,58 @@ class LLMDuplicateKeyError(LLMSchemaError):
         self.raw_output_length = len(raw_output)
         self.raw_output_truncated = len(raw_output) > len(self.raw_output)
         super().__init__("模型 JSON 有重复字段，请查看原文并重新生成")
+
+
+class LLMConnectionError(LLMResponseError):
+    """连接中断或响应流未结束；已收到片段不能用作完整结果。"""
+
+
+def network_retry_delay(error: Exception, attempt: int) -> float | None:
+    """只识别明确的网络和服务暂时故障，并尊重服务端等待时间。
+
+    Args:
+        error: 客户端包装后的异常；沿显式原因读取 SDK 的状态和响应头。
+        attempt: 从零开始的本次重试次数。
+    Returns:
+        等待秒数；鉴权、格式、业务校验或未知故障返回空。
+    """
+    from datetime import datetime, timezone
+    from email.utils import parsedate_to_datetime
+    import math
+    import httpx2
+    import openai
+    import anthropic
+    from google.genai.errors import APIError
+    from google.genai._gaos.lib.compat_errors import APIStatusError as InteractionStatusError
+
+    if isinstance(error, (LLMAuthError, LLMSchemaError)):
+        return None
+    current = error.__cause__ or error
+    seen = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, (openai.APIStatusError, anthropic.APIStatusError, APIError, InteractionStatusError)):
+            status = getattr(current, "status_code", None) or getattr(current, "code", None)
+            if status not in {408, 409, 429, 500, 502, 503, 504, 529}:
+                return None
+            headers = getattr(getattr(current, "response", None), "headers", {}) or {}
+            if headers.get("x-should-retry") == "false":
+                return None
+            value = headers.get("retry-after")
+            if value:
+                try:
+                    delay = float(value)
+                except ValueError:
+                    try:
+                        delay = (parsedate_to_datetime(value) - datetime.now(timezone.utc)).total_seconds()
+                    except (ValueError, TypeError, OverflowError):
+                        delay = 0
+                if math.isfinite(delay) and delay > 0:
+                    return delay
+            return float(2 ** attempt)
+        if isinstance(current, (openai.APIConnectionError, anthropic.APIConnectionError,
+                                httpx2.NetworkError, httpx2.TimeoutException, httpx2.RemoteProtocolError,
+                                LLMConnectionError, LLMTimeoutError)):
+            return float(2 ** attempt)
+        current = current.__cause__
+    return None

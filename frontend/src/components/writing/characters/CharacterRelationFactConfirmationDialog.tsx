@@ -1,5 +1,7 @@
 "use client";
 
+import { downloadExport } from "@/lib/userExport";
+
 import { useContext, useEffect, useRef, useState, type RefObject } from "react";
 import { Button, Modal } from "@heroui/react";
 import { useTranslations } from "next-intl";
@@ -69,7 +71,7 @@ export default function CharacterRelationFactConfirmationDialog({ novelId, initi
     <Modal.Body className="px-5 py-5 sm:px-6"><div ref={editor}><CharacterRelationFactEditor draft={draft} disabled={busy} error={error === "CHARACTER_RELATION_FACT_LOCAL_CONFLICT" ? relationT("preparationConflict") : error || localError} fieldErrors={fieldErrors} onChange={(next) => { update(next); setFieldErrors({}); void persist(next).catch(() => {}); }} /></div></Modal.Body>
     <Modal.Footer className="flex flex-wrap justify-end gap-2 border-t border-border px-5 py-4 sm:px-6">
       {onRepreview && draft.command && !draft.command.unknown && !draft.command.saved && <Button variant="outline" isDisabled={busy} onPress={() => void repreview()}>{t("repreviewExplicit")}</Button>}
-      <Button variant="ghost" isDisabled={busy} onPress={() => { const url = URL.createObjectURL(new Blob([JSON.stringify(current.current, null, 2)], { type: "application/json" })); const link = document.createElement("a"); link.href = url; link.download = `character-relation-fact-${current.current.key}.json`; link.click(); URL.revokeObjectURL(url); setExportRequested(true); }}>{t("exportDraft")}</Button>
+      <Button variant="ghost" isDisabled={busy} onPress={() => { const url = URL.createObjectURL(new Blob([JSON.stringify(current.current, null, 2)], { type: "application/json" })); const link = document.createElement("a"); link.href = url; link.download = `character-relation-fact-${current.current.key}.json`; void downloadExport(link); URL.revokeObjectURL(url); setExportRequested(true); }}>{t("exportDraft")}</Button>
       {exportRequested && <Button variant="outline" isDisabled={busy} onPress={onClose}>{relationT("closeAfterSavingCopy")}</Button>}
       <Button variant="ghost" isDisabled={busy} onPress={() => void close()}>{t("closeKeep")}</Button>
       <Button variant="primary" isDisabled={busy || (!draft.command && (!draft.authorConfirmed || Boolean(localError)))} onPress={() => void confirm()}>{t(busy ? "saving" : draft.command?.saved ? "retryRead" : draft.command ? "retryOriginal" : "confirm")}</Button>

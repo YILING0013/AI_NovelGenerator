@@ -24,7 +24,7 @@ from PySide6.QtGui import QColor, QDesktopServices, QFont, QKeySequence, QPalett
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkProxy, QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit,
-    QMainWindow, QPlainTextEdit, QPushButton, QTabWidget, QVBoxLayout, QWidget,
+    QMainWindow, QMessageBox, QPlainTextEdit, QPushButton, QTabWidget, QVBoxLayout, QWidget,
 )
 
 from .logs import LogPreviewFilter
@@ -48,7 +48,8 @@ from .settings import (
 BASE_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = BASE_DIR / "frontend"
 VENV_PYTHON = BASE_DIR / ".venv" / "Scripts" / "python.exe"
-LOGS_DIR = BASE_DIR / "logs"
+from backend.storage import LOGS_DIR
+from backend.migrations import prepare_files, MigrationError
 
 LOG_READ_CHUNK_SIZE = 4096
 LOG_FLUSH_INTERVAL_MS = 80
@@ -1042,6 +1043,13 @@ class App(QMainWindow):
         self._cleanup_finished = threading.Event()
         self._cleanup_lock = threading.Lock()
         self._cleanup_error: str | None = None
+        self._preflight_active = False
+        self._preflight_thread: threading.Thread | None = None
+        self._preflight_proc: subprocess.Popen | None = None
+        self._preflight_lock = threading.Lock()
+        self._preflight_cancelled = threading.Event()
+        self._preflight_events = deque()
+        self._preflight_targets = ()
         self._backend_debug_enabled = False
         self._backend_debug_reply: QNetworkReply | None = None
         self._network = QNetworkAccessManager(self)
@@ -1188,6 +1196,7 @@ class App(QMainWindow):
         self.port_status_label.style().polish(self.port_status_label)
 
     def _sync_port_controls(self) -> None:
+        self._poll_preflight()
         if self._closing:
             if self._cleanup_done.is_set():
                 self.close()
@@ -1197,7 +1206,7 @@ class App(QMainWindow):
             self._closing = False
             self.centralWidget().setEnabled(True)
             self._set_port_status(f"关闭失败：{self._cleanup_error}。请检查日志后重试停止或关闭。", "error")
-        enabled = self.backend.is_stopped() and self.frontend.is_stopped()
+        enabled = not self._preflight_active and self.backend.is_stopped() and self.frontend.is_stopped()
         if enabled != self._port_controls_enabled:
             self.backend_port_entry.setEnabled(enabled)
             self.frontend_port_entry.setEnabled(enabled)
@@ -1205,9 +1214,11 @@ class App(QMainWindow):
             self._port_controls_enabled = enabled
         states = (self.backend.get_state(), self.frontend.get_state())
         self.backend_debug.setEnabled(
-            states[0] in {"not_started", "stopped", "running"} and self._backend_debug_reply is None
+            not self._preflight_active and states[0] in {"not_started", "stopped", "running"} and self._backend_debug_reply is None
         )
-        if "stopping" in states:
+        if self._preflight_active:
+            action = ("play", "检查中")
+        elif "stopping" in states:
             action = ("stop", "停止中")
         elif any(state in {"starting", "compiling", "running", "stop_failed"} for state in states):
             action = ("stop", "全部停止")
@@ -1215,10 +1226,13 @@ class App(QMainWindow):
             action = ("play", "全部启动")
         if self.run_all_btn.text() != action[1]:
             self.run_all_btn.set_action(*action)
-        self.run_all_btn.setEnabled("stopping" not in states)
+        self.run_all_btn.setEnabled(not self._preflight_active and "stopping" not in states)
+        self.frontend_mode.setEnabled(not self._preflight_active)
+        for service in (self.backend, self.frontend):
+            service.run_btn.setEnabled(not self._preflight_active and service.get_state() != "stopping")
 
     def _apply_port_settings(self) -> bool:
-        if not self.backend.is_stopped() or not self.frontend.is_stopped():
+        if self._preflight_active or not self.backend.is_stopped() or not self.frontend.is_stopped():
             self._set_port_status("请先停止前后端服务，再修改端口", "error")
             return False
 
@@ -1439,14 +1453,77 @@ class App(QMainWindow):
             reply.deleteLater()
             self._sync_port_controls()
 
+    def _prepare_startup(self, targets: tuple) -> None:
+        """后台检查成功后才启动指定服务，检查期间窗口仍可操作和关闭。
+
+        Args: targets: 待启动的服务面板及显示名称。
+        Returns: 无，结果交给现有 Qt 定时器处理。
+        """
+        if self._preflight_active or self._closing:
+            return
+        if not self.backend.is_stopped():
+            for service, label in targets:
+                if self._service_can_start(service, label): service.start()
+            return
+        self._preflight_active = True
+        self._preflight_cancelled.clear()
+        self._preflight_targets = targets
+        self._set_port_status("正在检查用户文件…")
+        self._sync_port_controls()
+        env = self.backend._build_env()
+        self._preflight_thread = threading.Thread(target=self._run_preflight, args=(env,), daemon=True)
+        self._preflight_thread.start()
+
+    def _run_preflight(self, env: dict[str, str]) -> None:
+        messages = []
+        try:
+            kwargs = {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {"start_new_session": True}
+            proc = subprocess.Popen(
+                [str(VENV_PYTHON), "-u", "-m", "backend.migrations"], cwd=BASE_DIR, env=env,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", **kwargs,
+            )
+            with self._preflight_lock:
+                self._preflight_proc = proc
+                if self._preflight_cancelled.is_set(): self.backend._kill_proc(proc)
+            with proc.stdout:
+                for line in proc.stdout:
+                    message = line.strip()
+                    if message.startswith("[stage] "):
+                        self._preflight_events.append(("progress", message[8:]))
+                    elif message:
+                        messages.append(message)
+            code = proc.wait()
+            self._preflight_events.append(("finished", (code, "；".join(messages))))
+        except (OSError, UnicodeError):
+            self._preflight_events.append(("finished", (1, "无法运行启动检查，请检查 Python 环境和文件权限。")))
+
+    def _poll_preflight(self) -> None:
+        # 后台线程只登记结果；所有控件更新和服务启动都留在 Qt 线程。
+        while self._preflight_events:
+            event, result = self._preflight_events.popleft()
+            if event == "progress":
+                if not self._closing: self._set_port_status(result)
+                continue
+            self._preflight_active = False
+            targets, self._preflight_targets = self._preflight_targets, ()
+            if self._closing or self._preflight_cancelled.is_set(): continue
+            code, message = result
+            if code not in (0, 2):
+                self._set_port_status(message or "启动检查失败，请检查 user_data/migrations。", "error")
+                continue
+            self._set_port_status(message or "启动检查完成。", "warning" if code == 2 else "success")
+            if all(self._service_can_start(service, label) for service, label in targets):
+                for service, _ in targets: service.start()
+
     def _toggle_service(self, service: ServicePanel, label: str) -> None:
+        if self._preflight_active or self._closing: return
         if service.get_state() in {"starting", "compiling", "running", "stop_failed"}:
             service.stop()
         elif service.is_stopped() and self._ensure_port_settings_applied():
             if service is self.frontend and not self._service_can_start(self.backend, "后端"):
                 return
             if self._service_can_start(service, label):
-                service.start()
+                self._prepare_startup(((service, label),))
         self._sync_port_controls()
 
     def _toggle_all(self) -> None:
@@ -1460,15 +1537,15 @@ class App(QMainWindow):
         self._sync_port_controls()
 
     def start_all(self) -> None:
-        """检查端口后启动前后端。"""
+        """检查端口后在后台预检，通过后启动前后端。"""
+        if self._preflight_active or self._closing: return
         if not self._ensure_port_settings_applied():
             return
         if not self._service_can_start(self.backend, "后端"):
             return
         if not self._service_can_start(self.frontend, "前端"):
             return
-        self.backend.start()
-        self.frontend.start()
+        self._prepare_startup(((self.backend, "后端"), (self.frontend, "前端")))
 
     def stop_all(self) -> None:
         """停止本窗口启动的前后端。"""
@@ -1505,6 +1582,14 @@ class App(QMainWindow):
             return
         failures = []
         try:
+            self._preflight_cancelled.set()
+            with self._preflight_lock:
+                preflight_proc = self._preflight_proc
+                if preflight_proc is not None and not self.backend._kill_proc(preflight_proc):
+                    failures.append("启动检查进程未能停止")
+            if self._preflight_thread is not None:
+                self._preflight_thread.join(timeout=THREAD_JOIN_TIMEOUT_SECONDS)
+                if self._preflight_thread.is_alive(): failures.append("启动检查尚未结束")
             for service in (self.backend, self.frontend):
                 try:
                     if not service.force_cleanup():
@@ -1531,6 +1616,14 @@ def main() -> None:
     """
     qt_app = QApplication(sys.argv)
     qt_app.setStyle("Fusion")
+    try:
+        notices = prepare_files()
+    except Exception as exc:
+        message = str(exc) if isinstance(exc, MigrationError) else "启动检查失败，请检查文件权限及迁移记录，原数据和备份已保留。"
+        QMessageBox.critical(None, "无法启动", message)
+        return
     window = App()
+    if notices:
+        window._set_port_status("；".join(notices), "warning")
     window.show()
     sys.exit(qt_app.exec())

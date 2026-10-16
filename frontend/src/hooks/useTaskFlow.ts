@@ -47,6 +47,7 @@ export function useTaskFlow(task: string) {
     request: TaskFlowRequest;
     nodes: CachedFlowNode[];
     completed: boolean;
+    networkInterrupted?: boolean;
     repair?: Record<string, unknown>;
   } | null>(null);
   const activeSignal = useRef<AbortSignal | null>(null);
@@ -214,17 +215,19 @@ export function useTaskFlow(task: string) {
     if (!definition) throw new Error(error || t("flowError"));
     if (activeSignal.current && !activeSignal.current.aborted) throw new Error(t("states.running"));
     if (retry === "repair" && !attempt.current?.repair) throw new Error(t("repairUnavailable"));
-    const continuation = typeof retry === "object" ? continuationRef.current : null;
-    if (typeof retry === "object") {
+    const recovering = retry === true && attempt.current?.networkInterrupted;
+    const continuation = typeof retry === "object" || recovering ? continuationRef.current : null;
+    if (recovering && continuation) retry = { continuation: true, additionalRounds: continuation.resume_rounds ?? 0 };
+    if (typeof retry === "object" || recovering) {
       if (attempt.current && (url !== attempt.current.url || JSON.stringify(scope) !== JSON.stringify(attempt.current.request.scope))) {
         clearContinuation();
         throw new ApiRequestError({ status: 409, code: "AGENT_CONTINUATION_CHANGED", message: t("agent.continuationChanged") });
       }
-      if (!continuation || !attempt.current || Date.parse(continuation.expires_at) <= Date.now()) {
+      if (!continuation || !attempt.current || (!continuation.running && Date.parse(continuation.expires_at) <= Date.now())) {
         clearContinuation();
         throw new ApiRequestError({ status: 409, code: "AGENT_CONTINUATION_EXPIRED", message: t("agent.continuationExpired") });
       }
-      if (!Number.isInteger(retry.additionalRounds) || retry.additionalRounds < 1 || retry.additionalRounds > 16) throw new Error(t("agent.roundsInvalid"));
+      if (typeof retry === "object" && (!Number.isInteger(retry.additionalRounds) || retry.additionalRounds < (continuation.reason === "network" ? 0 : 1) || retry.additionalRounds > 16)) throw new Error(t("agent.roundsInvalid"));
     }
     clearContinuation();
     const requestContinuationEpoch = continuationEpoch.current;
@@ -254,11 +257,13 @@ export function useTaskFlow(task: string) {
     // 只重用本轮失败前完成的节点；候选校验失败后重新生成，避免重复返回同一份坏结果。
     let completed = previous && !previous.completed && retry !== "repair" ? structuredClone(previous.nodes) : [];
     request.cached_nodes = completed;
-    const currentAttempt = { url: previous?.url ?? url, request, nodes: completed, completed: false, repair: retry === "repair" ? previous?.repair : undefined };
+    const currentAttempt = { url: previous?.url ?? url, request, nodes: completed, completed: false, networkInterrupted: Boolean(recovering), repair: retry === "repair" ? previous?.repair : undefined };
     attempt.current = currentAttempt;
     // 继续同一轮时保留已读资料；普通重试只保留完整且可复用的节点。
     if (!continuation) setEvents(completed.map((node) => ({ ...node, state: "cached" })));
     let result: unknown;
+    let checkpoint = continuation;
+    let checkpointCompleted = false;
     try {
       await apiPostSSE(
         currentAttempt.url,
@@ -267,9 +272,19 @@ export function useTaskFlow(task: string) {
           : currentAttempt.repair ? { ...request, repair: currentAttempt.repair } : request,
         (event, data) => {
           if (signal.aborted || attempt.current !== currentAttempt) return;
+          if (data.agent_continuation && continuationEpoch.current === requestContinuationEpoch) {
+            checkpoint = data.agent_continuation as AgentContinuation;
+            checkpointCompleted = false;
+          }
           if (typeof data.node_id === "string") {
+            const publicData = { ...data };
+            delete publicData.agent_continuation;
+            if (publicData.details && typeof publicData.details === "object") {
+              publicData.details = { ...publicData.details };
+              delete (publicData.details as Record<string, unknown>).agent_continuation;
+            }
             const nodeEvent = {
-              ...data,
+              ...publicData,
               ...(event === "error" && data.partial_outputs ? { outputs: (data.partial_outputs as Record<string, Record<string, unknown>>)[String(data.instance_path)] } : {}),
               state: data.cached
                 ? "cached"
@@ -305,6 +320,7 @@ export function useTaskFlow(task: string) {
                 cached,
               ];
               currentAttempt.nodes = completed;
+              if (nodeEvent.instance_path === checkpoint?.instance_path) checkpointCompleted = true;
             }
           }
           if (event === "done") result = data.result;
@@ -312,13 +328,32 @@ export function useTaskFlow(task: string) {
         { signal },
       );
       currentAttempt.completed = true;
+      currentAttempt.networkInterrupted = false;
       currentAttempt.repair = undefined;
     } catch (failure) {
+      let reportedFailure = failure;
       if (!signal.aborted) {
         setError(failure instanceof Error ? failure.message : String(failure));
         const returnedContinuation = failure instanceof ApiRequestError ? failure.details.agent_continuation as AgentContinuation | undefined : undefined;
-        const transientFailure = !(failure instanceof ApiRequestError) || (failure.status >= 500 && !failure.code?.startsWith("AGENT_") && !failure.details.agent_continuation_unavailable);
-        const resumable = returnedContinuation ?? (transientFailure ? continuation : null);
+        const browserDisconnected = !(failure instanceof ApiRequestError) || failure.code === "SSE_PROTOCOL_ERROR" || failure.code === "SSE_CONNECTION_LOST";
+        const transientFailure = !(failure instanceof ApiRequestError) || (failure.status >= 500 && !failure.code?.startsWith("AGENT_") && !failure.details.agent_continuation_unavailable) || failure.code === "AGENT_CONTINUATION_BUSY";
+        // 整个流程使用原服务端凭证；终态丢失时也不能静默新建请求。
+        const resumable = returnedContinuation ?? (transientFailure && (checkpoint?.flow_recovery || !checkpointCompleted || browserDisconnected) ? checkpoint : null);
+        const graphs = [definition];
+        let hasAgent = false;
+        while (graphs.length) {
+          const graph = graphs.pop()!;
+          hasAgent ||= graph.nodes.some(node => node.type === "agent");
+          graphs.push(...Object.values(graph.subflows));
+        }
+        currentAttempt.networkInterrupted = Boolean((checkpoint?.reason === "network" && (checkpoint.flow_recovery || !checkpointCompleted || browserDisconnected)) || (browserDisconnected && hasAgent));
+        if (resumable?.reason === "network") {
+          currentAttempt.networkInterrupted = true;
+          const message = browserDisconnected ? t("agent.browserDisconnected") : failure instanceof ApiRequestError && failure.code === "AGENT_MODEL_CONNECTION_FAILED" ? t("agent.modelDisconnected") : failure instanceof Error ? failure.message : String(failure);
+          setError(message);
+          // 外层表单显示同一条本地化错误，保留原错误码与详情供原有处理使用。
+          reportedFailure = failure instanceof ApiRequestError ? new ApiRequestError({ ...failure, message }) : new Error(message, { cause: failure });
+        }
         if (resumable?.token && continuationEpoch.current === requestContinuationEpoch && attempt.current === currentAttempt) {
           continuationRef.current = resumable;
           setAgentContinuation(resumable);
@@ -382,7 +417,7 @@ export function useTaskFlow(task: string) {
         }
         setCanRepair(Boolean(currentAttempt.repair));
       }
-      throw failure;
+      throw reportedFailure;
     } finally {
       if (activeSignal.current === signal) activeSignal.current = null;
       setRepairing(false);

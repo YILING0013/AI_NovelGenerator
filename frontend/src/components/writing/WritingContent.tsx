@@ -249,6 +249,8 @@ export default function WritingContent({ mode, novelId, query, active = true, hi
       const approved = approvedHistory.current;
       approvedHistory.current = null;
       if (approved && traversal?.session === approved.session && traversal.from === approved.from && traversal.to === approved.to) { traversalRequest.current = null; return; }
+      // 设置并行路由可保留原工作区；从设置返回不属于离开工作区，不能恢复到设置历史项。
+      if (!restoring && traversal?.sourcePathname && traversal.sourcePathname !== workspacePathname) return;
       // 只使用持久布局在本会话真实写入的历史位置，未知或旧会话条目没有可推算的距离。
       if (!traversal || traversal.from === traversal.to) return;
       const targetParams = new URLSearchParams(window.location.search);
@@ -580,6 +582,12 @@ export default function WritingContent({ mode, novelId, query, active = true, hi
           onBusyChange={workspaceBusyChanged}
           beforeLeaveRef={volumeBeforeLeave}
           requestedVolumeId={requestedVolumeId}
+          requestedEntityId={activeView === "characters" ? searchParams.get("character_id") : activeView === "factions" ? searchParams.get("faction_id") : null}
+          onProcessLaunchContext={(kind, id, volumeId) => {
+            if (!activeWorkspace.current.pageActive) return;
+            const params = new URLSearchParams({ workspace: "volume-planning", view: kind === "character" ? "characters" : "factions", volume_id: volumeId, [`${kind}_id`]: id });
+            window.history.pushState({}, "", `?${params}`);
+          }}
           focusPlot={searchParams.get("focus") === "plot"}
           onViewChange={(view) => selectView("volume-planning", view)}
           onVolumeIdChange={selectVolumeId}

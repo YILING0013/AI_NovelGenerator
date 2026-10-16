@@ -6,10 +6,32 @@ from backend.services.task_flows.integration import generate_task_flow
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from backend.api.contracts import ObjectIdString
-from backend.llm.schemas.volume_planning_pydantic import VolumeLaunchPreviewV1, VolumeSkeletonPreviewV1
+from backend.api.default_routers.arc_router import EXPECTED_ERRORS, raise_arc_http_error
+from backend.llm.schemas.volume_planning_pydantic import VolumeLaunchContextV1, VolumeLaunchPreviewV1, VolumeSkeletonPreviewV1
+from backend.services.llm.volume_planning_context import load_volume_planning_context, project_volume_launch_context
 
 
 router = APIRouter(prefix="/api/llm", tags=["volume-planning-generation"])
+
+
+@router.get(
+    "/novels/{novel_id}/planning/volumes/{volume_id}/launch-context",
+    response_model=VolumeLaunchContextV1,
+)
+async def read_volume_launch_context(novel_id: ObjectIdString, volume_id: ObjectIdString) -> dict:
+    """读取真实卷启动资料提醒，不生成候选或写入任何资料。
+
+    Args:
+        novel_id: 当前小说 ID。
+        volume_id: 目标活动卷 ID。
+    Returns:
+        从原启动上下文取得的名称、位置、计数和具体问题。
+    """
+    try:
+        context = await load_volume_planning_context(novel_id, target_volume_id=volume_id)
+    except EXPECTED_ERRORS as exc:
+        raise_arc_http_error(exc, prefix="VOLUME_PLANNING", label="卷启动资料")
+    return project_volume_launch_context(context, volume_id.lower())
 
 
 @router.post(

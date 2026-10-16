@@ -821,6 +821,9 @@ class NovelService:
                 "character_creation_batch_receipts_deleted": await BaseRepository(
                     "character_creation_batch_receipts"
                 ).hard_delete_many(novel_query, session=session),
+                "faction_creation_batch_receipts_deleted": await BaseRepository(
+                    "faction_creation_batch_receipts"
+                ).hard_delete_many(novel_query, session=session),
                 "character_faction_bindings_deleted": await BaseRepository(
                     "character_faction_bindings"
                 ).hard_delete_many(novel_query, session=session),

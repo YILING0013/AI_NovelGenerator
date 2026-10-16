@@ -1,4 +1,6 @@
 "use client";
+
+import { downloadExport } from "@/lib/userExport";
 import { useAssistantResource } from "@/components/writing/assistant/AssistantContext";
 import { useResourceRefresh } from "@/hooks/useResourceRefresh";
 import { useCharacterBatchCreation } from "./useCharacterBatchCreation";
@@ -72,14 +74,15 @@ import { createEmptyCharacterProfile, REQUIRED_PROFILE_TEXT_FIELDS, profileForCh
 export { splitCharacterFactCreate, profileForCharacterFactDraft } from "./characterFactCreate";
 import CharacterFactConfirmationDialog from "./CharacterFactConfirmationDialog";
 import { characterFactDraftScope, type CharacterFactDraftV1 } from "./characterFactDrafts";
-import { readCharacterFactDrafts } from "./characterFactStorage";
-import { readCharacterFactPreparations, useCharacterFactPreparationPersistence, type CharacterFactPreparationV1 } from "./characterFactPreparation";
+import { readCharacterFactDrafts, writeCharacterFactDraft } from "./characterFactStorage";
+import DraftChip from "@/components/shared/DraftChip";
+import { readCharacterFactPreparations, removeCharacterFactPreparation, useCharacterFactPreparationPersistence, type CharacterFactPreparationV1 } from "./characterFactPreparation";
 import type { CharacterFactField, CharacterFactPositionV1, CharacterFactReadResultV1 } from "@/types/characterFacts";
 import CharacterRelationFactPreparationDialog from "./CharacterRelationFactPreparationDialog";
 import CharacterRelationFactConfirmationDialog from "./CharacterRelationFactConfirmationDialog";
-import { readCharacterRelationFactPreparations, useCharacterRelationFactPreparationPersistence, type CharacterRelationFactPreparationV1 } from "./characterRelationFactPreparation";
+import { readCharacterRelationFactPreparations, removeCharacterRelationFactPreparation, useCharacterRelationFactPreparationPersistence, type CharacterRelationFactPreparationV1 } from "./characterRelationFactPreparation";
 import { characterRelationFactDraftScope, type CharacterRelationFactDraftV1 } from "./characterRelationFactDrafts";
-import { readCharacterRelationFactDrafts } from "./characterRelationFactStorage";
+import { readCharacterRelationFactDrafts, writeCharacterRelationFactDraft } from "./characterRelationFactStorage";
 import { loadCharacterFactChapters } from "./characterFactPositions";
 import type { HierarchyRecord } from "@/types/hierarchy";
 import type { CharacterRelationFactCreateDataV1, CharacterRelationFactReadResultV1 } from "@/types/characterRelationFacts";
@@ -967,7 +970,7 @@ export default function CharacterCardsWorkspace({
   const exportRelationCandidate = () => {
     const value = { ...relationCandidateRef.current?.value, candidate: relationCandidateState.candidate ?? relationCandidateRef.current?.value.candidate, basis: relationCandidateState.basis ?? relationCandidateRef.current?.value.basis, generation_input: relationGenerationInput ?? relationCandidateRef.current?.value.generation_input };
     const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: "application/json" }));
-    const link = document.createElement("a"); link.href = url; link.download = `relationship-candidates-${novelId}.json`; link.click(); URL.revokeObjectURL(url);
+    const link = document.createElement("a"); link.href = url; link.download = `relationship-candidates-${novelId}.json`; void downloadExport(link); URL.revokeObjectURL(url);
     setRelationExported(true);
   };
 
@@ -1761,9 +1764,20 @@ export default function CharacterCardsWorkspace({
         className={`flex min-h-0 flex-1 flex-col gap-3 ${corePreview || relationPreview ? "overflow-hidden" : "workspace-scrollbar overflow-y-auto px-4 py-3 sm:px-6"}`}
       >
         {view === "relations" && <div className="flex flex-wrap gap-2 empty:hidden">
-          {relationPreparations.filter((row) => !row.origin?.candidateRef).map((row) => <Button key={row.key} variant="ghost" size="sm" isDisabled={factBusy} onPress={() => void resumeRelationFact(row).catch((error) => setActionError(error.message))}>{relationT("preparationDrafts")} · {row.kind === "create" ? `${row.candidate.source_character_id} / ${row.candidate.target_character_id}` : row.relation_id}</Button>)}
-          {relationFactDrafts.filter((row) => !row.origin?.candidateRef).map((row) => <Button key={row.key} variant="ghost" size="sm" isDisabled={factBusy} onPress={() => void resumeRelationFact(row).catch((error) => setActionError(error.message))}>{ft("resumeDraft", { position: row.positionLabel })}</Button>)}
-          {relationCandidateDrafts.map((row, index) => <Button key={row.key} variant="ghost" size="sm" isDisabled={factBusy || Boolean(relationBatch.command) || relationBatch.busy} onPress={() => void resumeRelationCandidate(row).catch((error) => setActionError(error.message))}>{t("candidate.relationTitle")} {index + 1}{row.value.command?.saved !== undefined ? ` · ${recordT("saved")}` : row.value.command && row.value.command.unknown !== false ? ` · ${recordT("unknown")}` : ""}</Button>)}
+          {relationPreparations.filter((row) => !row.origin?.candidateRef).map((row) => <DraftChip key={row.key} label={row.kind === "create" ? `${row.candidate.source_character_id} / ${row.candidate.target_character_id}` : row.relation_id} isDisabled={factBusy || Boolean(relationSession)}
+            onResume={() => void resumeRelationFact(row).catch((error) => setActionError(error.message))}
+            onDiscard={!row.origin ? async () => { await relationPreparationStore.queue.current; await removeCharacterRelationFactPreparation(novelId!, row.key, row.revision); await refreshRelationDrafts(); } : undefined} />)}
+          {relationFactDrafts.filter((row) => !row.origin?.candidateRef).map((row) => <DraftChip key={row.key} label={row.positionLabel} status={row.command?.saved ? "saved" : row.command ? row.command.unknown ? "pending" : "rejected" : "draft"} isDisabled={factBusy || Boolean(relationSession)}
+            onResume={() => void resumeRelationFact(row).catch((error) => setActionError(error.message))}
+            onDiscard={!row.origin && (!row.command || row.command.saved && row.command.readbackDone) ? async () => { await writeCharacterRelationFactDraft(characterRelationFactDraftScope(novelId!), row, row.revision, true); await refreshRelationDrafts(); } : undefined} />)}
+          {relationCandidateDrafts.map((row, index) => row.key === relationCandidateEntry?.key ? null : <DraftChip key={row.key} label={`${t("candidate.relationTitle")} ${index + 1}`} status={row.value.command?.saved !== undefined ? "saved" : row.value.command ? row.value.command.unknown !== false ? "pending" : "rejected" : "draft"}
+            isDisabled={factBusy || Boolean(relationBatch.command) || relationBatch.busy || relationCandidateEntry?.key === row.key}
+            onResume={() => void resumeRelationCandidate(row).catch((error) => setActionError(error.message))}
+            onDiscard={!row.value.command && Object.keys(row.value.members).length === 0 ? async () => {
+              const result = await writeCharacterRelationCandidateDraft(novelId!, null, row);
+              if (!result.written) throw new Error(relationT("preparationConflict"));
+              await refreshRelationDrafts();
+            } : undefined} />)}
         </div>}
         {relationCandidateEntry?.value.command && !relationPreview && <div className="grid gap-3 border-y border-border py-4">
           <p role="status">{recordT(relationCandidateEntry.value.command.saved !== undefined ? "saved" : relationCandidateEntry.value.command.unknown !== false ? "unknown" : "rejected")}</p>
@@ -1773,10 +1787,14 @@ export default function CharacterCardsWorkspace({
         </div>}
         {relationLocalError && <RelationEditorErrorSummary message={relationLocalError} />}
         {relationLocalError && relationExported && <Button variant="outline" isDisabled={factBusy} onPress={() => { clearPreview(); relationCandidateRef.current = null; setRelationCandidateEntry(null); setRelationLocalError(""); relationCandidateQueue.current = Promise.resolve(); relationCandidateUnsaved.current = false; void refreshRelationDrafts().catch((error) => setActionError(error.message)); }}>{relationT("closeAfterSavingCopy")}</Button>}
-        {view === "profiles" && createPreparations.length > 0 && <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3"><span className="text-xs text-muted">{ft("preparationDrafts")}</span>{createPreparations.map((preparation) => <Button key={preparation.key} size="sm" variant="ghost" isDisabled={factBusy} onPress={() => void keepFacts().then(() => {
-          setManualPreparation(preparation);
-        }).catch((error) => setActionError(error.message))}>{preparation.profile.name || t("manualCharacter.title")}</Button>)}</div>}
-        {view === "profiles" && newFactDrafts.length > 0 && <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3"><span className="text-xs text-muted">{ft("retainedDrafts")}</span>{newFactDrafts.map((draft) => <Button key={draft.key} size="sm" variant="ghost" isDisabled={factBusy} onPress={() => void keepFacts().then(() => setNewFactDraft(draft)).catch((error) => setActionError(error.message))}>{draft.preview.basis.target.kind === "new" ? draft.preview.basis.target.candidate.name : ""} · {draft.positionLabel}</Button>)}</div>}
+        {view === "profiles" && (createPreparations.length > 0 || newFactDrafts.length > 0) && <div className="flex flex-wrap items-center gap-2" aria-label={ft("retainedDrafts")}>
+          {createPreparations.map((preparation) => <DraftChip key={preparation.key} label={preparation.profile.name || t("manualCharacter.title")} isDisabled={factBusy || Boolean(manualPreparation || newFactDraft)}
+            onResume={() => void keepFacts().then(() => setManualPreparation(preparation)).catch((error) => setActionError(error.message))}
+            onDiscard={async () => { await preparationStore.queue.current; await removeCharacterFactPreparation(novelId!, preparation.key, preparation.revision); await refreshNewFactDrafts(); }} />)}
+          {newFactDrafts.map((draft) => <DraftChip key={draft.key} label={`${draft.preview.basis.target.kind === "new" ? draft.preview.basis.target.candidate.name : ""} · ${draft.positionLabel}`} status={draft.command?.saved ? "saved" : draft.command ? draft.command.unknown ? "pending" : "rejected" : "draft"} isDisabled={factBusy || Boolean(manualPreparation || newFactDraft)}
+            onResume={() => void keepFacts().then(() => setNewFactDraft(draft)).catch((error) => setActionError(error.message))}
+            onDiscard={!draft.command || draft.command.saved && draft.command.readbackDone ? async () => { await writeCharacterFactDraft(characterFactDraftScope(novelId!), draft, draft.revision, true); await refreshNewFactDrafts(); } : undefined} />)}
+        </div>}
         {coreCandidateState.status !== "generating" && relationCandidateState.status !== "generating" && (
           <div className={corePreview || relationPreview ? "shrink-0 px-4 pt-5 empty:hidden sm:px-6" : "empty:hidden"}>
             {view === "profiles" ? <TaskFlowProgress key="profiles" flow={coreFlow} failed={coreCandidateState.status === "error" && coreCandidateState.candidate === null} onRetry={() => void handleGenerateCoreCharacters(true)} onContinue={(additionalRounds) => void handleGenerateCoreCharacters({ continuation: true, additionalRounds })} onDiscard={handleCancelGeneration} />
@@ -1857,7 +1875,7 @@ export default function CharacterCardsWorkspace({
             onExportCore={() => {
               const content = { candidate: coreCandidateState.candidate, basis: coreCandidateState.basis, generation_input: coreGenerationInput, command: legacyCoreRef.current };
               const url = URL.createObjectURL(new Blob([JSON.stringify(content, null, 2)], { type: "application/json" }));
-              const link = document.createElement("a"); link.href = url; link.download = `character-candidates-${novelId}.json`; link.click(); URL.revokeObjectURL(url);
+              const link = document.createElement("a"); link.href = url; link.download = `character-candidates-${novelId}.json`; void downloadExport(link); URL.revokeObjectURL(url);
             }}
             coreAdoptionBlocked={Boolean(coreBatch.command || legacyCoreCommand?.unknown || legacyCoreCommand?.saved || factBusy)}
             hasLegacyCoreCommand={Boolean(legacyCoreCommand || coreBatch.command)}

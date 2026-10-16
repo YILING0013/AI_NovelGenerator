@@ -96,7 +96,7 @@ def validate_item_candidates(
         else ItemCandidateV1.model_validate(item)
         for item in candidates
     ]
-    if require_generated_count and len(normalized_candidates) != normalized_input.item_count:
+    if require_generated_count and normalized_input.item_count is not None and len(normalized_candidates) != normalized_input.item_count:
         raise ValueError(f"模型物品数量必须严格等于 {normalized_input.item_count}")
 
     used_tokens = set(context["existing_item_tokens"])

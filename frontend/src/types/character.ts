@@ -144,7 +144,7 @@ export interface CoreCharactersResultV1 {
 /** 核心角色生成确认时可重算指纹的严格业务输入。 */
 export interface CoreCharactersGenerationInputV1 extends ReasoningOptions {
   novel_id: string;
-  character_count: number;
+  character_count: number | null;
   user_guidance: string | null;
   temperature?: number | null;
   top_p?: number | null;

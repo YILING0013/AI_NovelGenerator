@@ -1,4 +1,7 @@
 "use client";
+import { TooltipHint } from "@/components/shared/TooltipHint";
+
+import { downloadExport } from "@/lib/userExport";
 
 import { useContext, useEffect, useRef, useState, type RefObject } from "react";
 import { Button, Modal } from "@heroui/react";
@@ -46,6 +49,13 @@ export default function CharacterRelationFactPreparationDialog({ initialPreparat
   const kind = setup?.record?.kind ?? (operation === "change" ? "change" : "start");
   const note = preparation.kind === "create" ? preparation.note : preparation.setup.note;
   const blocked = busy || storageConflict;
+  const discard = async () => {
+    if (pending.current || storageConflict || current.current.origin) return;
+    pending.current = true; setBusy(true);
+    try { await store.remove(current.current); onClose(); }
+    catch (failure) { if (alive.current) setError((failure as Error).message); }
+    finally { pending.current = false; if (alive.current) setBusy(false); }
+  };
   useEffect(() => { store.persisted.current.set(initialPreparation.key, initialPreparation.revision); }, [initialPreparation, store]);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   useEffect(() => { onBusy?.(busy); return () => onBusy?.(false); }, [busy, onBusy]);
@@ -108,7 +118,7 @@ export default function CharacterRelationFactPreparationDialog({ initialPreparat
       if (!alive.current) return;
       const url = URL.createObjectURL(new Blob([JSON.stringify(current.current, null, 2)], { type: "application/json;charset=utf-8" }));
       const link = document.createElement("a"); link.href = url; link.download = `character-relation-preparation-${current.current.key}.json`;
-      link.click(); URL.revokeObjectURL(url); setExportRequested(true);
+      void downloadExport(link); URL.revokeObjectURL(url); setExportRequested(true);
     } catch (failure) { if (alive.current) setError((failure as Error).message); }
     finally { pending.current = false; if (alive.current) setBusy(false); }
   };
@@ -165,10 +175,10 @@ export default function CharacterRelationFactPreparationDialog({ initialPreparat
         <p role="status" className="text-sm text-amber-700 dark:text-amber-300">{relationT("samePosition")}</p>
         {samePosition.map((record) => <div key={record.history_id} className="grid min-w-0 gap-2"><p className="reading-copy whitespace-pre-wrap">{record.after.current_state}</p><div><Button variant="outline" isDisabled={blocked || preparation.setup.record?.history_id === record.history_id} onPress={() => update({ ...preparation, setup: { ...preparation.setup, operation: "replace", record } })}>{relationT("replaceRecord")}</Button></div></div>)}
       </section>}
-      {operation !== "void" && (kind === "start" ? <label className="grid gap-2 text-xs font-medium text-muted">{t("authorNote")}<textarea className={`${INPUT} resize-y leading-6`} rows={3} disabled={blocked} value={note} onChange={(event) => update(preparation.kind === "create" ? { ...preparation, note: event.target.value } : { ...preparation, setup: { ...preparation.setup, note: event.target.value } })} /></label> : preparation.kind === "existing" && <EvidencePicker key={characterFactPositionKey(position)} novelId={novelId} chapters={chapters.filter((chapter) => chapter.chapter_id === position?.target_id)} value={preparation.setup.evidence} label={t("source")} disabled={blocked || !position} onChange={(value) => { if (value === null) update({ ...preparation, setup: { ...preparation.setup, evidence: null } }); }} onSelectEvidence={(evidence) => update({ ...preparation, setup: { ...preparation.setup, evidence } })} />)}
+      {operation !== "void" && (kind === "start" ? <label className="grid gap-2 text-xs font-medium text-muted"><TooltipHint label={t("authorNote")} text={t("authorNoteHelp")} /><textarea aria-label={t("authorNote")} className={`${INPUT} resize-y leading-6`} rows={3} disabled={blocked} value={note} onChange={(event) => update(preparation.kind === "create" ? { ...preparation, note: event.target.value } : { ...preparation, setup: { ...preparation.setup, note: event.target.value } })} /></label> : preparation.kind === "existing" && <EvidencePicker key={characterFactPositionKey(position)} novelId={novelId} chapters={chapters.filter((chapter) => chapter.chapter_id === position?.target_id)} value={preparation.setup.evidence} label={t("source")} disabled={blocked || !position} onChange={(value) => { if (value === null) update({ ...preparation, setup: { ...preparation.setup, evidence: null } }); }} onSelectEvidence={(evidence) => update({ ...preparation, setup: { ...preparation.setup, evidence } })} />)}
       {reading && <p role="status">{t("loading")}</p>}
       {readError && <p role="alert" className="text-sm text-red-600 dark:text-red-300">{readError}</p>}
       {preparation.kind === "existing" && blockers.map((historyId) => <label key={historyId} className="flex min-h-11 items-start gap-2 text-sm"><input type="checkbox" disabled={blocked} checked={preparation.setup.resolves.current_state?.includes(historyId) ?? false} onChange={(event) => { const ids = event.target.checked ? [...(preparation.setup.resolves.current_state ?? []), historyId] : (preparation.setup.resolves.current_state ?? []).filter((id) => id !== historyId); update({ ...preparation, setup: { ...preparation.setup, resolves: ids.length ? { current_state: ids } : {} } }); }} /><span>{t("resolveBlocking", { field: relationT("currentState"), id: historyId })}</span></label>)}
-    </Modal.Body><Modal.Footer className="flex flex-wrap justify-end gap-2 border-t border-border px-5 py-4 sm:px-6">{storageConflict && <Button variant="outline" isDisabled={busy} onPress={() => void exportCopy()}>{relationT("exportPreparation")}</Button>}{exportRequested && <Button variant="outline" isDisabled={busy} onPress={onClose}>{relationT("closeAfterSavingCopy")}</Button>}<Button variant="ghost" isDisabled={blocked} onPress={() => void close()}>{t("closeKeep")}</Button><Button variant="primary" isDisabled={blocked || reading || Boolean(readError)} onPress={() => void preview()}>{t(busy ? "loading" : "preview")}</Button></Modal.Footer>
+    </Modal.Body><Modal.Footer className="flex flex-wrap justify-end gap-2 border-t border-border px-5 py-4 sm:px-6">{storageConflict && <Button variant="outline" isDisabled={busy} onPress={() => void exportCopy()}>{relationT("exportPreparation")}</Button>}{exportRequested && <Button variant="outline" isDisabled={busy} onPress={onClose}>{relationT("closeAfterSavingCopy")}</Button>}{!preparation.origin && <Button variant="ghost" isDisabled={blocked} onPress={() => void discard()}>{t("discardClose")}</Button>}<Button variant="ghost" isDisabled={blocked} onPress={() => void close()}>{t("closeKeep")}</Button><Button variant="primary" isDisabled={blocked || reading || Boolean(readError)} onPress={() => void preview()}>{t(busy ? "loading" : "preview")}</Button></Modal.Footer>
   </Modal.Dialog></Modal.Container></RetainedModalBackdrop>;
 }

@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from backend.services.novel.writing_context import faction_design_content
 from backend.db.errors import DuplicateKeyError, NotFoundError
 from backend.db.repositories.faction_relation_repository import faction_relation_repo
 from backend.db.repositories.faction_repository import faction_repo
@@ -149,7 +150,7 @@ class FactionRelationGenerationService:
             )
 
         faction_projections = [
-            _project(factions_by_id[faction_id], FACTION_PROMPT_FIELDS)
+            faction_design_content(factions_by_id[faction_id], FACTION_PROMPT_FIELDS)
             for faction_id in request.faction_ids
         ]
         relation_projections = [

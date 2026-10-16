@@ -19,7 +19,7 @@ from bson.errors import BSONError
 from bson.raw_bson import RawBSONDocument
 
 from backend.ops import book_archive as archive
-from backend.ops.book_archive_contract import ArchiveValidationError, CHARACTER_BATCH_COLLECTIONS as COLLECTIONS, validate_documents
+from backend.ops.book_archive_contract import ArchiveValidationError, FACTION_BATCH_COLLECTIONS as COLLECTIONS, validate_documents
 from backend.ops.book_archive_warnings import driver_warning_guard
 
 
@@ -165,7 +165,7 @@ async def export_book(
                                             raise ArchiveValidationError(location, "备份包超过大小限制")
                             entries[name] = {"path": path, "count": len(documents[name]),
                                              "size_bytes": collection_bytes, "sha256": digest.hexdigest()}
-                    summary = validate_documents(documents, book_id, format_version=archive.CHARACTER_BATCH_FORMAT_VERSION)
+                    summary = validate_documents(documents, book_id, format_version=archive.FACTION_VOLUME_START_FORMAT_VERSION)
                     assets = []
                     cover = documents["novels"][0].get("cover_image")
                     if cover not in (None, ""):
@@ -198,10 +198,10 @@ async def export_book(
                         assets.append({"path": cover[1:], "size_bytes": len(content), "sha256": match[1]})
                     location = "manifest.json"
                     manifest = {
-                        "format": archive.FORMAT, "format_version": archive.CHARACTER_BATCH_FORMAT_VERSION,
+                        "format": archive.FORMAT, "format_version": archive.FACTION_VOLUME_START_FORMAT_VERSION,
                         "source_revision": source_revision, "novel_id": novel_id, "complete": True,
                         "encoding": archive.ENCODING, "collections": entries, "assets": assets,
-                        "validation_summary": summary, "scope": archive.CHARACTER_BATCH_EXPORT_SCOPE,
+                        "validation_summary": summary, "scope": archive.FACTION_VOLUME_START_EXPORT_SCOPE,
                         "export_profile": archive.EXPORT_PROFILE,
                     }
                     content = json.dumps(manifest, ensure_ascii=False, separators=(",", ":")).encode("utf-8")

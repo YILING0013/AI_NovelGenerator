@@ -22,8 +22,9 @@ from backend.llm.models import LLMRequest, TokenUsage
 from backend.services.llm.format_review_service import FORMAT_REVIEW_PROMPT_TEMPLATE, resolve_format_review_provider
 from backend.services.novel.chapter_check_contract import CHAPTER_WORLD_RULES_CHECK_TASK
 from .contracts import Flow, Node
+from .agent_continuation import FlowContinuationState, update_agent_continuation
 from .engine import render_template
-from .graph import compile_output_model
+from .graph import canonical_hash, compile_output_model
 from .registry import GENERATION_FIELDS
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,9 @@ def build_flow_request(node: Node, inputs: dict[str, Any], schema: type[BaseMode
         prompt = prompt.strip()
     if structured:
         options["json_output_schema"] = schema.model_json_schema()
+        if cfg.get("append_output_schema"):
+            # 文本与原生输出共用本次编译的端口定义，避免提示词副本与协议漂移。
+            prompt += "\n\nJSON Schema:\n" + json.dumps(options["json_output_schema"], ensure_ascii=False)
     return LLMRequest(messages=[{"role": "user", "content": prompt}], **options), stream, native
 
 
@@ -89,6 +93,8 @@ class FlowModels:
         self.parameters = {k: v for k, v in parameters.items() if k in GENERATION_FIELDS and v is not None}
         self.use_stream = use_stream
         self.before_send: Callable[..., Awaitable[dict[str, Any]]] | None = None
+        self.recovery_state: FlowContinuationState | None = None
+        self.recovery_token: str | None = None
         self.defaults: dict[int, str] = {}
         self.output_models: dict[int, type[BaseModel]] = {}
         pending = [] if repairing else [flow]
@@ -193,7 +199,7 @@ class FlowModels:
         yield {"status": "done", "candidate": result}
 
     async def execute(self, node: Node, inputs: dict[str, Any], instance_path: str) -> AsyncIterator[dict[str, Any]]:
-        """执行一次动态结构或文本生成，并在该节点报告格式审校。
+        """执行节点生成和格式审校；恢复时复用服务端已完整返回的响应。
 
         Args:
             node: 正在运行的 AI 节点。
@@ -204,20 +210,34 @@ class FlowModels:
         """
         cfg = node.config
         provider, config = self.resolve_provider(node, inputs)
-        client = create_llm_client_from_config(config, provider_name=provider, timeout_seconds=cfg.get("timeout_seconds"))
-        client.before_send = self.before_send
         structured = cfg.get("mode", "json") == "json"
         schema = self.output_models[id(node)]
+        # JSON Output 不约束 Schema；普通请求沿文本入口遵守自身的能力开关。
         request, stream, native = build_flow_request(
             node, inputs, schema, self.parameters, use_stream=self.use_stream,
-            supports_streaming=config.supports_streaming, supports_json_schema=config.supports_json_schema,
+            supports_streaming=config.supports_streaming,
+            supports_json_schema=config.supports_json_schema and config.resolved_structured_output_mode != "json_object",
         )
+        checkpoint = self.recovery_state.model_call if self.recovery_state is not None else None
+        if checkpoint is not None:
+            fingerprint = canonical_hash({"request": request.model_dump(mode="json"), "provider": provider,
+                "stream": stream, "native": native, "schema": schema.model_json_schema()})
+            if checkpoint.get("request_fingerprint", fingerprint) != fingerprint:
+                raise DomainApiError("AGENT_CONTINUATION_CHANGED", "未完成模型调用的请求已变化，请重新生成", status_code=409)
+            checkpoint["request_fingerprint"] = fingerprint
+        if checkpoint is None or "raw" not in checkpoint:
+            client = create_llm_client_from_config(config, provider_name=provider, timeout_seconds=cfg.get("timeout_seconds"))
+            client.before_send = self.before_send
         usage = TokenUsage()
         model_calls = 1
         usage_complete = False
         if self.before_send is not None:
             await self.before_send()
-        if stream:
+        if checkpoint is not None and "raw" in checkpoint:
+            raw = checkpoint["raw"]
+            usage = TokenUsage.model_validate(checkpoint["usage"])
+            usage_complete = checkpoint["usage_complete"]
+        elif stream:
             chunks = []
             characters = 0
             last_emit = 0.0
@@ -238,6 +258,10 @@ class FlowModels:
             response = await client.text_generate(request)
             raw, usage = response.content, response.usage
             usage_complete = usage.total_tokens > 0
+        if checkpoint is not None and "raw" not in checkpoint:
+            # 只在 SDK 完整返回后保存；必须早于下一个 yield，断线也不能重付这次调用。
+            checkpoint.update(raw=raw, usage=usage.model_dump(), usage_complete=usage_complete)
+            update_agent_continuation(self.recovery_token, size=self.recovery_state.size())
         yield {"status": "progress", "usage": usage.model_dump(), "model_calls": model_calls, "usage_complete": usage_complete}
         # 空结果没有可修正的内容，不能交给审校模型重新编造。
         if not raw.strip():
@@ -263,21 +287,36 @@ class FlowModels:
             reviewer_name = resolve_format_review_provider(self.config)
             logger.info("[格式审校开始] provider=%s", reviewer_name)
             yield {"status": "progress", "review_state": "running", "message": "正在修正输出格式", "provider": reviewer_name}
-            reviewer = create_llm_client_from_config(self._provider(reviewer_name), provider_name=reviewer_name)
-            reviewer.before_send = self.before_send
+            review_request = LLMRequest(messages=[{"role": "user", "content": FORMAT_REVIEW_PROMPT_TEMPLATE.format(raw_text=raw)}])
+            if checkpoint is not None:
+                fingerprint = canonical_hash({"request": review_request.model_dump(mode="json"), "provider": reviewer_name,
+                    "schema": schema.model_json_schema()})
+                if checkpoint.get("review_request_fingerprint", fingerprint) != fingerprint:
+                    raise DomainApiError("AGENT_CONTINUATION_CHANGED", "未完成格式审校的请求已变化，请重新生成", status_code=409)
+                checkpoint["review_request_fingerprint"] = fingerprint
             if self.before_send is not None:
                 await self.before_send()
-            with bind_log_context(stage="format_review"):
-                reviewed = await reviewer.schema_generate(LLMRequest(messages=[{"role": "user", "content": FORMAT_REVIEW_PROMPT_TEMPLATE.format(raw_text=raw)}]), schema)
+            if checkpoint is not None and "reviewed" in checkpoint:
+                reviewed_raw = checkpoint["reviewed"]
+                reviewed_usage = TokenUsage.model_validate(checkpoint["reviewed_usage"])
+            else:
+                reviewer = create_llm_client_from_config(self._provider(reviewer_name), provider_name=reviewer_name)
+                reviewer.before_send = self.before_send
+                with bind_log_context(stage="format_review"):
+                    reviewed = await reviewer.schema_generate(review_request, schema)
+                reviewed_raw, reviewed_usage = reviewed.content, reviewed.usage
+                if checkpoint is not None:
+                    checkpoint.update(reviewed=reviewed_raw, reviewed_usage=reviewed_usage.model_dump())
+                    update_agent_continuation(self.recovery_token, size=self.recovery_state.size())
             model_calls += 1
-            usage_complete = usage_complete and reviewed.usage.total_tokens > 0
-            usage = TokenUsage(**{key: value + reviewed.usage.model_dump()[key] for key, value in usage.model_dump().items()})
+            usage_complete = usage_complete and reviewed_usage.total_tokens > 0
+            usage = TokenUsage(**{key: value + reviewed_usage.model_dump()[key] for key, value in usage.model_dump().items()})
             yield {"status": "progress", "usage": usage.model_dump(), "model_calls": model_calls, "usage_complete": usage_complete}
-            reject_duplicate_json_keys(reviewed.content)
+            reject_duplicate_json_keys(reviewed_raw)
             try:
-                result = schema.model_validate_json(reviewed.content)
+                result = schema.model_validate_json(reviewed_raw)
             except (ValidationError, ValueError) as review_error:
-                log_parse_error(review_error, content=reviewed.content, schema=schema, message="格式审校输出校验失败")
+                log_parse_error(review_error, content=reviewed_raw, schema=schema, message="格式审校输出校验失败")
                 raise LLMSchemaError("格式审校结果仍不符合节点输出") from review_error
             logger.info("[格式审校完成] provider=%s", reviewer_name)
             yield {"status": "progress", "review_state": "done", "message": "输出格式已修正"}

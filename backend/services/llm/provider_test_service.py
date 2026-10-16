@@ -10,11 +10,13 @@ import time
 from collections.abc import Awaitable, Callable
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
 
 from backend.llm.base_client import BaseLLMClient
 from backend.llm.config import LLMProviderConfig
 from backend.llm.factory import create_llm_client_from_config
+from backend.llm.exceptions import LLMAuthError, LLMError, LLMRateLimitError, LLMResponseError, LLMTimeoutError
+from backend.llm.provider_probe import ProviderProbeDetails, active_provider_probe
 from backend.llm.logger import format_payload, log_parse_error
 from backend.runtime import bind_log_context, log_exception
 from backend.llm.models import LLMFunctionCallProbe, LLMRequest
@@ -73,6 +75,8 @@ class ProviderCapabilityResult(BaseModel):
     status: ProviderTestStatus = Field(description="测试状态")
     duration_ms: int = Field(default=0, description="测试耗时，单位毫秒")
     message: str = Field(default="", description="结果摘要或错误原因")
+    details: ProviderProbeDetails | None = None
+    _determined: bool = PrivateAttr(default=True)
 
 
 class ProviderCapabilityRecommendation(BaseModel):
@@ -81,6 +85,7 @@ class ProviderCapabilityRecommendation(BaseModel):
     supports_streaming: bool = Field(default=False, description="是否建议启用流式输出")
     supports_json_schema: bool = Field(default=False, description="是否建议启用 JSON Schema")
     supports_function_calling: bool = Field(default=False, description="是否建议启用 Function Calling")
+    supports_json_output: bool = Field(default=False, description="是否建议启用 JSON Output")
 
 
 class ProviderTestResponse(BaseModel):
@@ -90,6 +95,8 @@ class ProviderTestResponse(BaseModel):
     provider_type: str = Field(default="", description="Provider 客户端类别")
     model: str = Field(default="", description="测试模型")
     summary: str = Field(default="", description="测试总结")
+    api_mode: str = ""
+    output_budget: int = 4096
     results: list[ProviderCapabilityResult] = Field(default_factory=list, description="逐项测试结果")
     recommendations: ProviderCapabilityRecommendation = Field(
         default_factory=ProviderCapabilityRecommendation,
@@ -117,11 +124,13 @@ def _default_client_factory(config: LLMProviderConfig, alias: str) -> BaseLLMCli
     return create_llm_client_from_config(config, provider_name=alias, require_enabled=False)
 
 
-def _build_probe_request(prompt: str) -> LLMRequest:
+def _build_probe_request(prompt: str, output_budget: int = 4096, *, stream: bool = False) -> LLMRequest:
     """构造低成本的接口测试请求。
 
     Args:
         prompt: 当前测试步骤使用的极简提示词。
+        output_budget: 表单中的输出预算，未填时为 4096。
+        stream: 沿用连接测试已验证的请求方式。
 
     Returns:
         可直接传入底层客户端的 LLM 请求。
@@ -129,7 +138,8 @@ def _build_probe_request(prompt: str) -> LLMRequest:
     return LLMRequest(
         messages=[{"role": "user", "content": prompt}],
         # 推理模型也会消耗输出额度；采样参数沿用实际服务配置。
-        max_tokens=4096,
+        max_tokens=output_budget,
+        stream=stream,
     )
 
 
@@ -220,26 +230,35 @@ async def _run_step(
     with bind_log_context(provider_test=capability):
         start = time.perf_counter()
         logger.info("[Provider 测试开始] provider=%s capability=%s", provider_alias, capability)
+        details = ProviderProbeDetails()
+        token = active_provider_probe.set(details)
         try:
             await runner()
         except Exception as exc:
             log_exception(logger, f"[Provider 测试失败] provider={provider_alias} capability={capability}", exc)
-            return _result(
-                capability,
-                label,
-                "failed",
-                duration_ms=int((time.perf_counter() - start) * 1000),
-                message=_build_failure_message(exc, api_key),
+            # 无法完成请求时保留输入开关；正常响应的内容校验失败仍按实际结果关闭。
+            uncertain = (
+                isinstance(exc, (LLMAuthError, LLMRateLimitError, LLMTimeoutError, TimeoutError, ConnectionError))
+                or type(exc) is LLMError
+                or details._http_status in {401, 403, 408, 409, 429}
+                or (details._http_status is not None and details._http_status >= 500)
+                or (details._send_count > 0 and details._http_status is None)
+                or details._incomplete
+                or (isinstance(exc, LLMResponseError) and "提前断开" in str(exc))
             )
-
-        logger.info("[Provider 测试完成] provider=%s capability=%s duration=%dms", provider_alias, capability, int((time.perf_counter() - start) * 1000))
-        return _result(
-            capability,
-            label,
-            "passed",
-            duration_ms=int((time.perf_counter() - start) * 1000),
-            message=success_message,
-        )
+            result = _result(
+                capability, label, "failed",
+                duration_ms=int((time.perf_counter() - start) * 1000),
+                message=_build_failure_message(exc, api_key) + ("；本次无法判断能力，保留原开关" if uncertain else ""),
+            )
+            result._determined = not uncertain
+        else:
+            logger.info("[Provider 测试完成] provider=%s capability=%s duration=%dms", provider_alias, capability, int((time.perf_counter() - start) * 1000))
+            result = _result(capability, label, "passed", duration_ms=int((time.perf_counter() - start) * 1000), message=success_message)
+        finally:
+            active_provider_probe.reset(token)
+        result.details = details
+        return result
 
 
 def _build_function_probe(prompts: dict[str, str]) -> LLMFunctionCallProbe:
@@ -303,9 +322,19 @@ async def test_llm_provider_capabilities(
     alias = request.alias.strip() or "unsaved_provider"
     provider = request.provider
     api_key = provider.api_key
+    output_budget = provider.max_tokens or 4096
+    api_mode = ""
+    recommendation = ProviderCapabilityRecommendation(
+        supports_streaming=provider.supports_streaming,
+        supports_json_schema=provider.supports_json_schema,
+        supports_json_output=bool(provider.supports_json_output),
+        supports_function_calling=provider.supports_function_calling,
+    )
     json_label = "JSON Schema"
     try:
-        json_label = "JSON Schema" if provider.uses_native_schema else "JSON Output" if provider.is_deepseek else "Tool Output"
+        recommendation.supports_json_output = provider.json_output_enabled
+        json_label = "JSON Schema" if provider.uses_native_schema else "JSON Output" if provider.resolved_structured_output_mode == "json_object" else "Tool Output"
+        api_mode = provider.resolved_api_mode
         client = client_factory(provider, alias)
     except Exception as exc:
         log_exception(logger, f"[Provider 初始化失败] provider={alias}", exc)
@@ -324,7 +353,8 @@ async def test_llm_provider_capabilities(
             alias=alias,
             provider_type=provider.type,
             model=provider.default_model,
-            summary="连接测试失败，已跳过能力探测",
+            summary="连接测试失败，已跳过能力探测并保留原开关",
+            recommendations=recommendation, api_mode=api_mode, output_budget=output_budget,
             results=[connection, *skipped],
         )
 
@@ -337,7 +367,7 @@ async def test_llm_provider_capabilities(
         Returns:
             无。
         """
-        response = await client.text_generate(_build_probe_request(prompts["text_probe_prompt"]))
+        response = await client.text_generate(_build_probe_request(prompts["text_probe_prompt"], output_budget))
         if "PROVIDER_TEXT_OK" not in response.content:
             logger.error("[Provider 文本校验失败] response=\n%s", format_payload(response.raw_response if response.raw_response is not None else response.content))
             raise ValueError("文本接口返回内容未包含约定标记")
@@ -352,7 +382,7 @@ async def test_llm_provider_capabilities(
             无。
         """
         chunks: list[str] = []
-        stream_request = _build_probe_request(prompts["stream_probe_prompt"]).model_copy(update={"stream": True})
+        stream_request = _build_probe_request(prompts["stream_probe_prompt"], output_budget).model_copy(update={"stream": True})
         async with aclosing(client.stream_text(stream_request)) as events:
             async for chunk in events:
                 chunks.append(chunk)
@@ -381,6 +411,7 @@ async def test_llm_provider_capabilities(
                 message="流式接口可用",
             )
         )
+        results[-1].details = initial_stream_result.details
     else:
         connection_result = await _run_step("connection", "接口可用性", alias, api_key, run_connection)
         results[0] = connection_result
@@ -402,7 +433,8 @@ async def test_llm_provider_capabilities(
                 alias=alias,
                 provider_type=provider.type,
                 model=provider.default_model,
-                summary="连接测试失败，已跳过能力探测",
+                summary="连接测试失败，已跳过能力探测并保留原开关",
+                recommendations=recommendation, api_mode=api_mode, output_budget=output_budget,
                 results=results,
             )
 
@@ -419,7 +451,7 @@ async def test_llm_provider_capabilities(
             无。
         """
         response = await client.schema_generate(
-            _build_probe_request(prompts["json_schema_probe_prompt"]),
+            _build_probe_request(prompts["json_schema_probe_prompt"], output_budget, stream=initial_stream_result.status == "passed"),
             ProviderJsonProbeSchema,
         )
         try:
@@ -440,7 +472,7 @@ async def test_llm_provider_capabilities(
             无。
         """
         await client.function_call_probe(
-            _build_probe_request(prompts["function_call_probe_prompt"]),
+            _build_probe_request(prompts["function_call_probe_prompt"], output_budget, stream=initial_stream_result.status == "passed"),
             _build_function_probe(prompts),
         )
 
@@ -450,17 +482,20 @@ async def test_llm_provider_capabilities(
     ))
     results.append(await _run_step("function_calling", "Function Calling", alias, api_key, run_function_calling))
 
-    recommendation = ProviderCapabilityRecommendation(
-        supports_streaming=results[1].status == "passed",
-        supports_json_schema=results[2].status == "passed" and (provider.uses_native_schema or provider.type == "claude"),
-        supports_function_calling=results[3].status == "passed",
-    )
+    for result in results[1:]:
+        if result._determined and result.status != "skipped":
+            value = result.status == "passed"
+            if result.capability == "json_schema" and provider.resolved_structured_output_mode == "json_object":
+                recommendation.supports_json_output = value
+                continue
+            setattr(recommendation, f"supports_{result.capability}", value)
     passed_count = sum(1 for item in results if item.status == "passed")
     return ProviderTestResponse(
         alias=alias,
         provider_type=provider.type,
         model=provider.default_model,
-        summary=f"{passed_count}/{len(results)} 项测试通过，能力开关已生成建议值",
+        summary=f"{passed_count}/{len(results)} 项测试通过，已判定项目更新开关，其余保留原值",
+        api_mode=api_mode, output_budget=output_budget,
         results=results,
         recommendations=recommendation,
     )

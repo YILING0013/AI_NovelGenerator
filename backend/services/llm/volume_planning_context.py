@@ -25,6 +25,7 @@ from backend.services.novel.world_rule_service import WorldRuleService
 from backend.services.novel.writing_context import (
     character_design_content, character_position_content, character_relation_design_content, character_relation_position_content,
     position_content, read_character_relation_context, resolve_writing_position,
+    faction_design_content, faction_position_content,
 )
 
 
@@ -255,6 +256,7 @@ async def load_volume_planning_context(
     fact_reads = []
     character_facts = {}
     relation_facts = {}
+    faction_facts = {}
     if target_volume_id is not None:
         position = resolve_writing_position(
             {"target_type": "volume", "target_id": target_volume_id, "reading_intent": "replan", "reading_version": 1},
@@ -278,6 +280,17 @@ async def load_volume_planning_context(
         if relation_position != position:
             raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "卷顺序在读取期间已变化，请重新读取", status_code=409)
         fact_reads = [*fact_reads, *relation_reads]
+        from backend.services.novel.faction_fact_service import read_faction_facts
+        faction_result = await read_faction_facts(novel_id, sorted(faction_ids), {
+            "target_type": "volume", "target_id": target_volume_id,
+            "reading_intent": "replan", "reading_version": 1,
+        }, session=session)
+        if faction_result["position"] != position:
+            raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "卷顺序在读取期间已变化，请重新读取", status_code=409)
+        faction_facts = {row["faction_id"]: row for row in faction_result["factions"]}
+        if faction_ids != faction_facts.keys():
+            raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "势力在读取期间已变化，请重新读取", status_code=409)
+        fact_reads.extend(faction_result["reads"])
 
     def project(document: dict[str, Any], kind: str, fields: Sequence[str]) -> dict[str, Any]:
         """启动包共用位置投影；骨架允许全书设计资料，但不称为章前事实。"""
@@ -289,6 +302,8 @@ async def load_volume_planning_context(
                 result = character_position_content(document, facts)
             elif kind == "character_relation":
                 result = character_relation_position_content(document, relation_facts[document["relation_id"]])
+            elif kind == "faction":
+                result = faction_position_content(document, faction_facts[document["faction_id"]])
             else:
                 result = position_content(document, kind)
             # 原提示词以这些业务 ID 引用资料，安全投影不改变引用名称。
@@ -300,6 +315,8 @@ async def load_volume_planning_context(
             return character_design_content(document, fields)
         if kind == "character_relation":
             return character_relation_design_content(document, fields)
+        if kind == "faction":
+            return faction_design_content(document, fields)
         return {**{field: document.get(field) for field in fields}, "content_semantics": "whole_book_design"}
 
     prompt_facts = {
@@ -355,4 +372,38 @@ async def load_volume_planning_context(
     }
 
 
-__all__ = ["load_volume_planning_context"]
+def project_volume_launch_context(context: dict[str, Any], target_volume_id: str) -> dict[str, Any]:
+    """将原启动读取结果缩成表单提醒，不再读库或返回提示词与确认依据。
+
+    Args:
+        context: 指定目标卷后 load_volume_planning_context 的实际结果。
+        target_volume_id: 本次启动的卷 ID。
+    Returns:
+        目标卷、实际读取位置、范围计数及按实体归纳的未知原因。
+    """
+    target = next(row for row in context["volumes"] if str(row["_id"]) == target_volume_id)
+    prompt = context["prompt_facts"]
+    names = {row["character_id"]: row["name"] for row in context["characters"]}
+    entities = []
+    for kind, rows, id_field in (
+        ("character", prompt["characters"], "character_id"),
+        ("faction", prompt["factions_and_relations"]["factions"], "faction_id"),
+        ("character_relation", prompt["factions_and_relations"]["character_relations"], "relation_id"),
+    ):
+        for row in rows:
+            facts = row["facts"]
+            name = (f'{names[row["source_character_id"]]} ↔ {names[row["target_character_id"]]}'
+                    if kind == "character_relation" else row["name"])
+            entities.append({"entity_type": kind, "entity_id": row[id_field], "name": name,
+                "source_ids": sorted(set(facts["origins"].values())),
+                "issues": [{"field": field, "reason": reason,
+                    "blocking_source_ids": facts["blockers"].get(field, [])}
+                    for field, reason in facts["unknown"].items()]})
+    return {"novel_id": str(context["novel"]["_id"]), "volume_id": target_volume_id,
+        "volume_title": target["title"], "position": context["position"],
+        "counts": {key: len(context[key]) for key in (
+            "characters", "factions", "character_relations", "faction_relations", "bindings", "world_rules", "volumes")},
+        "entities": entities}
+
+
+__all__ = ["load_volume_planning_context", "project_volume_launch_context"]

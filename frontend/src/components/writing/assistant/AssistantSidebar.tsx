@@ -1,5 +1,7 @@
 "use client";
 
+import { downloadExport } from "@/lib/userExport";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Modal, Popover } from "@heroui/react";
 import { useTranslations } from "next-intl";
@@ -432,7 +434,7 @@ export default function AssistantSidebar() {
       {run && <div className="flex flex-wrap items-center gap-2 text-xs text-muted" role="status"><span>{legacyRun ? t("legacyRunStatus") : t(`runStatus.${busy ? "running" : run.status}`)}</span><details><summary className="cursor-pointer">{t("details")}</summary><span>{t("budget", { rounds: run.rounds, maxRounds: run.round_limit, tools: run.tool_calls, maxTools: run.tool_limit })}</span>{run.usage && <p>{t("reportedTokens", { tokens: run.usage.total_tokens })}</p>}</details></div>}
       {legacyRun && <div className="space-y-1"><p className="text-xs text-muted">{t("legacyRunReadOnly")}</p><Button size="sm" variant="ghost" onPress={() => {
         const url = URL.createObjectURL(new Blob([JSON.stringify({ run, messages: messages.filter((item) => item.run_id === run.id) }, null, 2)], { type: "application/json;charset=utf-8" }));
-        const link = document.createElement("a"); link.href = url; link.download = `assistant-request-${run.id}.json`; link.click(); URL.revokeObjectURL(url);
+        const link = document.createElement("a"); link.href = url; link.download = `assistant-request-${run.id}.json`; void downloadExport(link); URL.revokeObjectURL(url);
       }}>{t("exportRequest")}</Button></div>}
       {canContinue && <div className="my-3 flex flex-wrap items-center gap-2"><span className="text-sm">{t(run.status === "budget_exhausted" ? "continueQuestion" : "resumeQuestion")}</span><Button size="sm" variant="outline" isDisabled={savingChange} onPress={() => void send(true)}>{t(run.status === "budget_exhausted" ? "continue" : "retry")}</Button></div>}
       {run?.status === "waiting_input" && run.pending_question && !run.pending_question.confirmation && <div className="my-3 flex flex-wrap gap-2">{run.pending_question.choices.map((choice) => <Button key={choice} size="sm" variant="outline" onPress={() => { setDrafts((current) => ({ ...current, [draftKey]: choice })); input.current?.focus(); }}>{choice}</Button>)}</div>}

@@ -4,135 +4,59 @@
 
 [English](README.md) · **简体中文**
 
-[功能](#功能) · [AI 工作流](#ai-工作流) · [安装与启动](#安装与启动) · [问题反馈](https://github.com/YILING0013/AI_NovelGenerator/issues/new/choose)
+从一个故事想法出发，逐步完成设定、分卷、篇章、场景与正文。
+
+[创作演示](#创作演示) · [安装与启动](#安装与启动) · [界面一览](#界面一览) · [备份与升级](#备份与升级)
 
 </div>
 
-AI 小说生成器是一个本地运行的小说规划与写作应用，支持故事设定、分层规划、章节编辑、实体管理和可配置的 AI 生成流程。生成结果可在保存前预览和修改。
+这是一个在本机运行的小说创作工作台。你可以手工编写，也可以让 AI 协助生成，再审阅、修改并保存结果。人物、势力、关系和故事规划与正文放在同一个项目中，创作进度会提示下一步。
 
-前端使用 Next.js，后端使用 FastAPI，项目数据存储在 MongoDB。AI 功能通过用户配置的模型服务执行。
+在项目开发期间的生成流程测试中，特别感谢 [LINUX DO 社区](https://linux.do/) 的佬友们提供公益站资源。
 
-![章节编辑界面](.github/assets/readme/writing.png)
 
-当前 `main` 为重写后的版本。上一版代码保存在 [`old`](https://github.com/YILING0013/AI_NovelGenerator/tree/old)。两版的数据结构不同，升级前应备份旧数据，并为新版使用独立数据库。
+## 创作演示
 
-本文截图来自实际运行的应用，演示作品为虚构小说《雾港来信》，桌面截图比例为 16:10。应用支持移动端适配、中英文切换和明暗主题。
+以下片段展示了作品《潮汐档案》从新建到首章保存的全流程，均录自当前真实界面。**演示使用预设模型响应，仅展示操作流程，不代表模型质量。**
 
-## 功能
+**01 · 新建小说：创意 → 故事方向 → 确认保存**
 
-### 小说管理
+![输入创意，生成并确认小说信息](.github/assets/readme/demo-01-create.gif)
 
-书架用于创建、查看和管理作品。小说信息页保存标题、核心创意、主线剧情、简介、世界观、写作风格、叙事视角和预计篇幅。各项内容支持手工编辑，部分字段支持 AI 创建或改写。
+<details>
+<summary><strong>02 · 核心资料：势力、角色与关系图谱</strong>（展开播放）</summary>
 
-![小说信息界面](.github/assets/readme/story.png)
+生成并保存核心资料，在图谱中查看人物关系与势力归属。
 
-### 故事规划与雪花写作法
+![生成势力和角色，确认关系并打开关系图谱](.github/assets/readme/demo-02-characters.gif)
 
-项目采用从故事核心逐步展开的规划方式。内置的新建小说流程先将创意展开为压缩故事，再提炼核心创意和核心种子，生成小说信息。其中，核心种子节点使用雪花写作法第一步的提示词，将故事概括为包含人物、冲突、行动和后果的核心描述。
+</details>
 
-后续内容按 **卷 → 篇章 → 场景 → 章计划 → 正文** 分层组织，各层级支持独立编辑。
+<details>
+<summary><strong>03 · 逐层规划：卷 → 篇章 → 场景 → 章计划</strong>（展开播放）</summary>
 
-| 层级 | 规划内容 | 演示作品中的示例 |
-| --- | --- | --- |
-| 故事核心 | 主要人物、核心事件、行动目标和后果 | 修复师收到失踪母亲的旧信，追查一艘运送记忆的邮船 |
-| 卷 | 阶段目标、主要冲突、关键转折和起止状态 | 第一卷调查邮船航路，寻找母亲仍然在世的证据 |
-| 篇章 | 一组相关情节及其推进目标 | 调查旧港失踪案，确认钟声与信件的联系 |
-| 场景 | 具体事件、参与人物和情节变化 | 一封旧信在雨夜送到修复室 |
-| 章计划 | 本章目标、情节节点、字数和内容要求 | 辨认笔迹、检查邮戳，以钟声结束本章 |
-| 正文 | 根据章计划撰写的章节内容 | 描写修复室内收到旧信的过程 |
+规划全书分卷、展开当前卷并确认参与资料，再手工细化第一篇章、场景与章计划。本例跳过可选的规则、物品，确认本卷地点为空。
 
-![卷规划界面](.github/assets/readme/volumes.png)
+![沿创作进度完成卷准备，建立篇章、场景和第一章计划](.github/assets/readme/demo-03-planning.gif)
 
-卷规划同时管理本卷使用的角色、势力和地点。篇章、场景和章节生成使用上层规划及相关资料作为输入。
+</details>
 
-### 章节编辑
+<details>
+<summary><strong>04 · 写出第一章：生成 → 审阅 → 保存</strong>（展开播放）</summary>
 
-章节编辑器包含目录、章计划、正文和章后记录。正文支持手工编辑和 AI 生成。
+基于已保存的章计划生成正文，确认候选并保存第一章。此处尚未完成整本小说。
 
-- **章计划**：记录目标、起止状态、关键情节、目标字数，以及必须包含或需要避免的内容。
-- **正文**：支持编辑、保存、字数统计和草稿导出。
-- **历史版本**：支持查看、比较和恢复已保存的版本。
-- **章后记录**：检查人物心理、人物关系、物品持有人和世界规则，并保存经用户确认的变化。
+![生成首章正文，审阅候选并确认保存](.github/assets/readme/demo-04-writing.gif)
 
-生成候选在确认后保存。章后记录可用于查询特定剧情位置已确认的人物与世界状态。
-
-### 实体与关系管理
-
-角色卡保存人物档案、欲望、恐惧、与主线的冲突、成长方向和剧情作用。人物资料支持按故事开始、卷开始、章前或章后的位置确认和查看。
-
-![角色管理界面](.github/assets/readme/characters.png)
-
-| 模块 | 管理内容 |
-| --- | --- |
-| 角色卡 | 人物档案、成长设计、不同剧情位置的资料和人物关系 |
-| 势力卡 | 组织目标、公开立场、隐藏目的、资源和角色归属 |
-| 地点卡 | 场所信息及各卷使用的地点 |
-| 物品卡 | 物品资料、持有人和转交记录 |
-| 设定规则卡 | 世界规则、适用范围、限制和代价 |
-| 伏笔 | 线索、相关剧情记录和回收情况 |
-| 关系图谱 | 人物、势力及其关系的图形展示 |
-| 小说助手 | 查询当前作品资料、讨论问题和审核修改建议 |
-
-## AI 工作流
-
-AI 操作由节点和连线组成。节点负责读取资料、整理上下文、调用模型或输出结果；连线定义数据传递和执行顺序。
-
-内置方案覆盖新建小说、人物与势力生成、分卷规划、篇章规划、场景规划、章节正文和章后检查等任务。各任务的流程可在画布中编辑。
-
-![AI 工作流编辑界面](.github/assets/readme/workflow.png)
-
-### 节点类型
-
-| 节点 | 功能 |
-| --- | --- |
-| 开始输入 / 页面资料 | 接收本次操作的参数，或读取当前小说与写作位置的资料 |
-| 固定值 / 文本模板 | 提供固定内容，或将输入字段填入文本模板 |
-| 组装字段 | 将多个输入值组织为指定字段 |
-| AI 生成 | 调用模型，返回文本或结构化内容 |
-| AI 整理资料 | 查询和筛选当前小说的相关资料 |
-| 条件分支 / 合并分支 | 按条件选择执行路径，或汇集分支结果 |
-| 子流程 / 逐项处理 | 调用一组复用步骤，或对数组中的各项执行流程 |
-| 任务输出 | 将最终候选返回业务页面，供用户审核和保存 |
-
-自定义流程通过组合上述节点实现。节点的输入输出由字段和类型定义，复杂配置涉及 JSON 结构。
-
-### 节点配置
-
-节点支持编辑名称、提示词、输入输出字段、模型配置和生成参数。同一流程中的不同 AI 节点可以指定不同模型。
-
-提示词支持插入输入字段。例如，核心种子节点读取主线剧情、类型、基调、目标读者和篇幅，并按提示词要求生成故事核心。修改提示词或模型配置后，后续执行使用相应配置。
-
-![节点提示词编辑界面](.github/assets/readme/node.png)
-
-### 流程编辑
-
-1. 在“方案”面板复制现有流程并命名。
-2. 添加节点，或编辑已有节点。
-3. 使用数据连线传递字段，使用执行连线设置顺序和分支。
-4. 配置提示词、输入输出字段、模型和生成参数。
-5. 检查并保存方案，在对应 AI 操作中选择使用。
-
-编辑器支持撤销、重做、方案修订和资料预览。资料预览不调用模型，用于检查流程输入和连接关系。
+</details>
 
 ## 安装与启动
 
-应用由浏览器界面、Python 后端和 MongoDB 组成。Windows 用户可以用桌面启动器管理服务；也可以分别在终端中启动。
+下面以 **Windows + PowerShell + Docker MongoDB** 为主线。安装过程需要联网下载依赖；AI 生成功能还需要自行配置可用的模型服务。
 
-### 环境要求
+### 1. 准备环境与代码
 
-| 依赖 | 要求 |
-| --- | --- |
-| Python | 3.13 或 3.14，使用对应系列的较新补丁版本 |
-| Node.js 与 npm | Node.js 20.9 或以上，使用仍在维护的版本 |
-| MongoDB | **副本集**；下面提供单机副本集配置 |
-| Docker | 使用下面的 MongoDB 方案时需要；已有副本集可跳过 |
-| 模型服务 | 需要自行准备 API Key、接口地址与模型名称 |
-
-篇章和章节等保存操作依赖 MongoDB 多文档事务，需要连接副本集。
-
-### 1. 安装依赖
-
-以下命令在 PowerShell 中执行：
+安装 [Python 3.13](https://www.python.org/downloads/)、[Node.js 24](https://nodejs.org/en/download)、[Git](https://git-scm.com/downloads) 和 [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/)。启动 Docker Desktop，确认引擎正在运行；终端中 `python --version`、`node --version` 和 `docker compose version` 应能正常输出版本。前端要求 Node.js 至少 20.9。
 
 ```powershell
 git clone https://github.com/YILING0013/AI_NovelGenerator.git
@@ -144,68 +68,61 @@ npm ci
 cd ..
 ```
 
-macOS / Linux 的虚拟环境解释器路径为 `.venv/bin/python`，后续可参考[手动启动](#手动启动)。
+### 2. 启动 MongoDB 副本集
 
-### 2. 准备 MongoDB
+篇章、章节等保存操作需要 MongoDB 多文档事务，因此必须使用**副本集**。项目自带的 [compose.mongodb.yaml](compose.mongodb.yaml) 使用 MongoDB 8.0，在本机 `127.0.0.1:27017` 提供单节点副本集 `rs0`。
 
-如果已有可用的 MongoDB 副本集，可以直接配置连接地址。使用项目附带的 Docker 配置时，先确认本机 `27017` 端口没有被其他服务占用：
+先确认 `27017` 未被其他服务占用（Windows 可运行 `netstat -ano | findstr :27017`）。**如果已安装独立的 Windows MongoDB，不能直接与此 Docker 实例混用或重复启动。** 已有可写副本集可直接使用自己的连接地址；已有单机库应先备份，再单独规划转换或另设端口。不要为释放端口而删除数据卷或重建已有数据库。
+
+在项目根目录运行：
 
 ```powershell
 docker compose -f compose.mongodb.yaml up -d
 docker compose -f compose.mongodb.yaml exec mongodb mongosh
 ```
 
-在打开的 MongoDB 命令行中执行：
+**仅在首次使用全新数据卷时**，在进入的 MongoDB shell 中执行一次：
 
 ```javascript
-rs.initiate({
-  _id: "rs0",
-  members: [{ _id: 0, host: "localhost:27017" }]
-})
+rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "localhost:27017" }] })
 exit()
 ```
 
-`rs.initiate` 只需对**新建的数据卷执行一次**。回到 PowerShell，运行 `docker compose -f compose.mongodb.yaml ps`，确认状态为 `healthy`。
+回到 PowerShell 检查：
 
-首次配置时，将 `backend/config/config_default.yaml` 复制为 `backend/config/config.yaml`。已有配置文件时直接编辑，避免覆盖之前保存的模型配置。
-
-在配置中填写：
-
-```yaml
-mongodb_url: "mongodb://127.0.0.1:27017/?replicaSet=rs0&directConnection=true"
-mongo_database_name: "novel_generator"
-mongo_transaction_mode: "required"
+```powershell
+docker compose -f compose.mongodb.yaml ps
 ```
 
-附带的 Docker 配置使用命名数据卷保存数据，只将端口发布到本机 `127.0.0.1`，没有配置数据库密码。修改数据库连接后需要重启后端。
+等待 `mongodb` 显示 **healthy**，表示它已成为可写主节点。未初始化时显示 unhealthy 并不意味着需要清空数据。后续启动只需 `up -d`，不要重复初始化已有副本集。
 
-### 3. 启动服务
+数据保存在命名卷 `novel-generator-mongodb-data` 与 `novel-generator-mongodb-config` 中。普通 `docker compose -f compose.mongodb.yaml stop` 只停止服务；**不要使用 `down -v` 删除这些数据卷**。
 
-Windows 下双击 **`start.bat`**，在桌面启动器中启动服务。启动器可以设置端口、查看日志、停止服务；生产模式会在首次运行或相关源码、配置变化后构建前端。
+### 3. 启动应用并连接数据库
 
-| 服务 | 默认地址 |
+双击根目录 **`start.bat`**，在桌面启动器中启动前后端。它使用上一步安装的 `.venv`，生产模式会在首次启动或相关代码、配置变化后构建前端。`start.bat` 本身不安装依赖或数据库。
+
+打开 **http://127.0.0.1:3300**，进入 **设置 → 数据库配置**。点击“替换连接”填写 URI 并确认，再填写数据库名，保存设置：
+
+| 字段 | 本地 Docker 方案的值 |
 | --- | --- |
-| 写作界面 | <http://127.0.0.1:3300> |
-| 后端 | <http://127.0.0.1:8200> |
-| API 文档 | <http://127.0.0.1:8200/docs> |
+| MongoDB URI | `mongodb://127.0.0.1:27017/?replicaSet=rs0&directConnection=true` |
+| 数据库名 | `novel_generator` |
 
-关闭启动器会停止它启动的服务。更改端口前先停止服务；如果端口已占用，先确认已有进程是否就是当前项目。
+配置文件中的 `mongo_transaction_mode` 默认是 `required`，保持此值即可，无需为首次安装手工修改。
 
-### 4. 模型配置与使用流程
+检查通过后即可创建小说。后端默认地址为 `http://127.0.0.1:8200`。端口冲突时先识别占用者，再在启动器中修改端口；关闭启动器会停止它启动的服务，MongoDB 由 Docker 单独管理。
 
-打开**设置**，填写服务商的 API Key、接口地址和模型名称，然后启用对应配置。项目包含 OpenAI、DeepSeek、Gemini、Claude 及相应兼容接口的适配；具体参数以所选适配器和服务商支持范围为准。
+### 4. 配置模型，开始创作
 
-基本使用流程：
+在 **设置 → LLM Provider 管理** 中添加服务类型、接口地址、API Key 和模型，启用并保存配置；再到 **小说生成流程配置** 选择全局默认 Provider 并保存。内置流程可直接作为起点，各节点也可单独指定模型。接口必须兼容所选适配器，实际支持的参数以服务商为准，调用费用由服务商计收。
 
-1. 新建小说，填写创意与预计篇幅，确认小说信息。
-2. 准备核心势力、角色、关系和世界规则；按左侧创作进度补齐当前步骤。
-3. 规划全书分卷，展开当前卷，并确认会用到的角色、势力与地点。
-4. 创建篇章、场景和章计划，生成或手工编写正文。
-5. 修改并保存正文，再检查需要记录的章后变化。
+新建小说后，沿左侧**创作进度**准备核心资料、规划卷及参与资料，再细化篇章、场景和章计划。生成结果先审阅再保存；正文也可以直接手写。章后记录可用于核对人物、关系、物品及规则的变化。
 
-应用提供内置工作流。API Key 由用户配置，模型调用费用由相应服务商收取。
+<details>
+<summary><strong>命令行启动（含 macOS / Linux）</strong></summary>
 
-### 手动启动
+安装同样的依赖并准备好副本集。macOS / Linux 用 `python3 -m venv .venv` 创建环境，之后使用 `.venv/bin/python`，无需运行 Windows 的 `start.bat`。
 
 在项目根目录启动后端：
 
@@ -213,70 +130,76 @@ Windows 下双击 **`start.bat`**，在桌面启动器中启动服务。启动�
 .\.venv\Scripts\python.exe main.py
 ```
 
-另开一个终端启动前端：
+另开一个 PowerShell 终端启动前端：
 
 ```powershell
 cd frontend
+$env:NEXT_PUBLIC_API_BASE = "http://127.0.0.1:8200"
 npm run build
 npm run start -- --hostname 127.0.0.1 --port 3300
 ```
 
-如果后端地址不是默认值，在构建前设置 `NEXT_PUBLIC_API_BASE`。例如 PowerShell 中使用 `$env:NEXT_PUBLIC_API_BASE = "http://127.0.0.1:8200"`。桌面启动器会根据它管理的端口设置这个地址。
+macOS / Linux 中对应环境变量命令为 `export NEXT_PUBLIC_API_BASE="http://127.0.0.1:8200"`。地址须在构建前设置，修改后重新构建。开发时可用 `npm run dev -- --hostname 127.0.0.1 --port 3300`。
 
-数据库连接也可以通过 `NOVEL_GENERATOR_MONGODB_URL` 和 `NOVEL_GENERATOR_MONGO_DATABASE_NAME` 环境变量覆盖。
-
-## 数据、备份与升级
-
-小说数据存放在配置的 MongoDB 和本地文件中。执行 AI 操作时，相关上下文会发送至配置的模型服务，模型推理由该服务执行。
-
-| 需要备份的内容 | 存放位置 |
-| --- | --- |
-| 小说、人物、规划与写作记录 | MongoDB |
-| 模型配置与 API Key | `backend/config/config.yaml` |
-| 自定义工作流等运行数据 | `data/` |
-| 封面等上传文件 | `static/` |
-
-升级前先备份并停止服务，再更新代码、安装依赖和重新构建前端。旧版与新版的数据结构不同，应使用独立数据库。
-
-应用面向本地使用，没有供公网使用的用户认证。不要把应用服务或无密码的 MongoDB 直接暴露到互联网。提交问题时，请去掉密钥、数据库密码、个人路径和未公开的小说内容。
-
-<details>
-<summary><strong>常见问题</strong></summary>
-
-**篇章或章节保存失败**：确认 MongoDB 已初始化为副本集且可写，并核对 `mongodb_url` 和 `mongo_transaction_mode`。更改配置后重启后端。
-
-**AI 操作的前置条件**：页面会列出所需步骤。上层规划、剧情或相关资料变动后，可能需要重新检查并确认。
-
-**自定义模型接口**：支持配置接口地址和模型名。接口需要兼容所选适配器的请求格式；输出方式和参数以模型服务的支持范围为准。
-
-**界面适配**：支持移动端布局、明暗主题和中英文切换。本文展示桌面界面。
-
-**旧版代码与讨论**：旧版代码保存在 [`old` 分支](https://github.com/YILING0013/AI_NovelGenerator/tree/old)。旧版 Issue 和 PR 已因版本重写统一关闭，该操作不代表所有历史问题均已修复。
+`NOVEL_GENERATOR_BACKEND_PORT` 可修改后端监听端口；数据库可通过 `NOVEL_GENERATOR_MONGODB_URL`、`NOVEL_GENERATOR_MONGO_DATABASE_NAME` 覆盖配置。手工编辑配置文件后重启后端。
 
 </details>
 
-## 项目结构
+## 界面一览
 
-```text
-backend/               API、数据读写、生成逻辑与内置提示词
-frontend/              Next.js 写作界面
-desktop_launcher/      桌面启动器与本地服务管理
-.github/               公开协作模板与 README 截图
-main.py                后端入口
-launcher.py            启动器入口
-start.bat              Windows 启动脚本
-compose.mongodb.yaml   本地 MongoDB 单机副本集
-requirements.txt       Python 依赖
-```
+**人物与势力关系图谱**将角色关系、势力关系和归属放在同一张图中，可筛选、缩放、拖动节点并查看详情。
 
-主要技术：**Next.js 16、React 19、HeroUI、React Flow、FastAPI、PyMongo、MongoDB 与 PySide6**。
+![潮汐档案的三名角色、两股势力与关系连线](.github/assets/readme/relationships.png)
 
-## 贡献与反馈
+<details>
+<summary><strong>故事、角色、卷规划与正文编辑</strong></summary>
 
-问题报告和功能建议通过 [Issue 表单](https://github.com/YILING0013/AI_NovelGenerator/issues/new/choose)。请说明当前版本、运行环境、重现步骤、预期结果与实际结果，并提供脱敏后的截图或日志。
+小说信息集中管理故事方向、世界观、风格与篇幅；角色资料支持按故事位置查看。规划从卷逐层展开，正文编辑提供字数统计、保存、草稿导出和历史版本。
 
-提交 PR 前请阅读[贡献说明](.github/CONTRIBUTING.md)，基于当前 `main` 开发，说明解决了什么问题、如何验证。若旧版的问题在新版中仍然存在，请新建报告并链接原讨论。
+![小说信息与故事设定](.github/assets/readme/story.png)
+![角色档案与人物成长方向](.github/assets/readme/characters.png)
+![卷概览与本卷规划](.github/assets/readme/volumes.png)
+![首章正文编辑与已保存状态](.github/assets/readme/writing.png)
 
-## 许可证
+</details>
 
-本项目采用 GNU Affero General Public License v3.0，完整条款见 [LICENSE](LICENSE)。
+<details>
+<summary><strong>可编辑的 AI 流程与提示词</strong></summary>
+
+内置流程覆盖新建小说、资料生成、各层规划、正文与章后检查。可在画布中调整节点及连线，修改提示词、输入输出与模型配置；无需先自建流程才能开始写作。
+
+![新建小说流程画布与节点连线](.github/assets/readme/workflow.png)
+![AI 生成节点的提示词配置](.github/assets/readme/node.png)
+
+</details>
+
+界面支持中英文、浅色/深色主题与响应式布局；此处展示桌面中文界面。技术栈为 Next.js 16、React 19、HeroUI、React Flow、FastAPI、PyMongo 与 PySide6。
+
+## 备份与升级
+
+当前 `main` 是重写版，旧版保留在 [`old`](https://github.com/YILING0013/AI_NovelGenerator/tree/old)。两者数据结构不同，请使用独立数据库。新版书籍归档格式为 v14，旧程序无法读取新版归档。
+
+| 数据 | 保存位置 |
+| --- | --- |
+| 小说、角色、规划、正文及写作记录 | 配置指定的 MongoDB 数据库 |
+| 数据库和模型配置（含密钥） | `user_data/config/config.yaml` |
+| 自定义流程、上传封面 | `user_data/task_flows/`、`user_data/static/` |
+| 导出、迁移备份与记录 | `user_data/exports/`、`user_data/backups/`、`user_data/migrations/` |
+| 启动器端口设置 | `user_data/config/launcher_settings.json` |
+| 未保存正文草稿 | 当前浏览器、当前站点地址的本地存储 |
+
+默认用户目录是项目下的 `user_data/`，可用 `NOVEL_GENERATOR_USER_DATA_DIR` 指定独立目录。
+
+- **更新前**确认保存结果、导出未保存草稿，停止应用并分别备份 MongoDB 与用户文件。复制 `user_data` 或导出单本书都不是完整备份。然后自行更新代码、重新安装依赖并构建前端。
+- **启动时**仅迁移受支持的旧文件目录与数据。可识别且未修改、使用最新默认修订的内置流程会备份后升级；自定义或固定旧修订的流程会保留。程序不会安装 MongoDB、自动下载代码，也不会转换任意历史版本的数据库。
+- **迁移失败时**保留原文件、备份与迁移记录，按错误提示处理冲突；不要删除 `user_data` 或数据库来重试。生成恢复依赖原后端进程和页面，刷新或重启不保证恢复，重试模型调用可能再次计费。
+
+本项目面向本机使用，应用没有面向公网的用户认证；自带 MongoDB 也未设置密码，仅绑定回环地址。请勿直接暴露到公网。AI 操作会将所需故事上下文发送给你配置的模型服务。
+
+## 反馈与参与
+
+遇到问题请提交 [Issue](https://github.com/YILING0013/AI_NovelGenerator/issues/new/choose)，附版本、环境、复现步骤及脱敏后的截图或日志。参与开发请先阅读[贡献指南](.github/CONTRIBUTING.md)。项目采用 [GNU AGPL v3.0](LICENSE)。
+
+## Star History
+
+[![Star History：YILING0013/AI_NovelGenerator 的 GitHub 星标历史](https://api.star-history.com/svg?repos=YILING0013/AI_NovelGenerator&type=Date)](https://www.star-history.com/?repos=YILING0013%2FAI_NovelGenerator&type=date&legend=top-left)

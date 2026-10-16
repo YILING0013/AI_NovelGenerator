@@ -4,6 +4,7 @@ import { getMessages, getTranslations, setRequestLocale } from "next-intl/server
 import { NextIntlClientProvider } from "next-intl";
 import { routing } from "@/i18n/routing";
 import { Providers } from "./providers";
+import { StartupGate } from "@/components/layout/StartupGate";
 import Navbar from "@/components/layout/Navbar";
 import { WorkspacePages } from "@/components/layout/WorkspacePages";
 
@@ -45,9 +46,11 @@ export default async function LocaleLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <NextIntlClientProvider messages={messages}>
           <Providers locale={locale}>
-            <Navbar />
-            <main className="flex min-h-0 flex-1 flex-col"><WorkspacePages>{children}</WorkspacePages></main>
-            {modal}
+            <StartupGate>
+              <Navbar />
+              <main className="flex min-h-0 flex-1 flex-col"><WorkspacePages>{children}</WorkspacePages></main>
+              {modal}
+            </StartupGate>
           </Providers>
         </NextIntlClientProvider>
       </body>

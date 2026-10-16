@@ -2,7 +2,17 @@ import type { AppConfig } from "@/types/config";
 
 type TFunc = (key: string) => string;
 
-const ALIAS_REGEX = /^[a-zA-Z0-9_]+$/;
+/**
+ * 校验直接用于配置和方案引用的 Provider 名称。
+ * Args: alias: 已去除首尾空白的名称。
+ * Returns: 名称长度、日志字符及对象键均安全时返回 true。
+ */
+export function isValidProviderAlias(alias: string): boolean {
+  const length = Array.from(alias).length;
+  return alias === alias.trim() && length >= 1 && length <= 100 &&
+    !/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(alias) &&
+    !["__proto__", "constructor", "prototype"].includes(alias);
+}
 
 export function validateConfig(config: AppConfig, t: TFunc): string | null {
   // Database fields
@@ -34,7 +44,7 @@ export function validateConfig(config: AppConfig, t: TFunc): string | null {
 
   // Provider alias validation
   for (const alias of providerAliases) {
-    if (!ALIAS_REGEX.test(alias)) {
+    if (!isValidProviderAlias(alias)) {
       return t("provider.aliasRule") + `: ${alias}`;
     }
     const p = config.llm.providers[alias];

@@ -87,6 +87,12 @@ def prepared_task_parameters(task: str, parameters: dict[str, Any], scope: dict[
     counts = report.new_counts.model_dump(mode="json")
     if task in WRITING_TASKS:
         actual_scope["selected_entities"] = selected
+        if scope.get("chapter_context_version") == 1:
+            # 原作者选择留在 run.scope；完成后的空集合不再当作尚未选择。
+            for field, identities in scope.get("selected_entities", {}).items():
+                if set(identities) - set(selected[field]):
+                    raise DomainApiError("WRITING_MATERIAL_MISSING", "整理结果遗漏作者明确选择的资料，请继续整理", status_code=409)
+            actual_scope["chapter_selection_complete"] = True
         if task != "write_chapter_by_ai":
             if not report.remaining:
                 values["count"] = 0
@@ -206,7 +212,7 @@ async def load_task_context(task: str, parameters: dict[str, Any], scope: dict[s
         ids = {f["faction_id"] for f in factions}
         if any(t.faction_id not in ids for t in request.existing_relation_targets):
             raise DomainApiError("FACTION_REFERENCE_INVALID", "指定的已有阵营不存在", status_code=422)
-        if request.faction_count - request.independent_faction_count == 1 and (not factions or (request.faction_count == 1 and not request.connect_to_existing)):
+        if request.faction_count is not None and request.faction_count - request.independent_faction_count == 1 and (not factions or (request.faction_count == 1 and not request.connect_to_existing)):
             raise DomainApiError("FACTION_RELATION_INPUT_INVALID", "只有一个势力需要建立关系，却没有可连接的对象。请调整生成数量或连接已有势力", status_code=422)
         relations = [
             relation
@@ -251,7 +257,7 @@ async def load_task_context(task: str, parameters: dict[str, Any], scope: dict[s
     else:
         raise ValueError(f"任务 {task} 没有资料读取节点")
 
-    # 对外端口与原提示词的变量一致，JSON 字段仍保留原来的稳定序列化。
+    # 数量是可空整数端口；只有原 JSON 文本端口需要序列化，不能把 AI 决定的 None 写成字符串。
     fields = PROMPT_TEMPLATE_FIELDS[spec.step + "_prompt_base"]
     values = data["prompt_input"]
     ports = {}
@@ -259,7 +265,7 @@ async def load_task_context(task: str, parameters: dict[str, Any], scope: dict[s
         value = values[key[:-5] if key.endswith("_json") else key]
         if key == "user_guidance":
             value = value or "无"
-        elif isinstance(value, (dict, list, bool)) or value is None:
+        elif isinstance(value, (dict, list, bool)) or (value is None and key not in {"character_count", "faction_count", "item_count", "core_rule_count"}):
             value = json.dumps(value, ensure_ascii=False, sort_keys=True)
         ports[key] = value
     return TaskContext(request, gen, data, ports, extra)

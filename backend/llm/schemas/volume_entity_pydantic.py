@@ -2,17 +2,19 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Annotated, Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, create_model, model_validator, model_serializer
 
 from backend.llm.generation_options import ReasoningOptions
 from backend.api.contracts import ObjectIdString, StrictRequestModel, StrictResponseModel
 from backend.llm.schemas.character_pydantic import CharacterCreateRequestV1
 from backend.llm.schemas.character_volume_state_pydantic import CharacterId, CharacterVolumePlanFieldsV1, CharacterVolumeStateFieldsV1, CharacterVolumeStateReadV1
-from backend.services.novel.character_fact_contract import CharacterFactValuesV1
+from backend.services.novel.character_fact_contract import CharacterFactCreateDataV1, CharacterFactValuesV1
 from backend.llm.schemas.faction_creation_pydantic import FactionCreateRequestV1
-from backend.llm.schemas.faction_volume_state_pydantic import FactionVolumeStateFieldsV1, FactionVolumeStateReadV1
+from backend.llm.schemas.faction_volume_state_pydantic import FactionVolumeStateFieldsV1, FactionVolumePlanFieldsV1, FactionVolumeReadV1
+from backend.services.novel.faction_fact_contract import FactionFactValuesV1
 from backend.services.llm.candidate_contract import CandidateBasisV1
 
 
@@ -22,6 +24,7 @@ VOLUME_ENTITY_TASKS = {
 }
 CandidateRef = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]{0,63}$")]
 EntityId = Annotated[str, Field(min_length=5, max_length=100)]
+CHARACTER_PLAN_CONTRACT = "character_plan_initial_facts_v1"
 
 
 class VolumeEntityParametersV1(StrictRequestModel):
@@ -121,16 +124,28 @@ class VolumeFactionCandidateV1(StrictRequestModel):
         return self
 
 
-class VolumeCharactersResultV1(StrictRequestModel):
-    """模型返回的卷内人物候选。"""
+class GeneratedVolumeFactionCandidateV1(VolumeFactionCandidateV1):
+    """新生成候选只传出模型明确给出的实际值；旧确认模型保持不变。"""
 
-    characters: list[VolumeCharacterCandidateV1] = Field(max_length=20)
+    @model_serializer(mode="wrap")
+    def preserve_explicit_facts(self, handler):
+        """跨预览、修复与助手序列化保留字段是否提供，不把默认空值登记为事实。"""
+        from backend.services.novel.faction_fact_contract import FACTION_FACT_FIELDS
+        result = handler(self)
+        for field in ("power_level", "resources", "public_stance", "influence_scope", "active_status"):
+            if field not in self.state.model_fields_set:
+                result["state"].pop(field, None)
+        if self.profile is not None:
+            for field in FACTION_FACT_FIELDS:
+                if field not in self.profile.model_fields_set:
+                    result["profile"].pop(field, None)
+        return result
 
 
 class VolumeFactionsResultV1(StrictRequestModel):
     """模型返回的卷内势力候选。"""
 
-    factions: list[VolumeFactionCandidateV1] = Field(max_length=20)
+    factions: list[GeneratedVolumeFactionCandidateV1] = Field(max_length=20)
 
 
 class VolumeEntityBasisV1(CandidateBasisV1):
@@ -156,17 +171,6 @@ class VolumeEntityBasisV1(CandidateBasisV1):
         return self
 
 
-class VolumeCharactersPreviewV1(StrictResponseModel):
-    """普通响应与 SSE 完成事件使用的卷内人物信封。"""
-
-    workflow: Literal["create_characters_for_volume_by_ai"]
-    step: Literal["create_characters_for_volume"]
-    schema_id: Literal["volume_characters_result"]
-    schema_version: Literal[1]
-    candidate: VolumeCharactersResultV1
-    basis: VolumeEntityBasisV1
-
-
 class VolumeFactionsPreviewV1(StrictResponseModel):
     """普通响应与 SSE 完成事件使用的卷内势力信封。"""
 
@@ -178,11 +182,28 @@ class VolumeFactionsPreviewV1(StrictResponseModel):
     basis: VolumeEntityBasisV1
 
 
+class VolumeCharactersLegacyResultV1(StrictRequestModel):
+    """旧确认入口的完整候选结构；不用于当前生成或预览。"""
+
+    characters: list[VolumeCharacterCandidateV1] = Field(max_length=20)
+
+
 class VolumeCharactersConfirmV1(StrictRequestModel):
     """作者审核后确认的当前卷人物列表和原始依据。"""
 
     candidates: list[VolumeCharacterCandidateV1] = Field(max_length=20)
     basis: VolumeEntityBasisV1
+
+
+class VolumeCharacterPlanProfileV1(CharacterFactCreateDataV1):
+    """新卷人物的设计资料；实际事实仅由 initial_facts 提交。"""
+
+    is_core_character: Literal[False] = False
+
+    @model_serializer(mode="wrap")
+    def serialize_present_values(self, handler):
+        """预览补齐非事实设计字段；实际事实仍只存在于独立的稀疏对象。"""
+        return handler(self)
 
 
 class VolumeCharacterPlanCandidateV1(VolumeCharacterCandidateV1):
@@ -205,6 +226,61 @@ class VolumeCharactersPlanResultV1(StrictRequestModel):
     characters: list[VolumeCharacterPlanCandidateV1] = Field(max_length=20)
 
 
+class VolumeCharacterInitialFactsCandidateV1(VolumeCharacterPlanCandidateV1):
+    """独立的新合同：设计档案与明确初始事实分开，不改变旧计划请求。"""
+
+    profile: VolumeCharacterPlanProfileV1 | None = None
+
+    @model_validator(mode="after")
+    def require_initial_facts(self):
+        if self.profile is not None and (self.initial_facts is None or not self.initial_facts.model_dump()):
+            raise ValueError("新角色至少需要一项明确的初始事实；未知事实不能用空值补齐")
+        return self
+
+
+class VolumeCharactersInitialFactsResultV1(StrictRequestModel):
+    characters: list[VolumeCharacterInitialFactsCandidateV1] = Field(max_length=20)
+
+
+class VolumeCharactersPreviewV1(StrictResponseModel):
+    """普通响应与 SSE 完成事件使用的卷内人物信封。"""
+
+    workflow: Literal["create_characters_for_volume_by_ai"]
+    step: Literal["create_characters_for_volume"]
+    schema_id: Literal["volume_characters_result"]
+    schema_version: Literal[1]
+    contract: Literal["character_plan_initial_facts_v1"]
+    candidate: VolumeCharactersInitialFactsResultV1
+    basis: VolumeEntityBasisV1
+
+
+class _GeneratedCharacterInitialFacts(StrictRequestModel):
+    """模型传输专用：null 表示未知，预览和确认只保留明确的事实值。"""
+
+    @model_serializer(mode="wrap")
+    def serialize_known_values(self, handler):
+        return {field: value for field, value in handler(self).items() if value is not None}
+
+
+# 复用事实字段的类型与长度约束，但不把禁止显式 null 的确认合同用作模型协议。
+GeneratedCharacterInitialFactsV1 = create_model(
+    "GeneratedCharacterInitialFactsV1", __base__=_GeneratedCharacterInitialFacts,
+    **{name: (field.annotation, deepcopy(field)) for name, field in CharacterFactValuesV1.model_fields.items()},
+)
+
+
+class GeneratedVolumeCharacterPlanCandidateV1(VolumeCharacterInitialFactsCandidateV1):
+    """仅在模型响应边界接收未知标记，不接收旧 state 事实字段。"""
+
+    initial_facts: GeneratedCharacterInitialFactsV1 | None = None
+
+
+class VolumeCharactersResultV1(StrictRequestModel):
+    """人物生成采用卷计划语义，未知初始事实在序列化时保持省略。"""
+
+    characters: list[GeneratedVolumeCharacterPlanCandidateV1] = Field(max_length=20)
+
+
 class VolumeCharactersPlanConfirmV1(StrictRequestModel):
     """新保存显式采用计划合同，旧九字段原请求仍独立处理。"""
 
@@ -213,10 +289,52 @@ class VolumeCharactersPlanConfirmV1(StrictRequestModel):
     basis: VolumeEntityBasisV1
 
 
+class VolumeCharactersInitialFactsConfirmV1(StrictRequestModel):
+    """新生成合同有独立身份；原 v1 的输入、摘要及执行保持原样。"""
+
+    contract: Literal["character_plan_initial_facts_v1"]
+    candidates: list[VolumeCharacterInitialFactsCandidateV1] = Field(max_length=20)
+    basis: VolumeEntityBasisV1
+
+    @model_validator(mode="after")
+    def require_generation_contract(self):
+        if self.basis.flow_snapshot["execution"].get("character_candidate_contract") != CHARACTER_PLAN_CONTRACT:
+            raise ValueError("新人物计划需要同合同的原始生成依据")
+        return self
+
+
 class VolumeFactionsConfirmV1(StrictRequestModel):
     """作者审核后确认的当前卷势力列表和原始依据。"""
 
     candidates: list[VolumeFactionCandidateV1] = Field(max_length=20)
+    basis: VolumeEntityBasisV1
+
+
+class VolumeFactionPlanCandidateV1(VolumeFactionCandidateV1):
+    """卷内新势力的明确事实与参与计划分别保存。"""
+
+    state: FactionVolumePlanFieldsV1
+    initial_facts: FactionFactValuesV1 | None = None
+
+    @model_validator(mode="after")
+    def new_faction_only(self) -> "VolumeFactionPlanCandidateV1":
+        """已有势力只改卷计划，不借计划确认覆盖当前事实。"""
+        if self.faction_id is not None and self.initial_facts is not None:
+            raise ValueError("已有势力的参与计划不接受实际剧情状态修改")
+        return self
+
+
+class VolumeFactionsPlanResultV1(StrictRequestModel):
+    """卷内势力参与计划候选。"""
+
+    factions: list[VolumeFactionPlanCandidateV1] = Field(max_length=20)
+
+
+class VolumeFactionsPlanConfirmV1(StrictRequestModel):
+    """新保存采用计划合同；旧未知请求不得偷偷升级。"""
+
+    contract: Literal["participation_plan_v1"]
+    candidates: list[VolumeFactionPlanCandidateV1] = Field(max_length=20)
     basis: VolumeEntityBasisV1
 
 
@@ -234,5 +352,5 @@ class VolumeFactionsConfirmedV1(StrictResponseModel):
 
     novel_id: ObjectIdString
     volume_id: ObjectIdString
-    data: list[FactionVolumeStateReadV1]
+    data: list[FactionVolumeReadV1]
     mapping: dict[str, str]

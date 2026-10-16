@@ -17,7 +17,10 @@
           "maximum": 20,
           "minimum": 1,
           "title": "Core Rule Count",
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "required": false
         },
         "allow_incremental": {
@@ -47,7 +50,10 @@
           "maximum": 20,
           "minimum": 1,
           "title": "Core Rule Count",
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "required": false
         },
         "allow_incremental": {
@@ -72,7 +78,10 @@
           "type": "string"
         },
         "core_rule_count": {
-          "type": "integer"
+          "type": [
+            "integer",
+            "null"
+          ]
         },
         "existing_world_rules": {
           "type": "string"
@@ -108,7 +117,10 @@
           "type": "string"
         },
         "core_rule_count": {
-          "type": "integer"
+          "type": [
+            "integer",
+            "null"
+          ]
         },
         "existing_world_rules": {
           "type": "string"
@@ -425,7 +437,10 @@
           "maximum": 20,
           "minimum": 1,
           "title": "Core Rule Count",
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "required": false
         },
         "param_allow_incremental": {

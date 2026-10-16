@@ -430,7 +430,7 @@ class CoreCharactersGenerationInputV1(ReasoningOptions, StrictSchemaModel):
     """核心角色候选确认可重算的严格业务输入。"""
 
     novel_id: str = Field(pattern=_OBJECT_ID_PATTERN)
-    character_count: int = Field(ge=1, le=50, strict=True)
+    character_count: int | None = Field(ge=1, le=50, strict=True)
     user_guidance: str | None = Field(default=None, max_length=2000)
     temperature: float | None = Field(default=None, ge=0, le=2)
     top_p: float | None = Field(default=None, ge=0, le=1)
@@ -745,7 +745,7 @@ class CoreCharactersAIConfirmationRequestV1(StrictSchemaModel):
         }
         if any(ref not in candidate_refs for ref in self.selected_character_refs):
             raise ValueError("selected_character_refs 包含候选中不存在的引用")
-        if len(self.candidate.core_characters) != self.generation_input.character_count:
+        if self.generation_input.character_count is not None and len(self.candidate.core_characters) != self.generation_input.character_count:
             raise ValueError("核心角色候选数量必须匹配原始 generation_input")
 
         basis_faction_ids = {

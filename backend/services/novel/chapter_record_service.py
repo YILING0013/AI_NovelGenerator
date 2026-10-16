@@ -73,11 +73,13 @@ async def _replay(novel_id, fingerprint, *, expected_operation: str, session, ex
     marked = "schema_id" in receipt or "schema_version" in receipt
     if expected_receipt_schema is not None or marked:
         from backend.services.novel.item_fact_contract import validate_item_fact_receipt
+        from backend.services.novel.faction_fact_contract import validate_faction_fact_receipt
 
         validators = {
             "character.fact.receipt": validate_character_fact_receipt,
             "character_relation.fact.receipt": validate_character_relation_fact_receipt,
             "item.fact.receipt": validate_item_fact_receipt,
+            "faction.fact.receipt": validate_faction_fact_receipt,
         }
         if (expected_receipt_schema not in validators
                 or receipt.get("schema_id") != expected_receipt_schema

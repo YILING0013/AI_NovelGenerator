@@ -16,7 +16,10 @@
           "maximum": 50,
           "minimum": 1,
           "title": "Character Count",
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "required": true,
           "default": 3
         },
@@ -47,7 +50,10 @@
           "maximum": 50,
           "minimum": 1,
           "title": "Character Count",
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "required": true
         },
         "user_guidance": {
@@ -67,7 +73,10 @@
       },
       "outputs": {
         "character_count": {
-          "type": "integer"
+          "type": [
+            "integer",
+            "null"
+          ]
         },
         "core_factions_json": {
           "type": "string"
@@ -91,7 +100,10 @@
       "label": "create_core_characters",
       "inputs": {
         "character_count": {
-          "type": "integer"
+          "type": [
+            "integer",
+            "null"
+          ]
         },
         "core_factions_json": {
           "type": "string"
@@ -1474,7 +1486,10 @@
           "maximum": 50,
           "minimum": 1,
           "title": "Character Count",
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "required": true
         },
         "param_user_guidance": {

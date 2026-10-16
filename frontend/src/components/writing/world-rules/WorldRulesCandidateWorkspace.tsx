@@ -109,9 +109,9 @@ function isGenerationInput(value: unknown, novelId: string): value is CoreWorldR
   return (
     value.novel_id === novelId &&
     NOVEL_ID_PATTERN.test(novelId) &&
-    Number.isInteger(value.core_rule_count) &&
+    (value.core_rule_count === null || (Number.isInteger(value.core_rule_count) &&
     Number(value.core_rule_count) >= 1 &&
-    Number(value.core_rule_count) <= 20 &&
+    Number(value.core_rule_count) <= 20)) &&
     typeof value.allow_incremental === "boolean" &&
     typeof value.user_guidance === "string" &&
     value.user_guidance.length <= 2000 &&

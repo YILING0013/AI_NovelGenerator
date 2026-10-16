@@ -1,5 +1,7 @@
 "use client";
 
+import { downloadExport } from "@/lib/userExport";
+
 import { useContext, useEffect, useRef, useState, type RefObject } from "react";
 import { Button, Modal } from "@heroui/react";
 import { useTranslations } from "next-intl";
@@ -56,6 +58,19 @@ export default function ItemFactConfirmationDialog({ novelId, initialDraft, choi
     setBusy(false);
     if (outcome.ok) onClose();
     else setError(outcome.stage === "readback" ? t("savedReadFailed") : outcome.stage === "cleanup" ? t("savedCleanupFailed") : outcome.error instanceof Error ? outcome.error.message : t("saveFailed"));
+  };
+  const backToEdit = async () => {
+    const previous = current.current;
+    if (pending.current || previous.command || !previous.preparation || previous.reprepared || previous.returnedToCheck) return;
+    pending.current = true; setBusy(true); setError("");
+    try {
+      await queue.current;
+      const preparation = { ...structuredClone(previous.preparation), key: crypto.randomUUID(), revision: 1 };
+      // 同一事务撤销旧确认稿的发送权，输入原样回到编辑，未知请求不走此入口。
+      await reprepareItemFact(previous, preparation);
+      onClose(); onReprepared(preparation);
+    } catch (failure) { setError((failure as Error).message); }
+    finally { pending.current = false; if (alive.current) setBusy(false); }
   };
   const prepareAgain = async (accept: boolean) => {
     const previous = current.current;
@@ -149,9 +164,10 @@ export default function ItemFactConfirmationDialog({ novelId, initialDraft, choi
       <label className="flex min-h-11 items-start gap-3 text-sm leading-6"><input type="checkbox" className="mt-1 h-4 w-4 accent-accent" checked={Boolean(draft.command) || draft.authorConfirmed} disabled={busy || Boolean(draft.command || draft.reprepared || draft.returnedToCheck)} onChange={(event) => { const next = { ...draft, revision: draft.revision + 1, authorConfirmed: event.target.checked }; update(next); void persist(next).catch(() => {}); }} /><span>{f(batch ? "authorConfirmedBatch" : "authorConfirmed")}</span></label>
     </Modal.Body>
     <Modal.Footer className="flex flex-wrap justify-end gap-2 border-t border-border px-5 py-4 sm:px-6">
-      {recoverable && <Button variant="outline" isDisabled={busy} onPress={() => void prepareAgain(false)}>{f("readForRecovery")}</Button>}
+      {recoverable && !draft.command && draft.preparation && <Button variant="outline" isDisabled={busy} onPress={() => void backToEdit()}>{f("backToEdit")}</Button>}
+      {recoverable && (draft.command || !draft.preparation) && <Button variant="outline" isDisabled={busy} onPress={() => void prepareAgain(false)}>{f("readForRecovery")}</Button>}
       {recoverable && draft.schema_id === "item.fact.draft" && draft.origin && <Button variant="outline" isDisabled={busy} onPress={() => void returnToCheck()}>{f("returnToCheck")}</Button>}
-      <Button variant="ghost" isDisabled={busy} onPress={() => { const url = URL.createObjectURL(new Blob([JSON.stringify(current.current, null, 2)], { type: "application/json" })); const link = document.createElement("a"); link.href = url; link.download = `item-fact-${current.current.key}.json`; link.click(); URL.revokeObjectURL(url); setExported(true); }}>{t("exportDraft")}</Button>
+      <Button variant="ghost" isDisabled={busy} onPress={() => { const url = URL.createObjectURL(new Blob([JSON.stringify(current.current, null, 2)], { type: "application/json" })); const link = document.createElement("a"); link.href = url; link.download = `item-fact-${current.current.key}.json`; void downloadExport(link); URL.revokeObjectURL(url); setExported(true); }}>{t("exportDraft")}</Button>
       {exported && <Button variant="outline" isDisabled={busy} onPress={onClose}>{f("closeAfterCopy")}</Button>}
       <Button variant="ghost" isDisabled={busy} onPress={() => void close()}>{t("closeKeep")}</Button>
       <Button variant="primary" isDisabled={busy || Boolean(draft.reprepared || draft.returnedToCheck) || (!draft.command && (!draft.authorConfirmed || Boolean(localError) || !valuesValid))} onPress={() => void confirm()}>{t(busy ? "saving" : draft.command?.saved ? "retryRead" : draft.command ? "retryOriginal" : "confirm")}</Button>

@@ -166,7 +166,7 @@ class NavigationTarget(ResourceRef):
 class FactChangeRequest(AssistantModel):
     """助手只提供拟改内容；依据、作者原话和 confirmed 均由服务端产生。"""
 
-    resource_type: Literal["character", "character_relation", "item"]
+    resource_type: Literal["character", "character_relation", "item", "faction"]
     operation: Literal["create", "establish", "correct_initial", "change", "replace"]
     id: str | None = None
     candidate: dict[str, Any] | None = None

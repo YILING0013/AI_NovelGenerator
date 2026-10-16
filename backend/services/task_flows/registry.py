@@ -189,10 +189,31 @@ def validate_task_definition(flow):
     from .graph import port_schema, port_types_compatible, validate_flow, validate_values
 
     flow = validate_flow(flow)
+    chapter_agents = [node for node in flow.nodes if node.type == "agent" and node.config.get("chapter_context_version") == 1]
+    if chapter_agents:
+        if flow.task != "write_chapter_by_ai" or len(chapter_agents) != 1 or flow.subflows:
+            raise FlowValidationError("本章资料模式只支持单个章节整理节点，不支持子流程")
+        agent = chapter_agents[0]
+        models = [node for node in flow.nodes if node.type == "llm"]
+        contexts = [node for node in flow.nodes if node.type == "context"]
+        if len(models) != 1 or len(contexts) != 2 or len([node for node in flow.nodes if node.type == "agent"]) != 1:
+            raise FlowValidationError("本章资料模式需要初始资料、一次整理、采用资料和一次正文生成")
+        sources = {(edge.target, edge.target_port): (edge.source, edge.source_port, tuple(edge.source_path)) for edge in flow.edges}
+        prepared = next((node for node in contexts if "prepared_context" in node.inputs), None)
+        initial = next((node for node in contexts if "prepared_context" not in node.inputs), None)
+        if (prepared is None or initial is None or set(models[0].inputs) != {"writing_context"}
+                or sources.get((agent.id, "writing_context")) != (initial.id, "writing_context", ())
+                or sources.get((prepared.id, "prepared_context")) != (agent.id, "prepared_context", ())
+                or sources.get((models[0].id, "writing_context")) != (prepared.id, "writing_context", ())):
+            raise FlowValidationError("正文只能直接使用整理后的单份本章资料，不能另接报告或工具历史")
     if flow.task not in TASKS:
         raise FlowValidationError("未知业务任务")
     spec = TASKS[flow.task]
     output = next(node for node in flow.nodes if node.type == "output")
+    if flow.task == "create_characters_for_volume_by_ai":
+        from backend.llm.schemas.volume_entity_pydantic import CHARACTER_PLAN_CONTRACT
+        if output.config.get("candidate_contract") != CHARACTER_PLAN_CONTRACT:
+            raise FlowValidationError("人物生成方案仍为旧合同，请保留原方案并恢复新版内置方案后重新生成")
     candidate_fields = output.config.get("candidate_fields", {key: key for key in output.inputs})
     result_schema = spec.result_model.model_json_schema()
     missing = set(result_schema.get("required", [])) - candidate_fields.keys()

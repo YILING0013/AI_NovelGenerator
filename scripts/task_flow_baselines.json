@@ -1,0 +1,37 @@
+{
+  "canonicalization": "Flow.model_dump(mode=json), exclude revision only",
+  "tasks": {
+    "create_characters_for_volume_by_ai": {
+      "id": "default_create_characters_for_volume_by_ai",
+      "sha256": [
+        "bc3f6b7e6386262d63bbc1e187c887614d2020a245868a5e2f0eece3eaf27252",
+        "f40e2e213d6372a9d57e3da3c0ec56f114d93fbffb24946697ed74ee1731090c",
+        "0057f53aa14b653b6e0d47da2b6a06380f8b9f5c4e71f7c471de39691ff0e946"
+      ]
+    },
+    "plan_arcs_by_ai": {
+      "id": "default_plan_arcs_by_ai",
+      "sha256": [
+        "06e5b541fc360969eafa0d3a4508b4114fece15aa89f8132c28681b891543acb",
+        "4060c5c29e47f7d6985b9334cd8aecad7d8a44afd59f07b4f75582fa832e1465",
+        "c62a48dd43a6f171e29ffcc5f146669afd83e4b8ccb833e2df08ce4893e74088"
+      ]
+    },
+    "plan_scenes_by_ai": {
+      "id": "default_plan_scenes_by_ai",
+      "sha256": [
+        "07f6e18640f23d7a4b3f94cc9ea475da489600b6bfeca8e6b0e6b14b736d2ab3",
+        "8631d8c845e423ac949d986402d2a6350a504cc3aa6426f94ce87a7608e5483c",
+        "61187be594add4b3be7a0d60aa52349f72ce8823ee24ca60f598ec7262152782"
+      ]
+    },
+    "plan_chapters_by_ai": {
+      "id": "default_plan_chapters_by_ai",
+      "sha256": [
+        "2cdd93cb187aee3b408eb1509fca9c461654391d19f551d0572fea330dadb2a7",
+        "c0c324360d8f2f24218c6eee092c5c1dc3d0412cb4fd3d9b36e7f8e7d9da3f17",
+        "79f6822023a8ca0ba7ca8fdb6a1f786c6bce083e137bb01d70afd7779e7f7e59"
+      ]
+    }
+  }
+}

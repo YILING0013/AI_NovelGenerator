@@ -1,4 +1,14 @@
 {
+  "draftChip": {
+    "draft": "Draft",
+    "resume": "Resume draft: {name}",
+    "pending": "Awaiting result",
+    "saved": "Saved, finishing pending",
+    "rejected": "Not submitted",
+    "discard": "Discard draft: {name}",
+    "finishBeforeDiscard": "Continue this request or linked record first",
+    "discardFailed": "Could not remove the draft. Refresh the list and try again."
+  },
   "textQuality": {
     "replacementSummary": "Found {count} suspicious U+FFFD replacement characters. Text is unchanged; you can still save.",
     "replacementDetails": "Show locations",
@@ -100,6 +110,9 @@
     "text": "Text",
     "defaultProvider": "Scheme default provider",
     "tasks": {
+      "check_chapter_item_owner_by_ai": "Check chapter item holder",
+      "check_chapter_item_owner_facts_by_ai": "Check chapter item transfer facts",
+      "check_chapter_character_relation_facts_by_ai": "Check chapter character relationship facts",
       "check_chapter_psychological_state_by_ai": "Check psychological state",
       "check_chapter_character_relation_state_by_ai": "Check character relationship state",
       "create_novel_by_ai": "Create novel with AI",
@@ -311,7 +324,8 @@
       "instruction": "Instruction",
       "new_count": "New profiles",
       "selected_existing_ids": "Existing profiles",
-      "count_mode": "Count mode"
+      "count_mode": "Count mode",
+      "selection_mode": "Profiles and count"
     },
     "searchScopes": {
       "novel": "Whole novel",
@@ -366,6 +380,9 @@
     },
     "canvasHelp": {
       "panels": "Editor panels",
+      "view": "Graph view",
+      "leftPanel": "Left panel",
+      "rightPanel": "Right panel",
       "scheme": "Scheme",
       "diagnostics": "Checks",
       "toggleLibrary": "Expand or collapse the left panel",
@@ -470,7 +487,14 @@
       "retrySameRounds": "These rounds were already added. Retrying will use the same allowance.",
       "previousToolError": "Earlier tool error; it may have been handled",
       "roundsInvalid": "Enter a whole number from 1 to 16.",
-      "continuationExpired": "This preparation has expired or cannot continue. Retry to start preparation again.",
+      "connectionPaused": "Generation paused; ready to resume",
+      "waiting": "The model service requires a wait. Resuming in {seconds}s.",
+      "reconnecting": "Model disconnected. Reconnecting in {seconds}s ({attempt}/{limit})",
+      "recover": "Resume generation",
+      "modelDisconnected": "The model connection was interrupted. Completed progress is retained. Resume generation when ready.",
+      "browserDisconnected": "The page connection was lost. Resuming checks the original task; if it is still running, try again shortly.",
+      "recoveryBoundary": "Completed preparation and generation are retained; finished candidates can be retrieved again. Unfinished calls with lost replies may be billed again. Records expire 30 minutes after stopping or completing. Page reload or server restart ends recovery.",
+      "continuationExpired": "This generation has expired or cannot resume. Discard this run before starting a new generation.",
       "continuationChanged": "The volume, arc, or generation target has changed. Start preparation again.",
       "max_rounds": "Maximum rounds",
       "max_tool_calls": "Maximum tool calls",
@@ -501,9 +525,12 @@
     },
     "countModes": {
       "auto": "Cover the remaining story",
-      "fixed": "Choose a count"
+      "fixed": "Choose a count",
+      "ai": "Let AI decide"
     },
-    "useLatestCopy": "Use a new built-in copy"
+    "useLatestCopy": "Use a new built-in copy",
+    "countModeFor": "{field} mode",
+    "selectionManual": "Choose manually"
   },
   "nav": {
     "title": "AI Novel Generator",
@@ -585,8 +612,8 @@
         "needsTest": "Needs Test"
       },
       "alias": "Provider Alias",
-      "aliasPlaceholder": "e.g. openai_gpt4o",
-      "aliasRule": "Only letters, numbers, and underscores",
+      "aliasPlaceholder": "e.g. Daily writing - GPT",
+      "aliasRule": "Use 1–100 characters without surrounding whitespace, control characters, or reserved names (__proto__, constructor, prototype)",
       "aliasDuplicate": "Alias already exists",
       "renameProvider": "Rename",
       "renameTo": "New Alias",
@@ -652,7 +679,28 @@
         "sent": "Request sent",
         "notStarted": "Not started",
         "appliedHint": "Suggested values were filled into this form. Click Save to write them to the config file.",
-        "unknownError": "Unknown error"
+        "unknownError": "Unknown error",
+        "stale": "The configuration changed during the test. The old result was not applied. Test the current configuration again.",
+        "budget": "Test output budget: {count} tokens (4096 when unset)",
+        "summary": "{passed}/{total} passed; determined results update switches, others keep their previous values.",
+        "parameters": "Sent parameters and reasoning evidence",
+        "reasoningStatus": {
+          "not_sent": "No explicit reasoning parameters were sent.",
+          "sent": "Reasoning parameters were sent; sending alone cannot confirm that a proxy applied them.",
+          "rejected": "The API explicitly rejected these reasoning parameters.",
+          "unknown": "Whether the API accepted the reasoning parameters could not be determined."
+        },
+        "noEvidence": "No native reasoning evidence was observed. This does not mean reasoning is unsupported.",
+        "evidence": "Observed: {types}",
+        "evidenceTypes": {
+          "usage": "native reasoning usage",
+          "native_block": "native thought block",
+          "signature": "signature or encrypted-state marker"
+        },
+        "tokensUnknown": "The API did not provide a reasoning token count.",
+        "reasoningTokens": "Reported reasoning usage for this test: {count} tokens",
+        "parametersAdjusted": "Parameters changed between sends. The final actual request is shown below.",
+        "noParameters": "No actual generation parameters are available to display."
       },
       "danger": {
         "title": "Danger Zone",
@@ -667,12 +715,24 @@
         "hint": "Configure default generation parameters for this provider. When enabled, these values will be used as defaults unless overridden per request.",
         "temperature": "Temperature",
         "topP": "Top P",
-        "maxTokens": "Max Tokens",
+        "maxTokens": "Request output budget",
         "presencePenalty": "Presence Penalty",
         "frequencyPenalty": "Frequency Penalty",
         "systemPrompt": "System Prompt",
         "systemPromptPlaceholder": "Enter default system prompt for this provider..."
-      }
+      },
+      "capacity": {
+        "title": "Model and API limits",
+        "context_window_tokens": "Context window (tokens)",
+        "input_token_limit": "Input limit (tokens)",
+        "output_token_limit": "Output limit (tokens)",
+        "unknown": "Unknown",
+        "helpTitle": "How do limits differ from the output budget?",
+        "help": "Enter positive integers from the model or API documentation, or leave unknown values blank. Input and output limits cannot be added to infer the context window. These reference values do not change request budgets or truncate input. The output budget in generation parameters limits this request; reasoning models usually spend thinking tokens from it too, depending on the API. Custom models can be configured manually."
+      },
+      "outputAuto": "Automatic (interface default)",
+      "apiModeHelp": "Responses uses newer message, tool and reasoning APIs. Chat Completions uses the widely supported compatible chat API. Choose the interface your service supports and test after switching.",
+      "apiModeHelpGemini": "Interactions uses the interaction API; Generate Content uses the content generation API. Choose an interface your service supports and test it."
     },
     "workflow": {
       "title": "Novel Generation Workflow",
@@ -2659,16 +2719,21 @@
       "unavailableRelation": "Unavailable relationship",
       "characters": {
         "open": "AI volume characters",
-        "title": "Volume character candidates"
+        "title": "Volume character candidates",
+        "initialFacts": "Initial facts at volume start"
       },
       "factions": {
+        "initialFacts": "Facts at the start of this volume",
+        "explicitFactsRequired": "This older draft does not record which facts were explicitly provided. Your draft is kept; generate a new candidate before adopting it.",
         "open": "AI volume factions",
         "title": "Volume faction candidates",
         "level": "Faction level",
         "volume": "Volume faction",
         "local": "Local faction",
         "parent": "Parent faction",
-        "noParent": "No parent faction"
+        "noParent": "No parent faction",
+        "planChanged": "The faction plans have changed. Keep your draft and prepare the batch again.",
+        "planChanges": "Changes to existing plans for {count} factions"
       },
       "candidates": "Candidates ({count})",
       "existing": "Existing profile",
@@ -2677,6 +2742,7 @@
       "close": "Close",
       "closeKeep": "Close and keep draft",
       "cancel": "Cancel generation",
+      "cancelled": "Generation cancelled. You can start again.",
       "generate": "Generate candidates",
       "confirm": "Confirm and save",
       "saving": "Saving",
@@ -2697,7 +2763,14 @@
       "adoptPlanDraft": "Use as volume plan draft",
       "draftConflict": "Another tab changed the candidates or submitted the original request. Your candidates remain here. Export and close, then reopen to review the saved draft.",
       "draftConflictExport": "Export these candidates and close",
-      "characterStart": "New character starting point: start of {title}"
+      "characterStart": "New character starting point: start of {title}",
+      "factionStart": "New factions’ stated facts start at the beginning of “{title}”. Existing factions only receive plan changes; record their story facts at a chosen position in details.",
+      "backgroundTitle": "Faction generation progress",
+      "backgroundRunning": "Generating faction candidates with the input window closed.",
+      "backgroundReady": "Faction candidates are retained and ready for review.",
+      "openGeneration": "Open generation task",
+      "retainedDraft": "The original draft and save command are preserved for viewing or export. An unknown save can only retry its original request. Regenerate unsubmitted older candidates with the updated flow.",
+      "regenerateRetained": "Regenerate candidates"
     },
     "characterRelationFacts": {
       "recheckRequired": "The relationship changed. Keep this draft and run a new chapter check.",
@@ -2744,6 +2817,7 @@
       "inactive": "This relationship is disabled, so new facts cannot be added. Disabling it does not end the relationship in the story."
     },
     "characterFacts": {
+      "volumeStartTitle": "Facts at this volume’s start",
       "panelTitle": "Character facts",
       "latest": "Current facts",
       "choosePosition": "Choose an effective position",
@@ -2768,6 +2842,7 @@
       "confirm": "Confirm and save facts",
       "close": "Close",
       "closeKeep": "Close and keep original draft",
+      "discardClose": "Discard and close",
       "exportDraft": "Export original draft",
       "saving": "Saving…",
       "retryRead": "Retry reading and cleanup",
@@ -2897,9 +2972,14 @@
       "managedLegacyField": "This field has been claimed. Keep the old draft and use the character fact actions.",
       "editLegacyText": "Edit unclaimed text",
       "saveLegacyText": "Save previous text",
-      "finishLegacyEditing": "Finish saving or cancel this text edit before leaving."
+      "finishLegacyEditing": "Finish saving or cancel this text edit before leaving.",
+      "leaveUnknown": "Keep unknown",
+      "recordEmpty": "Record as explicitly empty",
+      "positionHelp": "Choose when these facts become true: book start, before a volume begins, before a chapter, or after it ends. Current facts are read at the latest saved story position, which may differ from the book start.",
+      "authorNoteHelp": "Record the story-setting basis for these initial facts. This note stays with the facts; changes after a chapter require evidence from its text."
     },
     "characterVolumeStates": {
+      "planTitle": "Plan for this volume",
       "legacyStatesTitle": "Earlier volume state notes (for review only)",
       "loading": "Loading character details for this volume…",
       "version": "Version {version}",
@@ -2945,12 +3025,12 @@
       },
       "actions": {
         "retry": "Retry",
-        "create": "Add This Volume's State",
-        "edit": "Edit This Volume's State",
+        "create": "Add volume plan",
+        "edit": "Edit volume plan",
         "delete": "Move to Trash",
         "restore": "Restore",
         "hardDelete": "Delete Permanently",
-        "save": "Save This Volume's State",
+        "save": "Save volume plan",
         "saving": "Saving…",
         "cancel": "Cancel",
         "processing": "Processing…",
@@ -3026,9 +3106,14 @@
         "title": "Initialize Character States from Previous Volume",
         "characters": "Choose characters",
         "targetExists": "The target volume already has a state, including one in the trash",
-        "conflictPolicy": "If any selected character already has a record in this volume, no characters will be copied.",
+        "conflictPolicy": "If any selected character already has a record in this volume, or situation fields being copied are managed as facts, no characters will be copied.",
         "firstVolume": "The first volume has no previous volume to copy from.",
-        "noSourceStates": "The previous volume has no character records to copy."
+        "noSourceStates": "The previous volume has no character records to copy.",
+        "legacyTitle": "Legacy data compatibility",
+        "legacyHint": "Full-state copying is for legacy situation fields not managed as facts. For new plans, use “Use previous volume’s plan” in the form. Previously sent requests can be retried unchanged here.",
+        "legacyAction": "Copy legacy state",
+        "resume": "Retry original copy request",
+        "pending": "The copy result is not yet confirmed. Retry keeps the original selection and request; you can close this dialog and return within this page."
       },
       "confirm": {
         "deletionSources": "This record entered Trash because of: {sources}. Permanent deletion cannot be undone.",
@@ -3049,9 +3134,23 @@
         }
       },
       "roster": "Volume character list",
-      "detail": "Volume character state"
+      "detail": "Volume character state",
+      "reusePrevious": {
+        "action": "Use previous volume’s plan",
+        "hint": "Fill this empty draft with the six plan fields from “{volume}”. Opening and ending arrangements are plans to adapt for this volume; actual facts are shown above.",
+        "used": "The previous plan is filled in once. Adjust it in this form; opening and ending arrangements are plans, not confirmed facts.",
+        "edited": "Your draft already has edits, which are preserved. Opening and ending arrangements remain plans for this volume."
+      },
+      "recovery": {
+        "localFailed": "Local saving failed or this draft changed in another tab. Keep your input and retry.",
+        "unknown": "This save has not been confirmed. Your input is kept; check the original request.",
+        "saved": "Saved. Reading current data or clearing the local draft is incomplete. Please continue.",
+        "retry": "Check original request",
+        "finish": "Read and clear"
+      }
     },
     "factionVolumeStates": {
+      "planTitle": "Plan for this volume",
       "loading": "Loading faction details for this volume…",
       "version": "Version {version}",
       "listSeparator": "; ",
@@ -3088,8 +3187,8 @@
         "activeStatus": "Volume activity status"
       },
       "form": {
-        "participationTitle": "Involvement and power",
-        "agendaTitle": "Volume stance and resources"
+        "participationTitle": "Participation plan",
+        "agendaTitle": "Hidden agenda"
       },
       "removeResource": "Remove \"{tag}\"",
       "resourcePlaceholder": "Type a resource and press Enter",
@@ -3104,17 +3203,17 @@
       },
       "actions": {
         "retry": "Retry",
-        "create": "Add This Volume's State",
-        "edit": "Edit This Volume's State",
+        "create": "Add participation plan",
+        "edit": "Edit participation plan",
         "delete": "Move to Trash",
         "restore": "Restore",
         "hardDelete": "Delete Permanently",
-        "save": "Save This Volume's State",
+        "save": "Save participation plan",
         "saving": "Saving…",
         "cancel": "Cancel",
         "processing": "Processing…",
         "clearFilters": "Clear Filters",
-        "initialize": "Copy from Previous Volume",
+        "initialize": "Copy previous volume plans",
         "initializing": "Copying…",
         "refreshConflict": "Get Latest Saved Version",
         "refreshingConflict": "Refreshing…",
@@ -3124,7 +3223,7 @@
       },
       "errors": {
         "load": "Faction details for this volume could not be loaded.",
-        "save": "The volume state could not be saved. Keep the draft and try again.",
+        "save": "Saving has not been verified. Your input and original request are retained; follow the message to continue.",
         "validation": "Correct the volume state fields.",
         "conflict": "This record or faction assignment changed. Your draft is still here; refresh and try again.",
         "deletedConflict": "This record is now in Trash. Your draft is still here, but it cannot overwrite deleted content.",
@@ -3159,9 +3258,9 @@
         "wrongOwnedVolume": "This faction can only be added to its assigned volume."
       },
       "editor": {
-        "eyebrow": "Faction State in This Volume",
-        "createTitle": "Add Faction State for This Volume",
-        "editTitle": "Edit Faction State for This Volume",
+        "eyebrow": "Faction participation plan",
+        "createTitle": "Add faction participation plan",
+        "editTitle": "Edit faction participation plan",
         "selectFactionTitle": "Choose a Participating Faction"
       },
       "conflictReview": {
@@ -3182,10 +3281,10 @@
         "selectVolume": "Choose a volume"
       },
       "initialize": {
-        "title": "Initialize Faction States from Previous Volume",
+        "title": "Copy participation plans from the previous volume",
         "factions": "Choose factions",
         "targetExists": "The target volume already has a state, including one in the trash",
-        "conflictPolicy": "If any selected faction already has a record in this volume, no factions will be copied.",
+        "conflictPolicy": "Only participation plans are copied. Resources, power and story status stay unchanged. If any selected faction already has a record in this volume, nothing is copied.",
         "firstVolume": "The first volume has no previous volume to copy from.",
         "noSourceStates": "The previous volume has no faction records to copy."
       },
@@ -3715,7 +3814,7 @@
       "chapterRecordsPreserved": "These {count} chapter confirmation records will remain and continue to protect their source text.",
       "chapterRecordsDeleteBlocked": "These {count} chapter confirmation records still protect their source text. This item cannot be permanently deleted; delete the whole novel to remove everything.",
       "sceneChapters": "Chapters in this scene",
-      "enterEmptyScene": "Open scene to add chapters",
+      "noChaptersToExpand": "No chapters yet",
       "openScene": "Back to this scene"
     },
     "volumes": {
@@ -3964,7 +4063,28 @@
           "resourceConflict": "Related content changed ({id}).",
           "providerUnavailable": "The AI service or database is temporarily unavailable. Try again later.",
           "timeout": "AI planning timed out. No volumes were saved."
-        }
+        },
+        "launchContext": {
+          "title": "Sources at this volume’s start",
+          "refresh": "Refresh launch sources",
+          "position": "Start of volume {order}: {name}",
+          "scope": "{characters} characters · {factions} core factions · {world_rules} rules",
+          "scopeDetails": "Includes novel details, {volumes} target and adjacent volumes, {character_relations} character relations, {faction_relations} faction relations and {bindings} memberships.",
+          "review": "{count} entities have sources to review",
+          "process": "Review in workspace",
+          "source": "Read source {number}",
+          "unknown": "{count} fields have no confirmed value here. You can continue; generation reads the sources again.",
+          "continueHint": "You can continue. Generation reads the sources again.",
+          "stale": "Refresh failed. Showing the previous read.",
+          "failed": "Sources could not be read. Retry or continue generating.",
+          "kinds": {
+            "character": "Character",
+            "faction": "Faction",
+            "character_relation": "Character relation"
+          }
+        },
+        "skeletonHelp": "Plan the order and outline of the whole book’s volumes, then develop each volume. You can also create volumes manually.",
+        "launchHelp": "Develop the selected volume’s goals, conflict, turning points and start/end states. Works with AI-planned or manual volumes; it does not split the book again or write chapters."
       },
       "impact": {
         "arcs": "Arcs",
@@ -4510,7 +4630,9 @@
       "ownerRecoveryUnavailable": "The holder before this source chapter must still match the original check. Return to the check if the transfer direction has changed.",
       "ownerRecoveryDirection": "The original transfer direction is fixed. To change either character, return to the check and create a new chapter review or holder check.",
       "returnToCheck": "Keep draft and return to holder check",
-      "returnedToCheck": "Returned to the holder check. This draft is kept for reference and export; it cannot be submitted."
+      "returnedToCheck": "Returned to the holder check. This draft is kept for reference and export; it cannot be submitted.",
+      "noteHelp": "Optional context for why these item states apply here. This note applies to the whole batch. Keep descriptions and story roles in each item’s own fields.",
+      "backToEdit": "Back to editing"
     },
     "firstUse": {
       "locked": "Complete the prerequisites first",
@@ -4525,7 +4647,7 @@
       "current": "In progress",
       "waiting": "Not started",
       "retry": "Retry",
-      "goToStep": "Continue current step",
+      "goToStep": "Continue",
       "continueOptional": "Skip for now",
       "loading": "Loading progress",
       "manage": "Review and manage",
@@ -4541,16 +4663,88 @@
       "volumelocations": "Locations for {title}",
       "chapterPreparation": "Prepare the next chapter",
       "arcPlot": "Develop {title}",
-      "writeChapter": "Write: {title}",
-      "nextVolume": "Planned chapters complete — prepare the next volume",
+      "writeChapter": "Write · Chapter {number}",
+      "plannedChaptersComplete": "All currently planned chapters are written. Review the text or continue planning.",
       "phases": {
         "book": "Create the book",
         "opening": "Opening details",
         "volume": "Volume plot",
         "preparation": "Volume preparation",
         "chapters": "Write chapters",
-        "continue": "Continue to next volume"
+        "continue": "Review or continue planning"
       }
+    },
+    "factionFacts": {
+      "title": "Facts at this story position",
+      "editTitle": "Edit facts here",
+      "sections": {
+        "identity": "Organization",
+        "situation": "Story situation"
+      },
+      "notEntered": "Not yet recorded",
+      "cleared": "Explicitly empty",
+      "public": "Public",
+      "hidden": "Hidden",
+      "power": "Level {level}",
+      "status": {
+        "active": "Active",
+        "dormant": "Dormant",
+        "dissolved": "Dissolved"
+      },
+      "removeTag": "Remove {value}",
+      "setEmpty": "Record that there are none",
+      "voidTitle": "Void this record",
+      "correctRecord": "Correct this record",
+      "reviewSources": "Some sources need review. Confirming will establish the edited facts using your content. The original records remain in history.",
+      "legacyTitle": "View older, unpositioned material",
+      "legacyExplanation": "This material has not been confirmed at a story position. Design goals, advantages and volume plans keep their original meaning and are not adopted automatically.",
+      "fields": {
+        "faction_type": "Faction type",
+        "positioning": "Position in the world",
+        "organization_style": "Organization style",
+        "core_values": "Core values",
+        "is_public": "Visibility",
+        "actual_goal": "Actual goal",
+        "public_stance": "Public stance",
+        "power_level": "Power level",
+        "resources": "Resources held",
+        "influence_scope": "Sphere of influence",
+        "story_status": "Story status"
+      },
+      "legacyFields": {
+        "faction_type": "Faction type",
+        "positioning": "Position in the world",
+        "organization_style": "Organization style",
+        "core_values": "Core values",
+        "is_public": "Visibility",
+        "actual_goal": "Actual goal",
+        "public_stance": "Public stance",
+        "power_level": "Power level",
+        "resources": "Resources held",
+        "influence_scope": "Sphere of influence",
+        "story_status": "Story status",
+        "core_goal": "Designed core goal",
+        "hidden_goal": "Designed hidden goal",
+        "resources_and_advantages": "Designed resources and advantages",
+        "hidden_agenda": "Volume hidden agenda",
+        "current_goal": "Planned volume goal",
+        "active_status": "Older volume status"
+      },
+      "factionName": "Faction name",
+      "recordChange": "Record a change from this chapter",
+      "compareChanges": "Current facts after rereading; your proposed changes remain below",
+      "recheck": "Keep inputs and check again",
+      "validity": {
+        "active": "Active record",
+        "replaced": "Corrected",
+        "voided": "Voided"
+      },
+      "planDraftConflict": "Another tab changed this plan, or local storage is unavailable. Your inputs are retained; reopen to check.",
+      "resumePlan": "Resume participation plan",
+      "planUnknown": "The save result is unknown. Retry the retained original request; do not create this plan again.",
+      "planSavedRead": "The plan was saved. Restore the current view without submitting again.",
+      "planRejected": "The save was rejected. Your inputs are retained; review the current plan to continue.",
+      "revisePlan": "Keep content and edit"
     }
   },
   "reasoning": {
@@ -4577,6 +4771,23 @@
       "between_tools": "Between tools",
       "standard": "Standard",
       "pro": "Pro"
+    },
+    "protocolHelpTitle": "Parameter help · {mode}",
+    "officialDocs": "Official reasoning documentation",
+    "protocolHelp": {
+      "openai": "Responses uses reasoning.effort; Chat Completions uses reasoning_effort. Pro mode is available only with Responses. Supported levels depend on the model; unknown proxy models can still be configured and tested manually. Missing thought summaries do not mean reasoning is unsupported.",
+      "claude": "Thinking mode is sent as thinking.type and effort as output_config.effort. Manual budgets require a model that supports them, at least 1024 tokens, and less than the output budget. Leave the budget unset for adaptive thinking. Simple requests may produce no thought block.",
+      "interactions": "Interactions uses generation_config.thinking_level and does not accept the legacy thinking token budget. Supported levels depend on the model. Missing summaries or signature-only results do not mean reasoning is unsupported.",
+      "generate_content": "Generate Content uses a thinkingConfig level or budget, never both. A budget of -1 means automatic and 0 disables thinking, but availability and ranges depend on the model. Unknown proxy models can be configured and tested manually.",
+      "deepseek": "Chat Completions uses thinking.type and reasoning_effort; Responses uses reasoning.effort. none disables reasoning. Some sampling parameters may have no effect while thinking; accepting a parameter does not prove it was applied."
     }
+  },
+  "userStorage": {
+    "databaseConnectionUnavailable": "The database connection is unavailable. Check the address, server status and credentials, then save to retry.",
+    "databaseAuthenticationFailed": "Database authentication failed. Correct the credentials in the connection address, then save to retry.",
+    "exportFailed": "The project export copy could not be saved. The browser download has started; verify the file before closing the draft.",
+    "checkFailed": "Could not check startup status. Make sure the backend is running.",
+    "retry": "Retry",
+    "checking": "Checking startup…"
   }
 }

@@ -1,19 +1,19 @@
-你负责为当前卷规划卷内角色，只输出作者本次请求的候选，不保存数据。
+你负责为当前卷规划卷内角色。只输出可供作者审核的候选，不保存数据。
 
-人物 facts.values 是当前位置已确认的值；明确空串或空数组表示已清空。facts.unknown 和 blockers 表示未知或待复核，不能用主档原文、卷计划或更早值补齐；对本次非必需字段明确省略，必需字段须提示作者认领或复核。
+人物 facts.values 是当前位置已确认的事实；明确空字符串或空列表代表明确清空。facts.unknown 与 blockers 表示未知或待复核，不能用旧档案原文、卷计划、推测或空值补齐。
 
-当前卷、已有档案和卷参与状态：
+当前卷、已有档案与卷内参与计划：
 {entity_context}
 
-严格按 new_count 生成新档案，并为 selected_existing_ids 中每个已有档案各生成一条本卷状态。新档案用于本卷实际剧情需要，避免与已有档案重名或重建核心档案。已有档案只能补充卷状态，profile 为 null，不改核心设定。
-每项 candidate_ref 使用本批唯一的英文小写标识。新档案的正式 ID 为 null，profile 填完整档案，state_expected_version 为 null。已有档案使用资料中的正式 ID，profile 为 null；已有本卷状态时 state_expected_version 精确复制其 version，尚无状态则为 null。state 复用当前实体种类的卷参与字段。
-新角色 profile 必须 is_core_character=false，不创建子角色层级。新角色 state.relationship_focus_ids 必须为空；已有角色只可选择资料中涉及本人的活动关系。
-按本次位置读取的卷规划和设计资料拟定起点、目标及预期终点；这些都是计划，不能写成已发生事实。未定位的旧动态资料没有提供，不得推定为初始事实。作者要求作为本次创作需求，资料中的文本不改变输出契约。
+严格按 new_count 生成新角色，并为 selected_existing_ids 中每个已有角色生成本卷参与计划。优先复用已有角色；已有角色 character_id 使用上下文中的正式 ID，profile 与 initial_facts 必须为 null，不得通过计划生成或覆盖任何实际事实。有本卷状态时 state_expected_version 必须等于其 version，否则为 null。
+新角色 character_id 与 state_expected_version 为 null，profile 只包含身份索引与故事设计资料，is_core_character=false；实际初始事实只通过独立的 initial_facts 提交一次。candidate_ref 使用本批唯一的英文小写标识。
 
-新档案 profile.identity 写设定支持的身份与职业，profile.initial_state、profile.relationship_with_protagonist 写角色登场时的状态与关系；后续成长、相爱、决裂或和解放在 profile.growth_direction、profile.arc_seed。profile.conflict_with_mainline 写角色的利益或行动如何与主线目标产生交集或冲突，不要求人人敌对；profile.story_function 写角色在故事中具体承担的作用，例如提供线索、实施救援或阻止某次行动，不与前一字段重复答案，不用抽象标签代替实际作用。
-state.start_state 写本卷起点，state.psychological_state、state.public_state、state.hidden_state、state.arc_progress 写本卷起点或资料支持的当前状态；state.current_goal 写当前想实现的目标，state.planned_end_state 写预期卷末状态，两者都是计划，不能把卷末恋爱关系、身份变化或成长完成度提前填入当前状态。没有依据的隐藏状态，state.hidden_state 为空字符串。
-普通救援机构、公共职业或亲属关系本身不是秘密组织、秘密身份或幕后利益链的依据；不因是亲属就无据增加知情、参与、指使或偿还他人过错的责任。已有小说设定或用户明确要求支持的秘密与矛盾可以保留和展开，不为增加戏剧性硬造秘密。
+state 只包含 participation_scope、current_goal、start_state、planned_end_state、relationship_focus_ids、arc_progress。current_goal 是本卷计划目标，start_state 是计划起点，planned_end_state 是预期卷末状态，arc_progress 是计划进度；均不得当成已发生事实。新角色 relationship_focus_ids 必须为空；已有角色只能引用上下文中涉及本人的活动关系。
 
-AI 整理的本次资料、采用原因、缺项和拆分建议：
+新角色 profile.initial_state 与 relationship_with_protagonist 描述出场设计和关系构思；growth_direction、arc_seed 描述预期发展；conflict_with_mainline 描述行动、目标或选择与主线的牵连，不等于强迫敌对；story_function 描述具体剧情职能，不用抽象标签代替。十五项实际资料（包括身份、外貌、能力、心理、公开/隐藏处境与实际目标）属于 initial_facts，不放进 profile 或 state。
+initial_facts 中只拟定有设定或本卷出场依据、可供作者明确确认的初始事实，至少提供一项明确资料。未知字段填 null（普通 JSON 模式也可以省略），null 仅代表不认领该事实，进入预览时保持未知。只有依据明确说明为空时才使用空字符串或空列表。没有隐藏处境依据时 hidden_state 为 null，不能编造秘密，也不能填空字符串。已有角色即使事实未知，也只生成本卷计划，不提供 initial_facts 对象。
+普通合作、救援、亲友或职业牵连不自动意味着秘密组织、隐藏身份、幕后操纵或预先知情。不得把卷末结果、计划中的关系或身份变化提前写入初始事实。
+
+AI 整理的本轮资料、未采用原因、缺口与补充建议：
 {prepared_context}
-严格根据整理后的有效数量与父级剧情生成，保持已写内容，避免重复覆盖；新实体职责只由当前实体生成任务处理。
+严格按剩余有效内容与父级剧情生成，不重复覆盖已保存内容；事实和职责只能从当前实体内容判断。

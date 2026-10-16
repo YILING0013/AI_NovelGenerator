@@ -434,15 +434,10 @@ function prepareJsonExample(
   formatSuffix: boolean,
   formatting = false,
 ) {
-  if (!formatSuffix)
-    return {
-      normalized: example.source,
-      replacements: [] as [string, string][],
-    };
   const source = example.source;
   const matches = new Map(
     [...source.matchAll(PORT_PATTERN)]
-      .filter((match) => match[1] in ports)
+      .filter((match) => formatSuffix && match[1] in ports)
       .map((match) => [match.index, match]),
   );
   let prefix = "__flow_json_input_";
@@ -451,6 +446,8 @@ function prepareJsonExample(
     escaped = false,
     normalized = "";
   const replacements: [string, string][] = [];
+  const braceWidths: number[] = [], braceStack: number[] = [];
+  let mismatchedBraces = false;
   for (let index = 0; index < source.length; index += 1) {
     const char = source[index];
     const match = !quoted && matches.get(index);
@@ -461,6 +458,22 @@ function prepareJsonExample(
       index += match[0].length - 1;
       continue;
     }
+    if (!quoted && char === "{") {
+      const width = source[index + 1] === "{" ? 2 : 1;
+      braceWidths.push(width); braceStack.push(width);
+      // 每层保留自己的括号写法；空格让校对位置仍对应原文。
+      normalized += width === 2 ? "{ " : "{";
+      index += width - 1;
+      continue;
+    }
+    if (!quoted && char === "}") {
+      const width = braceStack.pop();
+      if (width === 2 && source[index + 1] !== "}") mismatchedBraces = true;
+      const doubled = width === 2 && source[index + 1] === "}";
+      normalized += doubled ? " }" : "}";
+      if (doubled) index += 1;
+      continue;
+    }
     if (quoted) {
       if (escaped) escaped = false;
       else if (char === "\\") escaped = true;
@@ -469,8 +482,9 @@ function prepareJsonExample(
     normalized += char;
   }
   return {
-    normalized,
+    normalized: mismatchedBraces || braceStack.length ? source : normalized,
     replacements,
+    braceWidths,
   };
 }
 
@@ -785,6 +799,16 @@ export function FlowJsonSuffixEditor({
               null,
               2,
             );
+            let braceIndex = 0;
+            const braceStack: number[] = [];
+            formatted = formatted.replace(/"(?:\\.|[^"\\])*"|[{}]/g, (token) => {
+              if (token === "{") {
+                const width = prepared.braceWidths[braceIndex++];
+                braceStack.push(width);
+                return width === 2 ? "{{" : token;
+              }
+              return token === "}" && braceStack.pop() === 2 ? "}}" : token;
+            });
             for (const [marker, placeholder] of prepared.replacements)
               formatted = formatted.replaceAll(marker, placeholder);
             const leading = /^\s*/.exec(part.source)![0];

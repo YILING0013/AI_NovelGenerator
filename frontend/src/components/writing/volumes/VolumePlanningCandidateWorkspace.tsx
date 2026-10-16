@@ -1,4 +1,5 @@
 "use client";
+import { TooltipHint } from "@/components/shared/TooltipHint";
 import { REASONING_FIELDS, hasValidReasoningOptions } from "@/types/generation";
 import { RetainedModalBackdrop } from "@/components/layout/RetainedViews";
 
@@ -20,6 +21,7 @@ useState
 } from "react";
 
 import { RelationEditorErrorSummary } from "@/components/shared/RelationEditorPrimitives";
+import VolumeLaunchContextNotice from "./VolumeLaunchContextNotice";
 import VolumeFieldsForm from "@/components/writing/volumes/VolumeFieldsForm";
 import { readWritingDraft, writeWritingDraft } from "@/lib/writingDrafts";
 import {
@@ -68,6 +70,7 @@ interface VolumePlanningCandidateWorkspaceProps {
   onBusyChange?: (busy: boolean) => void;
   onSkeletonConfirmed?: (response: VolumeBulkPlanResponseV1) => void;
   onLaunchConfirmed?: (volume: VolumeReadV2) => void;
+  onProcessLaunchContext?: (kind: "character" | "faction", id: string) => void;
 }
 
 interface StableConfirmCommand {
@@ -800,6 +803,7 @@ export default function VolumePlanningCandidateWorkspace({
   onBusyChange,
   onSkeletonConfirmed,
   onLaunchConfirmed,
+  onProcessLaunchContext,
 }: VolumePlanningCandidateWorkspaceProps) {
   const t = useTranslations("writing.volumes");
   const aiT = useTranslations("writing.volumes.ai");
@@ -2170,12 +2174,12 @@ export default function VolumePlanningCandidateWorkspace({
           {task !== "launch" && (skeletonState.status === "generating" ? (
             <Button id="volume-ai-skeleton-cancel" variant="outline" size="sm" onPress={discardSkeleton}>{aiT("actions.cancelSkeleton")}</Button>
           ) : (
-            <Button id="volume-ai-skeleton-trigger" ref={skeletonTriggerRef} variant="outline" size="sm" onPress={openSkeletonDialog} isDisabled={disabled || busy}>{aiT("actions.openSkeleton")}</Button>
+            <TooltipHint text={aiT("skeletonHelp")}><Button id="volume-ai-skeleton-trigger" ref={skeletonTriggerRef} variant={volumes.length === 0 ? "primary" : "outline"} size="sm" onPress={openSkeletonDialog} isDisabled={disabled || busy}>{aiT("actions.openSkeleton")}</Button></TooltipHint>
           ))}
           {task !== "skeleton" && (launchState.status === "generating" ? (
             <Button id="volume-ai-launch-cancel" variant="outline" size="sm" onPress={discardLaunch}>{aiT("actions.cancelLaunch")}</Button>
           ) : (
-            <Button id="volume-ai-launch-trigger" ref={launchTriggerRef} variant="outline" size="sm" onPress={openLaunchDialog} isDisabled={disabled || busy || !selectedVolume || !launchDraftReady}>{aiT("actions.openLaunch")}</Button>
+            <TooltipHint text={aiT("launchHelp")}><Button id="volume-ai-launch-trigger" ref={launchTriggerRef} variant="outline" size="sm" onPress={openLaunchDialog} isDisabled={disabled || busy || !selectedVolume || !launchDraftReady}>{aiT("actions.openLaunch")}</Button></TooltipHint>
           ))}
       </section>
       {launchDraftError && <RelationEditorErrorSummary message={launchDraftError} />}
@@ -2221,7 +2225,7 @@ export default function VolumePlanningCandidateWorkspace({
                 </div>
                 <Modal.CloseTrigger aria-label={t("actions.cancel")} />
               </Modal.Header>
-              <Modal.Body className="min-h-0 px-5 py-6 sm:px-7"><TaskFlowForm flow={launchFlow} /></Modal.Body>
+              <Modal.Body className="min-h-0 px-5 py-6 sm:px-7"><VolumeLaunchContextNotice key={`${novelId}:${selectedVolume.volume_id}`} novelId={novelId} volumeId={selectedVolume.volume_id} onProcess={onProcessLaunchContext} /><TaskFlowForm flow={launchFlow} /></Modal.Body>
               <Modal.Footer className="sticky bottom-0 flex justify-end gap-2 border-t border-border bg-surface px-5 py-4 sm:px-7">
                 <Button variant="ghost" size="sm" onPress={closeLaunchDialog}>{t("actions.cancel")}</Button>
                 <Button variant="primary" size="sm" onPress={() => void generateLaunch()} isDisabled={disabled || launchFlow.loading || !launchFlow.definition}>{aiT("actions.generateLaunch")}</Button>

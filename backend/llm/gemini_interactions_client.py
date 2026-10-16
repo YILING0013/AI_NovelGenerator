@@ -7,11 +7,16 @@ import time
 from copy import deepcopy
 from typing import Any, AsyncGenerator
 
+from google.genai.interactions import Interaction
+from google.genai._gaos.lib.compat_errors import APIStatusError
 from pydantic import BaseModel, ValidationError
 
 from backend.llm.base_client import _ThinkStreamFilter
-from backend.llm.exceptions import LLMError, LLMResponseError, LLMSchemaError
+from backend.llm.config import LLMProviderConfig
+from backend.llm.exceptions import LLMConnectionError
+from backend.llm.exceptions import LLMAuthError, LLMError, LLMRateLimitError, LLMResponseError, LLMSchemaError, LLMTimeoutError
 from backend.llm.gemini_client import GeminiClient, build_gemini_generation_config
+from backend.llm.provider_probe import observe_provider_response
 from backend.llm.logger import LLMCall
 from backend.llm.json_guard import reject_duplicate_json_keys
 from backend.llm.models import LLMFunctionCallProbe, LLMRequest, LLMResponse, LLMToolCall, LLMToolDefinition, LLMToolResult, LLMToolTurn, TokenUsage
@@ -46,6 +51,27 @@ def build_interaction_parameters(request: LLMRequest, model: str, schema: type[B
 class GeminiInteractionsClient(GeminiClient):
     """沿用 GenAI SDK 连接与错误处理，使用 Interactions 的步骤协议。"""
 
+    def __init__(self, config: LLMProviderConfig, provider_name: str = "gemini") -> None:
+        """对齐 Interactions 的额外重试次数，避免与应用重试叠加。
+
+        Args:
+            config: 固定的服务配置。
+            provider_name: 日志中的服务名称。
+        Returns:
+            无；GenerateContent 的 attempts 在该接口中被 SDK 直接当作 max_retries。
+        """
+        super().__init__(config, provider_name)
+        self._client.aio.interactions.sdk_configuration.retry_config.max_retries = config.max_retries
+
+    def _map_error(self, exc: Exception, model: str = "") -> LLMError:
+        """按 Interactions 实际状态区分鉴权、限流和超时，保留 SDK 原因链。"""
+        if isinstance(exc, APIStatusError):
+            error_type = (LLMAuthError if exc.status_code in {401, 403} else
+                          LLMRateLimitError if exc.status_code == 429 else
+                          LLMTimeoutError if exc.status_code == 408 else LLMResponseError)
+            return error_type(str(exc), provider=self.provider_name, model=model)
+        return super()._map_error(exc, model)
+
     @staticmethod
     def _extract_usage(usage: Any) -> TokenUsage:
         if usage is None:
@@ -60,6 +86,62 @@ class GeminiInteractionsClient(GeminiClient):
             raise LLMResponseError(f"Gemini 请求未完成：{response.status}，请检查输出上限或输入",
                                    provider=self.provider_name, model=model)
 
+    async def _create_interaction(self, params: dict[str, Any], *, stream: bool) -> Any:
+        """收齐 Interactions 的步骤和参数片段，再交给现有解析。
+
+        Args:
+            params: 现有构建器生成的请求参数。
+            stream: 是否使用流式请求。
+        Returns:
+            含完整步骤、工具参数和思考签名的 SDK 响应。
+        """
+        if not stream:
+            return await self._client.aio.interactions.create(**params)
+        response = None
+        steps: dict[int, dict[str, Any]] = {}
+        arguments: dict[int, str] = {}
+        open_steps: set[int] = set()
+        events = await self._client.aio.interactions.create(**params, stream=True)
+        async with events:
+            async for event in events:
+                observe_provider_response(event, self.config.resolved_api_mode)
+                if event.event_type == "step.start":
+                    steps[event.index] = event.step.model_dump(mode="json", exclude_none=True)
+                    open_steps.add(event.index)
+                    if event.step.type == "function_call":
+                        arguments[event.index] = json.dumps(event.step.arguments) if event.step.arguments else ""
+                elif event.event_type == "step.delta":
+                    step = steps[event.index]
+                    delta = event.delta
+                    if delta.type == "arguments_delta":
+                        arguments[event.index] += delta.arguments
+                    elif delta.type == "text":
+                        step.setdefault("content", []).append({"type": "text", "text": delta.text})
+                    elif delta.type == "thought_signature":
+                        step["signature"] = step.get("signature", "") + delta.signature
+                    elif delta.type == "thought_summary":
+                        step.setdefault("summary", []).append(delta.content.model_dump(mode="json", exclude_none=True))
+                    else:
+                        raise LLMResponseError(f"工具探测收到未处理的流式内容：{delta.type}", provider=self.provider_name)
+                elif event.event_type == "step.stop":
+                    open_steps.remove(event.index)
+                elif event.event_type == "interaction.completed":
+                    response = event.interaction
+                elif event.event_type == "error":
+                    raise LLMResponseError(str(event.error), provider=self.provider_name)
+                elif event.event_type == "interaction.status_update" and event.status in {"failed", "incomplete", "cancelled"}:
+                    raise LLMResponseError(f"Gemini 请求未完成：{event.status}", provider=self.provider_name)
+        if response is None or open_steps:
+            raise LLMConnectionError("Gemini 响应流提前断开，请重试", provider=self.provider_name)
+        for index, raw in arguments.items():
+            reject_duplicate_json_keys(raw or "{}")
+            steps[index]["arguments"] = json.loads(raw or "{}")
+        # 终止事件通常只有状态和用量，内容来自此前完整收齐的步骤。
+        payload = response.model_dump(mode="json", exclude_none=True)
+        if not response.steps:
+            payload["steps"] = [step for _, step in sorted(steps.items())]
+        return Interaction.model_validate(payload)
+
     async def _generate(self, request: LLMRequest, schema: type[BaseModel] | None = None) -> LLMResponse:
         request = self._apply_defaults(request)
         model = self._resolve_model(request)
@@ -67,7 +149,8 @@ class GeminiInteractionsClient(GeminiClient):
                      use_system_proxy=self.config.use_system_proxy) as call:
             start = time.perf_counter()
             try:
-                response = await self._client.aio.interactions.create(**build_interaction_parameters(request, model, schema))
+                response = await self._create_interaction(build_interaction_parameters(request, model, schema), stream=request.stream)
+                observe_provider_response(response, self.config.resolved_api_mode)
                 self._check_interaction(response, model)
                 content = response.output_text or ""
                 if schema is not None or request.json_output_schema is not None:
@@ -130,6 +213,7 @@ class GeminiInteractionsClient(GeminiClient):
                 stream = await self._client.aio.interactions.create(**params, stream=True)
                 async with stream:
                     async for event in stream:
+                        observe_provider_response(event, self.config.resolved_api_mode)
                         call.chunk_count += 1
                         if event.event_type == "step.delta" and event.delta.type == "text":
                             call.chunks.append(event.delta.text)
@@ -146,7 +230,7 @@ class GeminiInteractionsClient(GeminiClient):
                         elif event.event_type == "interaction.status_update" and event.status in {"failed", "incomplete", "cancelled"}:
                             raise LLMResponseError(f"Gemini 请求未完成：{event.status}", provider=self.provider_name, model=model)
                 if not finished:
-                    raise LLMResponseError("Gemini 响应流提前断开，请重试", provider=self.provider_name, model=model)
+                    raise LLMConnectionError("Gemini 响应流提前断开，请重试", provider=self.provider_name, model=model)
                 if request.json_output_schema is not None:
                     reject_duplicate_json_keys("".join(call.chunks))
                 tail = stream_filter.finish()
@@ -180,7 +264,8 @@ class GeminiInteractionsClient(GeminiClient):
                          for result in results or [])
             params.update(input=steps, tools=[{"type": "function", **tool.model_dump()} for tool in tools])
             params["generation_config"]["tool_choice"] = "auto"
-            response = await self._client.aio.interactions.create(**params)
+            response = await self._create_interaction(params, stream=request.stream)
+            observe_provider_response(response, self.config.resolved_api_mode)
             self._check_interaction(response, model, tools=True)
             steps.extend(step.model_dump(mode="json", exclude_none=True) for step in response.steps or [])
             calls = [LLMToolCall(id=step.id, name=step.name, arguments=step.arguments)

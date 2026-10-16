@@ -20,12 +20,12 @@
 已有活动正式规则（禁止生成重复语义或重复名称）:
 {existing_world_rules}
 
-本次必须生成规则数量: {core_rule_count}
+本次数量参数（null/None 由 AI 决定）: {core_rule_count}
 是否允许在已有规则上做增量补充: {allow_incremental}
 用户补充要求: {user_guidance}
 
 硬性规则:
-1. core_world_rules 数量必须严格等于本次要求，每条都应可执行，并明确例外、执行方式、代价或后果。
+1. core_world_rules 指定整数时数量必须严格等于本次要求，每条都应可执行，并明确例外、执行方式、代价或后果。
 2. 输出只是候选，不得宣称已保存、已生效或已成为小说事实；不得改写 worldview 摘要。
 3. candidate_ref 必须使用 rule_candidate_1、rule_candidate_2 这类本批引用且保持唯一；不得输出正式 rule_ ID。
 4. scope_type 只能是 global、faction 或 character，禁止输出 location、卷、章节、场景、事件或正文。
@@ -40,3 +40,5 @@
 7. exceptions 中每项必须且只能包含 condition 和 effect；所有数组必须用 JSON 数组表示，没有内容时使用空数组。
 8. 名称和规则语义不得与已有活动规则或本批其他候选重复，不得虚构输入中不存在的角色或势力 ID。
 9. 输出前逐条检查：global 的 ID 数组为空；faction 的每个 ID 都来自输入势力；character 的每个 ID 都来自输入角色；所有 ID 无重复。发现混用时，按规则实际适用对象修正，不要为通过检查直接改成 global。只输出检查后的结果，不输出检查过程。
+
+数量参数 core_rule_count 为 null 或 None 时，由你根据故事实际需要决定数量，至少 1 个、最多 20 个；不要把上限当成目标，也不要默认凑满。指定整数时严格遵守该数量。

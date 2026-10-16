@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { RetainedModalBackdrop, RetainedViewActive } from "@/components/layout/RetainedViews";
 import DocumentSection from "@/components/shared/DocumentSection";
 import ReadOnlyField from "@/components/shared/ReadOnlyField";
+import DraftChip from "@/components/shared/DraftChip";
 import SectionEditButton, { SectionActionButton } from "@/components/shared/SectionEditButton";
 import { apiGet, apiPost, apiPut, ApiRequestError } from "@/lib/api";
 import type { CharacterRelationResponseV1, CharacterRelationUpdateRequestV1 } from "@/types/character";
@@ -18,8 +19,8 @@ import { loadCharacterFactChapters } from "./characterFactPositions";
 import CharacterRelationFactPreparationDialog from "./CharacterRelationFactPreparationDialog";
 import CharacterRelationFactConfirmationDialog from "./CharacterRelationFactConfirmationDialog";
 import { characterRelationFactDraftScope, type CharacterRelationFactDraftV1 } from "./characterRelationFactDrafts";
-import { readCharacterRelationFactDrafts } from "./characterRelationFactStorage";
-import { readCharacterRelationFactPreparations, reprepareChapterRelationFact, useCharacterRelationFactPreparationPersistence, type CharacterRelationFactPreparationV1 } from "./characterRelationFactPreparation";
+import { readCharacterRelationFactDrafts, writeCharacterRelationFactDraft } from "./characterRelationFactStorage";
+import { readCharacterRelationFactPreparations, removeCharacterRelationFactPreparation, reprepareChapterRelationFact, useCharacterRelationFactPreparationPersistence, type CharacterRelationFactPreparationV1 } from "./characterRelationFactPreparation";
 
 import { reprepareCharacterRelationCandidate } from "./characterRelationCandidateDrafts";
 
@@ -162,7 +163,7 @@ function RelationFacts({ novelId, entityId, relation, onChanged, readOnly = fals
     finally { pending.current = false; if (alive.current) setLegacyBusy(false); }
   };
   return <section className="space-y-6" aria-label={relationT("panelTitle")}>
-    <div className="workspace-toolbar flex flex-wrap items-end gap-3"><div className="min-w-0 flex-1"><CharacterFactPositionPicker novelId={novelId} chapters={chapters} value={position} latest disabled={busy || starting} onChange={(next) => { setResult(null); setPosition(next); }} /></div><Button variant="ghost" isDisabled={busy || starting || loading} onPress={() => setRefresh((value) => value + 1)}>{t("refresh")}</Button></div>
+    <div className="workspace-toolbar flex flex-wrap items-end gap-3"><div className="min-w-0 flex-1"><CharacterFactPositionPicker novelId={novelId} chapters={chapters} value={position} latest disabled={busy || starting} onChange={(next) => { setResult(null); setPosition(next); }} /></div><SectionActionButton action="refresh" label={t("refresh")} variant="ghost" isDisabled={busy || starting || loading} onPress={() => setRefresh((value) => value + 1)} /></div>
     {loading && <p role="status">{t("loading")}</p>}
     {(error || directoryError) && <p role="alert" className="text-sm text-red-600 dark:text-red-300">{error || directoryError}</p>}
     {!relation.is_active && !relation.is_deleted && <p role="status" className="text-sm text-amber-700 dark:text-amber-300">{relationT("inactive")}</p>}
@@ -187,8 +188,12 @@ function RelationFacts({ novelId, entityId, relation, onChanged, readOnly = fals
           : <p className="reading-copy whitespace-pre-wrap">{relation.current_state}</p>}
       </div>
     </DocumentSection>}
-    {!readOnly && preparations.length > 0 && <div className="space-y-2"><h4 className="text-sm font-semibold">{relationT("preparationDrafts")}</h4><div className="flex flex-wrap gap-2">{preparations.map((row) => <Button key={row.key} variant="outline" isDisabled={busy || starting} onPress={() => setPreparation(row)}>{relationT(`operations.${row.setup.operation}`)} · {row.setup.position ? label(row.setup.position) : t("choosePosition")}</Button>)}</div></div>}
-    {!readOnly && drafts.length > 0 && <div className="space-y-2"><h4 className="text-sm font-semibold">{t("retainedDrafts")}</h4><div className="flex flex-wrap gap-2">{drafts.map((row) => <Button key={row.key} variant="outline" isDisabled={busy || starting} onPress={() => setDraft(row)}>{t("resumeDraft", { position: row.positionLabel })}</Button>)}</div></div>}
+    {!readOnly && (preparations.length > 0 || drafts.length > 0) && <div className="flex flex-wrap gap-2" aria-label={t("retainedDrafts")}>
+      {preparations.map((row) => <DraftChip key={row.key} label={`${relationT(`operations.${row.setup.operation}`)} · ${row.setup.position ? label(row.setup.position) : t("choosePosition")}`} isDisabled={busy || starting || Boolean(preparation || draft)} onResume={() => setPreparation(row)}
+        onDiscard={!row.origin ? async () => { await store.queue.current; await removeCharacterRelationFactPreparation(novelId, row.key, row.revision); await readDrafts(); } : undefined} />)}
+      {drafts.map((row) => <DraftChip key={row.key} label={row.positionLabel} status={row.command?.saved ? "saved" : row.command ? row.command.unknown ? "pending" : "rejected" : "draft"} isDisabled={busy || starting || Boolean(preparation || draft)} onResume={() => setDraft(row)}
+        onDiscard={!row.origin && (!row.command || row.command.saved && row.command.readbackDone) ? async () => { await writeCharacterRelationFactDraft(characterRelationFactDraftScope(novelId), row, row.revision, true); await readDrafts(); } : undefined} />)}
+    </div>}
     {historyError && <p role="alert" className="text-sm text-red-600 dark:text-red-300">{relationT("historyFailed", { error: historyError })}</p>}
     {history.length > 0 && <details><summary className="cursor-pointer py-2 text-sm text-accent">{t("history")}</summary><ol className="divide-y divide-border">{history.map((row) => <li key={row.history_id} className="space-y-2 py-3"><div className="flex flex-wrap items-center gap-2"><span className="text-sm">{label(row.position)} · {relationT(`operations.${row.operation}`)} · {t(`validityStates.${row.validity.current_state!.state}`)}</span><Button size="sm" variant="ghost" onPress={() => void openSource(row.history_id)}>{t("source")}</Button>{!readOnly && row.validity.current_state?.state === "active" && <><Button size="sm" variant="ghost" isDisabled={blocked || !fact} onPress={() => void open(row.position.intent === "book_start" ? "correct_initial" : "replace", row)}>{relationT(`operations.${row.position.intent === "book_start" ? "correct_initial" : "replace"}`)}</Button><Button size="sm" variant="ghost" isDisabled={blocked || !fact} onPress={() => void open("void", row)}>{relationT("operations.void")}</Button></>}</div><p className="reading-copy whitespace-pre-wrap">{row.after.current_state}</p></li>)}</ol>{more && <Button variant="ghost" isDisabled={busy || historyLoading} onPress={() => { if (historyEntity.current) void readHistory(historyEntity.current, undefined, history.at(-1)!.after_version); }}>{t("moreHistory")}</Button>}</details>}
     {preparation && <CharacterRelationFactPreparationDialog key={preparation.key} initialPreparation={preparation} chapters={chapters} onBusy={setBusy} beforeLeaveRef={dialogLeave} onClose={() => { setPreparation((current) => current?.key === preparation.key ? null : current); void readDrafts().catch((failure) => setError(failure.message)); }} onPrepared={(next) => { if (alive.current && visible.current && dialogKeys.current.preparation === preparation.key) { setPreparation(null); setDraft(next); } }} />}

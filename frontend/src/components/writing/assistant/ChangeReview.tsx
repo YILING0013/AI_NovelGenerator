@@ -1,5 +1,7 @@
 "use client";
 
+import { downloadExport } from "@/lib/userExport";
+
 import { useEffect, useState } from "react";
 import { Button } from "@heroui/react";
 import { useTranslations } from "next-intl";
@@ -172,7 +174,7 @@ export default function ChangeReview({ change, onChanged, onApplied, onBusyChang
     </>}
     {(pending || readOnly) && <Button className="mt-2" size="sm" variant="ghost" onPress={() => {
       const url = URL.createObjectURL(new Blob([JSON.stringify(currentCandidate, null, 2)], { type: "application/json;charset=utf-8" }));
-      const link = document.createElement("a"); link.href = url; link.download = `assistant-proposal-${change.id}.json`; link.click(); URL.revokeObjectURL(url);
+      const link = document.createElement("a"); link.href = url; link.download = `assistant-proposal-${change.id}.json`; void downloadExport(link); URL.revokeObjectURL(url);
     }}>{t("exportCandidate")}</Button>}
     </div>}
     {error && !confirm && <p role="alert" className="mt-2 break-words text-sm text-danger">{error}</p>}

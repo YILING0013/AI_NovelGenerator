@@ -326,7 +326,7 @@ export interface CoreFactionsResultV2 {
 
 export interface CoreFactionsGenerationInputV2 {
   novel_id: string;
-  faction_count: number;
+  faction_count: number | null;
   independent_faction_count: number;
   user_guidance: string;
   single_faction_integrity_score: number | null;

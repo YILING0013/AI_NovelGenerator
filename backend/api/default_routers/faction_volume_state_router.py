@@ -24,7 +24,8 @@ from backend.llm.schemas.faction_volume_state_pydantic import (
     FactionVolumeStateInitializeResultV1,
     FactionVolumeStateInitializeV1,
     FactionVolumeStateListV1,
-    FactionVolumeStateReadV1,
+    FactionVolumeStateReadV1, FactionVolumeReadV1, FactionVolumePlanReadV1,
+    FactionVolumePlanFieldsV1, FactionVolumePlanUpdateV1,
     FactionVolumeStateUpdateV1,
     FactionVolumeStateUpsertV1,
     FactionVolumeStateVersionRequestV1,
@@ -56,7 +57,7 @@ EXPECTED_STATE_ERRORS = (
 )
 
 
-def _serialize_state(state: dict) -> FactionVolumeStateReadV1:
+def _serialize_state(state: dict) -> FactionVolumeReadV1:
     """过滤内部字段并构造严格势力卷状态响应。
 
     Args:
@@ -65,14 +66,15 @@ def _serialize_state(state: dict) -> FactionVolumeStateReadV1:
     Returns:
         不含 MongoDB 内部 ID、guard 和幂等摘要的公开状态。
     """
-    public_fields = set(FactionVolumeStateReadV1.model_fields)
+    model = FactionVolumePlanReadV1 if state.get("content_contract") == "participation_plan_v1" else FactionVolumeStateReadV1
+    public_fields = set(model.model_fields)
     payload = {field: value for field, value in state.items() if field in public_fields}
     for field in ("state_id", "novel_id", "volume_id"):
         if field in payload:
             payload[field] = str(payload[field])
     if payload.get("source_state_id") is not None:
         payload["source_state_id"] = str(payload["source_state_id"])
-    return FactionVolumeStateReadV1.model_validate(payload)
+    return model.model_validate(payload)
 
 
 def _serialize_list(states: list[dict]) -> FactionVolumeStateListV1:
@@ -117,9 +119,71 @@ def _raise_state_http_error(exc: Exception) -> NoReturn:
     ) from exc
 
 
+@router.post("/novel/{novel_id}/volume/{volume_id}/faction/{faction_id}/plan", response_model=FactionVolumeReadV1)
+async def create_faction_plan(novel_id: NovelIdPath, volume_id: VolumeIdPath, faction_id: FactionIdPath,
+    req: FactionVolumePlanFieldsV1, idempotency_key: str = Header(..., alias="Idempotency-Key")) -> FactionVolumeReadV1:
+    """保存作者确认的参与计划，不填充实际剧情状态。
+
+    Args:
+        novel_id: 当前作品。
+        volume_id: 目标卷。
+        faction_id: 已有势力。
+        req: 本卷计划。
+        idempotency_key: 原保存键。
+    Returns:
+        首次保存的计划。
+    """
+    from backend.services.novel.faction_volume_plan_service import create_faction_volume_plan
+    try:
+        return _serialize_state(await create_faction_volume_plan(novel_id, volume_id, faction_id, req, idempotency_key=idempotency_key))
+    except EXPECTED_STATE_ERRORS as exc:
+        _raise_state_http_error(exc)
+
+
+@router.put("/novel/{novel_id}/{state_id}/plan", response_model=FactionVolumeReadV1)
+async def update_faction_plan(novel_id: NovelIdPath, state_id: StateIdPath, req: FactionVolumePlanUpdateV1,
+    idempotency_key: str = Header(..., alias="Idempotency-Key")) -> FactionVolumeReadV1:
+    """仅保存本次变更的计划，保留旧原文。
+
+    Args:
+        novel_id: 当前作品。
+        state_id: 原参与记录。
+        req: 原版本与实际改动。
+        idempotency_key: 原保存键，用于未知响应后的原样恢复。
+    Returns:
+        更新后的参与计划。
+    """
+    from backend.services.novel.faction_volume_plan_service import update_faction_volume_plan
+    try:
+        return _serialize_state(await update_faction_volume_plan(novel_id, state_id, req, idempotency_key=idempotency_key))
+    except EXPECTED_STATE_ERRORS as exc:
+        _raise_state_http_error(exc)
+
+
+@router.post("/novel/{novel_id}/volume/{volume_id}/initialize-plans-from-previous", response_model=FactionVolumeStateInitializeResultV1)
+async def initialize_faction_plans(novel_id: NovelIdPath, volume_id: VolumeIdPath,
+    req: FactionVolumeStateInitializeV1, idempotency_key: str = Header(..., alias="Idempotency-Key")) -> FactionVolumeStateInitializeResultV1:
+    """原子复制上卷参与计划，实际剧情状态仍按位置记录。
+
+    Args:
+        novel_id: 当前作品。
+        volume_id: 目标卷。
+        req: 选中的势力集合。
+        idempotency_key: 原复制请求键。
+    Returns:
+        首次完整计划集合。
+    """
+    from backend.services.novel.faction_volume_plan_service import initialize_faction_volume_plans
+    try:
+        result = await initialize_faction_volume_plans(novel_id, volume_id, req, idempotency_key=idempotency_key)
+        return FactionVolumeStateInitializeResultV1.model_validate({**result, "states": [_serialize_state(row) for row in result["states"]]})
+    except EXPECTED_STATE_ERRORS as exc:
+        _raise_state_http_error(exc)
+
+
 @router.put(
     "/novel/{novel_id}/volume/{volume_id}/faction/{faction_id}",
-    response_model=FactionVolumeStateReadV1,
+    response_model=FactionVolumeReadV1,
 )
 async def upsert_faction_volume_state(
     novel_id: NovelIdPath,
@@ -127,7 +191,7 @@ async def upsert_faction_volume_state(
     faction_id: FactionIdPath,
     req: FactionVolumeStateUpsertV1,
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
-) -> FactionVolumeStateReadV1:
+) -> FactionVolumeReadV1:
     """按卷与势力复合路径幂等创建或完整更新状态。
 
     Args:
@@ -255,12 +319,12 @@ async def list_faction_volume_state_history(
 
 @router.get(
     "/novel/{novel_id}/{state_id}",
-    response_model=FactionVolumeStateReadV1,
+    response_model=FactionVolumeReadV1,
 )
 async def get_faction_volume_state(
     novel_id: NovelIdPath,
     state_id: StateIdPath,
-) -> FactionVolumeStateReadV1:
+) -> FactionVolumeReadV1:
     """按 ObjectId 读取一条活动或回收站状态。
 
     Args:
@@ -282,13 +346,13 @@ async def get_faction_volume_state(
 
 @router.put(
     "/novel/{novel_id}/{state_id}",
-    response_model=FactionVolumeStateReadV1,
+    response_model=FactionVolumeReadV1,
 )
 async def update_faction_volume_state(
     novel_id: NovelIdPath,
     state_id: StateIdPath,
     req: FactionVolumeStateUpdateV1,
-) -> FactionVolumeStateReadV1:
+) -> FactionVolumeReadV1:
     """按状态 ObjectId 和版本局部更新业务字段。
 
     Args:
@@ -312,13 +376,13 @@ async def update_faction_volume_state(
 
 @router.delete(
     "/novel/{novel_id}/{state_id}",
-    response_model=FactionVolumeStateReadV1,
+    response_model=FactionVolumeReadV1,
 )
 async def soft_delete_faction_volume_state(
     novel_id: NovelIdPath,
     state_id: StateIdPath,
     expected_version: Annotated[int, Query(ge=1)],
-) -> FactionVolumeStateReadV1:
+) -> FactionVolumeReadV1:
     """按版本给状态添加 user 删除来源。
 
     Args:
@@ -342,13 +406,13 @@ async def soft_delete_faction_volume_state(
 
 @router.post(
     "/novel/{novel_id}/{state_id}/restore",
-    response_model=FactionVolumeStateReadV1,
+    response_model=FactionVolumeReadV1,
 )
 async def restore_faction_volume_state(
     novel_id: NovelIdPath,
     state_id: StateIdPath,
     req: FactionVolumeStateVersionRequestV1,
-) -> FactionVolumeStateReadV1:
+) -> FactionVolumeReadV1:
     """按版本仅移除状态的 user 删除来源。
 
     Args:

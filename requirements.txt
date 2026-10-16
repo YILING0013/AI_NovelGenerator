@@ -1,3 +1,4 @@
+# 已验证的直接依赖；新版由 Dependabot 提交更新并经过测试。
 fastapi==0.141.1
 aiofiles==25.1.0
 uvicorn[standard]==0.54.0

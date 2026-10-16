@@ -16,6 +16,7 @@ from pydantic import BaseModel, ValidationError
 
 from backend.llm.base_client import BaseLLMClient, _BeforeSendError, _ThinkStreamFilter, build_request_messages
 from backend.llm.config import LLMProviderConfig
+from backend.llm.exceptions import LLMConnectionError
 from backend.llm.exceptions import (
     LLMAuthError,
     LLMError,
@@ -24,6 +25,7 @@ from backend.llm.exceptions import (
     LLMSchemaError,
     LLMTimeoutError,
 )
+from backend.llm.provider_probe import observe_provider_response
 from backend.llm.logger import LLMCall, log_http_request, log_http_response
 from backend.llm.json_guard import reject_duplicate_json_keys
 from backend.llm.models import LLMFunctionCallProbe, LLMRequest, LLMResponse, TokenUsage, LLMToolCall, LLMToolDefinition, LLMToolResult, LLMToolTurn
@@ -76,18 +78,21 @@ def build_openai_parameters(request: LLMRequest, config: LLMProviderConfig,
         raise ValueError("当前模型的推理工具调用需要 Responses 接口，请在 Provider 设置中切换接口模式")
 
     params: dict[str, Any] = {"model": model}
-    content = build_openai_request_content(request, schema, deepseek=config.is_deepseek and not responses)
+    json_output = config.resolved_structured_output_mode == "json_object" and (schema is not None or config.json_output_enabled)
+    content = build_openai_request_content(request, schema, json_output=json_output)
     params["input" if responses else "messages"] = content["messages"]
     if responses:
         # 本地保留完整历史，OpenAI 续接携带加密思考；DeepSeek 本身不存储会话。
         if not config.is_deepseek:
             params.update(store=False, include=["reasoning.encrypted_content"])
-        if schema is not None:
+        if json_output and "response_format" in content:
+            params["text"] = {"format": {"type": "json_object"}}
+        elif schema is not None:
             fmt = content["response_format"]["json_schema"]
             if config.is_deepseek:
                 fmt = {"name": schema.__name__, "schema": schema.model_json_schema()}
             params["text"] = {"format": {"type": "json_schema", **fmt}}
-        elif request.json_output_schema is not None and config.supports_json_schema:
+        elif request.json_output_schema is not None and config.supports_json_schema and config.uses_native_schema:
             # 流式同样携带结构约束，业务层仍校验完整结果。
             fmt = {"type": "json_schema", "name": "generated_output",
                    "schema": request.json_output_schema if config.is_deepseek else build_openai_schema(request.json_output_schema)}
@@ -104,7 +109,7 @@ def build_openai_parameters(request: LLMRequest, config: LLMProviderConfig,
             params["reasoning"] = {"effort": "high"}
     else:
         params.update({key: value for key, value in content.items() if key != "messages"})
-        if schema is None and request.json_output_schema is not None and config.supports_json_schema and not config.is_deepseek:
+        if schema is None and request.json_output_schema is not None and config.supports_json_schema and config.uses_native_schema:
             params["response_format"] = {"type": "json_schema", "json_schema": {
                 "name": "generated_output", "strict": True, "schema": build_openai_schema(request.json_output_schema),
             }}
@@ -170,24 +175,25 @@ def build_openai_schema(schema: type[BaseModel] | dict[str, Any]) -> dict[str, A
 
 
 def build_openai_request_content(request: LLMRequest, schema: type[BaseModel] | None = None,
-                                 *, deepseek: bool = False) -> dict[str, Any]:
+                                 *, json_output: bool = False) -> dict[str, Any]:
     """构建完整消息与输出格式，模拟和真实 OpenAI 兼容请求使用同一份约束。
 
     Args:
         request: 已渲染并补齐默认值的请求。
         schema: 本次使用原生结构化输出时的模型。
-        deepseek: 是否使用 DeepSeek JSON Output。
+        json_output: 是否发送 JSON Output，由当前输出配置决定。
     Returns:
         messages 及适用时的 response_format，不含接入地址或凭据。
     """
     messages = build_request_messages(request)
     content: dict[str, Any] = {"messages": messages}
-    if deepseek and request.json_output_schema is not None:
+    output_schema = schema.model_json_schema() if schema is not None else request.json_output_schema
+    if json_output and output_schema is not None:
         content["response_format"] = {"type": "json_object"}
         instructions = (
             "请只输出一个符合以下 JSON Schema 的 JSON 对象，"
             "不要输出 Markdown 代码块或额外说明。\nJSON Schema:\n"
-            + json.dumps(request.json_output_schema, ensure_ascii=False)
+            + json.dumps(output_schema, ensure_ascii=False)
         )
         if messages and messages[0]["role"] == "system":
             messages[0] = {**messages[0], "content": messages[0]["content"] + "\n\n" + instructions}
@@ -318,28 +324,39 @@ class OpenAICompatibleClient(BaseLLMClient):
         return build_openai_parameters(request, self.config, function_calling=function_calling,
                                        api_mode="chat_completions")
 
-    async def _create_completion(self, params: dict[str, Any]) -> Any:
-        """发送请求，仅在上游明确要求更换长度参数时重试一次。
+    async def _create_completion(self, params: dict[str, Any], *, collect_stream: bool = False) -> Any:
+        """发送请求，按需收齐流式结果，并保留长度参数重试。
 
         Args:
             params: 已构建的 Chat Completions 参数。
+            collect_stream: 是否发送流式请求并返回完整消息。
         Returns:
-            SDK 返回的完整响应或流式响应。
+            SDK 完整响应；普通 stream_text 调用仍返回原始流。
         """
-        try:
-            return await self._client.chat.completions.create(**params)
-        except openai.BadRequestError as exc:
-            # 中转服务可能使用自定义模型名，以明确的错误说明为准。
-            if not (
-                "max_tokens" in params
-                and exc.param == "max_tokens"
-                and exc.code == "unsupported_parameter"
-                and "max_completion_tokens" in exc.message
-            ):
-                raise
-            params = dict(params)
-            params["max_completion_tokens"] = params.pop("max_tokens")
-            return await self._client.chat.completions.create(**params)
+        for attempt in range(2):
+            try:
+                if not collect_stream:
+                    return await self._client.chat.completions.create(**params)
+                async with self._client.chat.completions.stream(**params) as events:
+                    async for event in events:
+                        if event.type == "chunk":
+                            observe_provider_response(event.chunk, self.config.resolved_api_mode)
+                    response = await events.get_final_completion()
+                if not response.choices or any(choice.finish_reason is None for choice in response.choices):
+                    raise LLMConnectionError("Chat Completions 响应流提前断开，请重试", provider=self.provider_name)
+                return response
+            except openai.BadRequestError as exc:
+                # 中转服务可能使用自定义模型名，以明确的错误说明为准。
+                if not (
+                    attempt == 0
+                    and "max_tokens" in params
+                    and exc.param == "max_tokens"
+                    and exc.code == "unsupported_parameter"
+                    and "max_completion_tokens" in exc.message
+                ):
+                    raise
+                params = dict(params)
+                params["max_completion_tokens"] = params.pop("max_tokens")
 
     def _map_error(self, exc: Exception, model: str = "") -> LLMError:
         """将 OpenAI SDK 异常映射为自定义异常。"""
@@ -378,7 +395,8 @@ class OpenAICompatibleClient(BaseLLMClient):
             start = time.perf_counter()
 
             try:
-                resp = await self._create_completion(self._build_params(request))
+                resp = await self._create_completion(self._build_params(request), collect_stream=request.stream)
+                observe_provider_response(resp, self.config.resolved_api_mode)
             except LLMError:
                 raise
             except Exception as exc:
@@ -421,19 +439,17 @@ class OpenAICompatibleClient(BaseLLMClient):
             已通过模型校验的 JSON 字符串及原始响应、用量等信息。
         """
         request = self._apply_defaults(request)
-        if self.config.is_deepseek:
+        if self.config.resolved_structured_output_mode == "json_object":
             request = request.model_copy(update={"json_output_schema": schema.model_json_schema()})
         model = self._resolve_model(request)
         with LLMCall(self.provider_name, model, "schema", schema=schema, use_system_proxy=self.config.use_system_proxy) as call:
             start = time.perf_counter()
 
             try:
-                params = self._build_params(request)
-                if self.config.is_deepseek:
-                    resp = await self._create_completion(params)
-                else:
-                    params.update(build_openai_request_content(request, schema))
-                    resp = await self._create_completion(params)
+                # 显式结构化调用也走与普通生成、预览相同的格式构建。
+                params = build_openai_parameters(request, self.config, schema=schema, api_mode="chat_completions")
+                resp = await self._create_completion(params, collect_stream=request.stream)
+                observe_provider_response(resp, self.config.resolved_api_mode)
                 choice = resp.choices[0] if resp.choices else None
             except LLMError:
                 raise
@@ -492,6 +508,7 @@ class OpenAICompatibleClient(BaseLLMClient):
                 stream_filter = _ThinkStreamFilter(preserve_json_strings=request.json_output_schema is not None)
                 async with stream:
                     async for chunk in stream:
+                        observe_provider_response(chunk, self.config.resolved_api_mode)
                         call.chunk_count += 1
                         if chunk.usage is not None:
                             call.usage = self._extract_usage(chunk.usage)
@@ -505,6 +522,8 @@ class OpenAICompatibleClient(BaseLLMClient):
                             clean_text = stream_filter.feed(text)
                             if clean_text:
                                 yield clean_text
+                if not call.finish_reason:
+                    raise LLMConnectionError("Chat Completions 响应流提前断开，请重试", provider=self.provider_name, model=model)
                 if call.finish_reason == "length":
                     raise LLMResponseError(
                         "模型输出达到长度上限，内容未完成", provider=self.provider_name, model=model,
@@ -547,7 +566,8 @@ class OpenAICompatibleClient(BaseLLMClient):
             {"type": "function", "function": tool.model_dump()} for tool in tools
         ])
         try:
-            response = await self._create_completion(params)
+            response = await self._create_completion(params, collect_stream=request.stream)
+            observe_provider_response(response, self.config.resolved_api_mode)
             if not response.choices:
                 raise ValueError("工具对话没有返回候选")
             choice = response.choices[0]
@@ -556,7 +576,11 @@ class OpenAICompatibleClient(BaseLLMClient):
             if choice.message.refusal:
                 raise LLMResponseError("模型拒绝了本次工具对话，请调整输入后重试", provider=self.provider_name, model=model)
             # 不能只重建正文和工具字段，reasoning_content 等续接字段也必须留下。
-            messages.append(choice.message.model_dump(mode="json", exclude_none=True, warnings=False))
+            # SDK 的解析结果和分片序号不属于上游消息字段。
+            messages.append(choice.message.model_dump(
+                mode="json", exclude_none=True, warnings=False,
+                exclude={"parsed": True, "tool_calls": {"__all__": {"index": True, "function": {"parsed_arguments": True}}}},
+            ))
             calls = []
             for tool_call in choice.message.tool_calls or []:
                 reject_duplicate_json_keys(tool_call.function.arguments)
@@ -608,7 +632,8 @@ class OpenAICompatibleClient(BaseLLMClient):
                     "type": "function",
                     "function": {"name": probe.tool_name},
                 }
-                first_resp = await self._create_completion(params)
+                first_resp = await self._create_completion(params, collect_stream=request.stream)
+                observe_provider_response(first_resp, self.config.resolved_api_mode)
                 first_choice = first_resp.choices[0] if first_resp.choices else None
                 tool_calls = list(getattr(first_choice.message, "tool_calls", None) or []) if first_choice else []
                 tool_call = next(
@@ -628,7 +653,10 @@ class OpenAICompatibleClient(BaseLLMClient):
 
                 # 第二轮把本地模拟工具结果回传给模型，确认接口能完成真实 tool-call 循环。
                 messages = self._build_messages(request)
-                messages.append(first_choice.message.model_dump(mode="json", exclude_none=True, warnings=False))
+                messages.append(first_choice.message.model_dump(
+                    mode="json", exclude_none=True, warnings=False,
+                    exclude={"parsed": True, "tool_calls": {"__all__": {"index": True, "function": {"parsed_arguments": True}}}},
+                ))
                 messages.append(
                     {
                         "role": "tool",
@@ -638,7 +666,8 @@ class OpenAICompatibleClient(BaseLLMClient):
                 )
                 messages.append({"role": "user", "content": probe.final_response_prompt})
                 final_request = request.model_copy(update={"messages": messages, "system_prompt": ""})
-                final_resp = await self._create_completion(self._build_params(final_request, function_calling=True))
+                final_resp = await self._create_completion(self._build_params(final_request, function_calling=True), collect_stream=final_request.stream)
+                observe_provider_response(final_resp, self.config.resolved_api_mode)
             except LLMError:
                 raise
             except Exception as exc:
