@@ -288,6 +288,11 @@ body {
   flex-shrink: 0;
 }
 
+/* 各区块已自行留白，不需要新版组件对默认内边距的负外边距补偿。 */
+.modal__body {
+  margin-inline: 0;
+}
+
 .modal__header .modal__close-trigger {
   position: static;
   flex-shrink: 0;

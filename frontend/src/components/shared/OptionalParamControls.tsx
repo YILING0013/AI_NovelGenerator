@@ -29,10 +29,12 @@ export function OptionalSliderParam({
   return (
     <div className="flex flex-wrap items-center gap-3 sm:gap-4">
       <Switch isSelected={enabled} onChange={(v) => onToggle(v)} className="shrink-0">
-        <Switch.Control>
-          <Switch.Thumb />
-        </Switch.Control>
-        <Switch.Content className="text-sm w-40">{label}</Switch.Content>
+        <Switch.Content className="min-h-11 text-sm">
+          <Switch.Control>
+            <Switch.Thumb />
+          </Switch.Control>
+          <span className="w-40">{label}</span>
+        </Switch.Content>
       </Switch>
       {enabled && (
         <Slider
@@ -80,10 +82,12 @@ export function OptionalNumberParam({
   return (
     <div className="flex flex-wrap items-center gap-3 sm:gap-4">
       <Switch isSelected={enabled} onChange={(v) => onToggle(v)} className="shrink-0">
-        <Switch.Control>
-          <Switch.Thumb />
-        </Switch.Control>
-        <Switch.Content className="text-sm w-40">{label}</Switch.Content>
+        <Switch.Content className="min-h-11 text-sm">
+          <Switch.Control>
+            <Switch.Thumb />
+          </Switch.Control>
+          <span className="w-40">{label}</span>
+        </Switch.Content>
       </Switch>
       {enabled && (
         <NumberField
@@ -123,10 +127,12 @@ export function OptionalTextParam({
   return (
     <div className="space-y-2">
       <Switch isSelected={enabled} onChange={(v) => onToggle(v)}>
-        <Switch.Control>
-          <Switch.Thumb />
-        </Switch.Control>
-        <Switch.Content className="text-sm">{label}</Switch.Content>
+        <Switch.Content className="min-h-11 text-sm">
+          <Switch.Control>
+            <Switch.Thumb />
+          </Switch.Control>
+          {label}
+        </Switch.Content>
       </Switch>
       {enabled && (
         <TextField aria-label={label} value={value ?? ""} onChange={(v) => onValueChange(v)}>
@@ -170,10 +176,12 @@ export function BooleanParam({
   return (
     <div className="rounded-md border border-border bg-background/60 px-3 py-2">
       <Switch isSelected={value} onChange={(v) => onValueChange(v)} isDisabled={disabled}>
-        <Switch.Control>
-          <Switch.Thumb />
-        </Switch.Control>
-        <Switch.Content className="text-sm">{label}</Switch.Content>
+        <Switch.Content className="min-h-11 text-sm">
+          <Switch.Control>
+            <Switch.Thumb />
+          </Switch.Control>
+          {label}
+        </Switch.Content>
       </Switch>
       {description && <p className="mt-1 text-xs leading-5 text-muted">{description}</p>}
     </div>

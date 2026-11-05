@@ -1014,10 +1014,12 @@ function ProviderDetail({
                 isSelected={provider.use_system_proxy ?? false}
                 onChange={(value) => onChange({ use_system_proxy: value })}
               >
-                <Switch.Control>
-                  <Switch.Thumb />
-                </Switch.Control>
-                <Switch.Content className="text-sm">{t("useSystemProxy")}</Switch.Content>
+                <Switch.Content className="min-h-11 text-sm">
+                  <Switch.Control>
+                    <Switch.Thumb />
+                  </Switch.Control>
+                  {t("useSystemProxy")}
+                </Switch.Content>
               </Switch>
             </div>
           </div>
@@ -1294,10 +1296,12 @@ function CapabilitySwitch({
   return (
     <div className="flex min-h-11 min-w-0 items-center rounded-lg border border-border px-2.5 py-2">
       <Switch className="min-w-0" isSelected={selected} onChange={onChange}>
-        <Switch.Control>
-          <Switch.Thumb />
-        </Switch.Control>
-        <Switch.Content className="min-w-0 whitespace-nowrap text-xs font-medium">{label}</Switch.Content>
+        <Switch.Content className="min-h-11 max-w-full min-w-0 gap-2 text-xs font-medium">
+          <Switch.Control>
+            <Switch.Thumb />
+          </Switch.Control>
+          <span className="min-w-0">{label}</span>
+        </Switch.Content>
       </Switch>
     </div>
   );
