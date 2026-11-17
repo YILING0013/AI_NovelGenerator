@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { useRouter, usePathname } from "next/navigation";
+import { localeFromPath, stripLocalePrefix, LOCALES, LOCALE_LABELS, type AppLocale } from "@/lib/locale";
 
 export default function Navbar() {
   const t = useTranslations("nav");
@@ -10,14 +11,14 @@ export default function Navbar() {
   const pathname = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
 
-  const currentLocale = pathname.startsWith("/en") ? "en" : "zh";
+  const currentLocale = localeFromPath(pathname);
 
-  const switchLocale = (locale: string) => {
+  const switchLocale = (locale: AppLocale) => {
     if (locale === currentLocale) return;
-    const rest = pathname.replace(/^\/(zh|en)/, "") || "/";
-    // 语言切换只替换 locale，保留 Writing 当前 workspace/view 等深链接状态。
+    const rest = stripLocalePrefix(pathname);
+    //切换语言只替换 locale 段，保留 Writing 当前 workspace/view 等深链接状态。
     // locale 布局需要重新加载消息资源；完整导航也避免把服务端脚本当作客户端组件渲染。
-    window.location.assign(`/${locale}${rest}${window.location.search}`);
+    window.location.assign(`/${locale}${rest === "/" ? "" : rest}${window.location.search}`);
   };
 
   const toggleTheme = () => {
@@ -49,28 +50,20 @@ export default function Navbar() {
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           {/* Language Segmented Toggle */}
           <div className="flex items-center bg-surface-secondary rounded-lg p-0.5 border border-border">
-            <button
-              onClick={() => switchLocale("zh")}
-              aria-pressed={currentLocale === "zh"}
-              className={`min-h-9 rounded-md px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
-                currentLocale === "zh"
-                  ? "bg-accent text-accent-foreground shadow-sm"
-                  : "text-muted hover:text-foreground"
-              }`}
-            >
-              中文
-            </button>
-            <button
-              onClick={() => switchLocale("en")}
-              aria-pressed={currentLocale === "en"}
-              className={`min-h-9 rounded-md px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
-                currentLocale === "en"
-                  ? "bg-accent text-accent-foreground shadow-sm"
-                  : "text-muted hover:text-foreground"
-              }`}
-            >
-              EN
-            </button>
+            {LOCALES.map((code) => (
+              <button
+                key={code}
+                onClick={() => switchLocale(code)}
+                aria-pressed={currentLocale === code}
+                className={`min-h-9 rounded-md px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
+                  currentLocale === code
+                    ? "bg-accent text-accent-foreground shadow-sm"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                {LOCALE_LABELS[code]}
+              </button>
+            ))}
           </div>
 
           {/* Theme Toggle */}

@@ -10,6 +10,7 @@ import {
   SCALE_COLOR_KEYS,
   type ThemeColors,
 } from "@/lib/themes";
+import { localeFromPath } from "@/lib/locale";
 
 /* 颜色输入行 */
 function ColorRow({
@@ -44,35 +45,35 @@ function ColorRow({
 }
 
 /* 根据语言切换的标签映射 */
-const LABEL_MAP: Record<string, { zh: string; en: string }> = {
-  "--background": { zh: "背景色", en: "Background" },
-  "--foreground": { zh: "文字色", en: "Text" },
-  "--color-accent": { zh: "强调色", en: "Accent" },
-  "--color-accent-foreground": { zh: "强调色上的文字", en: "Accent text" },
-  "--color-accent-hover": { zh: "强调色(悬停)", en: "Accent Hover" },
-  "--color-surface": { zh: "表面色", en: "Surface" },
-  "--color-surface-secondary": { zh: "次表面色", en: "Surface 2" },
-  "--color-surface-raised": { zh: "浮层表面", en: "Raised surface" },
-  "--color-selected": { zh: "选中背景", en: "Selected background" },
-  "--color-border": { zh: "边框色", en: "Border" },
-  "--color-muted": { zh: "辅助文字", en: "Muted" },
-  "--color-warm-50": { zh: "色阶 50", en: "Scale 50" },
-  "--color-warm-100": { zh: "色阶 100", en: "Scale 100" },
-  "--color-warm-200": { zh: "色阶 200", en: "Scale 200" },
-  "--color-warm-300": { zh: "色阶 300", en: "Scale 300" },
-  "--color-warm-400": { zh: "色阶 400", en: "Scale 400" },
-  "--color-warm-500": { zh: "色阶 500", en: "Scale 500" },
-  "--color-warm-600": { zh: "色阶 600", en: "Scale 600" },
-  "--color-warm-700": { zh: "色阶 700", en: "Scale 700" },
-  "--color-warm-800": { zh: "色阶 800", en: "Scale 800" },
-  "--color-warm-900": { zh: "色阶 900", en: "Scale 900" },
+const LABEL_MAP: Record<string, { zh: string; en: string; vi: string }> = {
+  "--background": { zh: "背景色", en: "Background", vi: "Màu nền" },
+  "--foreground": { zh: "文字色", en: "Text", vi: "Màu chữ" },
+  "--color-accent": { zh: "强调色", en: "Accent", vi: "Màu nhấn" },
+  "--color-accent-foreground": { zh: "强调色上的文字", en: "Accent text", vi: "Chữ trên màu nhấn" },
+  "--color-accent-hover": { zh: "强调色(悬停)", en: "Accent Hover", vi: "Màu nhấn (rê chuột)" },
+  "--color-surface": { zh: "表面色", en: "Surface", vi: "Màu bề mặt" },
+  "--color-surface-secondary": { zh: "次表面色", en: "Surface 2", vi: "Bề mặt phụ" },
+  "--color-surface-raised": { zh: "浮层表面", en: "Raised surface", vi: "Bề mặt nổi" },
+  "--color-selected": { zh: "选中背景", en: "Selected background", vi: "Nền đang chọn" },
+  "--color-border": { zh: "边框色", en: "Border", vi: "Màu viền" },
+  "--color-muted": { zh: "辅助文字", en: "Muted", vi: "Chữ phụ" },
+  "--color-warm-50": { zh: "色阶 50", en: "Scale 50", vi: "Bậc màu 50" },
+  "--color-warm-100": { zh: "色阶 100", en: "Scale 100", vi: "Bậc màu 100" },
+  "--color-warm-200": { zh: "色阶 200", en: "Scale 200", vi: "Bậc màu 200" },
+  "--color-warm-300": { zh: "色阶 300", en: "Scale 300", vi: "Bậc màu 300" },
+  "--color-warm-400": { zh: "色阶 400", en: "Scale 400", vi: "Bậc màu 400" },
+  "--color-warm-500": { zh: "色阶 500", en: "Scale 500", vi: "Bậc màu 500" },
+  "--color-warm-600": { zh: "色阶 600", en: "Scale 600", vi: "Bậc màu 600" },
+  "--color-warm-700": { zh: "色阶 700", en: "Scale 700", vi: "Bậc màu 700" },
+  "--color-warm-800": { zh: "色阶 800", en: "Scale 800", vi: "Bậc màu 800" },
+  "--color-warm-900": { zh: "色阶 900", en: "Scale 900", vi: "Bậc màu 900" },
 };
 
 /* 主题卡片组件 */
 export function ThemeCard() {
   const t = useTranslations("settings.theme");
   const pathname = usePathname();
-  const locale = pathname.startsWith("/en") ? "en" : "zh";
+  const locale = localeFromPath(pathname);
 
   const {
     presetId,

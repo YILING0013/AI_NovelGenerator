@@ -16,6 +16,9 @@ const eslintConfig = defineConfig([
     "playwright-report/**",
     "test-results/**",
     "next-env.d.ts",
+    // Script tiện ích Node (CJS) cho bộ i18n, không nằm trong mã nguồn app.
+    "tools/**",
+    ".i18n-work/**",
   ]),
 ]);
 

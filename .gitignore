@@ -54,3 +54,10 @@ Thumbs.db
 Desktop.ini
 *.swp
 *.swo
+
+# Tam thuat dich bo i18n (duoc tai tao bang frontend/tools/i18n_split_merge.js)
+frontend/.i18n-work/
+# Du lieu chay thuc te cua may dev
+mongodata*/
+logs/
+tools/mongodb.zip

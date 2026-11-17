@@ -1,6 +1,7 @@
 import { apiPostForm } from "@/lib/api";
 import zh from "@/i18n/messages/zh.json";
 import en from "@/i18n/messages/en.json";
+import vi from "@/i18n/messages/vi.json";
 
 /**
  * 保存项目内导出副本，同时保留浏览器另存入口。
@@ -20,6 +21,8 @@ export function downloadExport(link: HTMLAnchorElement): void {
     form.append("file", blob, filename);
     await apiPostForm<{ path: string }>("/api/exports", form);
   }).catch(() => {
-    window.alert((document.documentElement.lang.startsWith("zh") ? zh : en).userStorage.exportFailed);
+    const lang = document.documentElement.lang;
+    const dict = lang.startsWith("zh") ? zh : lang.startsWith("vi") ? vi : en;
+    window.alert(dict.userStorage.exportFailed);
   });
 }

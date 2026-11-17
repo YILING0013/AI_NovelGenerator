@@ -25,6 +25,7 @@ import { CREATE_NOVEL_CONTEXT_FIELDS } from "@/lib/novelFields";
 import NovelInfoSection, { type SectionKey } from "./NovelInfoSection";
 import NovelRewriteAssistant from "./NovelRewriteAssistant";
 import StickyActionBar from "./StickyActionBar";
+import { localeFromPath } from "@/lib/locale";
 
 const SECTIONS: SectionKey[] = ["basic", "creative", "content", "style"];
 
@@ -89,7 +90,7 @@ export default function NovelInfoWorkspace({
   const pathname = usePathname();
   const routeSearchParams = useSearchParams();
   const searchParams = query === undefined ? routeSearchParams : new URLSearchParams(query);
-  const locale = pathname.startsWith("/en") ? "en" : "zh";
+  const locale = localeFromPath(pathname);
   const draftId = searchParams.get("draft") || undefined;
   const didLoadDraftRef = useRef(false);
   const createIdempotencyRef = useRef<{ signature: string; key: string } | null>(null);

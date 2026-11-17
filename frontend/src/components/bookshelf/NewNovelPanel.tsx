@@ -9,6 +9,7 @@ import { RetainedViewActive, RetainedViews } from "@/components/layout/RetainedV
 import NovelForm from "./NovelForm";
 import type { AICreateCandidateEnvelopeV1, AICreateGenerationInput, WritingDraft } from "@/types/novel";
 import { saveWritingDraft } from "@/lib/writingDraft";
+import { localeFromPath } from "@/lib/locale";
 
 interface NewNovelPanelProps {
   onCreated: (novelId: string) => void;
@@ -21,7 +22,7 @@ export default function NewNovelPanel({ onCreated, onCancel }: NewNovelPanelProp
   const t = useTranslations("create");
   const router = useRouter();
   const pathname = usePathname();
-  const locale = pathname.startsWith("/en") ? "en" : "zh";
+  const locale = localeFromPath(pathname);
   const [createMode, setCreateMode] = useState<CreateMode>("manual");
   const active = useContext(RetainedViewActive);
   const [draftId, setDraftId] = useState<string | null>(null);

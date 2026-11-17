@@ -414,11 +414,11 @@ export default function TaskFlowWorkspace() {
     const returnTo = search.get("return_to");
     const safe =
       returnTo &&
-      /^\/(zh|en)(\/|\?|#|$)/.test(returnTo) &&
+      /^\/(zh|en|vi)(\/|\?|#|$)/.test(returnTo) &&
       !returnTo.includes("/task-flows") &&
       !returnTo.startsWith("//");
     const destination = safe
-      ? returnTo.replace(/^\/(zh|en)/, `/${locale}`)
+      ? returnTo.replace(/^\/(zh|en|vi)/, `/${locale}`)
       : `/${locale}`;
     const source = window.opener as Window | null;
     if (safe && source && !source.closed) {

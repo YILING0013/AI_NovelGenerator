@@ -12,6 +12,7 @@ import { ThemeCard } from "@/components/settings/ThemeCard";
 import { validateConfig } from "@/lib/validation";
 import type { AppConfig } from "@/types/config";
 import { useRouter, usePathname } from "next/navigation";
+import { localeFromPath } from "@/lib/locale";
 
 type SettingsSection = "theme" | "database" | "provider" | "workflow";
 
@@ -71,7 +72,7 @@ export default function SettingsContent({
   const t = useTranslations("settings");
   const router = useRouter();
   const pathname = usePathname();
-  const currentLocale = pathname.startsWith("/en") ? "en" : "zh";
+  const currentLocale = localeFromPath(pathname);
   const isModal = presentation === "modal";
   const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
   const [secretEditorOpen, setSecretEditorOpen] = useState(false);

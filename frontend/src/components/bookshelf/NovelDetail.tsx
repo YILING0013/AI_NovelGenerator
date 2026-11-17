@@ -10,6 +10,7 @@ import { ConfirmActionModal } from "@/components/shared/RelationEditorPrimitives
 import { getImageUrl } from "@/lib/api";
 import type { NovelDetail } from "@/types/novel";
 import ChapterRecordsArchive from "@/components/writing/chapter-records/ChapterRecordsArchive";
+import { localeFromPath } from "@/lib/locale";
 
 interface NovelDetailPanelProps {
   novel: NovelDetail | null;
@@ -49,7 +50,7 @@ export default function NovelDetailPanel({
   const router = useRouter();
   const pathname = usePathname();
   const intlLocale = useLocale();
-  const locale = pathname.startsWith("/en") ? "en" : "zh";
+  const locale = localeFromPath(pathname);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");

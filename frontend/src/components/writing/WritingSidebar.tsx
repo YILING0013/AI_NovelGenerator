@@ -8,6 +8,7 @@ import SidebarEdgeHandle from "@/components/shared/SidebarEdgeHandle";
 import type { WritingSidebarItem } from "@/types/novel";
 import type { InitializationReadinessResponseV1 } from "@/types/initialization";
 import type { FlowNavigationProgress } from "./WritingFlowProgress";
+import { localeFromPath } from "@/lib/locale";
 
 interface WritingSidebarProps {
   activeItem: WritingSidebarItem;
@@ -144,7 +145,7 @@ export default function WritingSidebar({
   const t = useTranslations("writing");
   const router = useRouter();
   const pathname = usePathname();
-  const locale = pathname.startsWith("/en") ? "en" : "zh";
+  const locale = localeFromPath(pathname);
   const [display, setDisplay] = useState<"expanded" | "icons" | "hidden">("expanded");
   const sidebarId = useId();
   const iconsOnly = display === "icons";
