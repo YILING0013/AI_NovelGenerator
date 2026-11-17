@@ -23,34 +23,34 @@ class LLMProviderConfig(ReasoningOptions):
     配置的 key 作为用户自定义别名，同一 type 可定义多个不同别名的配置。
     """
 
-    type: LLMProviderType = Field(default="openai", description="接口模式: openai / gemini / claude / deepseek")
-    base_url: str = Field(default="", description="服务商 API 基地址")
+    type: LLMProviderType = Field(default="openai", description="Chế độ API: openai / gemini / claude / deepseek")
+    base_url: str = Field(default="", description="Địa chỉ gốc API của nhà cung cấp")
     api_key: str = Field(default="", description="API Key")
-    default_model: str = Field(default="", description="默认模型名称")
-    enabled: bool = Field(default=False, description="是否启用")
-    timeout_seconds: int = Field(default=60, description="请求超时（秒）")
-    max_retries: int = Field(default=2, description="最大重试次数")
-    max_concurrency: int = Field(default=5, description="最大并发数")
-    use_system_proxy: bool = Field(default=False, description="是否允许 SDK 读取系统代理配置")
-    supports_streaming: bool = Field(default=True, description="是否支持流式输出")
-    supports_json_schema: bool = Field(default=False, description="是否支持 JSON Schema 输出")
-    supports_json_output: bool | None = Field(default=None, description="JSON Output 开关；未设置时保留旧兼容配置")
-    supports_function_calling: bool = Field(default=False, description="是否支持 function calling")
-    api_mode: LLMApiMode = Field(default="auto", description="调用接口；自动模式为官方地址选择新版接口")
-    structured_output_mode: StructuredOutputMode = Field(default="auto", description="结构化输出方式")
+    default_model: str = Field(default="", description="Tên mô hình mặc định")
+    enabled: bool = Field(default=False, description="Có bật hay không")
+    timeout_seconds: int = Field(default=60, description="Thời gian chờ yêu cầu (giây)")
+    max_retries: int = Field(default=2, description="Số lần thử lại tối đa")
+    max_concurrency: int = Field(default=5, description="Số yêu cầu đồng thời tối đa")
+    use_system_proxy: bool = Field(default=False, description="Có cho phép SDK đọc cấu hình proxy hệ thống")
+    supports_streaming: bool = Field(default=True, description="Có hỗ trợ streaming")
+    supports_json_schema: bool = Field(default=False, description="Có hỗ trợ output JSON Schema")
+    supports_json_output: bool | None = Field(default=None, description="Công tắc JSON Output; nếu chưa đặt thì giữ cấu hình tương thích cũ")
+    supports_function_calling: bool = Field(default=False, description="Có hỗ trợ function calling")
+    api_mode: LLMApiMode = Field(default="auto", description="Cách gọi API; chế độ tự động chọn API phiên bản mới cho địa chỉ chính thức")
+    structured_output_mode: StructuredOutputMode = Field(default="auto", description="Phương thức output có cấu trúc")
 
     # 模型或接口资料，只校验数值，不改变任何请求预算。
-    context_window_tokens: int | None = Field(default=None, gt=0, le=9007199254740991, strict=True, description="上下文总容量，未知留空")
-    input_token_limit: int | None = Field(default=None, gt=0, le=9007199254740991, strict=True, description="单次输入上限，未知留空")
-    output_token_limit: int | None = Field(default=None, gt=0, le=9007199254740991, strict=True, description="模型或接口输出上限，未知留空")
+    context_window_tokens: int | None = Field(default=None, gt=0, le=9007199254740991, strict=True, description="Tổng dung lượng ngữ cảnh, không rõ thì để trống")
+    input_token_limit: int | None = Field(default=None, gt=0, le=9007199254740991, strict=True, description="Giới hạn đầu vào mỗi lần, không rõ thì để trống")
+    output_token_limit: int | None = Field(default=None, gt=0, le=9007199254740991, strict=True, description="Giới hạn output của mô hình hoặc API, không rõ thì để trống")
 
     # 生成参数默认值（请求未指定时使用，请求级别优先）
-    temperature: float | None = Field(default=None, ge=0, le=2, description="默认采样温度")
-    top_p: float | None = Field(default=None, ge=0, le=1, description="默认核采样概率")
-    max_tokens: int | None = Field(default=None, gt=0, description="默认最大生成 token 数")
-    system_prompt: str | None = Field(default=None, description="默认系统提示词")
-    presence_penalty: float | None = Field(default=None, ge=-2, le=2, description="默认存在惩罚")
-    frequency_penalty: float | None = Field(default=None, ge=-2, le=2, description="默认频率惩罚")
+    temperature: float | None = Field(default=None, ge=0, le=2, description="Nhiệt độ sampling mặc định")
+    top_p: float | None = Field(default=None, ge=0, le=1, description="Xác suất nucleus sampling mặc định")
+    max_tokens: int | None = Field(default=None, gt=0, description="Số token sinh tối đa mặc định")
+    system_prompt: str | None = Field(default=None, description="Prompt hệ thống mặc định")
+    presence_penalty: float | None = Field(default=None, ge=-2, le=2, description="Mức phạt presence mặc định")
+    frequency_penalty: float | None = Field(default=None, ge=-2, le=2, description="Mức phạt frequency mặc định")
 
     @property
     def is_deepseek(self) -> bool:
@@ -73,7 +73,7 @@ class LLMProviderConfig(ReasoningOptions):
                    "gemini": {"interactions", "generate_content"}, "claude": {"messages"}}
         if self.api_mode != "auto":
             if self.api_mode not in allowed[self.type]:
-                raise ValueError(f"{self.type} 不支持接口 {self.api_mode}，请修改接口模式")
+                raise ValueError(f"{self.type} không hỗ trợ API {self.api_mode}, vui lòng chỉnh lại chế độ API")
             return self.api_mode
         host = urlsplit(self.base_url).hostname
         official = not self.base_url or host in {
@@ -95,7 +95,7 @@ class LLMProviderConfig(ReasoningOptions):
         """
         if self.structured_output_mode != "auto":
             if self.structured_output_mode == "json_object" and self.type not in {"openai", "deepseek"}:
-                raise ValueError("JSON Output 仅用于 OpenAI 兼容接口")
+                raise ValueError("JSON Output chỉ dùng cho API tương thích OpenAI")
             return self.structured_output_mode
         return "json_object" if self.is_deepseek and self.resolved_api_mode == "chat_completions" else "json_schema"
 
@@ -121,9 +121,9 @@ class LLMProviderConfig(ReasoningOptions):
 class LLMConfig(BaseModel):
     """LLM 总体配置，包含默认服务商与所有服务商列表。"""
 
-    default_provider: str = Field(default="openai_gpt4o_mini", description="默认服务商别名")
-    format_review_provider: str = Field(default="", description="格式审校服务商别名，需支持 JSON Schema 或 JSON Output")
-    providers: dict[str, LLMProviderConfig] = Field(default_factory=dict, description="服务商配置映射（key 为别名）")
+    default_provider: str = Field(default="openai_gpt4o_mini", description="Biệt danh nhà cung cấp mặc định")
+    format_review_provider: str = Field(default="", description="Biệt danh nhà cung cấp dùng để kiểm tra định dạng, cần hỗ trợ JSON Schema hoặc JSON Output")
+    providers: dict[str, LLMProviderConfig] = Field(default_factory=dict, description="Ánh xạ cấu hình nhà cung cấp (key là biệt danh)")
 
 
 def get_llm_config() -> LLMConfig:
@@ -137,5 +137,5 @@ def get_provider_config(provider_name: str | None = None) -> LLMProviderConfig:
     llm_cfg = get_llm_config()
     name = provider_name or llm_cfg.default_provider
     if name not in llm_cfg.providers:
-        raise ValueError(f"未找到 LLM 服务商配置: {name}")
+        raise ValueError(f"Không tìm thấy cấu hình nhà cung cấp LLM: {name}")
     return llm_cfg.providers[name]

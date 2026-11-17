@@ -22,7 +22,7 @@ class ChapterRecordEvidenceV1(StrictRequestModel):
     version: int = Field(ge=1, le=2**63 - 1)
     revision_id: ObjectIdString
     content_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
-    start: int = Field(ge=0, le=2**31 - 1, description="Unicode 码点下标；JavaScript 使用 Array.from(content)，不能使用 UTF-16 下标。")
+    start: int = Field(ge=0, le=2**31 - 1, description="Vị trí theo code point Unicode; JavaScript phải dùng Array.from(content), không được dùng vị trí kiểu UTF-16.")
     quote: str = Field(min_length=1, max_length=10000)
 
 
@@ -48,7 +48,7 @@ class ChapterRecordEntityRefV1(StrictRequestModel):
         valid = (is_object_id(self.entity_id) if self.entity_type.endswith("_volume_state")
                  else is_business_id(self.entity_type, self.entity_id))
         if not valid:
-            raise ValueError("相关实体 ID 与类别不一致")
+            raise ValueError("ID và loại thực thể liên quan không nhất quán")
         return self
 
 
@@ -176,7 +176,7 @@ class ChapterItemOwnerConfirmV1(StrictRequestModel):
             两个持有人不同的确认输入。
         """
         if self.from_character_id == self.to_character_id:
-            raise ValueError("请选择不同的新持有人")
+            raise ValueError("Vui lòng chọn một người nắm giữ mới khác")
         return self
 
 

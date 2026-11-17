@@ -55,9 +55,9 @@ class SecretUpdateRequest(BaseModel):
             已通过动作语义校验的请求对象。
         """
         if self.action == "replace" and not (self.value and self.value.strip()):
-            raise ValueError("replace 动作必须携带非空密钥值")
+            raise ValueError("Hành động replace phải kèm theo giá trị khóa không rỗng")
         if self.action != "replace" and self.value not in (None, ""):
-            raise ValueError(f"{self.action} 动作不能携带密钥值")
+            raise ValueError(f"{self.action} hành động không được kèm theo giá trị khóa")
         return self
 
 
@@ -82,9 +82,9 @@ class ProviderConfigPatch(ReasoningOptions):
     supports_json_output: bool | None = None
     supports_function_calling: bool | None = None
     # 模型或接口资料，只校验数值，不改变任何请求预算。
-    context_window_tokens: int | None = Field(default=None, gt=0, le=9007199254740991, strict=True, description="上下文总容量，未知留空")
-    input_token_limit: int | None = Field(default=None, gt=0, le=9007199254740991, strict=True, description="单次输入上限，未知留空")
-    output_token_limit: int | None = Field(default=None, gt=0, le=9007199254740991, strict=True, description="模型或接口输出上限，未知留空")
+    context_window_tokens: int | None = Field(default=None, gt=0, le=9007199254740991, strict=True, description="Tổng dung lượng ngữ cảnh, để trống nếu không rõ")
+    input_token_limit: int | None = Field(default=None, gt=0, le=9007199254740991, strict=True, description="Giới hạn đầu vào mỗi lần, để trống nếu không rõ")
+    output_token_limit: int | None = Field(default=None, gt=0, le=9007199254740991, strict=True, description="Giới hạn đầu ra của model hoặc API, để trống nếu không rõ")
 
     temperature: float | None = Field(default=None, ge=0, le=2)
     top_p: float | None = Field(default=None, ge=0, le=1)
@@ -199,7 +199,7 @@ async def update_configurations(request: ConfigUpdateRequest):
             except ConfigCommitError as exc:
                 raise DomainApiError(
                     "CONFIG_COMMIT_FAILED",
-                    "配置提交失败，旧配置已恢复；请检查服务日志后重试",
+                    "Gửi cấu hình thất bại, cấu hình cũ đã được khôi phục; vui lòng kiểm tra nhật ký dịch vụ rồi thử lại",
                     status_code=503,
                 ) from exc
 
@@ -228,7 +228,7 @@ async def update_configurations(request: ConfigUpdateRequest):
             except Exception as restore_exc:
                 raise DomainApiError(
                     "CONFIG_ROLLBACK_FAILED",
-                    "配置依赖刷新失败，且旧版本恢复失败；请检查服务日志",
+                    "Làm mới phụ thuộc cấu hình thất bại và khôi phục phiên bản cũ cũng thất bại; vui lòng kiểm tra nhật ký dịch vụ",
                     status_code=503,
                 ) from restore_exc
             if isinstance(exc, ProviderReferencedError):
@@ -240,7 +240,7 @@ async def update_configurations(request: ConfigUpdateRequest):
                 ) from exc
             raise DomainApiError(
                 "CONFIG_DEPENDENCY_UNAVAILABLE",
-                "配置依赖刷新失败，已恢复旧配置",
+                "Làm mới phụ thuộc cấu hình thất bại, đã khôi phục cấu hình cũ",
                 status_code=503,
             ) from exc
 
@@ -268,7 +268,7 @@ async def test_llm_provider(request: ProviderTestRequest):
             if not isinstance(stored_api_key, str) or not stored_api_key.strip():
                 raise DomainApiError(
                     "PROVIDER_SECRET_NOT_CONFIGURED",
-                    "所选 Provider 没有已保存的 API Key",
+                    "Provider đã chọn không có API Key được lưu",
                     status_code=422,
                 )
             # 已保存密钥只在本次内存探测对象中注入，不进入响应或浏览器状态。
@@ -284,6 +284,6 @@ async def test_llm_provider(request: ProviderTestRequest):
     except Exception as exc:
         raise DomainApiError(
             "PROVIDER_TEST_FAILED",
-            "Provider 能力测试失败，请检查当前表单与服务端日志",
+            "Kiểm tra năng lực Provider thất bại, vui lòng xem biểu mẫu hiện tại và nhật ký server",
             status_code=503,
         ) from exc

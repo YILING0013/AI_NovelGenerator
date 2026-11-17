@@ -19,7 +19,7 @@ CandidateIdempotencyKey = Annotated[
         min_length=16,
         max_length=128,
         pattern=IDEMPOTENCY_KEY_RE.pattern,
-        description="领域确认接口要求的 Idempotency-Key 请求头",
+        description="Idempotency-Key request header mà giao diện xác nhận miền yêu cầu",
     ),
 ]
 
@@ -63,27 +63,27 @@ class CandidateBasisV1(StrictRequestModel):
         """
         identities = [(item.resource_type, item.id) for item in self.source_refs]
         if len(identities) != len(set(identities)):
-            raise ValueError("source_refs 不能重复引用同一资源")
+            raise ValueError("source_refs không được tham chiếu trùng cùng một tài nguyên")
         from backend.services.task_flows.contracts import FlowRef
 
         FlowRef.model_validate(self.flow_ref)
         if self.flow_snapshot.get("flow_ref") != self.flow_ref:
-            raise ValueError("方案修订与生成快照不一致")
+            raise ValueError("Phương án sửa đổi không nhất quán với ảnh chụp nhanh của lần sinh")
         if not all(isinstance(self.flow_snapshot.get(key), dict) for key in ("scope", "business_input", "flow_inputs", "execution")):
-            raise ValueError("流程生成快照缺少必要输入")
+            raise ValueError("Ảnh chụp nhanh sinh quy trình thiếu đầu vào thiết yếu")
         definition_hash = self.flow_snapshot.get("definition_hash", "")
         if not isinstance(definition_hash, str) or len(definition_hash) != 64 or any(c not in "0123456789abcdef" for c in definition_hash):
-            raise ValueError("流程定义指纹无效")
+            raise ValueError("Dấu vết định nghĩa quy trình không hợp lệ")
         if self.flow_snapshot["scope"].get("novel_id") != self.novel_id:
-            raise ValueError("流程操作位置与候选小说不一致")
+            raise ValueError("Vị trí thao tác quy trình không nhất quán với tiểu thuyết ứng viên")
         if self.novel_id is None:
             if self.workflow not in {
                 "create_novel_by_ai",
                 "rewrite_novel_field_by_ai",
             }:
-                raise ValueError("仅 AI 新书或创建态字段候选允许 novel_id 为空")
+                raise ValueError("Chỉ ứng viên sách mới do AI tạo hoặc ứng viên trường ở trạng thái chưa tạo cho phép novel_id trống")
             if self.source_refs:
-                raise ValueError("未保存小说候选不能引用尚不存在的正式资源")
+                raise ValueError("Ứng viên tiểu thuyết chưa lưu không được tham chiếu tài nguyên chính thức chưa tồn tại")
         return self
 
 
@@ -107,12 +107,12 @@ class CandidateConfirmationEnvelopeV1(StrictRequestModel):
             版本映射可用于领域 CAS 校验的确认信封。
         """
         if any(not key.strip() or isinstance(value, bool) or value < 1 for key, value in self.expected_versions.items()):
-            raise ValueError("expected_versions 必须使用非空资源键和正整数版本")
+            raise ValueError("expected_versions phải dùng khóa tài nguyên khác rỗng và phiên bản là số nguyên dương")
         if self.basis.novel_id is None:
             if self.expected_versions:
-                raise ValueError("AI 新书确认不能携带尚不存在的正式资源版本")
+                raise ValueError("Xác nhận sách mới AI không được kèm phiên bản tài nguyên chính thức chưa tồn tại")
         elif not self.expected_versions:
-            raise ValueError("已保存领域候选确认必须携带 expected_versions")
+            raise ValueError("Xác nhận ứng viên miền đã lưu phải kèm expected_versions")
         return self
 
 
@@ -135,7 +135,7 @@ class CandidateGenerationEnvelopeV1(StrictResponseModel):
             or self.schema_id != self.basis.schema_id
             or self.schema_version != self.basis.schema_version
         ):
-            raise ValueError("候选响应与 basis 契约不一致")
+            raise ValueError("Phản hồi ứng viên không nhất quán với hợp đồng basis")
         return self
 
 
@@ -250,20 +250,20 @@ def require_current_candidate_basis(
         if identity not in current_source_versions:
             raise DomainApiError(
                 "CANDIDATE_SOURCE_NOT_FOUND",
-                "候选依据中的正式资源已不存在",
+                "Tài nguyên chính thức trong căn cứ của ứng viên không còn tồn tại",
                 status_code=404,
                 details={"resource_type": source.resource_type, "id": source.id},
             )
         if current_source_versions[identity] != source.version:
             raise DomainApiError(
                 "CANDIDATE_BASIS_CONFLICT",
-                "候选依据已过期，请基于当前正式事实重新生成",
+                "Căn cứ của ứng viên đã hết hạn, hãy sinh lại dựa trên dữ kiện chính thức hiện tại",
                 status_code=409,
             )
     if basis.input_fingerprint != current_fingerprint:
         raise DomainApiError(
             "CANDIDATE_FINGERPRINT_CONFLICT",
-            "候选输入已变化，请重新生成",
+            "Đầu vào của ứng viên đã thay đổi, hãy sinh lại",
             status_code=409,
         )
 

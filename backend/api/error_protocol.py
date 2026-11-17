@@ -36,13 +36,13 @@ REQUEST_ID_HEADER = "X-Request-ID"
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]{8,128}$")
 
 HTTP_ERROR_STATUS_SEMANTICS: dict[int, str] = {
-    400: "仅保留明确登记的旧 ObjectId 兼容边界或无法执行的请求语义",
-    404: "资源不存在、已删除或属于其他小说",
-    409: "版本、候选依据、唯一性、顺序或幂等冲突",
-    422: "字段、枚举、组合、数量或引用规则不合法",
-    502: "Provider、结构化输出、格式审校或模型结果无效",
-    503: "数据库、配置或依赖服务不可用",
-    504: "明确的 LLM 工作流步骤超时",
+    400: "Chỉ giữ ranh giới tương thích ObjectId cũ đã đăng ký rõ ràng hoặc ngữ nghĩa yêu cầu không thể thực thi",
+    404: "Tài nguyên không tồn tại, đã bị xóa hoặc thuộc tiểu thuyết khác",
+    409: "Xung đột phiên bản, căn cứ ứng viên, tính duy nhất, thứ tự hoặc idempotent",
+    422: "Quy tắc trường, enum, tổ hợp, số lượng hoặc tham chiếu không hợp lệ",
+    502: "Provider, đầu ra có cấu trúc, rà soát định dạng hoặc kết quả model không hợp lệ",
+    503: "Cơ sở dữ liệu, cấu hình hoặc dịch vụ phụ thuộc không khả dụng",
+    504: "Hết thời gian ở một bước workflow LLM được xác định rõ",
 }
 
 
@@ -172,7 +172,7 @@ def validation_field_errors(exc: RequestValidationError) -> dict[str, list[str]]
             if part not in {"body", "query", "path", "header", "cookie"}
         ]
         field = ".".join(location) or "$"
-        message = str(sanitize_json_value(error.get("msg", "请求字段不合法"))).strip()
+        message = str(sanitize_json_value(error.get("msg", "Trường yêu cầu không hợp lệ"))).strip()
         if message and message not in result.setdefault(field, []):
             result[field].append(message)
     return result
@@ -215,7 +215,7 @@ def build_error_detail(
     """
     payload = ApiErrorDetail(
         code=code,
-        message=str(sanitize_json_value(message)).strip() or "请求失败",
+        message=str(sanitize_json_value(message)).strip() or "Yêu cầu thất bại",
         field_errors=normalize_field_errors(field_errors),
         details=sanitize_json_value(dict(details or {}), redact_input=True),
         request_id=request_id,
@@ -257,7 +257,7 @@ def api_http_exception(
 def exception_to_error(
     exc: Exception,
     *,
-    fallback_message: str = "请求处理失败",
+    fallback_message: str = "Xử lý yêu cầu thất bại",
 ) -> tuple[int, str, str, dict[str, list[str]], dict[str, Any]]:
     """把共享领域、数据库和 LLM 异常转换为稳定错误语义。
 
@@ -286,17 +286,17 @@ def exception_to_error(
             {},
         )
     if isinstance(exc, NotFoundError):
-        return 404, "RESOURCE_NOT_FOUND", str(exc) or "资源不存在", {}, {}
+        return 404, "RESOURCE_NOT_FOUND", str(exc) or "Tài nguyên không tồn tại", {}, {}
     if isinstance(exc, InvalidIdError):
-        return 422, "INVALID_OBJECT_ID", str(exc) or "ObjectId 不合法", {}, {}
+        return 422, "INVALID_OBJECT_ID", str(exc) or "ObjectId không hợp lệ", {}, {}
     if isinstance(exc, DuplicateKeyError):
-        return 409, "RESOURCE_CONFLICT", str(exc) or "资源冲突", {}, {}
+        return 409, "RESOURCE_CONFLICT", str(exc) or "Xung đột tài nguyên", {}, {}
     if isinstance(exc, LLMTimeoutError):
-        return 504, "LLM_WORKFLOW_TIMEOUT", "模型请求超时，请重试", {}, {}
+        return 504, "LLM_WORKFLOW_TIMEOUT", "Yêu cầu tới model hết thời gian, vui lòng thử lại", {}, {}
     if isinstance(exc, LLMDuplicateKeyError):
         # 只公开专用错误中的模型正文；不读取任意异常的响应、URL 或配置。
-        return 502, "LLM_JSON_DUPLICATE_KEY", "模型 JSON 有重复字段，请查看原文并重新生成", {
-            exc.duplicate_path: ["同一对象内的字段名重复，不能确定要保留哪一份内容"],
+        return 502, "LLM_JSON_DUPLICATE_KEY", "JSON của model có trường trùng nhau, vui lòng xem nguyên văn và tạo lại", {
+            exc.duplicate_path: ["Tên trường trùng trong cùng một đối tượng, không xác định được phải giữ bản nội dung nào"],
         }, {
             "duplicate_path": exc.duplicate_path,
             "duplicate_path_length": exc.duplicate_path_length,
@@ -307,20 +307,20 @@ def exception_to_error(
             "raw_output_untrusted": True,
         }
     if isinstance(exc, LLMResponseError) and exc.partial_text is not None:
-        return 502, "LLM_RESULT_INVALID", "模型输出达到长度上限，内容未完成，请增加输出上限后重新生成", {}, {
+        return 502, "LLM_RESULT_INVALID", "Đầu ra của model chạm giới hạn độ dài, nội dung chưa hoàn tất, vui lòng tăng giới hạn đầu ra rồi tạo lại", {}, {
             "raw_output": exc.partial_text,
             "raw_output_length": exc.partial_text_length,
             "raw_output_truncated": exc.partial_text_truncated,
             "raw_output_untrusted": True,
         }
     if isinstance(exc, (LLMResponseError, LLMSchemaError)):
-        return 502, "LLM_RESULT_INVALID", "模型返回结果无效，请重试", {}, {}
+        return 502, "LLM_RESULT_INVALID", "Kết quả model trả về không hợp lệ, vui lòng thử lại", {}, {}
     if isinstance(exc, (LLMAuthError, LLMRateLimitError)):
-        return 503, "LLM_PROVIDER_UNAVAILABLE", "模型服务暂时不可用，请稍后重试", {}, {}
+        return 503, "LLM_PROVIDER_UNAVAILABLE", "Dịch vụ model tạm thời không khả dụng, vui lòng thử lại sau", {}, {}
     if isinstance(exc, LLMError):
-        return 502, "LLM_PROVIDER_FAILED", "模型服务调用失败，请重试", {}, {}
+        return 502, "LLM_PROVIDER_FAILED", "Gọi dịch vụ model thất bại, vui lòng thử lại", {}, {}
     if isinstance(exc, (TypeError, ValueError)):
-        return 422, "REQUEST_RULE_INVALID", str(exc) or "请求规则不合法", {}, {}
+        return 422, "REQUEST_RULE_INVALID", str(exc) or "Quy tắc yêu cầu không hợp lệ", {}, {}
     return 500, "INTERNAL_ERROR", fallback_message, {}, {}
 
 
@@ -338,14 +338,14 @@ def relation_http_exception(exc: Exception) -> HTTPException:
         for error in exc.errors():
             # 这里的 body 等名称属于模型字段，不能按 HTTP 请求位置裁剪。
             field = ".".join(str(part) for part in error.get("loc", ())) or "$"
-            message = str(sanitize_json_value(error.get("msg", "请求字段不合法"))).strip()
+            message = str(sanitize_json_value(error.get("msg", "Trường yêu cầu không hợp lệ"))).strip()
             if message and message not in field_errors.setdefault(field, []):
                 field_errors[field].append(message)
         return HTTPException(
             status_code=422,
             detail={
                 "code": "REQUEST_VALIDATION_FAILED",
-                "message": "请求字段校验失败",
+                "message": "Hợp lệ hoá các trường của yêu cầu thất bại",
                 "field_errors": field_errors,
             },
         )
@@ -370,7 +370,7 @@ def sse_error_payload(
     exc: Exception,
     *,
     request_id: str | None = None,
-    fallback_message: str = "生成失败",
+    fallback_message: str = "Tạo nội dung thất bại",
 ) -> dict[str, Any]:
     """构建建连后唯一终态 ``error`` 事件的稳定载荷。
 
@@ -383,7 +383,7 @@ def sse_error_payload(
         包含 code、message、status_code 和可选字段问题的事件数据。
     """
     request_id = request_id or log_context.get().get("request_id")
-    log_exception(logger, f"[SSE 失败] request_id={request_id}", exc)
+    log_exception(logger, f"[SSE lỗi] request_id={request_id}", exc)
     status_code, code, message, field_errors, details = exception_to_error(
         exc,
         fallback_message=fallback_message,
@@ -445,10 +445,10 @@ def _legacy_http_error_detail(status_code: int, detail: Any) -> dict[str, Any]:
     message = str(sanitize_json_value(detail)).strip() if detail is not None else ""
     if status_code >= 500:
         # 遗留 5xx 常直接使用 str(exc)，应用边界不再把内部信息返回给调用方。
-        message = "服务暂时不可用，请稍后重试" if status_code in {502, 503, 504} else "内部服务错误"
+        message = "Dịch vụ tạm thời không khả dụng, vui lòng thử lại sau" if status_code in {502, 503, 504} else "Lỗi dịch vụ nội bộ"
     return build_error_detail(
         code=default_codes.get(status_code, "HTTP_ERROR"),
-        message=message or "请求失败",
+        message=message or "Yêu cầu thất bại",
     )
 
 
@@ -462,7 +462,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
     Returns:
         保留原状态码和头部的 JSON 错误响应。
     """
-    log_exception(logger, f"[HTTP 失败] method={request.method} path={request.url.path} status={exc.status_code} request_id={get_request_id(request)}", exc,
+    log_exception(logger, f"[HTTP lỗi] method={request.method} path={request.url.path} status={exc.status_code} request_id={get_request_id(request)}", exc,
                   level=logging.ERROR if exc.status_code >= 500 else logging.WARNING)
     detail = _legacy_http_error_detail(exc.status_code, exc.detail)
     detail["request_id"] = get_request_id(request)
@@ -486,13 +486,13 @@ async def request_validation_exception_handler(
     Returns:
         包含字段路径映射和请求 ID 的安全 422 JSON 响应。
     """
-    log_exception(logger, f"[请求校验失败] method={request.method} path={request.url.path} request_id={get_request_id(request)}", exc, level=logging.WARNING)
+    log_exception(logger, f"[Yêu cầu không hợp lệ] method={request.method} path={request.url.path} request_id={get_request_id(request)}", exc, level=logging.WARNING)
     return JSONResponse(
         status_code=422,
         content={
             "detail": build_error_detail(
                 code="REQUEST_VALIDATION_FAILED",
-                message="请求字段校验失败",
+                message="Hợp lệ hoá các trường của yêu cầu thất bại",
                 field_errors=validation_field_errors(exc),
                 request_id=get_request_id(request),
             )
@@ -513,7 +513,7 @@ async def domain_api_exception_handler(
     Returns:
         使用异常状态码的公共 JSON 错误响应。
     """
-    log_exception(logger, f"[API 失败] method={request.method} path={request.url.path} code={exc.code} request_id={get_request_id(request)} details={exc.details} fields={exc.field_errors}", exc,
+    log_exception(logger, f"[API lỗi] method={request.method} path={request.url.path} code={exc.code} request_id={get_request_id(request)} details={exc.details} fields={exc.field_errors}", exc,
                   level=logging.ERROR if exc.status_code >= 500 else logging.WARNING)
     return JSONResponse(
         status_code=exc.status_code,
@@ -540,13 +540,13 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
         不泄露异常文本和堆栈的公共 500 响应。
     """
     request_id = get_request_id(request)
-    log_exception(logger, f"[API 未处理异常] method={request.method} path={request.url.path} request_id={request_id}", exc)
+    log_exception(logger, f"[API gặp ngoại lệ chưa xử lý] method={request.method} path={request.url.path} request_id={request_id}", exc)
     return JSONResponse(
         status_code=500,
         content={
             "detail": build_error_detail(
                 code="INTERNAL_ERROR",
-                message="内部服务错误",
+                message="Lỗi dịch vụ nội bộ",
                 request_id=request_id,
             )
         },
@@ -574,7 +574,7 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         request_id = incoming if REQUEST_ID_PATTERN.fullmatch(incoming) else uuid4().hex
         request.state.request_id = request_id
         with bind_log_context(request_id=request_id):
-            logger.info("[HTTP 请求] method=%s path=%s", request.method, request.url.path)
+            logger.info("[HTTP request] method=%s path=%s", request.method, request.url.path)
             response = await call_next(request)
         response.headers[REQUEST_ID_HEADER] = request_id
         return response

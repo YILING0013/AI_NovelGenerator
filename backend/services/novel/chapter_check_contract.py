@@ -47,7 +47,7 @@ class ChapterCheckSuggestionV1(StrictResponseModel):
 
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=False)
     psychological_state: str = Field(max_length=1000)
-    start: int = Field(ge=0, le=2**31 - 1, description="从零开始的 Unicode 码点位置，不是 UTF-16 下标。")
+    start: int = Field(ge=0, le=2**31 - 1, description="Vị trí code point Unicode tính từ 0, không phải chỉ số UTF-16.")
     quote: str = Field(min_length=1, max_length=10000)
 
 
@@ -78,7 +78,7 @@ class ChapterItemOwnerCheckInputV1(StrictRequestModel):
             两个持有人不同的固定输入。
         """
         if self.from_character_id == self.to_character_id:
-            raise ValueError("请选择不同的新持有人")
+            raise ValueError("Hãy chọn một người sở hữu mới khác")
         return self
 
 
@@ -86,7 +86,7 @@ class ChapterItemOwnerCheckSuggestionV1(StrictResponseModel):
     """物品建议只带原文位置，不允许模型指定身份、版本或修改字段。"""
 
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=False)
-    start: int = Field(ge=0, le=2**31 - 1, description="从零开始的 Unicode 码点位置。")
+    start: int = Field(ge=0, le=2**31 - 1, description="Vị trí code point Unicode tính từ 0.")
     quote: str = Field(min_length=1, max_length=10000)
 
 
@@ -111,7 +111,7 @@ class ChapterCharacterRelationStateCheckSuggestionV1(StrictResponseModel):
 
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=False)
     current_state: str = Field(min_length=1, max_length=2000)
-    start: int = Field(ge=0, le=2**31 - 1, description="从零开始的 Unicode 码点位置。")
+    start: int = Field(ge=0, le=2**31 - 1, description="Vị trí code point Unicode tính từ 0.")
     quote: str = Field(min_length=1, max_length=10000)
 
     @field_validator("current_state", mode="before")
@@ -148,7 +148,7 @@ class ChapterCharacterRelationStateCheckSuggestionV2(ChapterCharacterRelationSta
             原样建议；非字符串由严格字段检查拒绝。
         """
         if isinstance(value, str) and not value.strip():
-            raise ValueError("关系建议不能为空")
+            raise ValueError("Gợi ý quan hệ không được để trống")
         return value
 
 
@@ -182,7 +182,7 @@ class ChapterWorldRulesCheckInputV1(StrictRequestModel):
             规则身份唯一的固定输入。
         """
         if len({rule.rule_id for rule in self.rules}) != len(self.rules):
-            raise ValueError("所选世界规则不能重复")
+            raise ValueError("Các quy tắc thế giới đã chọn không được trùng lặp")
         return self
 
 
@@ -192,7 +192,7 @@ class ChapterWorldRulesCheckIssueV1(StrictResponseModel):
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=False)
     text: str = Field(min_length=1, max_length=2000)
     rule_ids: list[Annotated[str, Field(pattern=r"^rule_[0-9]{6,}$")]] = Field(min_length=1, max_length=5)
-    start: int = Field(ge=0, le=2**31 - 1, description="从零开始的 Unicode 码点位置，不是 UTF-16 下标。")
+    start: int = Field(ge=0, le=2**31 - 1, description="Vị trí code point Unicode tính từ 0, không phải chỉ số UTF-16.")
     quote: str = Field(min_length=1, max_length=10000)
 
     @field_validator("text", mode="before")
@@ -218,7 +218,7 @@ class ChapterWorldRulesCheckIssueV1(StrictResponseModel):
             不重复的规则编号。
         """
         if len(set(value)) != len(value):
-            raise ValueError("疑点引用的世界规则不能重复")
+            raise ValueError("Các quy tắc thế giới dẫn chiếu trong nghi vấn không được trùng lặp")
         return value
 
 

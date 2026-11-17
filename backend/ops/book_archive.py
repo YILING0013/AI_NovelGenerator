@@ -115,7 +115,7 @@ def _unique_object(pairs: list[tuple[str, object]]) -> dict:
     result = {}
     for key, value in pairs:
         if key in result:
-            raise ValueError("JSON 包含重复字段")
+            raise ValueError("JSON chứa trường trùng lặp")
         result[key] = value
     return result
 
@@ -130,15 +130,15 @@ def _parse_json(content: bytes, location: str) -> tuple[object, int]:
             current, depth = stack.pop()
             nodes += 1
             if depth > MAX_JSON_DEPTH or nodes > MAX_JSON_NODES:
-                raise ValueError("JSON 嵌套或字段数量超过限制")
+                raise ValueError("Độ sâu lồng nhau hoặc số trường của JSON vượt quá giới hạn")
             if isinstance(current, dict):
                 # 本格式只允许 EJSON v2；旧二进制形状会进入 PyMongo 的宽松解析分支。
                 if "$binary" in current and "$type" in current:
-                    raise ValueError("不接受旧版 BSON 二进制编码")
+                    raise ValueError("Không chấp nhận mã nhị phân BSON kiểu cũ")
                 binary = current.get("$binary")
                 if isinstance(binary, dict) and isinstance(binary.get("subType"), str) and binary["subType"].lower() == "ff":
                     # 当前 PyMongo C 编码器处理 ff 会抛 SystemError，不能改成别的子类型继续。
-                    raise ValueError("当前 BSON 编码器不支持二进制子类型 ff")
+                    raise ValueError("Bộ mã hóa BSON hiện tại không hỗ trợ subtype nhị phân ff")
                 stack.extend((child, depth + 1) for child in current.values())
             elif isinstance(current, list):
                 stack.extend((child, depth + 1) for child in current)
@@ -146,7 +146,7 @@ def _parse_json(content: bytes, location: str) -> tuple[object, int]:
         json.dumps(value, ensure_ascii=False, allow_nan=False).encode("utf-8")
         return value, nodes
     except (ValueError, UnicodeError, RecursionError) as exc:
-        raise ArchiveValidationError(location, "UTF-8 JSON 无效、字段重复、编码不受支持或超过限制") from exc
+        raise ArchiveValidationError(location, "UTF-8 JSON không hợp lệ, trường trùng lặp, mã hóa không được hỗ trợ hoặc vượt quá giới hạn") from exc
 
 
 def encode_document(document: dict) -> bytes:
@@ -162,7 +162,7 @@ def encode_document(document: dict) -> bytes:
     # BSON 日期只有毫秒精度；拒绝编码时改变原始 BSON 含义的输入。
     decoded = decode_document(content)
     if BSON.encode(document) != BSON.encode(decoded):
-        raise ArchiveValidationError("document", "文档不能无损编码为 BSON JSON")
+        raise ArchiveValidationError("document", "Tài liệu không thể mã hóa thành BSON JSON mà không bị mất dữ liệu")
     return content
 
 
@@ -176,21 +176,21 @@ def decode_document(content: bytes, location: str = "document") -> dict:
         保留 ObjectId、UTC 日期等 BSON 类型的文档。
     """
     if len(content) > MAX_LINE_BYTES:
-        raise ArchiveValidationError(location, "单条文档超过大小限制")
+        raise ArchiveValidationError(location, "Một tài liệu đơn lẻ vượt quá giới hạn kích thước")
     raw, _ = _parse_json(content, location)
     if not isinstance(raw, dict):
-        raise ArchiveValidationError(location, "每行必须是一个文档")
+        raise ArchiveValidationError(location, "Mỗi dòng phải là một tài liệu")
     try:
         document = loads(content.decode("utf-8"), json_options=JSON_OPTIONS)
         if not isinstance(document, dict):
-            raise ValueError("顶层不是文档")
+            raise ValueError("Cấp cao nhất không phải là một tài liệu")
         # BSON 的 Timestamp 等类型会接受布尔值；检查实际 BSON 往返，不能用 True == 1。
         restored = BSON(BSON.encode(document)).decode(codec_options=JSON_OPTIONS)
         canonical = json.loads(dumps(restored, json_options=JSON_OPTIONS))
         if json.dumps(raw, sort_keys=True) != json.dumps(canonical, sort_keys=True):
-            raise ValueError("不是可逆的 Canonical Extended JSON")
+            raise ValueError("Không phải Canonical Extended JSON có thể đảo ngược")
     except (ValueError, TypeError, KeyError, OverflowError, RecursionError, BSONError, DecimalException) as exc:
-        raise ArchiveValidationError(location, "BSON 编码无效或不符合 Canonical Extended JSON v2") from exc
+        raise ArchiveValidationError(location, "Mã hóa BSON không hợp lệ hoặc không theo Canonical Extended JSON v2") from exc
     return document
 
 
@@ -210,17 +210,17 @@ def _check_deflate(source: BinaryIO, member: zipfile.ZipInfo, data_offset: int) 
     while remaining:
         chunk = source.read(min(64 * 1024, remaining))
         if not chunk:
-            raise ArchiveValidationError(member.filename, "压缩内容不完整")
+            raise ArchiveValidationError(member.filename, "Nội dung nén không hoàn chỉnh")
         remaining -= len(chunk)
         while chunk:
             decoded = decoder.decompress(chunk, min(64 * 1024, member.file_size - size + 1))
             size += len(decoded)
             checksum = zlib.crc32(decoded, checksum)
             if size > member.file_size or decoder.unused_data or (decoder.eof and remaining):
-                raise ArchiveValidationError(member.filename, "压缩流包含未声明的内容")
+                raise ArchiveValidationError(member.filename, "Luồng nén chứa nội dung không được khai báo")
             chunk = decoder.unconsumed_tail
     if not decoder.eof or size != member.file_size or checksum != member.CRC:
-        raise ArchiveValidationError(member.filename, "压缩流不完整或长度、校验值不符")
+        raise ArchiveValidationError(member.filename, "Luồng nén không hoàn chỉnh hoặc độ dài, giá trị kiểm tra không khớp")
 
 
 def load_verified_archive(path: str | Path) -> VerifiedArchive:
@@ -239,7 +239,7 @@ def load_verified_archive(path: str | Path) -> VerifiedArchive:
             source.seek(0, 2)
             archive_size = source.tell()
             if archive_size > MAX_ARCHIVE_BYTES or archive_size < 22:
-                raise ArchiveValidationError(location, "备份包为空、不完整或超过大小限制")
+                raise ArchiveValidationError(location, "Gói sao lưu trống, không hoàn chỉnh hoặc vượt giới hạn kích thước")
             # v1 不接受 ZIP64、分卷、注释或尾随内容；先读固定尾部，再交给 zipfile。
             source.seek(-22, 2)
             end = source.read(22)
@@ -247,12 +247,12 @@ def load_verified_archive(path: str | Path) -> VerifiedArchive:
             if (signature != b"PK\x05\x06" or disk or directory_disk or comment
                     or disk_count != count or not 1 <= count <= MAX_MEMBERS
                     or size > MAX_DIRECTORY_BYTES or offset + size != archive_size - 22):
-                raise ArchiveValidationError(location, "ZIP 目录不完整、超限或使用了不支持的格式")
+                raise ArchiveValidationError(location, "Danh mục ZIP không hoàn chỉnh, vượt giới hạn hoặc dùng định dạng không được hỗ trợ")
             source.seek(0)
             with zipfile.ZipFile(source) as bundle:
                 members = bundle.infolist()
                 if len(members) != count or len({member.filename for member in members}) != count:
-                    raise ArchiveValidationError(location, "ZIP 包含重复成员或目录数量不符")
+                    raise ArchiveValidationError(location, "ZIP chứa thành viên trùng lặp hoặc số lượng không khớp danh mục")
                 files = {}
                 data_offsets = {}
                 total_size = 0
@@ -260,28 +260,28 @@ def load_verified_archive(path: str | Path) -> VerifiedArchive:
                 for member in sorted(members, key=lambda value: value.header_offset):
                     location = member.filename
                     if member.volume != 0:
-                        raise ArchiveValidationError(location, "不支持跨磁盘的 ZIP 成员")
+                        raise ArchiveValidationError(location, "Không hỗ trợ thành viên ZIP nằm khác ổ đĩa")
                     mode = member.external_attr >> 16
                     if (member.orig_filename != member.filename or member.is_dir()
                             or stat.S_IFMT(mode) not in (0, stat.S_IFREG)
                             or member.flag_bits & ~0x800 or member.extra or member.comment
                             or member.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED)):
-                        raise ArchiveValidationError(location, "只接受无附加元数据、无数据描述符的未加密普通文件")
+                        raise ArchiveValidationError(location, "Chỉ chấp nhận tệp thường không mã hóa, không metadata bổ sung, không có data descriptor")
                     # 中央目录可能故意漏掉本地成员；检查连续边界，禁止藏在目录之外的文件。
                     if member.header_offset != next_offset:
-                        raise ArchiveValidationError(location, "ZIP 含未列入目录的数据或重叠文件")
+                        raise ArchiveValidationError(location, "ZIP chứa dữ liệu không có trong danh mục hoặc các tệp chồng lấn")
                     source.seek(next_offset)
                     header = source.read(30)
                     if len(header) != 30:
-                        raise ArchiveValidationError(location, "ZIP 本地文件头不完整")
+                        raise ArchiveValidationError(location, "Phần đầu tệp cục bộ của ZIP không hoàn chỉnh")
                     local = struct.unpack("<4s5H3L2H", header)
                     if (local[0] != b"PK\x03\x04" or local[2] != member.flag_bits
                             or local[3] != member.compress_type or local[6] != member.CRC
                             or local[7] != member.compress_size or local[8] != member.file_size
                             or local[10] != 0):
-                        raise ArchiveValidationError(location, "ZIP 本地文件头与目录不符")
+                        raise ArchiveValidationError(location, "Phần đầu tệp cục bộ của ZIP không khớp với danh mục")
                     if member.compress_type == zipfile.ZIP_STORED and member.compress_size != member.file_size:
-                        raise ArchiveValidationError(location, "未压缩文件的字节长度不符")
+                        raise ArchiveValidationError(location, "Độ dài byte của tệp chưa nén không khớp")
                     data_offsets[location] = next_offset + 30 + local[9]
                     next_offset += 30 + local[9] + member.compress_size
                     if member.filename == "manifest.json":
@@ -291,16 +291,16 @@ def load_verified_archive(path: str | Path) -> VerifiedArchive:
                     elif _COVER_PATH.fullmatch(member.filename):
                         limit = MAX_COVER_BYTES
                     else:
-                        raise ArchiveValidationError(location, "未知文件或不安全路径")
+                        raise ArchiveValidationError(location, "Tệp không xác định hoặc đường dẫn không an toàn")
                     total_size += member.file_size
                     if member.file_size > limit or total_size > MAX_TOTAL_BYTES:
-                        raise ArchiveValidationError(location, "解压后大小超过限制")
+                        raise ArchiveValidationError(location, "Kích thước sau khi giải nén vượt quá giới hạn")
                     files[member.filename] = member
                 if next_offset != offset:
-                    raise ArchiveValidationError("archive", "ZIP 包含目录外的数据")
+                    raise ArchiveValidationError("archive", "ZIP chứa dữ liệu nằm ngoài danh mục")
                 location = "manifest.json"
                 if location not in files:
-                    raise ArchiveValidationError(location, "缺少清单")
+                    raise ArchiveValidationError(location, "Thiếu bản kê")
                 for member in members:
                     location = member.filename
                     if member.compress_type == zipfile.ZIP_DEFLATED:
@@ -311,21 +311,21 @@ def load_verified_archive(path: str | Path) -> VerifiedArchive:
                 keys = {"format", "format_version", "source_revision", "novel_id", "complete",
                         "encoding", "collections", "assets", "validation_summary", "scope"}
                 if not isinstance(manifest, dict):
-                    raise ArchiveValidationError(location, "清单字段不符合固定版本")
+                    raise ArchiveValidationError(location, "Các trường của bản kê không đúng với phiên bản cố định")
                 if (manifest.get("format") != FORMAT or type(manifest.get("format_version")) is not int
                         or manifest["format_version"] not in (FORMAT_VERSION, EXPORT_FORMAT_VERSION, REVISION_FORMAT_VERSION, FORESHADOWING_FORMAT_VERSION, CHAPTER_RECORD_FORMAT_VERSION, ITEM_OWNER_FORMAT_VERSION, CHARACTER_RELATION_STATE_FORMAT_VERSION, CHARACTER_FACT_FORMAT_VERSION, CHARACTER_RELATION_FACT_FORMAT_VERSION, ITEM_FACT_FORMAT_VERSION, FACTION_FACT_FORMAT_VERSION, CHARACTER_BATCH_FORMAT_VERSION, COMBINED_FORMAT_VERSION, FACTION_VOLUME_START_FORMAT_VERSION)):
-                    raise ArchiveValidationError(location, "未知备份格式版本；仅支持 1–14")
+                    raise ArchiveValidationError(location, "Phiên bản định dạng sao lưu không xác định; chỉ hỗ trợ 1–14")
                 version = manifest["format_version"]
                 if version in (EXPORT_FORMAT_VERSION, REVISION_FORMAT_VERSION, FORESHADOWING_FORMAT_VERSION, CHAPTER_RECORD_FORMAT_VERSION, ITEM_OWNER_FORMAT_VERSION, CHARACTER_RELATION_STATE_FORMAT_VERSION, CHARACTER_FACT_FORMAT_VERSION, CHARACTER_RELATION_FACT_FORMAT_VERSION, ITEM_FACT_FORMAT_VERSION, FACTION_FACT_FORMAT_VERSION, CHARACTER_BATCH_FORMAT_VERSION, COMBINED_FORMAT_VERSION, FACTION_VOLUME_START_FORMAT_VERSION):
                     keys.add("export_profile")
                 if set(manifest) != keys:
-                    raise ArchiveValidationError(location, "清单字段不符合固定版本")
+                    raise ArchiveValidationError(location, "Các trường của bản kê không đúng với phiên bản cố định")
                 if manifest["complete"] is not True or manifest["encoding"] != ENCODING:
-                    raise ArchiveValidationError(location, "备份未完成或文档编码不支持")
+                    raise ArchiveValidationError(location, "Bản sao lưu chưa hoàn tất hoặc tài liệu dùng mã hóa không được hỗ trợ")
                 if not isinstance(manifest["source_revision"], str) or not re.fullmatch(r"[0-9a-f]{40}", manifest["source_revision"]):
-                    raise ArchiveValidationError(location, "源码版本必须是完整 Git 提交号")
+                    raise ArchiveValidationError(location, "Phiên bản mã nguồn phải là số commit Git đầy đủ")
                 if not isinstance(manifest["novel_id"], str) or not re.fullmatch(r"[0-9a-f]{24}", manifest["novel_id"]):
-                    raise ArchiveValidationError(location, "小说 ID 格式无效")
+                    raise ArchiveValidationError(location, "Định dạng ID tiểu thuyết không hợp lệ")
                 scope = ARCHIVE_SCOPE if version == FORMAT_VERSION else EXPORT_SCOPE
                 if version == REVISION_FORMAT_VERSION:
                     scope = REVISION_EXPORT_SCOPE
@@ -348,9 +348,9 @@ def load_verified_archive(path: str | Path) -> VerifiedArchive:
                 if version == FACTION_VOLUME_START_FORMAT_VERSION:
                     scope = FACTION_VOLUME_START_EXPORT_SCOPE
                 if manifest["scope"] != scope:
-                    raise ArchiveValidationError(location, "清单必须如实声明本版本的验证范围与缺口")
+                    raise ArchiveValidationError(location, "Bản kê phải khai báo trung thực phạm vi và khoảng trống xác minh của phiên bản này")
                 if version in (EXPORT_FORMAT_VERSION, REVISION_FORMAT_VERSION, FORESHADOWING_FORMAT_VERSION, CHAPTER_RECORD_FORMAT_VERSION, ITEM_OWNER_FORMAT_VERSION, CHARACTER_RELATION_STATE_FORMAT_VERSION, CHARACTER_FACT_FORMAT_VERSION, CHARACTER_RELATION_FACT_FORMAT_VERSION, ITEM_FACT_FORMAT_VERSION, FACTION_FACT_FORMAT_VERSION, CHARACTER_BATCH_FORMAT_VERSION, COMBINED_FORMAT_VERSION, FACTION_VOLUME_START_FORMAT_VERSION) and manifest["export_profile"] != EXPORT_PROFILE:
-                    raise ArchiveValidationError(location, "导出方式声明不符合本版本要求")
+                    raise ArchiveValidationError(location, "Khai báo cách thức xuất không đáp ứng yêu cầu của phiên bản này")
                 collections = manifest["collections"]
                 names = REVISION_COLLECTIONS if version == REVISION_FORMAT_VERSION else COLLECTIONS
                 if version == FORESHADOWING_FORMAT_VERSION:
@@ -362,10 +362,10 @@ def load_verified_archive(path: str | Path) -> VerifiedArchive:
                 if version == FACTION_VOLUME_START_FORMAT_VERSION:
                     names = FACTION_BATCH_COLLECTIONS
                 if not isinstance(collections, dict) or set(collections) != set(names):
-                    raise ArchiveValidationError(location, "集合必须与完整白名单一致，包括空集合")
+                    raise ArchiveValidationError(location, "Các bộ sưu tập phải khớp toàn bộ danh sách trắng, kể cả bộ sưu tập trống")
                 assets = manifest["assets"]
                 if not isinstance(assets, list) or len(assets) > 1:
-                    raise ArchiveValidationError(location, "单书只能包含实际引用的封面")
+                    raise ArchiveValidationError(location, "Gói một cuốn sách chỉ được chứa ảnh bìa thực sự được tham chiếu")
                 expected = {"manifest.json"}
                 descriptors = []
                 for name in names:
@@ -373,20 +373,20 @@ def load_verified_archive(path: str | Path) -> VerifiedArchive:
                     if (not isinstance(entry, dict) or set(entry) != {"path", "count", "size_bytes", "sha256"}
                             or entry["path"] != f"collections/{name}.jsonl"
                             or type(entry["count"]) is not int or not 0 <= entry["count"] <= MAX_RECORDS):
-                        raise ArchiveValidationError(location, f"集合 {name} 的清单无效")
+                        raise ArchiveValidationError(location, f"Bộ sưu tập {name} có bản kê không hợp lệ")
                     descriptors.append(entry)
                 for entry in assets:
                     if (not isinstance(entry, dict) or set(entry) != {"path", "size_bytes", "sha256"}
                             or not isinstance(entry["path"], str) or not _COVER_PATH.fullmatch(entry["path"])):
-                        raise ArchiveValidationError(location, "封面清单无效")
+                        raise ArchiveValidationError(location, "Bản kê ảnh bìa không hợp lệ")
                     descriptors.append(entry)
                 for entry in descriptors:
                     if (type(entry["size_bytes"]) is not int or entry["size_bytes"] < 0
                             or not isinstance(entry["sha256"], str) or not _HEX64.fullmatch(entry["sha256"])):
-                        raise ArchiveValidationError(location, "文件长度或 SHA256 格式无效")
+                        raise ArchiveValidationError(location, "Định dạng độ dài tệp hoặc SHA256 không hợp lệ")
                     expected.add(entry["path"])
                 if set(files) != expected:
-                    raise ArchiveValidationError(location, "存在未声明文件或缺少清单中的文件")
+                    raise ArchiveValidationError(location, "Có tệp không được khai báo hoặc thiếu tệp đã nêu trong bản kê")
                 checked_files = [{"path": "manifest.json", "size_bytes": len(manifest_bytes),
                                   "sha256": hashlib.sha256(manifest_bytes).hexdigest()}]
                 documents = {name: [] for name in names}
@@ -396,7 +396,7 @@ def load_verified_archive(path: str | Path) -> VerifiedArchive:
                     location = entry["path"]
                     member = files[location]
                     if entry["size_bytes"] != member.file_size:
-                        raise ArchiveValidationError(location, "文件长度与清单不符")
+                        raise ArchiveValidationError(location, "Độ dài tệp không khớp với bản kê")
                     digest = hashlib.sha256()
                     actual_size = 0
                     with bundle.open(member) as stream:
@@ -406,19 +406,19 @@ def load_verified_archive(path: str | Path) -> VerifiedArchive:
                                 line_number = len(documents[name]) + 1
                                 line_location = f"{location}:{line_number}"
                                 if len(line) > MAX_LINE_BYTES or not line.endswith(b"\n"):
-                                    raise ArchiveValidationError(line_location, "文档过大或末尾缺少 LF，备份可能未完成")
+                                    raise ArchiveValidationError(line_location, "Tài liệu quá lớn hoặc cuối tệp thiếu LF, bản sao lưu có thể chưa hoàn tất")
                                 digest.update(line)
                                 actual_size += len(line)
                                 record_count += 1
                                 if record_count > MAX_RECORDS:
-                                    raise ArchiveValidationError(line_location, "文档总数超过限制")
+                                    raise ArchiveValidationError(line_location, "Tổng số tài liệu vượt quá giới hạn")
                                 _, nodes = _parse_json(line, line_location)
                                 json_nodes += nodes
                                 if json_nodes > MAX_JSON_NODES:
-                                    raise ArchiveValidationError(line_location, "包内 JSON 字段总数超过限制")
+                                    raise ArchiveValidationError(line_location, "Tổng số trường JSON trong gói vượt quá giới hạn")
                                 documents[name].append(decode_document(line, line_location))
                             if len(documents[name]) != entry["count"]:
-                                raise ArchiveValidationError(location, "文档数量与清单不符")
+                                raise ArchiveValidationError(location, "Số lượng tài liệu không khớp với bản kê")
                         else:
                             cover_content = bytearray()
                             while chunk := stream.read(64 * 1024):
@@ -426,22 +426,22 @@ def load_verified_archive(path: str | Path) -> VerifiedArchive:
                                 actual_size += len(chunk)
                                 cover_content.extend(chunk)
                     if actual_size != entry["size_bytes"] or digest.hexdigest() != entry["sha256"]:
-                        raise ArchiveValidationError(location, "文件字节 SHA256 或长度与清单不符")
+                        raise ArchiveValidationError(location, "SHA256 hoặc độ dài nội dung tệp không khớp với bản kê")
                     if location.startswith("static/") and _COVER_PATH.fullmatch(location)[1] != digest.hexdigest():
-                        raise ArchiveValidationError(location, "封面路径哈希与内容不一致")
+                        raise ArchiveValidationError(location, "Băm đường dẫn ảnh bìa không nhất quán với nội dung")
                     if location.startswith("static/"):
                         cover_bytes[location] = bytes(cover_content)
                     checked_files.append({key: entry[key] for key in ("path", "size_bytes", "sha256")})
                 summary = validate_documents(documents, ObjectId(manifest["novel_id"]), format_version=version)
                 if json.dumps(summary, sort_keys=True) != json.dumps(manifest["validation_summary"], sort_keys=True):
-                    raise ArchiveValidationError("manifest.json:validation_summary", "业务 ID 和父链检查摘要与实际数据不符")
+                    raise ArchiveValidationError("manifest.json:validation_summary", "ID nghiệp vụ và tóm tắt kiểm tra chuỗi cha không khớp với dữ liệu thực tế")
                 cover = documents["novels"][0].get("cover_image")
                 cover_paths = {entry["path"] for entry in assets}
                 if cover in (None, ""):
                     if cover_paths:
-                        raise ArchiveValidationError("manifest.json:assets", "存在没有被小说引用的封面")
+                        raise ArchiveValidationError("manifest.json:assets", "Có ảnh bìa không được cuốn sách nào tham chiếu")
                 elif not isinstance(cover, str) or not cover.startswith("/") or {cover[1:]} != cover_paths:
-                    raise ArchiveValidationError("collections/novels.jsonl:1:cover_image", "封面引用与包内文件不一致")
+                    raise ArchiveValidationError("collections/novels.jsonl:1:cover_image", "Các tham chiếu ảnh bìa không nhất quán với tệp trong gói")
                 report = {
                     "status": "valid", "format_version": version,
                     "source_revision": manifest["source_revision"], "novel_id": manifest["novel_id"],
@@ -457,7 +457,7 @@ def load_verified_archive(path: str | Path) -> VerifiedArchive:
                 ).encode("utf-8")).hexdigest()
                 return VerifiedArchive(report, documents, cover_bytes, payload_identity)
     except (OSError, UnicodeError, zipfile.BadZipFile, EOFError, zlib.error, NotImplementedError) as exc:
-        raise ArchiveValidationError(location, "无法读取文件，或 ZIP 已损坏、不完整") from exc
+        raise ArchiveValidationError(location, "Không đọc được tệp, hoặc ZIP bị hỏng, không hoàn chỉnh") from exc
 
 
 def verify_archive(path: str | Path) -> dict:
@@ -481,32 +481,31 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         退出码；结果或定位错误以 JSON 输出到标准输出。
     """
-    parser = argparse.ArgumentParser(description="单书备份包导出、离线验证、目标检查与显式隔离恢复")
+    parser = argparse.ArgumentParser(description="Xuất gói sao lưu một cuốn sách, xác minh ngoại tuyến, kiểm tra đích và khôi phục vào môi trường cô lập có xác nhận")
     commands = parser.add_subparsers(dest="command", required=True)
-    verify = commands.add_parser("verify", help="只读检查，不连接数据库")
+    verify = commands.add_parser("verify", help="Kiểm tra chỉ đọc, không kết nối cơ sở dữ liệu")
     verify.add_argument("archive")
-    export = commands.add_parser("export", help="从显式源数据库只读导出单书")
+    export = commands.add_parser("export", help="Xuất chỉ đọc một cuốn sách từ cơ sở dữ liệu nguồn được chỉ định rõ")
     export.add_argument("--source-uri-env", required=True)
     export.add_argument("--source-database", required=True)
     export.add_argument("--novel-id", required=True)
     export.add_argument("--source-covers-dir", required=True)
     export.add_argument("--source-revision", required=True)
     export.add_argument("--output", required=True)
-    dry_run = commands.add_parser("dry-run", help="验证包并只读观察显式目标，不执行恢复")
+    dry_run = commands.add_parser("dry-run", help="Xác minh gói và quan sát đích chỉ đọc, không thực hiện khôi phục")
     dry_run.add_argument("archive")
     dry_run.add_argument("--target-uri-env", required=True)
     dry_run.add_argument("--target-database", required=True)
     dry_run.add_argument("--target-covers-dir", required=True)
     restore = commands.add_parser(
-        "restore-empty", help="将已验证的单书包恢复到独占的全新隔离目标",
-        description="操作人必须独占隔离目标库和封面目录，确保没有应用、维护程序或其他写入者。"
-                    "本命令不能阻止任意外部客户端写入，不提供数据库级安全锁。",
+        "restore-empty", help="Khôi phục gói sách đã xác minh vào đích cô lập hoàn toàn mới được sử dụng độc quyền",
+        description="Người vận hành phải sử dụng độc quyền cơ sở dữ liệu đích cô lập và thư mục ảnh bìa, bảo đảm không còn ứng dụng, chương trình bảo trì hay bên ghi nào khác đang truy cập.\nLệnh này không ngăn được client bên ngoài ghi vào và không cung cấp khóa an toàn ở cấp cơ sở dữ liệu.",
     )
     restore.add_argument("archive")
     restore.add_argument("--target-uri-env", required=True)
     restore.add_argument("--target-database", required=True)
     restore.add_argument("--target-covers-dir", required=True)
-    restore.add_argument("--confirm-isolated-target", required=True, help="必须精确等于目标库名")
+    restore.add_argument("--confirm-isolated-target", required=True, help="Phải trùng chính xác với tên cơ sở dữ liệu đích")
     args = parser.parse_args(argv)
     try:
         if args.command == "verify":

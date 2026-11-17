@@ -92,7 +92,7 @@ class FlowStore:
         reference = FlowRef(id=flow_id, revision=revision)
         path = self.root / "flows" / reference.id / f"{reference.revision}.json"
         if not path.exists():
-            raise KeyError(f"方案或修订不存在：{flow_id}@{revision}")
+            raise KeyError(f"Phương án hoặc bản chỉnh sửa không tồn tại:{flow_id}@{revision}")
         with path.open(encoding="utf-8") as handle:
             return Flow.model_validate(json.load(handle))
 
@@ -135,7 +135,7 @@ class FlowStore:
         """
         index = self._read_index()
         if flow_id not in index["flows"]:
-            raise KeyError(f"方案不存在：{flow_id}")
+            raise KeyError(f"Phương án không tồn tại:{flow_id}")
         return self._read_flow(flow_id, revision if revision is not None else index["flows"][flow_id]["revision"])
 
     def save(self, flow: Flow | dict[str, Any], expected_revision: int | None = None) -> Flow:
@@ -154,9 +154,9 @@ class FlowStore:
             current = index["flows"].get(flow.id)
             current_revision = current["revision"] if current else 0
             if (expected_revision or 0) != current_revision:
-                raise FlowConflictError("方案已被其他页面修改，请重新打开后再保存")
+                raise FlowConflictError("Phương án đã bị trang khác sửa đổi, vui lòng mở lại rồi lưu")
             if current and current["task"] != flow.task:
-                raise ValueError("已有方案不能改到另一类任务，请复制为新方案")
+                raise ValueError("Phương án đã có không thể chuyển sang loại nhiệm vụ khác, vui lòng sao chép thành phương án mới")
             next_revision = current_revision + 1
             # 索引提交前中断可能留下未发布文件，不能覆盖那份历史内容。
             while (self.root / "flows" / flow.id / f"{next_revision}.json").exists():
@@ -187,12 +187,12 @@ class FlowStore:
         with self._locked():
             index = self._read_index()
             if expected_version is not None and index["version"] != expected_version:
-                raise FlowConflictError("默认方案已被其他页面修改，请刷新后重试")
+                raise FlowConflictError("Phương án mặc định đã bị trang khác sửa đổi, vui lòng làm mới rồi thử lại")
             if flow_id not in index["flows"]:
-                raise KeyError(f"方案不存在：{flow_id}")
+                raise KeyError(f"Phương án không tồn tại:{flow_id}")
             selected = self._read_flow(flow_id, revision if revision is not None else index["flows"][flow_id]["revision"])
             if selected.task != task:
-                raise ValueError("默认方案必须属于当前任务")
+                raise ValueError("Phương án mặc định phải thuộc nhiệm vụ hiện tại")
             reference = {"id": selected.id, "revision": selected.revision}
             if index["defaults"].get(task) != reference:
                 index["defaults"][task] = reference
@@ -215,10 +215,10 @@ class FlowStore:
             if selected:
                 return self._read_flow(selected["id"], selected["revision"])
             if self.default_factory is None:
-                raise KeyError(f"任务尚未设置默认方案：{task}")
+                raise KeyError(f"Nhiệm vụ chưa đặt phương án mặc định:{task}")
             flow = validate_flow(self.default_factory(task))
             if flow.task != task:
-                raise ValueError("默认工厂返回了另一类任务")
+                raise ValueError("Factory mặc định trả về loại nhiệm vụ khác")
             existing = index["flows"].get(flow.id)
             if existing:
                 flow = self._read_flow(flow.id, existing["revision"])

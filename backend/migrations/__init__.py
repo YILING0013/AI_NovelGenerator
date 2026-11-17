@@ -32,7 +32,7 @@ def inventory(root: Path) -> dict[str, str]:
     result = {}
     for path in files:
         if path.is_symlink() or path.is_junction():
-            raise MigrationError(f"请先处理链接路径：{path}")
+            raise MigrationError(f"Hãy xử lý đường dẫn liên kết trước:{path}")
         if path.is_file() and path.name != ".lock":
             with path.open("rb") as handle:
                 digest = hashlib.file_digest(handle, "sha256").hexdigest()
@@ -76,7 +76,7 @@ def storage_lock(path: Path):
                 import fcntl
                 fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError:
-            raise MigrationError("这个数据目录正在使用，请关闭原实例后重试。") from None
+            raise MigrationError("Thư mục dữ liệu này đang được sử dụng, vui lòng đóng phiên bản gốc rồi thử lại.") from None
         try:
             yield
         finally:
@@ -92,7 +92,7 @@ def _check_versions(data: Path) -> dict:
     for key, supported in (("layout_version", LAYOUT_VERSION), ("task_flow_version", TASK_FLOW_VERSION)):
         value = state.get(key, 0)
         if type(value) is not int or value < 0 or value > supported:
-            raise MigrationError(f"{key} 不受此版本支持，请使用对应的新版程序，不能降级启动。")
+            raise MigrationError(f"{key} không được phiên bản này hỗ trợ, vui lòng dùng chương trình mới tương ứng, không được hạ cấp để khởi động.")
     return state
 
 
@@ -102,12 +102,12 @@ def _resume_layout(data: Path, journal_path: Path, journal: dict) -> None:
         source, target, backup, retired = (Path(item[k]) for k in ("source", "target", "backup", "retired"))
         expected = item["files"]
         if inventory(backup) != expected:
-            raise MigrationError(f"迁移备份不完整，请保留现场并检查：{backup}")
+            raise MigrationError(f"Bản sao lưu di cư không hoàn chỉnh, vui lòng giữ nguyên hiện trường và kiểm tra:{backup}")
         for candidate in (source, target, retired):
             if candidate.exists() and inventory(candidate) != expected:
-                raise MigrationError(f"迁移期间文件已变化，请核对后重试：{candidate}")
+                raise MigrationError(f"Tệp đã thay đổi trong khi di cư, vui lòng đối chiếu rồi thử lại:{candidate}")
         if not source.exists() and not retired.exists() and not item["copy_only"]:
-            raise MigrationError(f"迁移原件缺失，请检查备份记录：{journal_path}")
+            raise MigrationError(f"Thiếu bản gốc trước di cư, vui lòng kiểm tra nhật ký sao lưu:{journal_path}")
     for item in journal["items"]:
         source, target, backup, retired = (Path(item[k]) for k in ("source", "target", "backup", "retired"))
         if not target.exists():
@@ -120,11 +120,11 @@ def _resume_layout(data: Path, journal_path: Path, journal: dict) -> None:
                 if backup.is_dir(): shutil.copytree(backup, staged)
                 else: shutil.copy2(backup, staged)
             if inventory(staged) != item["files"]:
-                raise MigrationError(f"迁移暂存副本不完整，请保留现场：{staged}")
+                raise MigrationError(f"Bản sao tạm của đợt di cư không hoàn chỉnh, vui lòng giữ nguyên hiện trường:{staged}")
             os.replace(staged, target)
         if source.exists() and not item["copy_only"]:
             if inventory(source) != item["files"]:
-                raise MigrationError(f"原目录已变化，尚未移走：{source}")
+                raise MigrationError(f"Thư mục gốc đã thay đổi, chưa được di chuyển:{source}")
             retired.parent.mkdir(parents=True, exist_ok=True)
             source.rename(retired)
     journal["status"] = "complete"
@@ -142,12 +142,12 @@ def prepare_files(project: Path = PROJECT_ROOT, data: Path = USER_DATA_DIR, *, l
     """
     for candidate in (project, data, *data.parents):
         if candidate.is_symlink() or candidate.is_junction():
-            raise MigrationError(f"请先处理链接路径：{candidate}")
+            raise MigrationError(f"Hãy xử lý đường dẫn liên kết trước:{candidate}")
     project, data = project.resolve(), data.resolve()
     # 实例显式选择独立数据根时，不读取另一个实例的旧目录。
     use_legacy = data == (project / "user_data").resolve()
     if data.is_symlink() or data.is_junction():
-        raise MigrationError("user_data 不能是链接目录。")
+        raise MigrationError("user_data không được là thư mục liên kết.")
     state = _check_versions(data)
     with storage_lock(data / "migrations/startup.lock"), storage_lock(data / "migrations/service.lock"):
         state = _check_versions(data)
@@ -156,7 +156,7 @@ def prepare_files(project: Path = PROJECT_ROOT, data: Path = USER_DATA_DIR, *, l
             journal = json.loads(journal_path.read_text(encoding="utf-8"))
             if journal["status"] != "complete":
                 if journal.get("project") != str(project) or journal.get("data") != str(data):
-                    raise MigrationError("未完成迁移属于另一个目录，请保留现场并恢复原路径。")
+                    raise MigrationError("Đợt di cư chưa hoàn tất thuộc thư mục khác, vui lòng giữ nguyên hiện trường và khôi phục đường dẫn gốc.")
                 _resume_layout(data, journal_path, journal)
         mappings = [("backend/config/config.yaml", "config/config.yaml"),
                     ("data/task_flows", "task_flows"), ("static", "static"),
@@ -175,12 +175,12 @@ def prepare_files(project: Path = PROJECT_ROOT, data: Path = USER_DATA_DIR, *, l
         for number, (source, target, copy_only) in enumerate(sources):
             for candidate in (source, target, *source.parents, *target.parents):
                 if candidate.is_symlink() or candidate.is_junction():
-                    raise MigrationError(f"请先处理链接路径：{candidate}")
+                    raise MigrationError(f"Hãy xử lý đường dẫn liên kết trước:{candidate}")
             files = inventory(source)
             if target.exists() and (source.is_dir() != target.is_dir() or inventory(target) != files):
-                raise MigrationError(f"旧、新目录内容不同，未覆盖任何文件。请核对：{source} 与 {target}")
+                raise MigrationError(f"Nội dung thư mục cũ và mới khác nhau, chưa ghi đè tệp nào. Vui lòng đối chiếu:{source} và {target}")
             if target.is_symlink() or target.is_junction():
-                raise MigrationError(f"请先处理链接路径：{target}")
+                raise MigrationError(f"Hãy xử lý đường dẫn liên kết trước:{target}")
             items.append(dict(source=str(source), target=str(target), files=files, copy_only=copy_only,
                               backup=str(run / f"copy-{number}"), retired=str(run / f"original-{number}"),
                               staged=str(target.with_name(f".{target.name}.migrating-{uuid.uuid4().hex}"))))
@@ -191,7 +191,7 @@ def prepare_files(project: Path = PROJECT_ROOT, data: Path = USER_DATA_DIR, *, l
                 if source.is_dir(): shutil.copytree(source, backup, ignore=shutil.ignore_patterns(".lock"))
                 else: shutil.copy2(source, backup)
                 if inventory(source) != item["files"] or inventory(backup) != item["files"]:
-                    raise MigrationError("备份期间原文件变化，尚未迁移，请关闭原实例后重试。")
+                    raise MigrationError("Tệp gốc thay đổi trong khi sao lưu, chưa di cư, vui lòng đóng phiên bản gốc rồi thử lại.")
             journal = {"status": "pending", "project": str(project), "data": str(data), "items": items}
             write_json(journal_path, journal)
             _resume_layout(data, journal_path, journal)
@@ -201,7 +201,7 @@ def prepare_files(project: Path = PROJECT_ROOT, data: Path = USER_DATA_DIR, *, l
         if launcher_settings.exists():
             payload = json.loads(launcher_settings.read_text(encoding="utf-8"))
             if type(payload.get("version")) is not int or payload["version"] != 1:
-                raise MigrationError("启动器设置版本不受支持，请使用对应程序，不能降级启动。")
+                raise MigrationError("Phiên bản cài đặt của trình khởi chạy không được hỗ trợ, vui lòng dùng chương trình tương ứng, không được hạ cấp để khởi động.")
         from .task_flows import prepare_task_flows
         notices = prepare_task_flows(data, apply=state.get("task_flow_version", 0) < TASK_FLOW_VERSION)
         next_state = {"layout_version": LAYOUT_VERSION, "task_flow_version": TASK_FLOW_VERSION}

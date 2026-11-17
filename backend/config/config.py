@@ -234,7 +234,7 @@ def validate_provider_alias(alias: str) -> str:
     if (not 1 <= len(alias) <= 100 or alias != alias.strip()
             or _PROVIDER_ALIAS_INVALID_RE.search(alias)
             or alias in {"__proto__", "constructor", "prototype"}):
-        raise ValueError("Provider 名称须为 1–100 个字符，不能有首尾空白、控制字符或使用保留名称")
+        raise ValueError("Tên Provider phải dài 1–100 ký tự, không có khoảng trắng đầu/cuối, không có ký tự điều khiển, không dùng tên bảo lưu")
     return alias
 
 
@@ -397,7 +397,7 @@ def _get_config_version(config_data: Dict[str, Any]) -> int:
     """
     value = config_data["config_version"]
     if isinstance(value, bool) or not isinstance(value, int) or value < 1:
-        raise ValueError("config_version 必须是正整数")
+        raise ValueError("config_version phải là số nguyên dương")
     return value
 
 
@@ -444,10 +444,10 @@ def _validate_provider_references(config_data: Dict[str, Any]) -> None:
     """
     llm_config = config_data.get("llm")
     if not isinstance(llm_config, dict):
-        raise ValueError("llm 必须为配置对象")
+        raise ValueError("llm phải là đối tượng cấu hình")
     providers = llm_config.get("providers")
     if not isinstance(providers, dict):
-        raise ValueError("llm.providers 必须为配置对象")
+        raise ValueError("llm.providers phải là đối tượng cấu hình")
     aliases = set(providers)
     for alias in aliases:
         validate_provider_alias(alias)
@@ -459,7 +459,7 @@ def _validate_provider_references(config_data: Dict[str, Any]) -> None:
     for field_path, value in references:
         alias = str(value or "").strip()
         if alias and alias not in aliases:
-            raise ValueError(f"{field_path} 引用了不存在的 Provider: {alias}")
+            raise ValueError(f"{field_path} tham chiếu tới Provider không tồn tại: {alias}")
 
 
 def _apply_secret_updates(
@@ -481,22 +481,22 @@ def _apply_secret_updates(
     prepared.pop("mongodb_url_configured", None)
     if raw_mongo_update is None:
         if legacy_mongo_url not in (None, ""):
-            raise ValueError("mongodb_url 必须通过 mongodb_url_update.replace 显式提交")
+            raise ValueError("mongodb_url phải được gửi tường minh qua mongodb_url_update.replace")
         raw_mongo_update = {"action": "preserve"}
     if not isinstance(raw_mongo_update, dict):
-        raise ValueError("mongodb_url_update 必须为对象")
+        raise ValueError("mongodb_url_update phải là đối tượng")
     mongo_action = str(raw_mongo_update.get("action") or "preserve").strip().lower()
     mongo_value = raw_mongo_update.get("value")
     if mongo_action not in _SECRET_UPDATE_ACTIONS:
-        raise ValueError("mongodb_url_update.action 必须为 preserve、replace 或 clear")
+        raise ValueError("mongodb_url_update.action phải là preserve, replace hoặc clear")
     if mongo_action == "replace":
         if not isinstance(mongo_value, str) or not mongo_value.strip():
-            raise ValueError("mongodb_url_update.replace 必须携带非空连接地址")
+            raise ValueError("mongodb_url_update.replace phải kèm chuỗi kết nối không rỗng")
         if _MASKED_SECRET_RE.fullmatch(mongo_value.strip()):
-            raise ValueError("不能把掩码占位符保存为 MongoDB 连接地址")
+            raise ValueError("Không được lưu placeholder che.mask làm chuỗi kết nối MongoDB")
         prepared["mongodb_url"] = mongo_value.strip()
     elif mongo_value not in (None, ""):
-        raise ValueError(f"mongodb_url_update.{mongo_action} 不能携带值")
+        raise ValueError(f"mongodb_url_update.{mongo_action} không được kèm theo giá trị")
     elif mongo_action == "clear":
         prepared["mongodb_url"] = ""
     else:
@@ -514,37 +514,37 @@ def _apply_secret_updates(
 
     for alias, provider_update in providers.items():
         if not isinstance(provider_update, dict):
-            raise ValueError(f"Provider 配置必须为对象: {alias}")
+            raise ValueError(f"Cấu hình Provider phải là đối tượng: {alias}")
         raw_secret_update = provider_update.pop("api_key_update", None)
         legacy_api_key = provider_update.pop("api_key", None)
         provider_update.pop("api_key_configured", None)
 
         if raw_secret_update is None:
             if legacy_api_key not in (None, ""):
-                raise ValueError("api_key 明文必须通过 api_key_update.replace 显式提交")
+                raise ValueError("api_key văn bản rõ phải được gửi tường minh qua api_key_update.replace")
             raw_secret_update = {"action": "preserve"}
         if not isinstance(raw_secret_update, dict):
-            raise ValueError("api_key_update 必须为对象")
+            raise ValueError("api_key_update phải là đối tượng")
         action = str(raw_secret_update.get("action") or "preserve").strip().lower()
         if action not in _SECRET_UPDATE_ACTIONS:
-            raise ValueError("api_key_update.action 必须为 preserve、replace 或 clear")
+            raise ValueError("api_key_update.action phải là preserve, replace hoặc clear")
 
         current_provider = current_providers.get(alias, {}) if isinstance(current_providers, dict) else {}
         current_secret = current_provider.get("api_key", "") if isinstance(current_provider, dict) else ""
         if action == "preserve":
             if raw_secret_update.get("value") not in (None, ""):
-                raise ValueError("preserve 动作不能携带密钥值")
+                raise ValueError("Hành động preserve không được kèm theo giá trị khóa")
             provider_update["api_key"] = current_secret
         elif action == "clear":
             if raw_secret_update.get("value") not in (None, ""):
-                raise ValueError("clear 动作不能携带密钥值")
+                raise ValueError("Hành động clear không được kèm theo giá trị khóa")
             provider_update["api_key"] = ""
         else:
             value = raw_secret_update.get("value")
             if not isinstance(value, str) or not value.strip():
-                raise ValueError("replace 动作必须携带非空密钥")
+                raise ValueError("Hành động replace phải kèm theo khóa không rỗng")
             if _MASKED_SECRET_RE.fullmatch(value.strip()):
-                raise ValueError("不能把掩码占位符保存为 API Key")
+                raise ValueError("Không được lưu placeholder che.mask làm API Key")
             provider_update["api_key"] = value.strip()
         # 别名集合仍整体替换以支持删除；每个 Provider 的窄 patch 保留未编辑的旧设置。
         providers[alias] = {**deepcopy(current_provider), **provider_update}
@@ -582,7 +582,7 @@ def ensure_config_files() -> None:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
     if not DEFAULT_CONFIG_PATH.exists():
-        raise FileNotFoundError("内置默认配置缺失，请重新获取完整程序。")
+        raise FileNotFoundError("Thiếu cấu hình mặc định tích hợp, vui lòng tải lại chương trình đầy đủ.")
 
     if not CONFIG_PATH.exists():
         default_config = _read_yaml(DEFAULT_CONFIG_PATH)
@@ -708,7 +708,7 @@ def update_config(
             or requested_version != current_version
         ):
             raise ConfigVersionConflictError(
-                "配置已被其他会话修改，请重载后合并当前草稿"
+                "Cấu hình đã bị phiên làm việc khác sửa đổi, vui lòng nạp lại rồi hợp nhất bản nháp hiện tại"
             )
         previous_config = deepcopy(current_config)
         renamed_config = _apply_provider_rename_operations(current_config, rename_operations)
@@ -725,18 +725,18 @@ def update_config(
                 _merge_dicts(_read_yaml(DEFAULT_CONFIG_PATH), _read_yaml(CONFIG_PATH))
             )
             if reloaded_config != next_config:
-                raise RuntimeError("配置写入后的重读校验失败")
+                raise RuntimeError("Hợp lệ hoá khi đọc lại sau ghi cấu hình thất bại")
         except Exception as commit_exc:
             try:
                 _write_bytes_atomic(CONFIG_PATH, previous_runtime_bytes)
             except Exception as restore_exc:
-                logger.exception("配置提交失败后无法恢复原运行配置文件")
+                logger.exception("Không khôi phục được tệp cấu hình đang chạy gốc sau khi gửi cấu hình thất bại")
                 _cached_config = previous_config
                 _cached_mtimes = None
-                raise ConfigCommitError("配置提交失败，且旧配置文件恢复失败") from restore_exc
+                raise ConfigCommitError("Gửi cấu hình thất bại và khôi phục tệp cấu hình cũ cũng thất bại") from restore_exc
             _cached_config = previous_config
             _cached_mtimes = (_get_mtime(DEFAULT_CONFIG_PATH), _get_mtime(CONFIG_PATH))
-            raise ConfigCommitError("配置提交失败，旧配置已恢复") from commit_exc
+            raise ConfigCommitError("Gửi cấu hình thất bại, cấu hình cũ đã được khôi phục") from commit_exc
 
         _cached_config = reloaded_config
         _cached_mtimes = (_get_mtime(DEFAULT_CONFIG_PATH), _get_mtime(CONFIG_PATH))
@@ -765,7 +765,7 @@ def restore_config_snapshot(
         if reloaded != restored:
             _cached_config = None
             _cached_mtimes = None
-            raise RuntimeError("配置恢复后的重读校验失败")
+            raise RuntimeError("Hợp lệ hoá khi đọc lại sau khôi phục cấu hình thất bại")
 
         _cached_config = reloaded
         _cached_mtimes = (_get_mtime(DEFAULT_CONFIG_PATH), _get_mtime(CONFIG_PATH))

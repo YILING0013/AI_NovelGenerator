@@ -96,10 +96,10 @@ def _get_port_from_env(env_name: str, default_port: int) -> int:
     try:
         port = int(raw_value)
     except ValueError as exc:
-        raise ValueError(f"{env_name} 必须是整数，当前值为 {raw_value!r}") from exc
+        raise ValueError(f"{env_name} phải là số nguyên, giá trị hiện tại là {raw_value!r}") from exc
 
     if not 1 <= port <= 65535:
-        raise ValueError(f"{env_name} 必须位于 1 到 65535 之间，当前值为 {port}")
+        raise ValueError(f"{env_name} phải nằm trong khoảng từ 1 đến 65535, giá trị hiện tại là {port}")
     return port
 
 
@@ -170,7 +170,7 @@ def set_backend_debug_enabled(enabled: bool) -> None:
     os.environ[BACKEND_DEBUG_ENV_VAR] = "1" if enabled else "0"
     for name in ("main", "backend", "llm"):
         logging.getLogger(name).setLevel(get_backend_log_level())
-    logging.getLogger(__name__).info("调试日志已%s", "开启" if enabled else "关闭")
+    logging.getLogger(__name__).info("Nhật ký gỡ lỗi đã %s", "Bật" if enabled else "Tắt")
 
 
 def build_uvicorn_log_config() -> dict[str, Any]:

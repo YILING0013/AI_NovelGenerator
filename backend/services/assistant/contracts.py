@@ -36,7 +36,7 @@ class ContextAttachment(ResourceRef):
 class SessionCreate(AssistantModel):
     """新建当前小说的独立对话。"""
 
-    title: str = Field(default="新对话", min_length=1, max_length=100)
+    title: str = Field(default="Cuộc trò chuyện mới", min_length=1, max_length=100)
     mode: Literal["review", "auto"] = "review"
     provider: str = Field(default="", max_length=100)
     model: str = Field(default="", max_length=200)
@@ -83,7 +83,7 @@ class WritingAnswerMeaning(AssistantModel):
     answer_id: str
     supported: bool
     actions: list[Literal["continue_request", "preserve_plot", "preserve_ending", "rewrite_expression", "expand_detail", "condense", "more_subtle", "more_direct", "more_dialogue", "less_dialogue", "preserve_viewpoint"]] = Field(max_length=4)
-    resolved_by_answer_id: str | None = Field(default=None, description="这条简答的歧义已由哪条后来的明确作者回答消解；仅填真实回答ID，不填问题文字")
+    resolved_by_answer_id: str | None = Field(default=None, description="Sự mơ hồ của câu trả lời ngắn này đã được làm rõ bởi câu trả lời nào của tác giả đưa ra sau đó; chỉ điền ID câu trả lời thật, không điền văn bản câu hỏi")
 
 
 class WritingAnswerReview(AssistantModel):
@@ -113,7 +113,7 @@ class ChangeOperation(AssistantModel):
             原业务允许的修改操作。
         """
         if self.resource_type == "foreshadowing":
-            raise ValueError("伏笔只供读取，请由作者在伏笔工作台记录或修改")
+            raise ValueError("Chi tiết phục bút chỉ để đọc, hãy để tác giả ghi hoặc sửa ở bàn làm việc phục bút")
         return self
 
 
@@ -128,7 +128,7 @@ class ChangeEdit(AssistantModel):
     def one_candidate(self):
         """普通修改与原任务候选只能提交一种。"""
         if (self.operations is None) == (self.candidate is None):
-            raise ValueError("请提交普通修改或原任务候选中的一种")
+            raise ValueError("Hãy gửi một trong hai loại: chỉnh sửa thông thường hoặc ứng viên nhiệm vụ gốc")
         return self
 
 

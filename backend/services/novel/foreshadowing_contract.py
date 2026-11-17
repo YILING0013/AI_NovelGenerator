@@ -26,7 +26,7 @@ class ForeshadowingEvidenceInputV1(StrictRequestModel):
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=False)
     chapter_id: ObjectIdString
     version: int = Field(ge=1, le=2**63 - 1)
-    start: int = Field(ge=0, le=2**31 - 1, description="从零开始的 Unicode 码点位置；JS 应先用 Array.from(content) 转为码点数组。")
+    start: int = Field(ge=0, le=2**31 - 1, description="Vị trí code point Unicode tính từ 0; phía JS cần dùng Array.from(content) để chuyển thành mảng code point trước.")
     quote: str = Field(min_length=1, max_length=10000)
 
 
@@ -68,7 +68,7 @@ class ForeshadowingUpdateV1(StrictRequestModel):
         """
         fields = self.model_fields_set - {"expected_version"}
         if not fields or any(getattr(self, name) is None for name in fields & {"title", "content", "target_effect"}):
-            raise ValueError("至少修改一个计划字段，文本不能设为 null")
+            raise ValueError("Cần sửa ít nhất một trường của kế hoạch, không được đặt phần văn bản thành null")
         return self
 
 

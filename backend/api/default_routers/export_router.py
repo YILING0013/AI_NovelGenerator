@@ -23,7 +23,7 @@ async def save_export(file: UploadFile = File(...)):
         name = "export.txt"
     content = await file.read(MAX_EXPORT_BYTES + 1)
     if len(content) > MAX_EXPORT_BYTES:
-        raise DomainApiError("EXPORT_TOO_LARGE", "项目导出副本不能超过 32 MB，请使用浏览器另存。", status_code=413)
+        raise DomainApiError("EXPORT_TOO_LARGE", "Bản sao xuất dự án không được vượt quá 32 MB, vui lòng dùng chức năng Lưu của trình duyệt.", status_code=413)
     folder = EXPORTS_DIR / uuid.uuid4().hex
     folder.mkdir(parents=True)
     with (folder / name).open("xb") as handle:

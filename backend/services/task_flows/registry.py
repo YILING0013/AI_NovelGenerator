@@ -104,7 +104,7 @@ def require_prepared_generation(flow):
                         suffix_prepared.append(any(contains_prepared(inputs.get(field, False)) for field in template_fields(suffix)))
                     prepared = all(suffix_prepared)
                 if node.type == "llm" and not prepared:
-                    raise FlowValidationError(f"{path}/{node.label or node.id} 的提示词没有使用资料整理结果，请补齐数据连线和占位符")
+                    raise FlowValidationError(f"{path}/{node.label or node.id} prompt không dùng kết quả chuẩn bị tài liệu, vui lòng bổ sung kết nối dữ liệu và placeholder")
                 values = {name: prepared for name in node.outputs}
             elif node.type in {"subflow", "foreach"}:
                 child_inputs = dict(inputs)
@@ -129,7 +129,7 @@ def require_prepared_generation(flow):
         return results[output.id]
 
     if not contains_prepared(inspect_graph(flow, {}, flow.name)):
-        raise FlowValidationError("当前方案缺少接入结果的 AI 整理资料节点，请采用新版副本或补齐连线")
+        raise FlowValidationError("Phương án hiện tại thiếu nút chuẩn bị tài liệu AI để nhận kết quả, vui lòng dùng bản sao phiên bản mới hoặc bổ sung kết nối")
 
 
 @dataclass(frozen=True)
@@ -148,29 +148,29 @@ class TaskSpec:
 
 TASKS = {
     item.task: item for item in (
-        TaskSpec(CHAPTER_CHECK_TASK, "章后心理检查", "check_chapter_psychological_state", ChapterCheckInputV1, ChapterCheckResultV1, "chapter.psychological_state_check.result"),
-        TaskSpec(CHAPTER_ITEM_OWNER_CHECK_TASK, "章后物品持有人检查", "check_chapter_item_owner", ChapterItemOwnerCheckInputV1, ChapterItemOwnerCheckResultV1, "chapter.item_owner_check.result"),
-        TaskSpec(CHAPTER_ITEM_OWNER_FACTS_CHECK_TASK, "章后物品事实转交检查", "check_chapter_item_owner_facts", ChapterItemOwnerCheckInputV1, ChapterItemOwnerCheckResultV1, "chapter.item_owner_check.result", 2),
-        TaskSpec(CHAPTER_WORLD_RULES_CHECK_TASK, "章后世界规则疑点检查", "check_chapter_world_rules", ChapterWorldRulesCheckInputV1, ChapterWorldRulesCheckResultV1, "chapter.world_rules_check.result"),
-        TaskSpec(CHAPTER_CHARACTER_RELATION_STATE_CHECK_TASK, "章后人物关系检查", "check_chapter_character_relation_state", ChapterCharacterRelationStateCheckInputV1, ChapterCharacterRelationStateCheckResultV1, "chapter.character_relation_state_check.result"),
-        TaskSpec(CHAPTER_CHARACTER_RELATION_FACTS_CHECK_TASK, "章后人物关系事实检查", "check_chapter_character_relation_facts", ChapterCharacterRelationStateCheckInputV1, ChapterCharacterRelationStateCheckResultV2, "chapter.character_relation_state_check.result", 2),
-        TaskSpec("create_novel_by_ai", "AI 创建小说", "novel_meta", AICreateNovelRequestV1, NovelCreateFieldsV1, "novel.create_candidate"),
-        TaskSpec("rewrite_novel_field_by_ai", "小说字段改写", "novel_field", NovelFieldRewriteRequestV1, NovelFieldRewriteCandidateV1, "novel.field_rewrite_candidate", prompt_family="rewrite_novel_field"),
-        TaskSpec("create_factions_by_ai", "核心势力", "create_core_factions", GenerateCoreFactionsRequestV2, CoreFactionsResultSchema, "faction.core_generation.result", 2),
-        TaskSpec("create_characters_by_ai", "核心角色", "create_core_characters", CoreCharactersGenerateRequestV1, CoreCharactersResultSchemaV1, "character.core_generation.result"),
-        TaskSpec("create_character_relations_by_ai", "人物关系", "create_character_relations", CharacterRelationsGenerateRequestV1, CharacterRelationsResultSchemaV1, "character.relation_generation.result"),
-        TaskSpec("create_faction_relations_by_ai", "势力关系", "create_faction_relations", FactionRelationsGenerateRequestV1, FactionRelationsResultSchemaV1, "faction.relation_generation.result"),
-        TaskSpec("create_world_rules_by_ai", "世界规则", "create_core_world_rules", CoreWorldRulesGenerateRequestV1, CoreWorldRulesResultV1, "world_rule.core_generation.result"),
-        TaskSpec("create_volume_skeleton_by_ai", "卷骨架", "create_volume_skeleton", VolumeSkeletonGenerateRequestV1, VolumeSkeletonResultV1, "volume_skeleton_result"),
-        TaskSpec("plan_volume_launch_by_ai", "开卷包", "create_volume_launch_package", VolumeLaunchGenerateRequestV1, VolumeLaunchPackageResultV1, "volume_launch_package_result"),
-        TaskSpec("create_locations_for_volume_by_ai", "单卷地点", "create_locations_for_volume", VolumeLocationsGenerateRequestV1, VolumeLocationsResultV1, "volume_locations_result"),
-        TaskSpec("create_characters_for_volume_by_ai", "卷内角色", "create_characters_for_volume", VolumeEntityGenerateRequestV1, VolumeCharactersResultV1, "volume_characters_result"),
-        TaskSpec("create_factions_for_volume_by_ai", "卷内势力", "create_factions_for_volume", VolumeEntityGenerateRequestV1, VolumeFactionsResultV1, "volume_factions_result"),
-        TaskSpec("create_items_by_ai", "物品", "create_items", ItemsGenerateRequestV1, ItemsResultV1, "item.generation.result"),
-        *(TaskSpec(task, "生成本卷剧情" if kind == "volume" else "生成篇章剧情", task.removesuffix("_by_ai"), PlotGenerateInputV1, PlotResultV1, f"plot.{kind}.result") for task, kind in PLOT_TASKS.items()),
+        TaskSpec(CHAPTER_CHECK_TASK, "Kiểm tra tâm lý sau chương", "check_chapter_psychological_state", ChapterCheckInputV1, ChapterCheckResultV1, "chapter.psychological_state_check.result"),
+        TaskSpec(CHAPTER_ITEM_OWNER_CHECK_TASK, "Kiểm tra người giữ vật phẩm sau chương", "check_chapter_item_owner", ChapterItemOwnerCheckInputV1, ChapterItemOwnerCheckResultV1, "chapter.item_owner_check.result"),
+        TaskSpec(CHAPTER_ITEM_OWNER_FACTS_CHECK_TASK, "Kiểm tra bàn giao dữ kiện vật phẩm sau chương", "check_chapter_item_owner_facts", ChapterItemOwnerCheckInputV1, ChapterItemOwnerCheckResultV1, "chapter.item_owner_check.result", 2),
+        TaskSpec(CHAPTER_WORLD_RULES_CHECK_TASK, "Kiểm tra nghi vấn quy tắc thế giới sau chương", "check_chapter_world_rules", ChapterWorldRulesCheckInputV1, ChapterWorldRulesCheckResultV1, "chapter.world_rules_check.result"),
+        TaskSpec(CHAPTER_CHARACTER_RELATION_STATE_CHECK_TASK, "Kiểm tra quan hệ nhân vật sau chương", "check_chapter_character_relation_state", ChapterCharacterRelationStateCheckInputV1, ChapterCharacterRelationStateCheckResultV1, "chapter.character_relation_state_check.result"),
+        TaskSpec(CHAPTER_CHARACTER_RELATION_FACTS_CHECK_TASK, "Kiểm tra dữ kiện quan hệ nhân vật sau chương", "check_chapter_character_relation_facts", ChapterCharacterRelationStateCheckInputV1, ChapterCharacterRelationStateCheckResultV2, "chapter.character_relation_state_check.result", 2),
+        TaskSpec("create_novel_by_ai", "AI tạo tiểu thuyết", "novel_meta", AICreateNovelRequestV1, NovelCreateFieldsV1, "novel.create_candidate"),
+        TaskSpec("rewrite_novel_field_by_ai", "Viết lại trường tiểu thuyết", "novel_field", NovelFieldRewriteRequestV1, NovelFieldRewriteCandidateV1, "novel.field_rewrite_candidate", prompt_family="rewrite_novel_field"),
+        TaskSpec("create_factions_by_ai", "Thế lực cốt lõi", "create_core_factions", GenerateCoreFactionsRequestV2, CoreFactionsResultSchema, "faction.core_generation.result", 2),
+        TaskSpec("create_characters_by_ai", "Nhân vật cốt lõi", "create_core_characters", CoreCharactersGenerateRequestV1, CoreCharactersResultSchemaV1, "character.core_generation.result"),
+        TaskSpec("create_character_relations_by_ai", "Quan hệ nhân vật", "create_character_relations", CharacterRelationsGenerateRequestV1, CharacterRelationsResultSchemaV1, "character.relation_generation.result"),
+        TaskSpec("create_faction_relations_by_ai", "Quan hệ thế lực", "create_faction_relations", FactionRelationsGenerateRequestV1, FactionRelationsResultSchemaV1, "faction.relation_generation.result"),
+        TaskSpec("create_world_rules_by_ai", "Quy tắc thế giới", "create_core_world_rules", CoreWorldRulesGenerateRequestV1, CoreWorldRulesResultV1, "world_rule.core_generation.result"),
+        TaskSpec("create_volume_skeleton_by_ai", "Bố cục quyển", "create_volume_skeleton", VolumeSkeletonGenerateRequestV1, VolumeSkeletonResultV1, "volume_skeleton_result"),
+        TaskSpec("plan_volume_launch_by_ai", "Gói mở quyển", "create_volume_launch_package", VolumeLaunchGenerateRequestV1, VolumeLaunchPackageResultV1, "volume_launch_package_result"),
+        TaskSpec("create_locations_for_volume_by_ai", "Địa điểm trong quyển", "create_locations_for_volume", VolumeLocationsGenerateRequestV1, VolumeLocationsResultV1, "volume_locations_result"),
+        TaskSpec("create_characters_for_volume_by_ai", "Nhân vật trong quyển", "create_characters_for_volume", VolumeEntityGenerateRequestV1, VolumeCharactersResultV1, "volume_characters_result"),
+        TaskSpec("create_factions_for_volume_by_ai", "Thế lực trong quyển", "create_factions_for_volume", VolumeEntityGenerateRequestV1, VolumeFactionsResultV1, "volume_factions_result"),
+        TaskSpec("create_items_by_ai", "Vật phẩm", "create_items", ItemsGenerateRequestV1, ItemsResultV1, "item.generation.result"),
+        *(TaskSpec(task, "Sinh cốt truyện quyển này" if kind == "volume" else "Sinh cốt truyện vòng truyện", task.removesuffix("_by_ai"), PlotGenerateInputV1, PlotResultV1, f"plot.{kind}.result") for task, kind in PLOT_TASKS.items()),
         *(TaskSpec(task, label, task.removesuffix("_by_ai"), WritingGenerateInputV1, WRITING_RESULTS[task], f"writing.{task.removesuffix('_by_ai')}.result") for task, label in (
-            ("plan_arcs_by_ai", "生成篇章规划"), ("plan_scenes_by_ai", "生成场景规划"),
-            ("plan_chapters_by_ai", "生成章节计划"), ("write_chapter_by_ai", "生成本章正文"),
+            ("plan_arcs_by_ai", "Sinh kế hoạch vòng truyện"), ("plan_scenes_by_ai", "Sinh kế hoạch cảnh"),
+            ("plan_chapters_by_ai", "Sinh kế hoạch chương"), ("write_chapter_by_ai", "Sinh văn bản chương này"),
         )),
     )
 }
@@ -192,12 +192,12 @@ def validate_task_definition(flow):
     chapter_agents = [node for node in flow.nodes if node.type == "agent" and node.config.get("chapter_context_version") == 1]
     if chapter_agents:
         if flow.task != "write_chapter_by_ai" or len(chapter_agents) != 1 or flow.subflows:
-            raise FlowValidationError("本章资料模式只支持单个章节整理节点，不支持子流程")
+            raise FlowValidationError("Chế độ tài liệu chương này chỉ hỗ trợ một nút chuẩn bị chương duy nhất, không hỗ trợ luồng con")
         agent = chapter_agents[0]
         models = [node for node in flow.nodes if node.type == "llm"]
         contexts = [node for node in flow.nodes if node.type == "context"]
         if len(models) != 1 or len(contexts) != 2 or len([node for node in flow.nodes if node.type == "agent"]) != 1:
-            raise FlowValidationError("本章资料模式需要初始资料、一次整理、采用资料和一次正文生成")
+            raise FlowValidationError("Chế độ tài liệu chương này cần tài liệu ban đầu, một lần chuẩn bị, tài liệu được chọn và một lần tạo văn bản chương")
         sources = {(edge.target, edge.target_port): (edge.source, edge.source_port, tuple(edge.source_path)) for edge in flow.edges}
         prepared = next((node for node in contexts if "prepared_context" in node.inputs), None)
         initial = next((node for node in contexts if "prepared_context" not in node.inputs), None)
@@ -205,24 +205,24 @@ def validate_task_definition(flow):
                 or sources.get((agent.id, "writing_context")) != (initial.id, "writing_context", ())
                 or sources.get((prepared.id, "prepared_context")) != (agent.id, "prepared_context", ())
                 or sources.get((models[0].id, "writing_context")) != (prepared.id, "writing_context", ())):
-            raise FlowValidationError("正文只能直接使用整理后的单份本章资料，不能另接报告或工具历史")
+            raise FlowValidationError("Văn bản chương chỉ được dùng trực tiếp một bản tài liệu chương đã chuẩn bị, không được nối thêm báo cáo hoặc lịch sử công cụ")
     if flow.task not in TASKS:
-        raise FlowValidationError("未知业务任务")
+        raise FlowValidationError("Nhiệm vụ nghiệp vụ không xác định")
     spec = TASKS[flow.task]
     output = next(node for node in flow.nodes if node.type == "output")
     if flow.task == "create_characters_for_volume_by_ai":
         from backend.llm.schemas.volume_entity_pydantic import CHARACTER_PLAN_CONTRACT
         if output.config.get("candidate_contract") != CHARACTER_PLAN_CONTRACT:
-            raise FlowValidationError("人物生成方案仍为旧合同，请保留原方案并恢复新版内置方案后重新生成")
+            raise FlowValidationError("Phương án sinh nhân vật vẫn dùng hợp đồng cũ, vui lòng giữ phương án gốc, khôi phục phương án tích hợp mới rồi tạo lại")
     candidate_fields = output.config.get("candidate_fields", {key: key for key in output.inputs})
     result_schema = spec.result_model.model_json_schema()
     missing = set(result_schema.get("required", [])) - candidate_fields.keys()
     unknown = candidate_fields.keys() - result_schema["properties"].keys()
     if missing or unknown:
-        raise FlowValidationError(f"任务结果字段映射不完整：缺少 {', '.join(sorted(missing)) or '无'}；未知 {', '.join(sorted(unknown)) or '无'}")
+        raise FlowValidationError(f"Ánh xạ trường kết quả nhiệm vụ chưa đầy đủ, thiếu {', '.join(sorted(missing)) or "'Không'"}; không rõ {', '.join(sorted(unknown)) or "'Không'"}")
     for target, source in candidate_fields.items():
         if not port_types_compatible(output.inputs[source], result_schema["properties"][target], source_root=port_schema(output, output=False), target_root=result_schema):
-            raise FlowValidationError(f"任务结果 {target} 的输入类型不符合原业务字段")
+            raise FlowValidationError(f"Kết quả nhiệm vụ {target} có kiểu đầu vào không khớp với trường nghiệp vụ gốc")
     scope_fields = CHAPTER_CHECK_SCOPE_FIELDS if flow.task == CHAPTER_CHECK_TASK else ({"novel_id"} | WRITING_SCOPE_FIELDS) if flow.task in CONTENT_TASKS else SCOPE_FIELDS
     if flow.task in {CHAPTER_ITEM_OWNER_CHECK_TASK, CHAPTER_ITEM_OWNER_FACTS_CHECK_TASK}:
         scope_fields = CHAPTER_ITEM_OWNER_CHECK_SCOPE_FIELDS
@@ -238,36 +238,36 @@ def validate_task_definition(flow):
         pending.extend(graph.subflows.values())
         for node in graph.nodes:
             if flow.task == CHAPTER_CHECK_TASK and node.type == "agent":
-                raise FlowValidationError("章后心理检查不能使用 Agent 节点，请只使用选定章正文和原心理状态")
+                raise FlowValidationError("Kiểm tra tâm lý sau chương không được dùng nút Agent, vui lòng chỉ dùng văn bản chương đã chọn và trạng thái tâm lý gốc")
             if flow.task in {CHAPTER_ITEM_OWNER_CHECK_TASK, CHAPTER_ITEM_OWNER_FACTS_CHECK_TASK} and node.type == "agent":
-                raise FlowValidationError("章后物品持有人检查不能使用 Agent 节点，请只使用选定章正文、物品和两名人物")
+                raise FlowValidationError("Kiểm tra người giữ vật phẩm sau chương không được dùng nút Agent, vui lòng chỉ dùng văn bản chương đã chọn, vật phẩm và hai nhân vật")
             if flow.task in {CHAPTER_CHARACTER_RELATION_STATE_CHECK_TASK, CHAPTER_CHARACTER_RELATION_FACTS_CHECK_TASK} and node.type == "agent":
-                raise FlowValidationError("章后人物关系检查不能使用 Agent 节点，请只使用选定章正文、关系和两名人物")
+                raise FlowValidationError("Kiểm tra quan hệ nhân vật sau chương không được dùng nút Agent, vui lòng chỉ dùng văn bản chương đã chọn, quan hệ và hai nhân vật")
             if flow.task == CHAPTER_WORLD_RULES_CHECK_TASK and node.type == "agent":
-                raise FlowValidationError("章后世界规则检查不能使用 Agent 节点，请只使用选定章正文和规则")
+                raise FlowValidationError("Kiểm tra quy tắc thế giới sau chương không được dùng nút Agent, vui lòng chỉ dùng văn bản chương đã chọn và quy tắc")
             if graph is not flow and "candidate_check" in node.config:
-                raise FlowValidationError("候选检查只能声明在主流程中")
+                raise FlowValidationError("Nút kiểm tra ứng viên chỉ được khai báo trong luồng chính")
             if graph is not flow and "source_conflicts" in node.config:
-                raise FlowValidationError("双来源报告只能声明在主流程中")
+                raise FlowValidationError("Nút báo cáo hai nguồn chỉ được khai báo trong luồng chính")
             if node.type != "context":
                 continue
             if context_definition is None:
-                raise FlowValidationError("当前任务没有可读取的已有资料")
+                raise FlowValidationError("Nhiệm vụ hiện tại không có tài liệu sẵn có để đọc")
             context_parameters = allowed_parameters | ({"prepared_context"} if flow.task in AGENT_TASKS else set())
             if node.inputs.keys() - context_parameters:
-                raise FlowValidationError(f"{node.label or node.id} 的输入必须使用当前任务的业务参数名")
+                raise FlowValidationError(f"{node.label or node.id} đầu vào phải dùng tên tham số nghiệp vụ của nhiệm vụ hiện tại")
             unknown = node.outputs.keys() - context_definition.outputs.keys()
             if unknown:
-                raise FlowValidationError(f"{node.label or node.id} 的资料字段不存在：{', '.join(sorted(unknown))}")
+                raise FlowValidationError(f"{node.label or node.id} trường tài liệu không tồn tại:{', '.join(sorted(unknown))}")
             for name, schema in node.outputs.items():
                 if not port_types_compatible(context_definition.outputs[name], schema, source_root=port_schema(context_definition, output=True), target_root=port_schema(node, output=True)):
-                    raise FlowValidationError(f"{node.label or node.id} 的资料字段 {name} 类型不一致")
+                    raise FlowValidationError(f"{node.label or node.id} trường tài liệu {name} kiểu không nhất quán")
     checks = [node for node in flow.nodes if "candidate_check" in node.config]
     conflict_checks = [node for node in flow.nodes if "source_conflicts" in node.config]
     if conflict_checks and (flow.task not in PLOT_TASKS or len(conflict_checks) != 1):
-        raise FlowValidationError("卷或篇章剧情只能声明一个双来源报告节点")
+        raise FlowValidationError("Cốt truyện của quyển hoặc vòng truyện chỉ được khai báo một nút báo cáo hai nguồn")
     if checks and (flow.task not in {"plan_arcs_by_ai", "plan_scenes_by_ai", "plan_chapters_by_ai"} or len(checks) != 1):
-        raise FlowValidationError("三层规划任务只能声明一个候选检查节点")
+        raise FlowValidationError("Nhiệm vụ lập kế hoạch ba tầng chỉ được khai báo một nút kiểm tra ứng viên")
     if flow.task == "create_novel_by_ai":
         return flow
     parameter_fields = output.config.get("parameter_fields", {})
@@ -276,10 +276,10 @@ def validate_task_definition(flow):
     required = set(request_schema.get("required", [])) & allowed_parameters
     missing = required - parameter_fields.keys()
     if unknown or missing:
-        raise FlowValidationError(f"任务结果业务参数映射不完整：缺少 {', '.join(sorted(missing)) or '无'}；未知 {', '.join(sorted(unknown)) or '无'}")
+        raise FlowValidationError(f"Ánh xạ tham số nghiệp vụ của kết quả nhiệm vụ chưa đầy đủ, thiếu {', '.join(sorted(missing)) or "'Không'"}; không rõ {', '.join(sorted(unknown)) or "'Không'"}")
     for target, source in parameter_fields.items():
         if not port_types_compatible(output.inputs[source], request_schema["properties"][target], source_root=port_schema(output, output=False), target_root=request_schema):
-            raise FlowValidationError(f"业务参数 {target} 的输入类型不一致")
+            raise FlowValidationError(f"Tham số nghiệp vụ {target} có kiểu đầu vào không nhất quán")
     if conflict_checks:
         from .graph import template_fields
         from .plot_source_conflicts import PLOT_SOURCE_CONFLICTS_SCHEMA
@@ -290,51 +290,51 @@ def validate_task_definition(flow):
         if (report.outputs.get("source_conflicts") != PLOT_SOURCE_CONFLICTS_SCHEMA
                 or output.inputs.get(candidate_fields.get("source_conflicts")) != PLOT_SOURCE_CONFLICTS_SCHEMA
                 or sources.get((output.id, candidate_fields.get("source_conflicts"))) != (report.id, "source_conflicts", ())):
-            raise FlowValidationError("双来源报告必须使用 plot_source_conflicts_v1 格式并直接连接实际结果")
+            raise FlowValidationError("Báo cáo hai nguồn phải dùng định dạng plot_source_conflicts_v1 và nối thẳng vào kết quả thực tế")
         if not {"writing_context", "prepared_context", "plot"} <= template_fields(report.config.get("prompt", "")):
-            raise FlowValidationError("双来源报告提示词必须包含实际资料、整理结果和候选剧情")
+            raise FlowValidationError("Prompt báo cáo hai nguồn phải chứa tài liệu thực tế, kết quả chuẩn bị và cốt truyện ứng viên")
         context_origin = sources.get((report.id, "writing_context"))
         prepared_origin = sources.get((report.id, "prepared_context"))
         if (not context_origin or context_origin[1:] != ("writing_context", ())
                 or nodes[context_origin[0]].type != "context"):
-            raise FlowValidationError("双来源报告必须直接使用服务端读取的 writing_context")
+            raise FlowValidationError("Báo cáo hai nguồn phải dùng trực tiếp writing_context do server đọc")
         if (not prepared_origin or prepared_origin[1:] != ("prepared_context", ())
                 or nodes[prepared_origin[0]].type != "agent"):
-            raise FlowValidationError("双来源报告必须直接使用相关 AI 整理完成的 prepared_context")
+            raise FlowValidationError("Báo cáo hai nguồn phải dùng trực tiếp prepared_context do AI chuẩn bị hoàn tất")
         context = nodes[context_origin[0]]
         if sources.get((context.id, "prepared_context")) != prepared_origin:
-            raise FlowValidationError("双来源报告和资料节点必须使用同一份整理结果")
+            raise FlowValidationError("Nút báo cáo hai nguồn và nút tài liệu phải dùng cùng một kết quả chuẩn bị")
         plot_origin = sources.get((report.id, "plot"))
         if not plot_origin or plot_origin != sources.get((output.id, candidate_fields.get("plot"))):
-            raise FlowValidationError("双来源报告必须使用结果实际采用的候选剧情")
+            raise FlowValidationError("Báo cáo hai nguồn phải dùng đúng cốt truyện ứng viên mà kết quả đã chọn")
         if set(context.inputs) - {"prepared_context"} != set(parameter_fields):
-            raise FlowValidationError("双来源报告的资料参数必须与结果业务参数完整对应")
+            raise FlowValidationError("Tham số tài liệu của báo cáo hai nguồn phải tương ứng đầy đủ với tham số nghiệp vụ của kết quả")
         for parameter, name in parameter_fields.items():
             context_default = context.values.get(parameter, context.inputs[parameter].get("default"))
             result_default = output.values.get(name, output.inputs[name].get("default"))
             if sources.get((context.id, parameter)) != sources.get((output.id, name)) or context_default != result_default:
-                raise FlowValidationError(f"双来源报告的资料参数 {parameter} 必须与结果使用相同连线和默认值")
+                raise FlowValidationError(f"Tham số tài liệu của báo cáo hai nguồn {parameter} phải dùng kết nối và giá trị mặc định giống kết quả")
     if checks:
         review = checks[0]
         if review.config.get("review_evidence"):
             from .graph import template_fields
             from .review_evidence import REVIEW_INPUT_SCHEMA, REVIEW_OUTPUT_SCHEMA
             if review.outputs.get("review") != REVIEW_OUTPUT_SCHEMA or output.inputs.get("review") != REVIEW_OUTPUT_SCHEMA:
-                raise FlowValidationError("候选检查的审核原句必须使用 writing_review_v1 的完整输出格式")
+                raise FlowValidationError("Câu gốc kiểm tra ứng viên phải dùng trọn định dạng đầu ra của writing_review_v1")
             if "review_material" not in review.inputs or not {"review_material", *candidate_fields.values()} <= template_fields(review.config.get("prompt", "")):
-                raise FlowValidationError("审核提示词必须包含 review_material 原文资料和实际候选")
+                raise FlowValidationError("Prompt kiểm tra phải chứa tài liệu gốc review_material và ứng viên thực tế")
             if (review.inputs["review_material"] != REVIEW_INPUT_SCHEMA
                     or "review_material" in {*candidate_fields.values(), *parameter_fields.values(), *review.values}
                     or any(edge.target == review.id and edge.target_port == "review_material" for edge in flow.edges)):
-                raise FlowValidationError("审核原句的 review_material 仅由服务端填入，不能用于候选、参数、常量或连线")
+                raise FlowValidationError("review_material của câu gốc kiểm tra chỉ do server điền, không được dùng cho ứng viên, tham số, hằng số hay kết nối")
         if set(review.outputs) != {"review"} or not port_types_compatible(
             {"type": ["object", "null"]}, review.outputs["review"],
             source_root={}, target_root=port_schema(review, output=True),
         ):
-            raise FlowValidationError("候选检查节点必须输出可为空的 review 意见")
-        validate_values(review.outputs, {"review": None}, "候选检查", root=port_schema(review, output=True))
+            raise FlowValidationError("Nút kiểm tra ứng viên phải xuất ra ý kiến review có thể để trống")
+        validate_values(review.outputs, {"review": None}, "Kiểm tra ứng viên", root=port_schema(review, output=True))
         if "review" in output.inputs:
-            validate_values({"review": output.inputs["review"]}, {"review": None}, "候选检查结果", root=port_schema(output, output=False))
+            validate_values({"review": output.inputs["review"]}, {"review": None}, "Kết quả kiểm tra ứng viên", root=port_schema(output, output=False))
         nodes = {node.id: node for node in flow.nodes}
         # 只比较图中实际连线和默认值，不能拿另一份候选或资料代替结果检查。
         defaults = {}
@@ -347,25 +347,25 @@ def validate_task_definition(flow):
                         ("edge", edge.source, edge.source_port, tuple(edge.source_path))
                         for edge in flow.edges})
         if sources.get((output.id, "review")) != ("edge", review.id, "review", ()):
-            raise FlowValidationError("结果的 review 必须直接连接候选检查节点")
+            raise FlowValidationError("review của kết quả phải nối thẳng vào nút kiểm tra ứng viên")
         for name in {*candidate_fields.values(), *parameter_fields.values(), "prepared_context"}:
             origin = sources.get((output.id, name))
             if name not in review.inputs or origin is None or sources[(review.id, name)] != origin or defaults[(review.id, name)] != defaults[(output.id, name)]:
-                raise FlowValidationError(f"候选检查的 {name} 必须与结果使用相同连线或默认值")
+                raise FlowValidationError(f"của nút kiểm tra ứng viên {name} phải dùng kết nối hoặc giá trị mặc định giống kết quả")
             if name in {*candidate_fields.values(), "prepared_context"} and origin[0] != "edge":
-                raise FlowValidationError(f"候选检查的 {name} 必须连接实际结果来源")
+                raise FlowValidationError(f"của nút kiểm tra ứng viên {name} phải nối vào nguồn kết quả thực tế")
         prepared_origin = sources[(review.id, "prepared_context")]
         if nodes[prepared_origin[1]].type != "agent" or prepared_origin[2:] != ("prepared_context", ()):
-            raise FlowValidationError("候选检查必须直接使用 AI 整理完成的 prepared_context")
+            raise FlowValidationError("Kiểm tra ứng viên phải dùng trực tiếp prepared_context do AI chuẩn bị hoàn tất")
         context_origin = sources.get((review.id, "writing_context"))
         if not context_origin or context_origin[0] != "edge" or context_origin[2:] != ("writing_context", ()) or nodes[context_origin[1]].type != "context":
-            raise FlowValidationError("候选检查的 writing_context 必须直接连接实际资料节点")
+            raise FlowValidationError("writing_context của kiểm tra ứng viên phải nối thẳng vào nút tài liệu thực tế")
         context = nodes[context_origin[1]]
         if sources.get((context.id, "prepared_context")) != prepared_origin or defaults.get((context.id, "prepared_context")) != defaults[(review.id, "prepared_context")]:
-            raise FlowValidationError("候选检查和资料节点必须使用同一份整理结果")
+            raise FlowValidationError("Nút kiểm tra ứng viên và nút tài liệu phải dùng cùng một kết quả chuẩn bị")
         if set(context.inputs) - {"prepared_context"} != set(parameter_fields):
-            raise FlowValidationError("候选检查的资料参数必须与结果业务参数完整对应")
+            raise FlowValidationError("Tham số tài liệu của kiểm tra ứng viên phải tương ứng đầy đủ với tham số nghiệp vụ của kết quả")
         for parameter, name in parameter_fields.items():
             if sources.get((context.id, parameter)) != sources[(review.id, name)] or defaults[(context.id, parameter)] != defaults[(review.id, name)]:
-                raise FlowValidationError(f"候选检查的资料参数 {parameter} 必须与结果使用相同连线或默认值")
+                raise FlowValidationError(f"Tham số tài liệu của nút kiểm tra ứng viên {parameter} phải dùng kết nối hoặc giá trị mặc định giống kết quả")
     return flow

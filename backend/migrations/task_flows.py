@@ -83,7 +83,7 @@ def _publish(directory: Path, journal_path: Path, journal: dict) -> None:
     current = inventory(directory)
     before, after = journal["before"], journal["after"]
     if current.get("index.json") not in {before["index.json"], after["index.json"]}:
-        raise MigrationError("方案索引在迁移期间变化，请保留迁移备份并核对。")
+        raise MigrationError("Chỉ mục của phương án đã thay đổi trong quá trình di cư dữ liệu, vui lòng giữ bản sao lưu di cư và đối chiếu.")
     interrupted = []
     for relative, digest in current.items():
         if relative == ".lock": continue
@@ -93,7 +93,7 @@ def _publish(directory: Path, journal_path: Path, journal: dict) -> None:
                 if after[original] != digest: interrupted.append(directory / relative)
                 continue
         if digest not in {before.get(relative), after.get(relative)}:
-            raise MigrationError("方案文件在迁移期间变化，请保留迁移备份并核对。")
+            raise MigrationError("Tệp của phương án đã thay đổi trong quá trình di cư dữ liệu, vui lòng giữ bản sao lưu di cư và đối chiếu.")
     for temporary in interrupted:
         temporary.rename(stage.parent / f"interrupted-{uuid.uuid4().hex}")
     for relative, digest in after.items():
@@ -101,16 +101,16 @@ def _publish(directory: Path, journal_path: Path, journal: dict) -> None:
         if relative == "index.json": continue
         target = directory / relative
         if target.exists():
-            raise MigrationError("任务方案修订冲突，未覆盖原文件。")
+            raise MigrationError("Xung đột bản chỉnh sửa của phương án, chưa ghi đè tệp gốc.")
         if inventory(stage / relative).get(".") != digest:
-            raise MigrationError("方案暂存文件不完整，请保留备份并核对。")
+            raise MigrationError("Tệp tạm của phương án không hoàn chỉnh, vui lòng giữ bản sao lưu và đối chiếu.")
         target.parent.mkdir(parents=True, exist_ok=True)
         temporary = target.with_name(f".{target.name}.migrating")
         shutil.copy2(stage / relative, temporary)
         os.replace(temporary, target)
     if current.get("index.json") != after["index.json"]:
         if inventory(stage / "index.json").get(".") != after["index.json"]:
-            raise MigrationError("方案暂存索引不完整，请保留备份并核对。")
+            raise MigrationError("Chỉ mục tạm của phương án không hoàn chỉnh, vui lòng giữ bản sao lưu và đối chiếu.")
         os.replace(stage / "index.json", directory / "index.json")
     journal["status"] = "complete"
     write_json(journal_path, journal)
@@ -134,25 +134,25 @@ def prepare_task_flows(data: Path, *, apply: bool) -> list[str]:
             journal = json.loads(journal_path.read_text(encoding="utf-8"))
             if journal["status"] != "complete":
                 if journal["directory"] != str(directory):
-                    raise MigrationError("还有未完成的方案迁移，请恢复原方案目录后重试。")
+                    raise MigrationError("Vẫn còn đợt di cư phương án chưa hoàn tất, vui lòng khôi phục thư mục phương án gốc rồi thử lại.")
                 _publish(directory, journal_path, journal)
         # format_version 是格式；index.version 和 revision 只是编辑计数。
         for path in (directory / "flows").glob("*/*.json"):
             payload = json.loads(path.read_text(encoding="utf-8"))
             if type(payload.get("format_version")) is not int or payload["format_version"] != 1:
-                raise MigrationError("任务方案来自不支持的版本，请使用对应程序，不能降级启动。")
+                raise MigrationError("Phương án nhiệm vụ thuộc phiên bản không được hỗ trợ, vui lòng dùng chương trình tương ứng, không được hạ cấp để khởi động.")
         plan = plan_upgrade(store, require_latest_default=True)
         notices = []
         pending = [row for row in plan["tasks"] if row["status"] == "upgrade"]
         for row in plan["tasks"]:
             if row["status"] in ("custom_or_unknown", "newer_revision_preserved"):
-                notices.append(f"{row['task']}：自定义或来源未知，未自动升级，请在方案编辑器核对。")
+                notices.append(f"{row['task']}: Tự cấu hình hoặc nguồn không rõ, chưa tự động nâng cấp, vui lòng đối chiếu trong trình soạn phương án.")
             elif row["status"] == "unpublished_revision_preserved":
-                notices.append(f"{row['task']}：发现较新的未发布修订，未自动升级，请在方案编辑器核对。")
+                notices.append(f"{row['task']}: Phát hiện bản chỉnh sửa mới hơn chưa công bố, chưa tự động nâng cấp, vui lòng đối chiếu trong trình soạn phương án.")
             elif row["status"] == "non_latest_default_preserved":
-                notices.append(f"{row['task']}：当前选中的不是最新修订，未自动升级，已保留原选择。")
+                notices.append(f"{row['task']}: Bản chỉnh sửa đang chọn không phải bản mới nhất, chưa tự động nâng cấp, đã giữ nguyên lựa chọn.")
             elif row["status"] == "upgrade" and not apply:
-                notices.append(f"{row['task']}：本次升级批次已完成，未再次自动升级，请在方案编辑器核对。")
+                notices.append(f"{row['task']}: Đợt nâng cấp này đã hoàn tất, không tự động nâng cấp lần nữa, vui lòng đối chiếu trong trình soạn phương án.")
         if not apply or not pending:
             return notices
         before = inventory(directory)
@@ -161,7 +161,7 @@ def prepare_task_flows(data: Path, *, apply: bool) -> list[str]:
         shutil.copytree(directory, backup, ignore=shutil.ignore_patterns(".lock"))
         shutil.copytree(directory, stage, ignore=shutil.ignore_patterns(".lock"))
         if inventory(backup) != before or inventory(directory) != before:
-            raise MigrationError("方案在备份期间变化，已停止。")
+            raise MigrationError("Phương án đã thay đổi trong thời gian sao lưu, hệ thống đã dừng lại.")
         prepared = FlowStore(root=stage)
         default_changes = []
         for row in pending:
@@ -176,5 +176,5 @@ def prepare_task_flows(data: Path, *, apply: bool) -> list[str]:
         write_json(run / "report.json", {"tasks": plan["tasks"], "default_changes": default_changes})
         write_json(journal_path, journal)
         _publish(directory, journal_path, journal)
-        notices.extend(f"{row['task']}：未修改的旧内置默认已自动升级，原修订和备份已保留。" for row in pending)
+        notices.extend(f"{row['task']}: Các bản mặc định cũ chưa sửa đổi đã được tự động nâng cấp, bản chỉnh sửa và sao lưu gốc vẫn được giữ." for row in pending)
     return notices

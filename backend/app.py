@@ -129,7 +129,7 @@ async def lifespan(app: FastAPI):
                 issue = database_setup_error(exc)
                 if issue is None: raise
                 mongo.setup_error = issue
-                logger.warning("%s 仅开放设置，业务功能仍不可用。", issue["message"])
+                logger.warning("%s chỉ mở phần Cài đặt, các chức năng nghiệp vụ vẫn chưa khả dụng.", issue["message"])
             app.state.startup_checked = True
             logger.info("Backend startup completed.")
             yield
@@ -162,7 +162,7 @@ async def require_database(request: Request, call_next):
     from backend.db import mongo
     allowed = request.url.path in {"/api/startup", "/api/config", "/api/exports"} or request.url.path.startswith("/api/config/")
     if getattr(app.state, "startup_checked", False) and mongo.client is None and request.url.path.startswith("/api/") and not allowed and request.method != "OPTIONS":
-        return JSONResponse(status_code=503, content={"error": {"code": "DATABASE_SETUP_REQUIRED", "message": "请先在设置中配置数据库。"}})
+        return JSONResponse(status_code=503, content={"error": {"code": "DATABASE_SETUP_REQUIRED", "message": "Hãy cấu hình cơ sở dữ liệu trong phần Cài đặt trước."}})
     return await call_next(request)
 
 

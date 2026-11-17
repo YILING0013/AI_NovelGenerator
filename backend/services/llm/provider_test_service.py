@@ -39,11 +39,11 @@ class ProviderTestRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    alias: str = Field(default="", description="当前 Provider 别名")
-    provider: LLMProviderConfig = Field(description="当前表单中的 Provider 配置")
+    alias: str = Field(default="", description="Biệt danh nhà cung cấp hiện tại")
+    provider: LLMProviderConfig = Field(description="Cấu hình nhà cung cấp trong biểu mẫu hiện tại")
     use_stored_api_key: bool = Field(
         default=False,
-        description="是否只在服务端测试期间使用该别名已保存的 API Key",
+        description="Có chỉ dùng API Key đã lưu của biệt danh này trong quá trình kiểm tra phía server hay không",
     )
 
     @model_validator(mode="after")
@@ -59,22 +59,22 @@ class ProviderTestRequest(BaseModel):
         api_key = self.provider.api_key.strip()
         if self.use_stored_api_key:
             if not self.alias.strip():
-                raise ValueError("使用已保存 API Key 时必须提供 Provider 别名")
+                raise ValueError("Khi dùng API Key đã lưu, bắt buộc phải cung cấp biệt danh nhà cung cấp")
             if api_key:
-                raise ValueError("使用已保存 API Key 时不能同时提交一次性明文")
+                raise ValueError("Khi dùng API Key đã lưu, không được đồng thời gửi API Key tạm dạng plaintext")
         elif re.fullmatch(r"^(?:\*{3,}|•{3,}|已配置|configured)$", api_key, re.IGNORECASE):
-            raise ValueError("不能使用掩码占位符测试 Provider")
+            raise ValueError("Không được dùng placeholder đã che để kiểm tra nhà cung cấp")
         return self
 
 
 class ProviderCapabilityResult(BaseModel):
     """单项能力测试结果。"""
 
-    capability: ProviderTestCapability = Field(description="能力标识")
-    label: str = Field(description="前端展示名称")
-    status: ProviderTestStatus = Field(description="测试状态")
-    duration_ms: int = Field(default=0, description="测试耗时，单位毫秒")
-    message: str = Field(default="", description="结果摘要或错误原因")
+    capability: ProviderTestCapability = Field(description="Mã định danh khả năng")
+    label: str = Field(description="Tên hiển thị trên giao diện")
+    status: ProviderTestStatus = Field(description="Trạng thái kiểm tra")
+    duration_ms: int = Field(default=0, description="Thời gian kiểm tra, đơn vị mili giây")
+    message: str = Field(default="", description="Tóm tắt kết quả hoặc nguyên nhân lỗi")
     details: ProviderProbeDetails | None = None
     _determined: bool = PrivateAttr(default=True)
 
@@ -82,33 +82,33 @@ class ProviderCapabilityResult(BaseModel):
 class ProviderCapabilityRecommendation(BaseModel):
     """接口测试完成后建议回填的 Provider 能力开关。"""
 
-    supports_streaming: bool = Field(default=False, description="是否建议启用流式输出")
-    supports_json_schema: bool = Field(default=False, description="是否建议启用 JSON Schema")
-    supports_function_calling: bool = Field(default=False, description="是否建议启用 Function Calling")
-    supports_json_output: bool = Field(default=False, description="是否建议启用 JSON Output")
+    supports_streaming: bool = Field(default=False, description="Có đề xuất bật streaming")
+    supports_json_schema: bool = Field(default=False, description="Có đề xuất bật JSON Schema")
+    supports_function_calling: bool = Field(default=False, description="Có đề xuất bật Function Calling")
+    supports_json_output: bool = Field(default=False, description="Có đề xuất bật JSON Output")
 
 
 class ProviderTestResponse(BaseModel):
     """Provider 接口测试响应体。"""
 
-    alias: str = Field(default="", description="当前 Provider 别名")
-    provider_type: str = Field(default="", description="Provider 客户端类别")
-    model: str = Field(default="", description="测试模型")
-    summary: str = Field(default="", description="测试总结")
+    alias: str = Field(default="", description="Biệt danh nhà cung cấp hiện tại")
+    provider_type: str = Field(default="", description="Loại client nhà cung cấp")
+    model: str = Field(default="", description="Mô hình kiểm tra")
+    summary: str = Field(default="", description="Tổng kết kiểm tra")
     api_mode: str = ""
     output_budget: int = 4096
-    results: list[ProviderCapabilityResult] = Field(default_factory=list, description="逐项测试结果")
+    results: list[ProviderCapabilityResult] = Field(default_factory=list, description="Kết quả kiểm tra từng hạng mục")
     recommendations: ProviderCapabilityRecommendation = Field(
         default_factory=ProviderCapabilityRecommendation,
-        description="建议回填的能力开关",
+        description="Các công tắc khả năng được đề xuất cập nhật",
     )
 
 
 class ProviderJsonProbeSchema(BaseModel):
     """JSON Schema 探测期望模型返回的最小结构。"""
 
-    code: Literal["ok"] = Field(description="固定返回 ok")
-    message: str = Field(description="简短状态文本")
+    code: Literal["ok"] = Field(description="Luôn trả về ok")
+    message: str = Field(description="Văn bản trạng thái ngắn gọn")
 
 
 def _default_client_factory(config: LLMProviderConfig, alias: str) -> BaseLLMClient:
@@ -212,7 +212,7 @@ async def _run_step(
     api_key: str,
     runner: Callable[[], Awaitable[None]],
     *,
-    success_message: str = "测试通过",
+    success_message: str = "Kiểm tra đạt",
 ) -> ProviderCapabilityResult:
     """执行单个 Provider 能力测试步骤。
 
@@ -229,13 +229,13 @@ async def _run_step(
     """
     with bind_log_context(provider_test=capability):
         start = time.perf_counter()
-        logger.info("[Provider 测试开始] provider=%s capability=%s", provider_alias, capability)
+        logger.info("[Bắt đầu kiểm tra nhà cung cấp] provider=%s capability=%s", provider_alias, capability)
         details = ProviderProbeDetails()
         token = active_provider_probe.set(details)
         try:
             await runner()
         except Exception as exc:
-            log_exception(logger, f"[Provider 测试失败] provider={provider_alias} capability={capability}", exc)
+            log_exception(logger, f"[Kiểm tra nhà cung cấp thất bại] provider={provider_alias} capability={capability}", exc)
             # 无法完成请求时保留输入开关；正常响应的内容校验失败仍按实际结果关闭。
             uncertain = (
                 isinstance(exc, (LLMAuthError, LLMRateLimitError, LLMTimeoutError, TimeoutError, ConnectionError))
@@ -249,11 +249,11 @@ async def _run_step(
             result = _result(
                 capability, label, "failed",
                 duration_ms=int((time.perf_counter() - start) * 1000),
-                message=_build_failure_message(exc, api_key) + ("；本次无法判断能力，保留原开关" if uncertain else ""),
+                message=_build_failure_message(exc, api_key) + ("; lần này không xác định được khả năng, giữ nguyên công tắc cũ" if uncertain else ""),
             )
             result._determined = not uncertain
         else:
-            logger.info("[Provider 测试完成] provider=%s capability=%s duration=%dms", provider_alias, capability, int((time.perf_counter() - start) * 1000))
+            logger.info("[Hoàn tất kiểm tra nhà cung cấp] provider=%s capability=%s duration=%dms", provider_alias, capability, int((time.perf_counter() - start) * 1000))
             result = _result(capability, label, "passed", duration_ms=int((time.perf_counter() - start) * 1000), message=success_message)
         finally:
             active_provider_probe.reset(token)
@@ -337,23 +337,23 @@ async def test_llm_provider_capabilities(
         api_mode = provider.resolved_api_mode
         client = client_factory(provider, alias)
     except Exception as exc:
-        log_exception(logger, f"[Provider 初始化失败] provider={alias}", exc)
+        log_exception(logger, f"[Khởi tạo nhà cung cấp thất bại] provider={alias}", exc)
         connection = _result(
             "connection",
-            "接口可用性",
+            "Tính sẵn sàng của API",
             "failed",
             message=_build_failure_message(exc, api_key),
         )
         skipped = [
-            _result("streaming", "流式输出", "skipped", message="连接测试未通过"),
-            _result("json_schema", json_label, "skipped", message="连接测试未通过"),
-            _result("function_calling", "Function Calling", "skipped", message="连接测试未通过"),
+            _result("streaming", "Streaming", "skipped", message="Kiểm tra kết nối không đạt"),
+            _result("json_schema", json_label, "skipped", message="Kiểm tra kết nối không đạt"),
+            _result("function_calling", "Function Calling", "skipped", message="Kiểm tra kết nối không đạt"),
         ]
         return ProviderTestResponse(
             alias=alias,
             provider_type=provider.type,
             model=provider.default_model,
-            summary="连接测试失败，已跳过能力探测并保留原开关",
+            summary="Kiểm tra kết nối thất bại, đã bỏ qua dò khả năng và giữ nguyên công tắc cũ",
             recommendations=recommendation, api_mode=api_mode, output_budget=output_budget,
             results=[connection, *skipped],
         )
@@ -369,8 +369,8 @@ async def test_llm_provider_capabilities(
         """
         response = await client.text_generate(_build_probe_request(prompts["text_probe_prompt"], output_budget))
         if "PROVIDER_TEXT_OK" not in response.content:
-            logger.error("[Provider 文本校验失败] response=\n%s", format_payload(response.raw_response if response.raw_response is not None else response.content))
-            raise ValueError("文本接口返回内容未包含约定标记")
+            logger.error("[Xác thực phản hồi văn bản của nhà cung cấp thất bại] response=\n%s", format_payload(response.raw_response if response.raw_response is not None else response.content))
+            raise ValueError("Nội dung API văn bản trả về không chứa marker theo quy ước")
 
     async def run_streaming() -> None:
         """执行流式输出能力测试。
@@ -388,16 +388,16 @@ async def test_llm_provider_capabilities(
                 chunks.append(chunk)
         full_text = "".join(chunks)
         if not chunks or "PROVIDER_STREAM_OK" not in full_text:
-            logger.error("[Provider 流式校验失败] content=\n%s", full_text)
-            raise ValueError("流式接口返回内容未包含约定标记")
+            logger.error("[Xác thực streaming của nhà cung cấp thất bại] content=\n%s", full_text)
+            raise ValueError("Nội dung API streaming trả về không chứa marker theo quy ước")
 
     initial_stream_result = await _run_step(
         "connection",
-        "接口可用性",
+        "Tính sẵn sàng của API",
         alias,
         api_key,
         run_streaming,
-        success_message="流式接口可用，已同步完成流式检查",
+        success_message="API streaming khả dụng, đã hoàn tất kiểm tra streaming đồng bộ",
     )
 
     results: list[ProviderCapabilityResult] = [initial_stream_result]
@@ -405,15 +405,15 @@ async def test_llm_provider_capabilities(
         results.append(
             _result(
                 "streaming",
-                "流式输出",
+                "Streaming",
                 "passed",
                 duration_ms=initial_stream_result.duration_ms,
-                message="流式接口可用",
+                message="API streaming khả dụng",
             )
         )
         results[-1].details = initial_stream_result.details
     else:
-        connection_result = await _run_step("connection", "接口可用性", alias, api_key, run_connection)
+        connection_result = await _run_step("connection", "Tính sẵn sàng của API", alias, api_key, run_connection)
         results[0] = connection_result
 
         if connection_result.status != "passed":
@@ -421,25 +421,25 @@ async def test_llm_provider_capabilities(
                 [
                     _result(
                         "streaming",
-                        "流式输出",
+                        "Streaming",
                         "skipped",
-                        message=f"连接测试未通过；初次流式失败: {initial_stream_result.message}",
+                        message=f"Kiểm tra kết nối không đạt; lỗi streaming lần đầu: {initial_stream_result.message}",
                     ),
-                    _result("json_schema", json_label, "skipped", message="连接测试未通过"),
-                    _result("function_calling", "Function Calling", "skipped", message="连接测试未通过"),
+                    _result("json_schema", json_label, "skipped", message="Kiểm tra kết nối không đạt"),
+                    _result("function_calling", "Function Calling", "skipped", message="Kiểm tra kết nối không đạt"),
                 ]
             )
             return ProviderTestResponse(
                 alias=alias,
                 provider_type=provider.type,
                 model=provider.default_model,
-                summary="连接测试失败，已跳过能力探测并保留原开关",
+                summary="Kiểm tra kết nối thất bại, đã bỏ qua dò khả năng và giữ nguyên công tắc cũ",
                 recommendations=recommendation, api_mode=api_mode, output_budget=output_budget,
                 results=results,
             )
 
         # 普通接口可用时再复测流式能力，避免把必须 stream=true 的模型误判为不可用。
-        results.append(await _run_step("streaming", "流式输出", alias, api_key, run_streaming))
+        results.append(await _run_step("streaming", "Streaming", alias, api_key, run_streaming))
 
     async def run_json_schema() -> None:
         """测试所选接口的结构化输出，并在本地校验字段。
@@ -457,9 +457,9 @@ async def test_llm_provider_capabilities(
         try:
             parsed = ProviderJsonProbeSchema.model_validate_json(response.content)
             if parsed.code != "ok":
-                raise ValueError("结构化响应字段不符合预期")
+                raise ValueError("Các trường phản hồi có cấu trúc không đúng như dự kiến")
         except ValueError as exc:
-            log_parse_error(exc, content=response.content, schema=ProviderJsonProbeSchema, message="Provider 结构化测试校验失败")
+            log_parse_error(exc, content=response.content, schema=ProviderJsonProbeSchema, message="Xác thực bài kiểm tra có cấu trúc của nhà cung cấp thất bại")
             raise
 
     async def run_function_calling() -> None:
@@ -478,7 +478,7 @@ async def test_llm_provider_capabilities(
 
     results.append(await _run_step(
         "json_schema", json_label, alias, api_key, run_json_schema,
-        success_message="原生 JSON Schema 与本地字段校验通过" if provider.uses_native_schema else "输出与本地字段校验通过；当前接口未使用原生 JSON Schema",
+        success_message="JSON Schema gốc và xác thực trường cục bộ đều đạt" if provider.uses_native_schema else "Đã xác thực output và trường cục bộ thành công; API hiện tại không dùng JSON Schema gốc",
     ))
     results.append(await _run_step("function_calling", "Function Calling", alias, api_key, run_function_calling))
 
@@ -494,7 +494,7 @@ async def test_llm_provider_capabilities(
         alias=alias,
         provider_type=provider.type,
         model=provider.default_model,
-        summary=f"{passed_count}/{len(results)} 项测试通过，已判定项目更新开关，其余保留原值",
+        summary=f"{passed_count}/{len(results)} hạng mục kiểm tra đạt, đã quyết định cập nhật công tắc cho từng hạng mục, các hạng mục còn lại giữ nguyên giá trị",
         api_mode=api_mode, output_budget=output_budget,
         results=results,
         recommendations=recommendation,
