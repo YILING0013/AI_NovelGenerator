@@ -29,7 +29,13 @@ def git_show(path: str) -> str:
 
 def changed_files() -> list[str]:
     out = subprocess.run(["git", "diff", "--name-only", "HEAD"], capture_output=True, cwd=ROOT).stdout.decode("utf-8")
-    return [line.strip() for line in out.splitlines() if line.strip()]
+    files = [line.strip() for line in out.splitlines() if line.strip()]
+    # chi audit code/douan prompt; tai lieu huong dan tieng Viet cho khach
+    # (co the chua cac chu 中文/EN trong nut chon ngon ngu) khong bị kiểm tra CJK
+    return [
+        f for f in files
+        if f.startswith(("backend/", "frontend/src/", "desktop_launcher/", "scripts/", "tools/"))
+    ]
 
 
 def key_shape(node, depth=0, trail=""):

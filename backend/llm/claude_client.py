@@ -220,7 +220,7 @@ class ClaudeClient(BaseLLMClient):
                 elif event.type == "message_stop":
                     finished = True
             if not finished:
-                raise LLMConnectionError("Claude 响应流提前断开，请重试", provider=self.provider_name)
+                raise LLMConnectionError("Luồng phản hồi Claude bị ngắt sớm, vui lòng thử lại", provider=self.provider_name)
             response = await events.get_final_message()
         if response.stop_reason not in {"end_turn", "stop_sequence", "tool_use"}:
             raise LLMResponseError(f"Claude trả lời chưa hoàn tất:{response.stop_reason}", provider=self.provider_name)
@@ -419,7 +419,7 @@ class ClaudeClient(BaseLLMClient):
                             if clean_text:
                                 yield clean_text
                 if not call.finish_reason:
-                    raise LLMConnectionError("Claude 响应流提前断开，请重试", provider=self.provider_name, model=model)
+                    raise LLMConnectionError("Luồng phản hồi Claude bị ngắt sớm, vui lòng thử lại", provider=self.provider_name, model=model)
                 if call.finish_reason == "max_tokens":
                     raise LLMResponseError(
                         "Đầu ra mô hình chạm giới hạn độ dài, nội dung chưa hoàn tất", provider=self.provider_name, model=model,

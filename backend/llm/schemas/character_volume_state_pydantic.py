@@ -20,7 +20,7 @@ DeletionSource: TypeAlias = Literal["user", "volume", "character"]
 
 
 class CharacterVolumePlanFieldsV1(StrictRequestModel):
-    """角色本卷的参与安排与计划，不接受实际处境。"""
+    "Bố trí và kế hoạch tham gia của nhân vật trong quyển này, không nhận hoàn cảnh thực tế."
 
     participation_scope: ParticipationScope
     current_goal: str = Field(min_length=1, max_length=1000)
@@ -52,7 +52,7 @@ class CharacterVolumePlanCreateV1(CharacterVolumePlanFieldsV1):
 
 
 class CharacterVolumeStateFieldsV1(CharacterVolumePlanFieldsV1):
-    """旧角色卷状态的完整业务字段，保留原请求形状。"""
+    "Các trường nghiệp vụ đầy đủ của trạng thái nhân vật theo quyển cũ, giữ nguyên hình dạng yêu cầu gốc."
 
     psychological_state: str = Field(default="", max_length=1000)
     public_state: str = Field(default="", max_length=1000)
@@ -60,13 +60,13 @@ class CharacterVolumeStateFieldsV1(CharacterVolumePlanFieldsV1):
 
 
 class CharacterVolumeStateUpsertV1(CharacterVolumeStateFieldsV1):
-    """按卷与角色复合路径创建或完整更新状态的请求。"""
+    "Yêu cầu tạo mới hoặc cập nhật đầy đủ trạng thái theo đường dẫn phức hợp quyển và nhân vật."
 
     expected_version: int | None = Field(default=None, ge=1)
 
 
 class CharacterVolumePlanUpdateV1(StrictRequestModel):
-    """按状态 ObjectId 局部更新本卷参与与计划。"""
+    "Cập nhật cục bộ mức tham gia và kế hoạch trong quyển theo ObjectId trạng thái."
 
     expected_version: int = Field(ge=1)
     participation_scope: ParticipationScope | None = None
@@ -103,7 +103,7 @@ class CharacterVolumePlanUpdateV1(StrictRequestModel):
 
 
 class CharacterVolumeStateUpdateV1(CharacterVolumePlanUpdateV1):
-    """旧角色卷状态局部更新，保留三个实际处境字段。"""
+    "Cập nhật cục bộ trạng thái nhân vật theo quyển cũ, giữ ba trường hoàn cảnh thực tế."
 
     psychological_state: str | None = Field(default=None, max_length=1000)
     public_state: str | None = Field(default=None, max_length=1000)
@@ -111,13 +111,13 @@ class CharacterVolumeStateUpdateV1(CharacterVolumePlanUpdateV1):
 
 
 class CharacterVolumeStateVersionRequestV1(StrictRequestModel):
-    """角色卷状态生命周期命令的版本请求。"""
+    "Yêu cầu phiên bản cho lệnh vòng đời trạng thái nhân vật theo quyển."
 
     expected_version: int = Field(ge=1)
 
 
 class CharacterVolumeStateInitializeV1(StrictRequestModel):
-    """从上一正式卷批量初始化选中角色的请求。"""
+    "Yêu cầu khởi tạo hàng loạt các nhân vật đã chọn từ quyển chính thức trước đó."
 
     character_ids: list[CharacterId] = Field(min_length=1, max_length=500)
     skip_existing: Literal[False] = False
@@ -138,7 +138,7 @@ class CharacterVolumeStateInitializeV1(StrictRequestModel):
 
 
 class CharacterVolumeStateReadV1(StrictResponseModel):
-    """一条角色卷级参与状态的完整公开投影。"""
+    "Bản chiếu công khai đầy đủ của một trạng thái tham gia cấp quyển của nhân vật."
 
     state_id: ObjectIdString
     novel_id: ObjectIdString
@@ -181,13 +181,13 @@ class CharacterVolumeStateReadV1(StrictResponseModel):
 
 
 class CharacterVolumeStateListV1(StrictResponseModel):
-    """卷列表和角色历史共用的严格响应外壳。"""
+    "Vỏ phản hồi nghiêm ngặt dùng chung cho danh sách quyển và lịch sử nhân vật."
 
     data: list[CharacterVolumeStateReadV1]
 
 
 class CharacterVolumeStateInitializeResultV1(StrictResponseModel):
-    """从上一卷初始化成功后的严格结果。"""
+    "Kết quả nghiêm ngặt sau khi khởi tạo thành công từ quyển trước."
 
     source_volume_id: ObjectIdString
     target_volume_id: ObjectIdString
@@ -195,14 +195,14 @@ class CharacterVolumeStateInitializeResultV1(StrictResponseModel):
 
 
 class CharacterVolumeStateHardDeleteV1(StrictResponseModel):
-    """角色卷状态永久删除结果。"""
+    "Kết quả xoá vĩnh viễn trạng thái nhân vật theo quyển."
 
     deleted: Literal[True]
     state_id: ObjectIdString
 
 
 class CharacterVolumeArcReadinessV1(StrictResponseModel):
-    """卷进入人物弧规划前的主角状态门禁结果。"""
+    "Kết quả cổng kiểm tra trạng thái nhân vật chính trước khi quyển bước vào kế hoạch vòng cung nhân vật."
 
     novel_id: ObjectIdString
     volume_id: ObjectIdString

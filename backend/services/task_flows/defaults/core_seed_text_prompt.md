@@ -1,2 +1,2 @@
-请严格输出一个 JSON 对象, 不要输出任何额外内容: 
-{"core_seed": "故事核心公式，需包含显性冲突、潜在危机、人物核心驱动力与世界观关键矛盾暗示，长度30-100字，不得超过100字"}
+Hãy xuất đúng một đối tượng JSON, không xuất thêm bất kỳ nội dung nào khác: 
+{"core_seed": "Công thức cốt lõi của câu chuyện, cần bao gồm xung đột hiển tính, nguy cơ tiềm ẩn, động lực cốt lõi của nhân vật và gợi ý mâu thuẫn then chốt của thế giới quan, độ dài 30-100 chữ, không được vượt quá 100 chữ"}

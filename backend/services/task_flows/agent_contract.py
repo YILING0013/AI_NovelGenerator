@@ -16,13 +16,13 @@ EntityKind = Literal["character", "faction", "location", "item", "world_rule"]
 
 
 class AgentModel(BaseModel):
-    """拒绝模型或浏览器提交未声明的整理字段。"""
+    "Từ chối các trường dọn dẹp không khai báo do mô hình hoặc trình duyệt gửi lên."
 
     model_config = ConfigDict(extra="forbid")
 
 
 class AgentSkillV1(AgentModel):
-    """随流程修订保存的技能文字，不允许脚本或外部路径。"""
+    "Văn bản kỹ năng lưu kèm bản chỉnh sửa của luồng, không cho phép script hay đường dẫn bên ngoài."
 
     id: str = Field(min_length=1, max_length=80, pattern=r"^[A-Za-z][A-Za-z0-9_-]*$")
     name: str = Field(min_length=1, max_length=100)
@@ -43,7 +43,7 @@ DEFAULT_AGENT_SKILLS = [
 
 
 class AgentNodeConfigV1(AgentModel):
-    """资料整理节点可编辑的配置。"""
+    "Cấu hình có thể sửa của nút sắp xếp tài liệu."
 
     prompt: str = ""
     system_prompt: str = ""
@@ -74,7 +74,7 @@ class AgentNodeConfigV1(AgentModel):
 
 
 class PreparedTargetV1(AgentModel):
-    """由服务端固定的小说和操作位置。"""
+    "Tiểu thuyết và vị trí thao tác do máy chủ cố định."
 
     novel_id: ObjectIdString
     target_type: Literal["volume", "arc", "scene", "chapter"]
@@ -84,7 +84,7 @@ class PreparedTargetV1(AgentModel):
 
 
 class EntitySelectionReasonV1(AgentModel):
-    """采用已读实体的具体原因。"""
+    "Lý do cụ thể để dùng thực thể đã đọc."
 
     resource_type: EntityKind
     id: str = Field(min_length=1, max_length=100)
@@ -92,7 +92,7 @@ class EntitySelectionReasonV1(AgentModel):
 
 
 class EntityNeedV1(AgentModel):
-    """当前资料无法承担的一项剧情职责。"""
+    "Một trách nhiệm cốt truyện mà tài liệu hiện tại không đảm đương được."
 
     resource_type: EntityKind
     role: str = Field(min_length=1, max_length=1000)
@@ -100,7 +100,7 @@ class EntityNeedV1(AgentModel):
 
 
 class EntityNewCountsV1(AgentModel):
-    """各类新实体建议数量，最终仍由相应领域上限校验。"""
+    "Số lượng đề xuất cho từng loại thực thể mới, cuối cùng vẫn hợp lệ hóa theo giới hạn của miền tương ứng."
 
     character: int = Field(default=0, ge=0, le=30)
     faction: int = Field(default=0, ge=0, le=30)
@@ -110,14 +110,14 @@ class EntityNewCountsV1(AgentModel):
 
 
 class PreparationMissingV1(AgentModel):
-    """已核实且现有资料无法承担、会阻止本次生成的缺项。"""
+    "Các mục thiếu đã xác minh mà tài liệu hiện có không đáp ứng được và sẽ chặn lần sinh này."
 
     field: str = Field(min_length=1, max_length=200, description="Vị trí của tư liệu hiện có hoặc thực thể cần thiết thực sự bị thiếu, không phải cấp dưới, tiêu đề lần này cần sinh hay ngân sách đã cho.")
     message: str = Field(min_length=1, max_length=2000, description="Hãy nêu đã tìm thấy gì, vì sao tư liệu hiện có không đủ nâng đỡ việc sinh lần này và tác giả cần bổ sung gì; chi tiết địa điểm tái sử dụng được hay đề xuất tùy chọn không thuộc mục thiếu.")
 
 
 class ChapterParentExcerptV1(AgentModel):
-    """从实际读过的祖先字段中采用一段连续原文，不接受拼接。"""
+    "Áp dụng một đoạn nguyên văn liên tiếp trong các trường tổ tiên đã thực sự đọc; không nhận chṗ nối."
 
     resource_type: Literal["novel", "volume", "arc", "scene"]
     id: ObjectIdString
@@ -130,7 +130,7 @@ class ChapterParentExcerptV1(AgentModel):
 
 
 class ChapterSourcesV1(AgentModel):
-    """本章采用的祖先原文、已读前文和人物关系；空列表表示不采用。"""
+    "Nguyên văn tổ tiên, phần trước đã đọc và quan hệ nhân vật mà chương này áp dụng; danh sách rỗng nghĩa là không áp dụng."
 
     parent_excerpts: list[ChapterParentExcerptV1] = Field(max_length=30)
     previous_chapter_ids: list[ObjectIdString] = Field(max_length=100)
@@ -138,7 +138,7 @@ class ChapterSourcesV1(AgentModel):
 
 
 class PreparedContextV1(AgentModel):
-    """下一步生成需要的固定资料报告；正式详情由服务端填入。"""
+    "Báo cáo tư liệu cố định cần cho bước tạo sinh tiếp theo; chi tiết chính thức do server điền vào."
 
     schema_version: Literal[1] = 1
     chapter_sources: ChapterSourcesV1 | None = Field(default=None, exclude_if=lambda value: value is None)
@@ -168,7 +168,7 @@ class PreparedContextV1(AgentModel):
 
 
 class BookReadV1(AgentModel):
-    """可重放的固定工具读取，包含空结果和分页。"""
+    "Lần đọc công cụ cố định có thể phát lại, gồm cả kết quả rỗng và phân trang."
 
     tool: Literal["get_scope", "list_directory", "search_book", "search_entities", "read_entity", "read_volume_state", "read_previous"]
     arguments: dict[str, Any]

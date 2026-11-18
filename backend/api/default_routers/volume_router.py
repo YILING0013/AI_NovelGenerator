@@ -44,7 +44,7 @@ VolumeStatus = Literal["draft", "planned", "active", "completed", "archived"]
 
 
 class VolumeCreateRequestV2(StrictRequestModel):
-    """人工创建一卷的严格请求。"""
+    "Yêu cầu nghiêm ngặt tạo thủ công một quyển."
 
     novel_id: ObjectIdString
     title: str = Field(min_length=1, max_length=120)
@@ -59,7 +59,7 @@ class VolumeCreateRequestV2(StrictRequestModel):
 
 
 class VolumeUpdateRequestV2(StrictRequestModel):
-    """按预期版本更新卷。"""
+    "Cập nhật quyển theo phiên bản dự kiến."
 
     expected_version: int = Field(ge=1)
     title: str | None = Field(default=None, min_length=1, max_length=120)
@@ -107,13 +107,13 @@ class VolumeUpdateRequestV2(StrictRequestModel):
 
 
 class VolumeVersionRequestV2(StrictRequestModel):
-    """卷恢复等生命周期命令的公开版本。"""
+    "Phiên bản công khai cho các lệnh vòng đời như khôi phục quyển."
 
     expected_version: int = Field(ge=1)
 
 
 class VolumeReorderItemV2(StrictRequestModel):
-    """完整活动卷重排中的一条 CAS 项。"""
+    "Một mục CAS trong đợt sắp xếp lại đầy đủ các quyển đang hoạt động."
 
     volume_id: ObjectIdString
     order_index: int = Field(ge=1)
@@ -121,13 +121,13 @@ class VolumeReorderItemV2(StrictRequestModel):
 
 
 class VolumeReorderRequestV2(StrictRequestModel):
-    """必须提交全部活动兄弟的重排命令。"""
+    "Lệnh sắp xếp lại phải gửi đầy đủ mọi phần tử cùng cấp đang hoạt động."
 
     items: list[VolumeReorderItemV2] = Field(min_length=1)
 
 
 class VolumeReadV3(StrictResponseModel):
-    """包含数据库 ID 和公开卷 ID 的完整响应。"""
+    "Phản hồi đầy đủ gồm ID cơ sở dữ liệu và ID quyển công khai."
 
     model_config = ConfigDict(extra="forbid", strict=True, populate_by_name=True)
 
@@ -157,13 +157,13 @@ class VolumeReadV3(StrictResponseModel):
 
 
 class VolumeListResponseV2(StrictResponseModel):
-    """现有列表 envelope 中的完整卷数据。"""
+    "Dữ liệu quyển đầy đủ trong envelope của danh sách hiện có."
 
     data: list[VolumeReadV3]
 
 
 class VolumeCreateResponseV2(StrictResponseModel):
-    """卷创建结果及完整卷。"""
+    "Kết quả tạo quyển kèm quyển đầy đủ."
 
     id: ObjectIdString
     message: Literal["Volume created"]
@@ -171,14 +171,14 @@ class VolumeCreateResponseV2(StrictResponseModel):
 
 
 class VolumeMutationResponseV2(StrictResponseModel):
-    """卷操作结果及写入后内容。"""
+    "Kết quả thao tác quyển và nội dung sau khi ghi."
 
     success: bool
     data: VolumeReadV3
 
 
 class VolumeDeleteImpactV2(StrictResponseModel):
-    """卷删除前当前及阶段 2 正式消费者的分字段影响。"""
+    "Tác động theo từng trường trước khi xóa quyển lên các bên tiêu dùng hiện hành và bên tiêu dùng chính thức giai đoạn 2."
 
     volume_id: ObjectIdString
     foreshadowings: int = Field(default=0, ge=0)
@@ -197,14 +197,14 @@ class VolumeDeleteImpactV2(StrictResponseModel):
 
 
 class VolumeHardDeleteStatsV2(StrictResponseModel):
-    """卷永久删除精确计数。"""
+    "Số đếm chính xác của việc xoá vĩnh viễn quyển."
 
     arcs_deleted: Literal[0]
     volume_deleted: Literal[1]
 
 
 class VolumeHardDeleteResponseV2(StrictResponseModel):
-    """卷永久删除结果和引用检查。"""
+    "Kết quả xoá vĩnh viễn quyển và kiểm tra tham chiếu."
 
     message: Literal["Hard deleted successfully"]
     stats: VolumeHardDeleteStatsV2
@@ -212,7 +212,7 @@ class VolumeHardDeleteResponseV2(StrictResponseModel):
 
 
 class VolumeBulkPlanResponseV1(StrictResponseModel):
-    """卷骨架候选到正式 ObjectId 的映射和完整卷。"""
+    "Ánh xạ từ ứng viên khung skeleton quyển sang ObjectId chính thức và các quyển đầy đủ."
 
     candidate_ref_map: dict[LocalCandidateRef, ObjectIdString]
     volumes: list[VolumeReadV3] = Field(min_length=1, max_length=30)

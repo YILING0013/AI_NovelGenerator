@@ -61,3 +61,9 @@ frontend/.i18n-work/
 mongodata*/
 logs/
 tools/mongodb.zip
+
+# Thu muc lam viec tam cua bo dich (unit/lot/ban dich), tai tao duoc
+.err-work/
+.msg-work/
+.promo-work/
+runtime/

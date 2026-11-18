@@ -70,7 +70,7 @@
           "$defs": {
             "ChapterWorldRulesCheckIssueV1": {
               "additionalProperties": false,
-              "description": "模型只提供疑点、所选规则编号和原章引文。",
+              "description": "Mô hình chỉ cung cấp các điểm nghi vấn, số hiệu quy tắc được chọn và trích dẫn nguyên văn trong chương gốc.",
               "properties": {
                 "text": {
                   "title": "Text",
@@ -87,7 +87,7 @@
                   "type": "array"
                 },
                 "start": {
-                  "description": "从零开始的 Unicode 码点位置，不是 UTF-16 下标。",
+                  "description": "Vị trí code point Unicode tính từ 0, không phải chỉ số UTF-16.",
                   "maximum": 2147483647,
                   "minimum": 0,
                   "title": "Start",
@@ -139,7 +139,7 @@
           "$defs": {
             "ChapterWorldRulesCheckIssueV1": {
               "additionalProperties": false,
-              "description": "模型只提供疑点、所选规则编号和原章引文。",
+              "description": "Mô hình chỉ cung cấp các điểm nghi vấn, số hiệu quy tắc được chọn và trích dẫn nguyên văn trong chương gốc.",
               "properties": {
                 "text": {
                   "title": "Text",
@@ -156,7 +156,7 @@
                   "type": "array"
                 },
                 "start": {
-                  "description": "从零开始的 Unicode 码点位置，不是 UTF-16 下标。",
+                  "description": "Vị trí code point Unicode tính từ 0, không phải chỉ số UTF-16.",
                   "maximum": 2147483647,
                   "minimum": 0,
                   "title": "Start",

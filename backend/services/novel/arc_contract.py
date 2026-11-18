@@ -11,7 +11,7 @@ from backend.api.contracts import ObjectIdString, StrictRequestModel, StrictResp
 
 
 class ArcPlanningV1(StrictRequestModel):
-    """篇章目标、起止状态、节拍和当前小说的实体引用。"""
+    "Mục tiêu vòng truyện, trạng thái đầu và cuối, nhịp truyện cùng các tham chiếu thực thể của tiểu thuyết hiện tại."
 
     goal: str = Field(default="", max_length=2000)
     start_state: str = Field(default="", max_length=2000)
@@ -45,7 +45,7 @@ class ArcPlanningV1(StrictRequestModel):
 
 
 class ArcCreateV1(StrictRequestModel):
-    """卷下创建篇章时允许提交的内容。"""
+    "Nội dung được phép gửi khi tạo vòng truyện dưới một quyển."
 
     title: str = Field(min_length=1, max_length=120)
     summary: str = Field(default="", max_length=2000)
@@ -54,7 +54,7 @@ class ArcCreateV1(StrictRequestModel):
 
 
 class ArcUpdateV1(StrictRequestModel):
-    """省略字段保留原值；提供 planning 时完整替换规划。"""
+    "Trường bị lược giữ nguyên giá trị cũ; nếu cung cấp planning thì thay thế toàn bộ kế hoạch."
 
     expected_version: int = Field(ge=1)
     title: str | None = Field(default=None, min_length=1, max_length=120)
@@ -82,13 +82,13 @@ class ArcUpdateV1(StrictRequestModel):
 
 
 class ArcVersionV1(StrictRequestModel):
-    """篇章恢复时必须携带的已读版本。"""
+    "Phiên bản đã đọc phải kèm theo khi khôi phục vòng truyện."
 
     expected_version: int = Field(ge=1)
 
 
 class ArcReadV1(StrictResponseModel):
-    """篇章完整内容、归属、统计和当前版本。"""
+    "Nội dung đầy đủ, thông tin trực thuộc, thống kê và phiên bản hiện tại của vòng truyện."
 
     arc_id: ObjectIdString
     novel_id: ObjectIdString
@@ -110,20 +110,20 @@ class ArcReadV1(StrictResponseModel):
 
 
 class ArcListV1(StrictResponseModel):
-    """按卷内顺序排列的篇章。"""
+    "Các vòng truyện sắp xếp theo thứ tự trong quyển."
 
     data: list[ArcReadV1]
 
 
 class ArcHardDeleteV1(StrictResponseModel):
-    """永久删除完成后的篇章标识。"""
+    "Định danh vòng truyện sau khi hoàn tất xoá vĩnh viễn."
 
     arc_id: ObjectIdString
     deleted: bool
 
 
 class ArcReorderItemV1(StrictRequestModel):
-    """一个活动篇章的新序号和已读版本。"""
+    "Số thứ tự mới của một vòng truyện đang hoạt động và phiên bản đã đọc."
 
     arc_id: ObjectIdString
     expected_version: int = Field(ge=1)
@@ -131,13 +131,13 @@ class ArcReorderItemV1(StrictRequestModel):
 
 
 class ArcReorderV1(StrictRequestModel):
-    """当前卷完整的活动篇章排序。"""
+    "Toàn bộ thứ tự vòng truyện đang hoạt động của quyển hiện tại."
 
     items: list[ArcReorderItemV1] = Field(min_length=1, max_length=10000)
 
 
 class ArcDeleteImpactV1(StrictResponseModel):
-    """篇章删除前实际存在的场景和章节数量。"""
+    "Số cảnh và số chương thực tế tồn tại trước khi xoá vòng truyện."
 
     arc_id: ObjectIdString
     foreshadowings: int = Field(default=0, ge=0)

@@ -62,7 +62,7 @@ def faction_legacy_fields(fields: set[str]) -> tuple[set[str], set[str]]:
 
 
 class FactionFactValuesV1(StrictRequestModel):
-    """仅保留提交的已知值及原文；缺键、明确清空和未知各自独立。"""
+    "Chỉ giữ các giá trị đã biết và nguyên văn đã gửi; thiếu khóa, minh thị xóa và chưa biết là ba trạng thái riêng."
 
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=False)
 
@@ -107,7 +107,7 @@ class FactionFactValuesV1(StrictRequestModel):
 
 
 class FactionFactCreateDataV1(StrictResponseModel):
-    """新建身份、设计和未定位资料；十一事实字段只在 after 提交。"""
+    "Định danh, thiết kế và tư liệu chưa xác định vị trí khi tạo mới; mười một trường sự kiện chỉ gửi trong after."
 
     name: str = Field(min_length=1, max_length=80)
     alias: list[Annotated[str, Field(min_length=1, max_length=80)]] = Field(default_factory=list, max_length=10)
@@ -142,7 +142,7 @@ class FactionFactCreateDataV1(StrictResponseModel):
 
 
 class FactionFactBeforeV1(StrictResponseModel):
-    """原值和未知原因分别保存，不从旧主档或卷状态补值。"""
+    "Giữ riêng giá trị gốc và nguyên nhân chưa rõ, không bù giá trị từ hồ sơ chính cũ hay trạng thái quyển."
 
     values: FactionFactValuesV1
     unknown: dict[FactionFactField, FactUnknownReason]
@@ -162,7 +162,7 @@ class FactionFactBeforeV1(StrictResponseModel):
 
 
 class FactionFactRecordV1(StrictResponseModel):
-    """同一势力的一次多字段确认；作废只改变对应字段的有效性。"""
+    "Một lượt xác nhận nhiều trường cho cùng một thế lực; hủy bỏ chỉ thay đổi tính hợp lệ của các trường tương ứng."
 
     schema_id: Literal["faction.fact"]
     schema_version: FactSchemaVersion
@@ -246,7 +246,7 @@ class FactionFactRecordV1(StrictResponseModel):
 
 
 class FactionFactsAtPositionV1(StrictResponseModel):
-    """一个势力在明确位置的十一字段结果，不包含设计和卷计划。"""
+    "Kết quả mười một trường của một thế lực tại vị trí minh thị, không gồm thiết kế và kế hoạch quyển."
 
     entity_id: ObjectIdString
     faction_id: FactionId
@@ -286,7 +286,7 @@ class FactionFactsAtPositionV1(StrictResponseModel):
 
 
 class FactionFactIdentityReadV1(StrictResponseModel):
-    """读取时的势力身份；管理状态不解释为剧情状态。"""
+    "Danh tính thế lực lúc đọc; trạng thái quản lý không được hiểu là trạng thái cốt truyện."
 
     entity_id: ObjectIdString
     faction_id: FactionId
@@ -295,7 +295,7 @@ class FactionFactIdentityReadV1(StrictResponseModel):
 
 
 class FactionFactHistoryObservationV1(StrictResponseModel):
-    """冻结历史原文摘要和当时逐字段有效性。"""
+    "Bản tóm tắt văn bản gốc đã đóng băng cùng tính hợp lệ theo từng trường tại thời điểm đó."
 
     history_id: ObjectIdString
     entity_id: ObjectIdString
@@ -304,7 +304,7 @@ class FactionFactHistoryObservationV1(StrictResponseModel):
 
 
 class FactionFactReadV1(StrictResponseModel):
-    """明确选择及完整目录的可复验读取，空选择也保留。"""
+    "Lần đọc có thể tái kiểm tra với lựa chọn rõ ràng và danh mục đầy đủ, giữ cả khi lựa chọn rỗng."
 
     kind: Literal["faction_facts"]
     novel_id: ObjectIdString
@@ -331,7 +331,7 @@ class FactionFactReadV1(StrictResponseModel):
 
 
 class FactionFactReadResultV1(StrictResponseModel):
-    """内部共享读取的结果及空范围依据。"""
+    "Kết quả đọc dùng chung nội bộ và căn cứ khi phạm vi trống."
 
     novel_id: ObjectIdString
     position: FactReadPositionV1
@@ -341,7 +341,7 @@ class FactionFactReadResultV1(StrictResponseModel):
 
 
 class FactionFactExistingTargetV1(StrictResponseModel):
-    """冻结实际势力主档身份和版本。"""
+    "Đóng băng danh tính và phiên bản hồ sơ chính thực tế của thế lực."
 
     kind: Literal["existing"]
     novel_id: ObjectIdString
@@ -352,7 +352,7 @@ class FactionFactExistingTargetV1(StrictResponseModel):
 
 
 class FactionFactNewTargetV1(StrictResponseModel):
-    """只预分配物理身份；业务编号在确认事务内分配。"""
+    "Chỉ cấp trước danh tính vật lý; số nghiệp vụ được cấp trong giao dịch xác nhận."
 
     kind: Literal["new"]
     novel_id: ObjectIdString
@@ -383,7 +383,7 @@ FactionFactTargetV1 = Annotated[FactionFactExistingTargetV1 | FactionFactNewTarg
 
 
 class FactionFactPreviewExistingTargetV1(StrictResponseModel):
-    """作者原先读取的身份和版本。"""
+    "Danh tính và phiên bản mà tác giả đã đọc trước đó."
 
     entity_id: ObjectIdString
     faction_id: FactionId
@@ -391,13 +391,13 @@ class FactionFactPreviewExistingTargetV1(StrictResponseModel):
 
 
 class FactionFactPreviewNewTargetV1(StrictResponseModel):
-    """新建只提供明确候选，不接受客户端分配正式身份。"""
+    "Tạo mới chỉ cung cấp ứng viên rõ ràng, không nhận phía client gán danh tính chính thức."
 
     candidate: FactionFactCreateDataV1
 
 
 class FactionFactCreatePreviewInputV1(StrictResponseModel):
-    """人工新建选择起点及事实字段，缺省字段不参与确认。"""
+    "Tạo mới thủ công chọn điểm khởi đầu cùng các trường dữ kiện; trường mặc định không tham gia xác nhận."
 
     operation: Literal["create"]
     target: FactionFactPreviewNewTargetV1
@@ -408,7 +408,7 @@ class FactionFactCreatePreviewInputV1(StrictResponseModel):
 
 
 class FactionFactExistingPreviewInputV1(StrictResponseModel):
-    """已有势力的起点、变化或替代预览。"""
+    "Bản xem trước khởi điểm, thay đổi hoặc thay thế của thế lực đã có."
 
     operation: Literal["establish", "correct_initial", "change", "replace"]
     target: FactionFactPreviewExistingTargetV1
@@ -422,7 +422,7 @@ class FactionFactExistingPreviewInputV1(StrictResponseModel):
 
 
 class FactionFactVoidPreviewInputV1(StrictResponseModel):
-    """作废从原记录取得位置和来源，不接受另一个章锚。"""
+    "Vô hiệu hóa lấy vị trí và nguồn từ bản ghi gốc, không chấp nhận một neo chương khác."
 
     operation: Literal["void"]
     target: FactionFactPreviewExistingTargetV1
@@ -451,7 +451,7 @@ class FactionFactPreviewInputV1(RootModel[Annotated[
 
 
 class _FactionLegacySparseV1(StrictResponseModel):
-    """旧原文保留缺项、null 和原空白，不补默认值。"""
+    "Văn bản gốc cũ giữ nguyên mục thiếu, null và khoảng trắng ban đầu, không đắp giá trị mặc định."
 
     @model_serializer(mode="wrap")
     def serialize_present(self, handler: SerializerFunctionWrapHandler) -> dict:
@@ -460,7 +460,7 @@ class _FactionLegacySparseV1(StrictResponseModel):
 
 
 class FactionFactLegacyProfileRawV1(_FactionLegacySparseV1):
-    """主档原键，目标和资源优势只是参考。"""
+    "Khóa gốc trong hồ sơ chính; mục tiêu và ưu thế tài nguyên chỉ mang tính tham khảo."
 
     faction_type: str | None = None
     positioning: str | None = None
@@ -475,7 +475,7 @@ class FactionFactLegacyProfileRawV1(_FactionLegacySparseV1):
 
 
 class FactionFactLegacyStateRawV1(_FactionLegacySparseV1):
-    """卷状态保留旧剧情状态键和旧计划目标键。"""
+    "Trạng thái tập giữ khóacốt truyện cũ và khóa mục tiêu kế hoạch cũ."
 
     power_level: int | None = None
     resources: list[str] | None = None
@@ -487,13 +487,13 @@ class FactionFactLegacyStateRawV1(_FactionLegacySparseV1):
 
 
 class FactionFactLegacyStateNotesV1(_FactionLegacySparseV1):
-    """卷起点说明不参与事实合并。"""
+    "Ghi chú điểm khởi đầu của tập không tham gia hợp nhất dữ kiện."
 
     start_state: str | None = None
 
 
 class FactionFactLegacyVolumeV1(StrictResponseModel):
-    """预览时卷的可读身份信息。"""
+    "Thông tin danh tính dạng đọc được của quyển lúc xem trước."
 
     title: str
     version: FactVersion
@@ -501,7 +501,7 @@ class FactionFactLegacyVolumeV1(StrictResponseModel):
 
 
 class FactionFactLegacyProfileSourceV1(StrictResponseModel):
-    """原主档身份、版本及所选字段原文。"""
+    "Danh tính hồ sơ chính gốc, phiên bản và văn bản gốc của các trường được chọn."
 
     kind: Literal["profile"]
     entity_id: ObjectIdString
@@ -511,7 +511,7 @@ class FactionFactLegacyProfileSourceV1(StrictResponseModel):
 
 
 class FactionFactLegacyStateSourceV1(StrictResponseModel):
-    """所有保留卷状态的所选原文，包括回收状态。"""
+    "Văn bản gốc đã chọn của mọi trạng thái quyển được lưu giữ, kể cả trạng thái bị thu hồi."
 
     kind: Literal["volume_state"]
     state_id: ObjectIdString
@@ -528,7 +528,7 @@ FactionFactLegacySourceV1 = Annotated[FactionFactLegacyProfileSourceV1 | Faction
 
 
 class FactionFactBasisV1(StrictResponseModel):
-    """作者实际预览的势力、位置、原值、原文和处置对象。"""
+    "Thế lực, vị trí, giá trị gốc, văn bản gốc và đối tượng xử lý mà tác giả thực sự xem trước."
 
     schema_version: FactSchemaVersion
     operation: FactionFactOperation
@@ -676,7 +676,7 @@ class FactionFactBasisV1(StrictResponseModel):
 
 
 class FactionFactCreateConfirmV1(StrictResponseModel):
-    """作者确认新建，候选和身份只来自原依据。"""
+    "Tác giả xác nhận tạo mới; ứng viên và danh tính chỉ đến từ căn cứ gốc."
 
     operation: Literal["create"]
     basis: FactionFactBasisV1
@@ -685,7 +685,7 @@ class FactionFactCreateConfirmV1(StrictResponseModel):
 
 
 class FactionFactExistingConfirmV1(StrictResponseModel):
-    """作者可改所选字段值，原身份、版本和来源保持冻结。"""
+    "Tác giả có thể sửa giá trị các trường đã chọn, còn danh tính, phiên bản và nguồn gốc vẫn giữ nguyên trạng thái đóng băng."
 
     operation: Literal["establish", "correct_initial", "change", "replace"]
     basis: FactionFactBasisV1
@@ -695,7 +695,7 @@ class FactionFactExistingConfirmV1(StrictResponseModel):
 
 
 class FactionFactVoidConfirmV1(StrictResponseModel):
-    """作废只处置原活动字段，不产生假数值变化。"""
+    "Vô hiệu hóa chỉ xử lý các trường đang hoạt động gốc, không tạo ra thay đổi giá trị giả."
 
     operation: Literal["void"]
     basis: FactionFactBasisV1
@@ -735,7 +735,7 @@ class FactionFactConfirmV1(RootModel[Annotated[
 
 
 class FactionFactValidityChangeV1(StrictResponseModel):
-    """原记录单个字段的一次实际处置。"""
+    "Một lần xử lý thực tế trên một trường của bản ghi gốc."
 
     history_id: ObjectIdString
     field: FactionFactField
@@ -744,7 +744,7 @@ class FactionFactValidityChangeV1(StrictResponseModel):
 
 
 class FactionFactResultV1(StrictResponseModel):
-    """首次完整成功结果，重放不改成当前查询值。"""
+    "Kết quả thành công đầy đủ lần đầu; phát lại không đổi thành giá trị truy vấn hiện tại."
 
     schema_version: FactSchemaVersion
     operation: FactionFactOperation
@@ -781,7 +781,7 @@ class FactionFactResultV1(StrictResponseModel):
 
 
 class FactionFactReceiptRequestV1(StrictResponseModel):
-    """参与幂等摘要的完整原请求。"""
+    "Toàn bộ yêu cầu gốc tham gia vào digest idempotent."
 
     operation: FactionFactOperation
     novel_id: ObjectIdString
@@ -790,7 +790,7 @@ class FactionFactReceiptRequestV1(StrictResponseModel):
 
 
 class FactionFactReceiptV1(StrictResponseModel):
-    """既有回执集合内的势力 schema，原请求与原结果不可重算覆盖。"""
+    "Schema thế lực nằm trong tập biên nhận đã có; yêu cầu gốc và kết quả gốc không được tính lại để ghi đề."
 
     schema_id: Literal["faction.fact.receipt"]
     schema_version: FactSchemaVersion

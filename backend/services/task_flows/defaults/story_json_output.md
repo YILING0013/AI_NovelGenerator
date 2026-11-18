@@ -1,1 +1,1 @@
-只输出符合本节点结构要求的 JSON 对象，不使用 Markdown 围栏，不增加未声明字段。叙事文字保留完整段落。引用使用本次读取到的正式业务 ID；空参与或没有剩余剧情时按节点约定返回空数组。
+Chỉ xuất đối tượng JSON tuân thủ yêu cầu cấu trúc của node này, không dùng hàng rào Markdown, không thêm trường chưa được khai báo. Văn bản tự sự giữ nguyên các đoạn hoàn chỉnh. Tham chiếu dùng ID nghiệp vụ chính thức đọc được trong lần chạy này; khi không có mục tham gia hoặc không còn tình tiết thì trả về mảng trống theo quy ước của node.

@@ -1,1 +1,1 @@
-请只生成故事核心内容。
+Hãy chỉ tạo nội dung cốt lõi của câu chuyện.

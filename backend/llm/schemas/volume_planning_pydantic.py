@@ -41,7 +41,7 @@ def normalize_volume_text(value: str) -> str:
 
 
 class VolumeLaunchContextIssueV1(StrictResponseModel):
-    """本卷开始时一项资料未知的具体原因。"""
+    "Lý do cụ thể khiến một tài liệu chưa được biết khi bắt đầu quyển này."
 
     field: str
     reason: Literal["nonexistent", "unclaimed", "before_start", "voided", "needs_review", "unresolved_reference"]
@@ -49,7 +49,7 @@ class VolumeLaunchContextIssueV1(StrictResponseModel):
 
 
 class VolumeLaunchContextEntityV1(StrictResponseModel):
-    """只供启动表单辨认对象、问题和来源，不包含资料正文。"""
+    "Chỉ để biểu mẫu khởi động nhận diện đối tượng, câu hỏi và nguồn; không chứa nội dung tư liệu."
 
     entity_type: Literal["character", "faction", "character_relation"]
     entity_id: str
@@ -59,7 +59,7 @@ class VolumeLaunchContextEntityV1(StrictResponseModel):
 
 
 class VolumeLaunchContextCountsV1(StrictResponseModel):
-    """实际参与本次读取的资料数量。"""
+    "Số tài liệu thực tế tham gia vào lần đọc này."
 
     characters: int = Field(ge=0)
     factions: int = Field(ge=0)
@@ -71,7 +71,7 @@ class VolumeLaunchContextCountsV1(StrictResponseModel):
 
 
 class VolumeLaunchContextV1(StrictResponseModel):
-    """卷启动资料提醒；不能用于生成或采用确认。"""
+    "Nhắc nhở tài liệu khởi động quyển; không được dùng cho việc sinh hay xác nhận chấp nhận."
 
     novel_id: ObjectIdString
     volume_id: ObjectIdString
@@ -82,7 +82,7 @@ class VolumeLaunchContextV1(StrictResponseModel):
 
 
 class VolumePlanningV1(StrictRequestModel):
-    """一卷唯一正式规划或启动包字段。"""
+    "Một trường thuộc quy hoạch chính thức duy nhất của một quyển hoặc gói khởi động."
 
     premise: str = Field(max_length=1000)
     major_conflict: str = Field(max_length=2000)
@@ -94,7 +94,7 @@ class VolumePlanningV1(StrictRequestModel):
 
 
 class VolumeOrderRangeV1(StrictRequestModel):
-    """卷骨架生成目标的连续 1-based 顺序范围。"""
+    "Phạm vi thứ tự liên tục 1-based của các đích tạo khung skeleton quyển."
 
     start: int = Field(ge=1)
     end: int = Field(ge=1)
@@ -115,7 +115,7 @@ class VolumeOrderRangeV1(StrictRequestModel):
 
 
 class VolumeSkeletonGenerateRequestV1(ReasoningOptions, StrictRequestModel):
-    """全书卷骨架候选预览请求。"""
+    "Yêu cầu xem trước ứng viên khung xương quyển của toàn sách."
 
     target_volume_count: int = Field(ge=1, le=30)
     total_chapter_budget: int = Field(ge=1, le=1000)
@@ -155,7 +155,7 @@ class VolumeSkeletonGenerateRequestV1(ReasoningOptions, StrictRequestModel):
 
 
 class VolumeSkeletonGenerationInputV1(ReasoningOptions, StrictRequestModel):
-    """随 basis 回传、用于确认时重算指纹的卷骨架输入。"""
+    "Đầu vào khung skeleton quyển gửi lại cùng basis, dùng để tính lại vân tay khi xác nhận."
 
     novel_id: ObjectIdString
     target_volume_count: int = Field(ge=1, le=30)
@@ -195,7 +195,7 @@ class VolumeSkeletonGenerationInputV1(ReasoningOptions, StrictRequestModel):
 
 
 class VolumeSkeletonCandidateV1(StrictRequestModel):
-    """模型可输出且用户可编辑的一条卷骨架候选。"""
+    "Một ứng viên khung quyển mà mô hình có thể xuất và người dùng có thể sửa."
 
     candidate_ref: LocalCandidateRef
     title: str = Field(min_length=1, max_length=120)
@@ -225,7 +225,7 @@ class VolumeSkeletonCandidateV1(StrictRequestModel):
 
 
 class VolumeSkeletonResultV1(StrictRequestModel):
-    """Provider 必须完整返回的卷骨架根对象。"""
+    "Đối tượng gốc của khung quyển mà Provider phải trả về đầy đủ."
 
     volumes: list[VolumeSkeletonCandidateV1] = Field(min_length=1, max_length=30)
 
@@ -246,7 +246,7 @@ class VolumeSkeletonResultV1(StrictRequestModel):
 
 
 class VolumeSkeletonBasisV1(CandidateBasisV1):
-    """包含原始严格生成输入的卷骨架不透明依据。"""
+    "Căn cứ opaque của khung xương tập, bao gồm phần nhập sinh nghiêm ngặt gốc."
 
     generation_input: VolumeSkeletonGenerationInputV1
 
@@ -284,7 +284,7 @@ class VolumeSkeletonBasisV1(CandidateBasisV1):
 
 
 class VolumeBulkPlanRequestV1(StrictRequestModel):
-    """全书卷骨架候选的严格批量确认信封。"""
+    "Phong bì xác nhận hàng loạt nghiêm ngặt cho các ứng viên khung xương quyển của toàn sách."
 
     candidates: list[VolumeSkeletonCandidateV1] = Field(min_length=1, max_length=30)
     basis: VolumeSkeletonBasisV1
@@ -342,7 +342,7 @@ class VolumeBulkPlanRequestV1(StrictRequestModel):
 
 
 class VolumeDownstreamImpactV1(StrictResponseModel):
-    """一个正式卷已存在的真实下游引用。"""
+    "Tham chiếu downstream thực tế đã tồn tại của một quyển chính thức."
 
     volume_id: ObjectIdString
     arcs: int = Field(ge=0)
@@ -361,7 +361,7 @@ class VolumeDownstreamImpactV1(StrictResponseModel):
 
 
 class VolumeSkeletonPreviewV1(StrictResponseModel):
-    """普通预览与 SSE done.result 共用的卷骨架候选信封。"""
+    "Bao ứng viên khung skeleton quyển, dùng chung cho bản xem trước thường và done.result của SSE."
 
     workflow: Literal["create_volume_skeleton_by_ai"]
     step: Literal["create_volume_skeleton"]
@@ -373,7 +373,7 @@ class VolumeSkeletonPreviewV1(StrictResponseModel):
 
 
 class VolumeLaunchGenerateRequestV1(ReasoningOptions, StrictRequestModel):
-    """单卷启动包候选预览请求。"""
+    "Yêu cầu xem trước ứng viên gói khởi động cho một quyển."
 
     volume_expected_version: int = Field(ge=1)
     target_chapter_count: int | None = Field(default=None, ge=1, le=1000)
@@ -389,7 +389,7 @@ class VolumeLaunchGenerateRequestV1(ReasoningOptions, StrictRequestModel):
 
 
 class VolumeLaunchGenerationInputV1(ReasoningOptions, StrictRequestModel):
-    """随 basis 回传、用于确认时重算指纹的启动包输入。"""
+    "Đầu vào gói khởi động gửi lại cùng basis, dùng để tính lại vân tay khi xác nhận."
 
     novel_id: ObjectIdString
     volume_id: ObjectIdString
@@ -406,7 +406,7 @@ class VolumeLaunchGenerationInputV1(ReasoningOptions, StrictRequestModel):
 
 
 class VolumeLaunchPackageV1(StrictRequestModel):
-    """模型可输出且用户可编辑的单卷启动包。"""
+    "Gói khởi động một quyển do mô hình xuất ra và người dùng có thể chỉnh sửa."
 
     title: str = Field(min_length=1, max_length=120)
     subtitle: str = Field(max_length=120)
@@ -434,13 +434,13 @@ class VolumeLaunchPackageV1(StrictRequestModel):
 
 
 class VolumeLaunchPackageResultV1(StrictRequestModel):
-    """Provider 必须完整返回的启动包根对象。"""
+    "Đối tượng gốc của gói khởi động mà Provider phải trả về đầy đủ."
 
     launch_package: VolumeLaunchPackageV1
 
 
 class VolumeLaunchBasisV1(CandidateBasisV1):
-    """包含目标卷和原始生成输入的启动包依据。"""
+    "Căn cứ gói khởi động bao gồm tập đích và phần nhập sinh gốc."
 
     generation_input: VolumeLaunchGenerationInputV1
 
@@ -485,7 +485,7 @@ class VolumeLaunchBasisV1(CandidateBasisV1):
 
 
 class VolumeLaunchImpactV1(StrictResponseModel):
-    """启动包对目标卷下游和相邻卷边界的影响。"""
+    "Tác động của gói khởi động đối với hạ lưu của quyển đích và ranh giới các quyển kề bên."
 
     target_volume_id: ObjectIdString
     previous_volume_id: ObjectIdString | None
@@ -496,7 +496,7 @@ class VolumeLaunchImpactV1(StrictResponseModel):
 
 
 class VolumeLaunchPreviewV1(StrictResponseModel):
-    """普通预览与 SSE done.result 共用的启动包候选信封。"""
+    "Bao ứng viên gói khởi động, dùng chung cho bản xem trước thường và done.result của SSE."
 
     workflow: Literal["plan_volume_launch_by_ai"]
     step: Literal["create_volume_launch_package"]
@@ -508,7 +508,7 @@ class VolumeLaunchPreviewV1(StrictResponseModel):
 
 
 class VolumeLaunchConfirmV1(StrictRequestModel):
-    """通过既有 Volume PUT 路径提交的启动包确认内容。"""
+    "Nội dung xác nhận gói khởi động được gửi qua đường dẫn PUT Volume hiện có."
 
     expected_version: int = Field(ge=1)
     title: str = Field(min_length=1, max_length=120)

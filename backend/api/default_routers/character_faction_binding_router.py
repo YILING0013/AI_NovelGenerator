@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/character-faction-bindings", tags=["character-fa
 
 
 class CharacterFactionBindingCreateRequestV1(BaseModel):
-    """全书级角色—势力初始绑定创建请求。"""
+    "Yêu cầu tạo liên kết ban đầu nhân vật—thế lực cấp toàn sách."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -58,7 +58,7 @@ class CharacterFactionBindingCreateRequestV1(BaseModel):
 
 
 class CharacterFactionBindingUpdateRequestV1(BaseModel):
-    """角色—势力绑定内容更新请求。"""
+    "Yêu cầu cập nhật nội dung liên kết nhân vật—thế lực."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -112,7 +112,7 @@ class CharacterFactionBindingUpdateRequestV1(BaseModel):
 
 
 class CharacterFactionBindingActiveRequestV1(BaseModel):
-    """显式变更绑定用户启停意图的请求。"""
+    "Yêu cầu thay đổi tường minh ý định bật/tắt liên kết của người dùng."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -121,7 +121,7 @@ class CharacterFactionBindingActiveRequestV1(BaseModel):
 
 
 class CharacterFactionBindingVersionRequestV1(BaseModel):
-    """仅携带绑定乐观锁版本的生命周期请求。"""
+    "Yêu cầu vòng đời chỉ mang phiên bản khóa lạc quan đã ràng buộc."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -134,7 +134,7 @@ BindingIdPath = Annotated[str, Path(pattern=r"^cfb_[0-9]{6,}$")]
 
 
 class CharacterFactionBindingPrimaryRequestV1(BaseModel):
-    """把既有绑定切换为主归属的严格请求。"""
+    "Yêu cầu nghiêm ngặt chuyển liên kết hiện có sang thuộc chính."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -168,7 +168,7 @@ class CharacterFactionBindingPrimaryRequestV1(BaseModel):
 
 
 class CharacterFactionBindingResponseV1(BaseModel):
-    """全书级角色—势力绑定公开响应。"""
+    "Phản hồi công khai liên kết nhân vật—thế lực cấp toàn sách."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -227,7 +227,7 @@ class CharacterFactionBindingResponseV1(BaseModel):
 
 
 class CharacterFactionBindingPrimaryResponseV1(BaseModel):
-    """主归属切换的公开结果。"""
+    "Kết quả công khai của việc chuyển thuộc chính."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -236,7 +236,7 @@ class CharacterFactionBindingPrimaryResponseV1(BaseModel):
 
 
 class CharacterFactionBindingHardDeleteResponseV1(BaseModel):
-    """绑定硬删除公开结果。"""
+    "Kết quả công khai xoá cứng liên kết."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -283,7 +283,7 @@ def _translate_domain_error(exc: Exception) -> HTTPException:
         )
     if isinstance(exc, DuplicateKeyError):
         message = str(exc)
-        code = "VERSION_CONFLICT" if "版本冲突" in message else "BINDING_CONFLICT"
+        code = "VERSION_CONFLICT" if ("版本冲突" in message or "xung đột phiên bản" in message) else "BINDING_CONFLICT"
         return HTTPException(status_code=409, detail={"code": code, "message": message})
     if isinstance(exc, InvalidIdError):
         return HTTPException(

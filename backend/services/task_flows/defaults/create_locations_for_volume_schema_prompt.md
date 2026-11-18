@@ -1,1 +1,1 @@
-请严格按目标 JSON Schema 输出地点候选，不要输出解释或 Markdown。允许引用输入白名单中的 parent_location_id、rule_* 和 fac_*；禁止生成新的正式 location_id、ObjectId、order_index、version、status、审计字段或额外字段。
+Hãy tuân thủ nghiêm ngặt JSON Schema đích để xuất các ứng viên địa điểm, không xuất giải thích hay Markdown. Được phép tham chiếu parent_location_id, rule_* và fac_* nằm trong danh sách trắng của đầu vào; cấm sinh location_id chính thức mới, ObjectId, order_index, version, status, các trường kiểm toán hay trường thừa.

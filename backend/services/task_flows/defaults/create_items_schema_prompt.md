@@ -1,1 +1,1 @@
-请严格按目标 JSON Schema 输出物品候选，不要输出解释、Markdown、正式物品 ID 或额外字段。
+Hãy xuất các vật phẩm ứng viên theo đúng JSON Schema đích, không xuất lời giải thích, Markdown, ID vật phẩm chính thức hay trường bổ sung.

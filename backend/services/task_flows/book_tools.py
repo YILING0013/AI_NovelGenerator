@@ -32,11 +32,11 @@ from .agent_contract import AgentModel, BookReadV1, EntityKind, PreparedTargetV1
 
 
 class EmptyToolArgs(AgentModel):
-    """不接受模型更改小说或操作位置。"""
+    "Không chấp nhận mô hình thay đổi tiểu thuyết hoặc vị trí thao tác."
 
 
 class ParentFieldArgs(AgentModel):
-    """补读一个真实祖先的允许原文字段。"""
+    "Đọc bổ sung các trường văn bản gốc được phép của một tổ tiên thực."
 
     resource_type: Literal["novel", "volume", "arc", "scene"]
     id: ObjectIdString
@@ -44,14 +44,14 @@ class ParentFieldArgs(AgentModel):
 
 
 class ScopeArgs(AgentModel):
-    """旧调用仍为空参数；本章模式及补读字段进入实际读取记录。"""
+    "Lời gọi cũ vẫn để tham số rỗng; chế độ chương này và các trường đọc bổ sung đi vào bản ghi đọc thực tế."
 
     view: Literal["chapter_local_v1"] | None = Field(default=None, exclude_if=lambda value: value is None)
     parent_field: ParentFieldArgs | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 class DirectoryArgs(AgentModel):
-    """目录固定在当前小说内，只能指定层级和页码。"""
+    "Danh mục bị giới hạn trong tiểu thuyết hiện tại, chỉ được chỉ định cấp bậc và số trang."
 
     resource_type: Literal["volume", "arc", "scene", "chapter"]
     ids: list[ObjectIdString] | None = Field(default=None, min_length=1, max_length=20, description="Tùy chọn: đọc kế hoạch chi tiết và cốt truyện theo tối đa 20 ID phân cấp của sách này; để trống thì duyệt mục lục theo trang.")
@@ -60,7 +60,7 @@ class DirectoryArgs(AgentModel):
 
 
 class SearchEntityArgs(AgentModel):
-    """仅按普通文字检索可用实体，数据库条件不对模型开放。"""
+    "Chỉ truy tìm thực thể khả dụng bằng văn bản thuần; điều kiện cơ sở dữ liệu không mở cho mô hình."
 
     resource_type: EntityKind
     query: str = Field(default="", max_length=100)
@@ -69,7 +69,7 @@ class SearchEntityArgs(AgentModel):
 
 
 class SearchBookArgs(AgentModel):
-    """检索规划与允许阅读的前文，不接受原始查询条件。"""
+    "Kế hoạch truy xuất và phần văn trước được phép đọc, không nhận điều kiện truy vấn gốc."
 
     resource_type: Literal["volume", "arc", "scene", "chapter", "foreshadowing"]
     query: str = Field(min_length=1, max_length=100)
@@ -79,14 +79,14 @@ class SearchBookArgs(AgentModel):
 
 
 class ReadEntityArgs(AgentModel):
-    """按业务 ID 读取当前小说可用实体。"""
+    "Đọc thực thể khả dụng của tiểu thuyết hiện tại theo ID nghiệp vụ."
 
     resource_type: EntityKind
     ids: list[str] = Field(min_length=1, max_length=20)
 
 
 class ReadVolumeStateArgs(AgentModel):
-    """查询已读人物或势力在当前卷的状态和关系。"""
+    "Truy vấn trạng thái và quan hệ trong quyển hiện tại của các nhân vật hoặc thế lực đã đọc."
 
     resource_type: Literal["character", "faction"]
     ids: list[str] = Field(min_length=1, max_length=20)
@@ -95,7 +95,7 @@ class ReadVolumeStateArgs(AgentModel):
 
 
 class ReadPreviousArgs(AgentModel):
-    """从当前位置往前分页阅读，不能越过当前写作边界。"""
+    "Đọc phân trang lùi từ vị trí hiện tại, không được vượt quá ranh giới đang viết."
 
     offset: int = Field(default=0, ge=0, le=10000)
     limit: int = Field(default=1, ge=1, le=5)

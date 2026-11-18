@@ -53,7 +53,7 @@ _EXPECTED_FACTION_ERRORS = (
 
 
 class FactionUpdateRequestV1(BaseModel):
-    """阶段 1 核心势力内容更新请求。"""
+    "Yêu cầu cập nhật nội dung thế lực cốt lõi giai đoạn 1."
 
     model_config = ConfigDict(
         extra="forbid",
@@ -131,7 +131,7 @@ class FactionUpdateRequestV1(BaseModel):
 
 
 class RestoreFactionRequest(BaseModel):
-    """使用乐观锁恢复回收站势力的请求。"""
+    "Yêu cầu khôi phục thế lực trong thùng rác bằng khoá lạc quan."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -139,7 +139,7 @@ class RestoreFactionRequest(BaseModel):
 
 
 class FactionSortItemV1(BaseModel):
-    """单个核心势力排序 CAS 条目。"""
+    "Một mục CAS sắp xếp cho một thế lực cốt lõi."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -149,7 +149,7 @@ class FactionSortItemV1(BaseModel):
 
 
 class BatchUpdateSortOrderRequest(BaseModel):
-    """完整活动核心势力排序请求。"""
+    "Yêu cầu sắp xếp đầy đủ các thế lực cốt lõi đang hoạt động."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -157,7 +157,7 @@ class BatchUpdateSortOrderRequest(BaseModel):
 
 
 class FactionResponseV1(BaseModel):
-    """势力主档严格公开响应。"""
+    "Phản hồi công khai nghiêm ngặt của hồ sơ chính thế lực."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -254,7 +254,7 @@ class FactionResponseV1(BaseModel):
 
 
 class FactionHardDeleteStatsV1(BaseModel):
-    """势力硬删除的明确消费者统计。"""
+    "Số liệu bên sử dụng được nêu rõ khi xoá cứng thế lực."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -265,7 +265,7 @@ class FactionHardDeleteStatsV1(BaseModel):
 
 
 class FactionHardDeleteResponseV1(BaseModel):
-    """势力硬删除公开响应。"""
+    "Phản hồi công khai xoá cứng thế lực."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -274,7 +274,7 @@ class FactionHardDeleteResponseV1(BaseModel):
 
 
 class FactionBulkCoreResponseV1(BaseModel):
-    """核心势力与关系正式写入的严格公开响应。"""
+    "Phản hồi công khai nghiêm ngặt khi ghi chính thức thế lực cốt lõi và quan hệ."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -423,7 +423,7 @@ def _translate_domain_error(exc: Exception) -> HTTPException:
         )
     if isinstance(exc, DuplicateKeyError):
         message = str(exc)
-        code = "VERSION_CONFLICT" if "版本冲突" in message else "FACTION_CONFLICT"
+        code = "VERSION_CONFLICT" if ("版本冲突" in message or "xung đột phiên bản" in message) else "FACTION_CONFLICT"
         return HTTPException(status_code=409, detail={"code": code, "message": message})
     return HTTPException(
         status_code=422,

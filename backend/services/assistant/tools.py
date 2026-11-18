@@ -23,16 +23,16 @@ from .resources import describe_resource, field_value, get_resource, public_cont
 
 
 class EmptyArgs(AssistantModel):
-    """无参数工具。"""
+    "Công cụ không tham số."
 
 
 class KindArgs(AssistantModel):
-    """查看某类资料定义。"""
+    "Xem định nghĩa của một loại tài liệu."
     kind: ResourceKind
 
 
 class CatalogueArgs(AssistantModel):
-    """有界目录筛选；文字按字面匹配。"""
+    "Lọc thư mục có giới hạn; văn bản khớp nguyên văn."
     kind: ResourceKind | None = None
     query: str = Field(default="", max_length=200)
     offset: int = Field(default=0, ge=0)
@@ -43,7 +43,7 @@ class CatalogueArgs(AssistantModel):
 
 
 class SearchArgs(AssistantModel):
-    """搜索真实业务内容，保留命中位置。"""
+    "Tìm kiếm nội dung nghiệp vụ thực, giữ lại vị trí khớp."
     query: str = Field(min_length=1, max_length=200)
     kind: ResourceKind | None = None
     offset: int = Field(default=0, ge=0)
@@ -51,7 +51,7 @@ class SearchArgs(AssistantModel):
 
 
 class ReadArgs(ResourceRef):
-    """只读指定字段；长文按范围继续。"""
+    "Chỉ đọc các trường được chỉ định; văn bản dài đọc tiếp theo phạm vi."
     fields: list[str] = Field(default_factory=list, max_length=20)
     start: int = Field(default=0, ge=0)
     length: int = Field(default=6000, ge=1, le=12000)
@@ -59,13 +59,13 @@ class ReadArgs(ResourceRef):
 
 
 class ReferenceArgs(ResourceRef):
-    """从一个实际位置查引用。"""
+    "Tra cứu tham chiếu từ một vị trí thực tế."
     offset: int = Field(default=0, ge=0)
     limit: int = Field(default=20, ge=1, le=50)
 
 
 class RelationsArgs(AssistantModel):
-    """关系或绑定的有界查询。"""
+    "Truy vấn có giới hạn cho quan hệ hoặc liên kết."
     kind: Literal["character_relation", "faction_relation", "character_faction_binding"]
     entity_id: str | None = None
     offset: int = Field(default=0, ge=0)
@@ -73,7 +73,7 @@ class RelationsArgs(AssistantModel):
 
 
 class StatesArgs(AssistantModel):
-    """指定卷内的角色或势力状态。"""
+    "Trạng thái nhân vật hoặc thế lực trong quyển được chỉ định."
     kind: Literal["character_volume_state", "faction_volume_state"]
     volume_id: str
     entity_id: str | None = None
@@ -82,12 +82,12 @@ class StatesArgs(AssistantModel):
 
 
 class StageArgs(AssistantModel):
-    """同组按依赖顺序提交，新增引用使用前面对象的临时 ID。"""
+    "Cùng nhóm gửi theo thứ tự phụ thuộc; tham chiếu mới dùng ID tạm của đối tượng phía trước."
     operations: list[ChangeOperation] = Field(min_length=1, max_length=50)
 
 
 class TextEditArgs(ResourceRef):
-    """精确字符范围编辑；旧文字必须与已读原文相同。"""
+    "Chỉnh sửa theo khoảng ký tự chính xác; văn bản cũ phải trùng với nguyên văn đã đọc."
     field: str = Field(min_length=1, max_length=100)
     start: int = Field(ge=0)
     end: int = Field(ge=0)
@@ -97,23 +97,23 @@ class TextEditArgs(ResourceRef):
 
 
 class ChangeArgs(AssistantModel):
-    """按服务端 ID 读取当前修改组。"""
+    "Đọc nhóm chỉnh sửa hiện tại theo ID máy chủ."
     change_id: str
 
 
 class ReviewArgs(ChangeArgs):
-    """审核或自动保存精确修订。"""
+    "Xét duyệt hoặc tự động lưu bản chỉnh sửa chính xác."
     revision: int = Field(ge=1)
 
 
 class TaskArgs(AssistantModel):
-    """检查原 AI 任务的开始表单。"""
+    "Kiểm tra biểu mẫu bắt đầu của nhiệm vụ AI gốc."
     task: str
     flow_ref: FlowRef | None = None
 
 
 class RunTaskArgs(TaskArgs):
-    """只提供开始表单与原按钮位置，不接受客户端伪造候选依据。"""
+    "Chỉ cung cấp biểu mẫu bắt đầu và vị trí nút gốc; không nhận căn cứ ứng viên do client giả mạo."
     inputs: dict[str, Any] = Field(default_factory=dict)
     target: ResourceRef | None = None
     target_field: str | None = None
@@ -121,12 +121,12 @@ class RunTaskArgs(TaskArgs):
 
 
 class PositionChoice(AssistantModel):
-    """问题中的真实位置选项；显示名称由服务端读取。"""
+    "Các lựa chọn vị trí thực tế trong câu hỏi; tên hiển thị do server đọc ra."
     position: dict[str, Any]
 
 
 class ChapterRevisionArgs(AssistantModel):
-    """先列历史，再按固定版本读取原文；不接受摘要或模型引文。"""
+    "Liệt kê lịch sử trước, rồi đọc nguyên văn theo phiên bản cố định; không nhận tóm tắt hay trích dẫn của mô hình."
     chapter_id: str | None = None
     chapter_number: int | None = Field(default=None, ge=1)
     version: int | None = Field(default=None, ge=1)
@@ -136,7 +136,7 @@ class ChapterRevisionArgs(AssistantModel):
 
 
 class AskArgs(AssistantModel):
-    """暂停并保留一个作者需要回答的问题。"""
+    "Tạm dừng và giữ lại một câu hỏi mà tác giả cần trả lời."
     question: str = Field(min_length=1, max_length=4000)
     choices: list[str] = Field(default_factory=list, max_length=6)
     position_choices: list[PositionChoice] = Field(default_factory=list, max_length=6)
@@ -144,13 +144,13 @@ class AskArgs(AssistantModel):
 
 
 class FinishArgs(AssistantModel):
-    """只总结实际读取和保存结果，不输出私有思考。"""
+    "Chỉ tóm tắt kết quả đọc và lưu thực tế, không xuất phần suy nghĩ riêng tư."
     message: str = Field(min_length=1, max_length=16000)
     unchecked: list[str] = Field(default_factory=list, max_length=30)
 
 
 class FactReadArgs(AssistantModel):
-    """查询真实位置的三类事实，不使用主档镜像推断剧情状态。"""
+    "Ba loại sự kiện truy vấn theo vị trí thực tế, không dùng bản sao hồ sơ chính để suy trạng thái cốt truyện."
     resource_type: Literal["character", "character_relation", "item", "faction"]
     ids: list[str] = Field(min_length=1, max_length=20)
     position: dict[str, Any] | None = None

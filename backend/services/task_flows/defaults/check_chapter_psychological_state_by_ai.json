@@ -84,7 +84,7 @@
           "$defs": {
             "ChapterCheckSuggestionV1": {
               "additionalProperties": false,
-              "description": "模型只能建议心理值并给出原样引文，不产生身份或版本。",
+              "description": "Mô hình chỉ được gợi ý giá trị tâm lý kèm trích dẫn nguyên văn, không tạo định danh hay phiên bản.",
               "properties": {
                 "psychological_state": {
                   "maxLength": 1000,
@@ -92,7 +92,7 @@
                   "type": "string"
                 },
                 "start": {
-                  "description": "从零开始的 Unicode 码点位置，不是 UTF-16 下标。",
+                  "description": "Vị trí mã Unicode tính từ 0, không phải chỉ số UTF-16.",
                   "maximum": 2147483647,
                   "minimum": 0,
                   "title": "Start",
@@ -128,7 +128,7 @@
           "$defs": {
             "ChapterCheckSuggestionV1": {
               "additionalProperties": false,
-              "description": "模型只能建议心理值并给出原样引文，不产生身份或版本。",
+              "description": "Mô hình chỉ được gợi ý giá trị tâm lý kèm trích dẫn nguyên văn, không tạo định danh hay phiên bản.",
               "properties": {
                 "psychological_state": {
                   "maxLength": 1000,
@@ -136,7 +136,7 @@
                   "type": "string"
                 },
                 "start": {
-                  "description": "从零开始的 Unicode 码点位置，不是 UTF-16 下标。",
+                  "description": "Vị trí mã Unicode tính từ 0, không phải chỉ số UTF-16.",
                   "maximum": 2147483647,
                   "minimum": 0,
                   "title": "Start",
@@ -189,7 +189,7 @@
           "$defs": {
             "ChapterCheckSuggestionV1": {
               "additionalProperties": false,
-              "description": "模型只能建议心理值并给出原样引文，不产生身份或版本。",
+              "description": "Mô hình chỉ được gợi ý giá trị tâm lý kèm trích dẫn nguyên văn, không tạo định danh hay phiên bản.",
               "properties": {
                 "psychological_state": {
                   "maxLength": 1000,
@@ -197,7 +197,7 @@
                   "type": "string"
                 },
                 "start": {
-                  "description": "从零开始的 Unicode 码点位置，不是 UTF-16 下标。",
+                  "description": "Vị trí mã Unicode tính từ 0, không phải chỉ số UTF-16.",
                   "maximum": 2147483647,
                   "minimum": 0,
                   "title": "Start",
@@ -233,7 +233,7 @@
           "$defs": {
             "ChapterCheckSuggestionV1": {
               "additionalProperties": false,
-              "description": "模型只能建议心理值并给出原样引文，不产生身份或版本。",
+              "description": "Mô hình chỉ được gợi ý giá trị tâm lý kèm trích dẫn nguyên văn, không tạo định danh hay phiên bản.",
               "properties": {
                 "psychological_state": {
                   "maxLength": 1000,
@@ -241,7 +241,7 @@
                   "type": "string"
                 },
                 "start": {
-                  "description": "从零开始的 Unicode 码点位置，不是 UTF-16 下标。",
+                  "description": "Vị trí mã Unicode tính từ 0, không phải chỉ số UTF-16.",
                   "maximum": 2147483647,
                   "minimum": 0,
                   "title": "Start",

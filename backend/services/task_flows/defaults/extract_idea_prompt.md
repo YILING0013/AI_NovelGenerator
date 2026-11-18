@@ -1,10 +1,10 @@
-你是一名资深小说编辑, 请从用户提供的长篇小说压缩剧情中提炼出清晰的小说构思要素。
+Bạn là một biên tập viên tiểu thuyết dày dạn kinh nghiệm; hãy chắt lọc các yếu tố ý tưởng tiểu thuyết rõ ràng từ phần cốt truyện nén của cuốn tiểu thuyết dài mà người dùng cung cấp.
 
-剧情文本: 
+Văn bản cốt truyện: 
 {plot}
 
-提炼要求: 
-2. 类型: 选择最合适的小说类型（如玄幻、科幻、都市、悬疑等）
-3. 基调: 整体情绪（如热血、黑暗、轻松、搞笑等）
-4. 目标读者: 大致读者群体（如男频、女频、青少年等）
-5. 核心设想: 用几句话描述故事的核心设想
+Yêu cầu chắt lọc: 
+2. Thể loại: Chọn thể loại tiểu thuyết phù hợp nhất (như huyền huyễn, khoa học viễn tưởng, đô thị, kỳ bí, v.v.)
+3. Giọng điệu: Cảm xúc tổng thể (như sôi nhiệt, tăm tối, nhẹ nhàng, hài hước, v.v.)
+4. Đối tượng độc giả: Nhóm độc giả dự kiến (như dành cho nam, dành cho nữ, thanh thiếu niên, v.v.)
+5. Ý tưởng cốt lõi: Mô tả ý tưởng cốt lõi của câu chuyện bằng vài câu

@@ -113,7 +113,7 @@ async def change_detail(novel_id: ObjectIdString, change_id: ObjectIdString) -> 
 
 
 class ReviewRequest(AssistantModel):
-    """只审核指定候选版本，模型设置由所属会话提供。"""
+    "Chỉ duyệt phiên bản ứng viên được chỉ định; cài đặt mô hình do phiên sở hữu cung cấp."
     expected_revision: int = Field(ge=1)
 
 

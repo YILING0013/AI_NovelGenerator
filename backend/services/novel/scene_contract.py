@@ -16,7 +16,7 @@ class ScenePlanningV1(ArcPlanningV1):
 
 
 class SceneCreateV1(StrictRequestModel):
-    """在当前篇章下创建一个场景。"""
+    "Tạo một cảnh trong vòng truyện hiện tại."
 
     title: str = Field(min_length=1, max_length=120)
     summary: str = Field(default="", max_length=2000)
@@ -24,7 +24,7 @@ class SceneCreateV1(StrictRequestModel):
 
 
 class SceneUpdateV1(StrictRequestModel):
-    """只修改明确提交的字段，planning 提供时完整替换。"""
+    "Chỉ sửa các trường được minh thị gửi; khi có planning thì thay thế toàn bộ kế hoạch."
 
     expected_version: int = Field(ge=1)
     title: str | None = Field(default=None, min_length=1, max_length=120)
@@ -50,13 +50,13 @@ class SceneUpdateV1(StrictRequestModel):
 
 
 class SceneVersionV1(StrictRequestModel):
-    """回收站操作使用的已读版本。"""
+    "Phiên bản đã đọc dùng cho thao tác thùng rác."
 
     expected_version: int = Field(ge=1)
 
 
 class SceneReadV1(StrictResponseModel):
-    """场景规划、完整父链、当前统计与版本。"""
+    "Kế hoạch cảnh, chuỗi cha đầy đủ, thống kê và phiên bản hiện tại."
 
     scene_id: ObjectIdString
     novel_id: ObjectIdString
@@ -76,20 +76,20 @@ class SceneReadV1(StrictResponseModel):
 
 
 class SceneListV1(StrictResponseModel):
-    """当前篇章下的场景列表。"""
+    "Danh sách cảnh thuộc vòng truyện hiện tại."
 
     data: list[SceneReadV1]
 
 
 class SceneHardDeleteV1(StrictResponseModel):
-    """永久删除成功的场景标识。"""
+    "Định danh cảnh khi xoá vĩnh viễn thành công."
 
     scene_id: ObjectIdString
     deleted: bool
 
 
 class SceneReorderItemV1(StrictRequestModel):
-    """一个活动场景的新顺序和原版本。"""
+    "Thứ tự mới và phiên bản gốc của một cảnh đang hoạt động."
 
     scene_id: ObjectIdString
     expected_version: int = Field(ge=1)
@@ -97,13 +97,13 @@ class SceneReorderItemV1(StrictRequestModel):
 
 
 class SceneReorderV1(StrictRequestModel):
-    """当前篇章的完整活动场景排序。"""
+    "Toàn bộ thứ tự cảnh đang hoạt động của vòng truyện hiện tại."
 
     items: list[SceneReorderItemV1] = Field(min_length=1, max_length=10000)
 
 
 class SceneDeleteImpactV1(StrictResponseModel):
-    """场景删除前实际存在的章节数量。"""
+    "Số chương thực tế tồn tại trước khi xoá cảnh."
 
     scene_id: ObjectIdString
     foreshadowings: int = Field(default=0, ge=0)

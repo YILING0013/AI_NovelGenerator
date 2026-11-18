@@ -13,14 +13,14 @@ FORESHADOWING_ID_PATTERN = r"^fo_[0-9]{6,}$"
 
 
 class ForeshadowingPositionV1(StrictRequestModel):
-    """计划只指向稳定位置；未细化的卷也可以使用。"""
+    "Kế hoạch chỉ trỏ tới vị trí ổn định; quyển chưa chi tiết hóa vẫn có thể dùng."
 
     kind: Literal["volume", "arc", "scene"]
     id: ObjectIdString
 
 
 class ForeshadowingEvidenceInputV1(StrictRequestModel):
-    """引用已保存修订中的原文，start 从零按 Unicode 码点计算。"""
+    "Tham chiếu nguyên văn trong một bản chỉnh sửa đã lưu, start tính từ 0 theo mã Unicode code point."
 
     # 原文空白也是证据，不能沿用普通表单的首尾清理。
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=False)
@@ -31,14 +31,14 @@ class ForeshadowingEvidenceInputV1(StrictRequestModel):
 
 
 class ForeshadowingEvidenceV1(ForeshadowingEvidenceInputV1):
-    """服务端绑定修订和正文摘要，不随当前正文变化。"""
+    "Server ràng buộc bản chỉnh sửa cùng bản tóm tắt văn bản, không thay đổi theo văn bản hiện tại."
 
     revision_id: ObjectIdString
     content_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
 class ForeshadowingCreateV1(StrictRequestModel):
-    """人工创建计划，状态固定为尚未埋设。"""
+    "Kế hoạch tạo thủ công, trạng thái cố định là chưa được gài."
 
     title: str = Field(min_length=1, max_length=120)
     content: str = Field(min_length=1, max_length=12000)
@@ -48,7 +48,7 @@ class ForeshadowingCreateV1(StrictRequestModel):
 
 
 class ForeshadowingUpdateV1(StrictRequestModel):
-    """局部改计划；状态和实际证据只走作者确认接口。"""
+    "Sửa kế hoạch cục bộ; trạng thái và bằng chứng thực tế chỉ đi qua API xác nhận của tác giả."
 
     expected_version: int = Field(ge=1)
     title: str | None = Field(default=None, min_length=1, max_length=120)
@@ -73,7 +73,7 @@ class ForeshadowingUpdateV1(StrictRequestModel):
 
 
 class ForeshadowingRecordV1(StrictRequestModel):
-    """作者明确选择状态，可同时替换或清除两份实际证据。"""
+    "Tác giả chọn rõ trạng thái, có thể thay thế hoặc xóa đồng thời hai bằng chứng thực tế."
 
     expected_version: int = Field(ge=1)
     status: ForeshadowingStatus
@@ -82,13 +82,13 @@ class ForeshadowingRecordV1(StrictRequestModel):
 
 
 class ForeshadowingVersionV1(StrictRequestModel):
-    """回收、恢复和永久删除使用作者已读版本。"""
+    "Thu hồi, khôi phục và xóa vĩnh viễn dùng phiên bản mà tác giả đã đọc."
 
     expected_version: int = Field(ge=1)
 
 
 class ForeshadowingReadV1(StrictResponseModel):
-    """伏笔详情及本次只读计算的复核状态。"""
+    "Chi tiết phục bút và trạng thái đối chiếu của phép tính chỉ đọc lần này."
 
     foreshadowing_id: str = Field(pattern=FORESHADOWING_ID_PATTERN)
     novel_id: ObjectIdString

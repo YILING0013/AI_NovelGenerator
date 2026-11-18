@@ -186,7 +186,7 @@
           "$defs": {
             "VolumeLaunchPackageV1": {
               "additionalProperties": false,
-              "description": "模型可输出且用户可编辑的单卷启动包。",
+              "description": "Gói khởi động của một quyển mà mô hình có thể xuất và người dùng có thể chỉnh sửa.",
               "properties": {
                 "title": {
                   "maxLength": 120,
@@ -231,7 +231,7 @@
             },
             "VolumePlanningV1": {
               "additionalProperties": false,
-              "description": "一卷唯一正式规划或启动包字段。",
+              "description": "Trường lập dàn ý chính thức duy nhất của một quyển hoặc gói khởi động.",
               "properties": {
                 "premise": {
                   "maxLength": 1000,
@@ -312,7 +312,7 @@
           "$defs": {
             "VolumeLaunchPackageV1": {
               "additionalProperties": false,
-              "description": "模型可输出且用户可编辑的单卷启动包。",
+              "description": "Gói khởi động của một quyển mà mô hình có thể xuất và người dùng có thể chỉnh sửa.",
               "properties": {
                 "title": {
                   "maxLength": 120,
@@ -357,7 +357,7 @@
             },
             "VolumePlanningV1": {
               "additionalProperties": false,
-              "description": "一卷唯一正式规划或启动包字段。",
+              "description": "Trường lập dàn ý chính thức duy nhất của một quyển hoặc gói khởi động.",
               "properties": {
                 "premise": {
                   "maxLength": 1000,

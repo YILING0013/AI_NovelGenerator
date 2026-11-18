@@ -21,7 +21,7 @@
           "$defs": {
             "NovelRewriteChatMessageV1": {
               "additionalProperties": false,
-              "description": "字段改写的一条浏览器本地对话消息。",
+              "description": "Một tin nhắn hội thoại lưu cục bộ trong trình duyệt phục vụ việc viết lại trường.",
               "properties": {
                 "role": {
                   "enum": [
@@ -56,7 +56,7 @@
           "$defs": {
             "NovelRewriteChatMessageV1": {
               "additionalProperties": false,
-              "description": "字段改写的一条浏览器本地对话消息。",
+              "description": "Một tin nhắn hội thoại lưu cục bộ trong trình duyệt phục vụ việc viết lại trường.",
               "properties": {
                 "role": {
                   "enum": [
@@ -100,7 +100,7 @@
           "$defs": {
             "NovelRewriteChatMessageV1": {
               "additionalProperties": false,
-              "description": "字段改写的一条浏览器本地对话消息。",
+              "description": "Một tin nhắn hội thoại lưu cục bộ trong trình duyệt phục vụ việc viết lại trường.",
               "properties": {
                 "role": {
                   "enum": [
@@ -135,7 +135,7 @@
           "$defs": {
             "NovelRewriteChatMessageV1": {
               "additionalProperties": false,
-              "description": "字段改写的一条浏览器本地对话消息。",
+              "description": "Một tin nhắn hội thoại lưu cục bộ trong trình duyệt phục vụ việc viết lại trường.",
               "properties": {
                 "role": {
                   "enum": [
@@ -217,7 +217,7 @@
           "$defs": {
             "NovelRewriteChatMessageV1": {
               "additionalProperties": false,
-              "description": "字段改写的一条浏览器本地对话消息。",
+              "description": "Một tin nhắn hội thoại lưu cục bộ trong trình duyệt phục vụ việc viết lại trường.",
               "properties": {
                 "role": {
                   "enum": [
@@ -351,7 +351,7 @@
           "$defs": {
             "NovelRewriteChatMessageV1": {
               "additionalProperties": false,
-              "description": "字段改写的一条浏览器本地对话消息。",
+              "description": "Một tin nhắn hội thoại lưu cục bộ trong trình duyệt phục vụ việc viết lại trường.",
               "properties": {
                 "role": {
                   "enum": [
@@ -386,7 +386,7 @@
           "$defs": {
             "NovelRewriteChatMessageV1": {
               "additionalProperties": false,
-              "description": "字段改写的一条浏览器本地对话消息。",
+              "description": "Một tin nhắn hội thoại lưu cục bộ trong trình duyệt phục vụ việc viết lại trường.",
               "properties": {
                 "role": {
                   "enum": [

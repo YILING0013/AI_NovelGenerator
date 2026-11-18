@@ -25,7 +25,7 @@ CHAPTER_WORLD_RULES_CHECK_SCOPE_FIELDS = {"novel_id", "source", "rules"}
 
 
 class ChapterCheckSourceV1(StrictRequestModel):
-    """作者选定的完整不可变章修订；检查前无需先选择引文。"""
+    "Bản chỉnh sửa chương bất biến đầy đủ do tác giả chọn; không cần chọn trích dẫn trước khi kiểm tra."
 
     chapter_id: ObjectIdString
     revision_id: ObjectIdString
@@ -34,7 +34,7 @@ class ChapterCheckSourceV1(StrictRequestModel):
 
 
 class ChapterCheckInputV1(StrictRequestModel):
-    """服务器固定的单章修订和同卷已有状态。"""
+    "Bản chỉnh sửa của một chương do máy chủ cố định cùng trạng thái hiện có trong cùng quyển."
 
     novel_id: ObjectIdString
     source: ChapterCheckSourceV1
@@ -43,7 +43,7 @@ class ChapterCheckInputV1(StrictRequestModel):
 
 
 class ChapterCheckSuggestionV1(StrictResponseModel):
-    """模型只能建议心理值并给出原样引文，不产生身份或版本。"""
+    "Mô hình chỉ được đề xuất giá trị tâm lý kèm trích dẫn nguyên văn, không tạo định danh hay phiên bản."
 
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=False)
     psychological_state: str = Field(max_length=1000)
@@ -52,14 +52,14 @@ class ChapterCheckSuggestionV1(StrictResponseModel):
 
 
 class ChapterCheckResultV1(StrictResponseModel):
-    """问题只供阅读；没有可靠建议时明确返回 null。"""
+    "Câu hỏi chỉ để đọc; không có đề xuất đáng tin thì minh thị trả null."
 
     issues: list[Annotated[str, Field(min_length=1, max_length=2000)]] = Field(max_length=50)
     suggestion: ChapterCheckSuggestionV1 | None
 
 
 class ChapterItemOwnerCheckInputV1(StrictRequestModel):
-    """固定物品及持有人 A→B；模型不能改变目标或方向。"""
+    "Cố định vật phẩm và người giữ A→B; mô hình không thể thay mục tiêu hay chiều chuyển giao."
 
     novel_id: ObjectIdString
     source: ChapterCheckSourceV1
@@ -83,7 +83,7 @@ class ChapterItemOwnerCheckInputV1(StrictRequestModel):
 
 
 class ChapterItemOwnerCheckSuggestionV1(StrictResponseModel):
-    """物品建议只带原文位置，不允许模型指定身份、版本或修改字段。"""
+    "Đề xuất vật phẩm chỉ kèm vị trí nguyên văn; mô hình không được chỉ định định danh, phiên bản hay trường sửa đổi."
 
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=False)
     start: int = Field(ge=0, le=2**31 - 1, description="Vị trí code point Unicode tính từ 0.")
@@ -91,14 +91,14 @@ class ChapterItemOwnerCheckSuggestionV1(StrictResponseModel):
 
 
 class ChapterItemOwnerCheckResultV1(StrictResponseModel):
-    """模型只检查固定转交；没有明确原文时返回 null。"""
+    "Mô hình chỉ kiểm tra lượt chuyển giao đã cố định; trả null khi không có nguyên văn minh thị."
 
     issues: list[Annotated[str, Field(min_length=1, max_length=2000)]] = Field(max_length=50)
     suggestion: ChapterItemOwnerCheckSuggestionV1 | None
 
 
 class ChapterCharacterRelationStateCheckInputV1(StrictRequestModel):
-    """固定一条全书关系和作者原版本，端点由服务器读取。"""
+    "Cố định một quan hệ toàn sách và phiên bản gốc của tác giả; đầu cuối do server đọc."
 
     novel_id: ObjectIdString
     source: ChapterCheckSourceV1
@@ -107,7 +107,7 @@ class ChapterCharacterRelationStateCheckInputV1(StrictRequestModel):
 
 
 class ChapterCharacterRelationStateCheckSuggestionV1(StrictResponseModel):
-    """只建议当前关系状态和原文，不允许模型决定身份或其他字段。"""
+    "Chỉ đề xuất trạng thái quan hệ hiện tại và nguyên văn; mô hình không được quyết định định danh hay các trường khác."
 
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=False)
     current_state: str = Field(min_length=1, max_length=2000)
@@ -128,7 +128,7 @@ class ChapterCharacterRelationStateCheckSuggestionV1(StrictResponseModel):
 
 
 class ChapterCharacterRelationStateCheckResultV1(StrictResponseModel):
-    """问题供作者阅读，没有可靠变化时建议为 null。"""
+    "Câu hỏi dành cho tác giả đọc; không có thay đổi đáng tin thì đề xuất là null."
 
     issues: list[Annotated[str, Field(min_length=1, max_length=2000)]] = Field(max_length=50)
     suggestion: ChapterCharacterRelationStateCheckSuggestionV1 | None
@@ -153,20 +153,20 @@ class ChapterCharacterRelationStateCheckSuggestionV2(ChapterCharacterRelationSta
 
 
 class ChapterCharacterRelationStateCheckResultV2(ChapterCharacterRelationStateCheckResultV1):
-    """新版关系检查沿用问题和引文格式，只改变建议值的空白处理。"""
+    "Kiểm tra quan hệ bản mới giữ nguyên định dạng câu hỏi và trích dẫn, chỉ thay đổi cách xử lý khoảng trắng của giá trị đề xuất."
 
     suggestion: ChapterCharacterRelationStateCheckSuggestionV2 | None
 
 
 class ChapterWorldRuleSelectionV1(StrictRequestModel):
-    """作者明确选定的一条世界规则及其原版本。"""
+    "Một quy tắc thế giới do tác giả chọn rõ cùng phiên bản gốc của nó."
 
     rule_id: str = Field(pattern=r"^rule_[0-9]{6,}$")
     expected_version: int = Field(ge=1, le=2**63 - 2)
 
 
 class ChapterWorldRulesCheckInputV1(StrictRequestModel):
-    """固定一个章修订和一至五条规则，不接受规则正文或实体修改。"""
+    "Cố định một bản chỉnh sửa chương cùng một đến năm quy tắc; không nhận nội dung quy tắc hay sửa đổi thực thể."
 
     novel_id: ObjectIdString
     source: ChapterCheckSourceV1
@@ -187,7 +187,7 @@ class ChapterWorldRulesCheckInputV1(StrictRequestModel):
 
 
 class ChapterWorldRulesCheckIssueV1(StrictResponseModel):
-    """模型只提供疑点、所选规则编号和原章引文。"""
+    "Mô hình chỉ cung cấp các điểm nghi vấn, số quy tắc đã chọn và trích dẫn chương gốc."
 
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=False)
     text: str = Field(min_length=1, max_length=2000)
@@ -223,6 +223,6 @@ class ChapterWorldRulesCheckIssueV1(StrictResponseModel):
 
 
 class ChapterWorldRulesCheckResultV1(StrictResponseModel):
-    """空数组仅表示所选规则范围内没有报告疑点。"""
+    "Mảng rỗng chỉ có nghĩa trong phạm vi các quy tắc đã chọn không có điểm nghi vấn nào được báo cáo."
 
     issues: list[ChapterWorldRulesCheckIssueV1] = Field(max_length=10)

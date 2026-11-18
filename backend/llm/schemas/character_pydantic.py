@@ -57,7 +57,7 @@ CharacterFactionMembershipType: TypeAlias = Literal["primary", "secondary", "cov
 
 
 class StrictSchemaModel(BaseModel):
-    """禁止额外字段并统一清理字符串首尾空白的角色契约基础模型。"""
+    "Model nền của hợp đồng nhân vật: cấm trường thừa và cắt khoảng trắng hai đầu chuỗi một cách thống nhất."
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -139,7 +139,7 @@ def _validate_bson_safe_extra(value: dict[str, JsonValue]) -> dict[str, JsonValu
 
 
 class CharacterCreateRequestV1(StrictSchemaModel):
-    """人工创建全书级角色时允许写入的业务字段。"""
+    "Các trường nghiệp vụ được phép ghi khi tạo thủ công nhân vật cấp toàn sách."
 
     name: str = Field(min_length=1, max_length=80)
     aliases: list[str] = Field(default_factory=list, max_length=10)
@@ -220,7 +220,7 @@ class CharacterCreateRequestV1(StrictSchemaModel):
 
 
 class CharacterUpdateRequestV1(StrictSchemaModel):
-    """使用乐观锁更新角色档案的可编辑业务字段。"""
+    "Cập nhật các trường nghiệp vụ có thể sửa của hồ sơ nhân vật bằng khóa lạc quan."
 
     expected_version: int = Field(ge=1, strict=True)
     name: str | None = Field(default=None, min_length=1, max_length=80)
@@ -327,20 +327,20 @@ class CharacterUpdateRequestV1(StrictSchemaModel):
 
 
 class CharacterStatusUpdateRequestV1(StrictSchemaModel):
-    """使用乐观锁切换角色可用状态。"""
+    "Chuyển trạng thái khả dụng của nhân vật bằng khoá lạc quan."
 
     expected_version: int = Field(ge=1, strict=True)
     status: CharacterStatus
 
 
 class CharacterRestoreRequestV1(StrictSchemaModel):
-    """使用乐观锁恢复回收站角色。"""
+    "Khôi phục nhân vật trong thùng rác bằng khoá lạc quan."
 
     expected_version: int = Field(ge=1, strict=True)
 
 
 class CharacterResponseV1(StrictSchemaModel):
-    """角色主档的完整公开响应，不暴露 Mongo ``_id``。"""
+    "Phản hồi công khai đầy đủ của hồ sơ chính nhân vật, không để lộ Mongo ``_id``."
 
     novel_id: str = Field(pattern=_OBJECT_ID_PATTERN)
     character_id: str = Field(pattern=_CHARACTER_ID_PATTERN)
@@ -427,7 +427,7 @@ class CharacterResponseV1(StrictSchemaModel):
 
 
 class CoreCharactersGenerationInputV1(ReasoningOptions, StrictSchemaModel):
-    """核心角色候选确认可重算的严格业务输入。"""
+    "Đầu vào nghiệp vụ nghiêm ngặt, có thể tính lại khi xác nhận ứng viên nhân vật cốt lõi."
 
     novel_id: str = Field(pattern=_OBJECT_ID_PATTERN)
     character_count: int | None = Field(ge=1, le=50, strict=True)
@@ -454,13 +454,13 @@ class CoreCharactersGenerationInputV1(ReasoningOptions, StrictSchemaModel):
 
 
 class CoreCharactersGenerateRequestV1(CoreCharactersGenerationInputV1):
-    """直接生成全书核心角色预览的请求。"""
+    "Request sinh trực tiếp bản xem trước nhân vật lõi cấp toàn sách."
 
     use_stream: bool = True
 
 
 class CoreCharacterCandidateV1(StrictSchemaModel):
-    """模型输出的单个全书核心角色候选。"""
+    "Ứng viên nhân vật cốt lõi toàn sách duy nhất do mô hình xuất ra."
 
     character_ref: str = Field(
         pattern=_CHARACTER_REF_PATTERN,
@@ -545,7 +545,7 @@ class CoreCharacterCandidateV1(StrictSchemaModel):
 
 
 class CharacterFactionBindingCandidateV1(StrictSchemaModel):
-    """核心角色候选对应的全书级势力绑定候选。"""
+    "Ứng viên ràng buộc thế lực cấp toàn sách tương ứng với ứng viên nhân vật cốt lõi."
 
     character_ref: str = Field(
         pattern=_CHARACTER_REF_PATTERN,
@@ -628,7 +628,7 @@ class CharacterFactionBindingCandidateV1(StrictSchemaModel):
 
 
 class CoreCharactersResultSchemaV1(StrictSchemaModel):
-    """全书核心角色与势力绑定候选的完整模型输出。"""
+    "Đầu ra đầy đủ của mô hình cho các ứng viên ràng buộc nhân vật cốt lõi và thế lực cấp toàn sách."
 
     core_characters: list[CoreCharacterCandidateV1] = Field(
         min_length=1,
@@ -672,7 +672,7 @@ class CoreCharactersResultSchemaV1(StrictSchemaModel):
 
 
 class CoreCharactersAIConfirmationRequestV1(StrictSchemaModel):
-    """核心角色及可选势力绑定候选的严格确认请求。"""
+    "Yêu cầu xác nhận nghiêm ngặt đối với ứng viên ràng buộc nhân vật cốt lõi và thế lực tùy chọn."
 
     request_type: Literal["ai_confirmation"]
     candidate: CoreCharactersResultSchemaV1

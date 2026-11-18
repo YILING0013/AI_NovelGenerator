@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/runtime", tags=["runtime"])
 
 
 class DebugLoggingRequest(BaseModel):
-    """启动器提交的调试日志开关。"""
+    "Công tắc nhật ký gỡ lỗi do trình khởi động gửi."
 
     model_config = ConfigDict(extra="forbid", strict=True)
     debug: bool

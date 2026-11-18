@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 class LoadSkillArgs(AgentModel):
-    """只读取当前节点内嵌的技能 ID。"""
+    "Chỉ đọc ID kỹ năng được nhúng trong nút hiện tại."
 
     skill_id: str = Field(min_length=1, max_length=80)
 

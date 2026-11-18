@@ -11,14 +11,14 @@ from backend.services.novel.item_fact_contract import (
 
 
 class ItemFactQueryV1(StrictRequestModel):
-    """省略位置时由原位置解析器确定最新位置。"""
+    "Khi lược bỏ vị trí, bộ phân giải vị trí gốc sẽ xác định vị trí mới nhất."
 
     item_ids: list[ItemId] = Field(max_length=200)
     position: FactPositionV1 | None = None
 
 
 class ItemFactReadResultV1(StrictResponseModel):
-    """页面与检查共用的整组读取结果。"""
+    "Kết quả đọc toàn nhóm dùng chung cho trang và bước kiểm tra."
 
     novel_id: ObjectIdString
     position: FactReadPositionV1
@@ -28,7 +28,7 @@ class ItemFactReadResultV1(StrictResponseModel):
 
 
 class ItemFactBatchPreviewInputV1(StrictRequestModel):
-    """同一批候选共同采用作者选定的起点，尚不保存。"""
+    "Cùng một loạt ứng viên áp dụng chung điểm khởi đầu do tác giả chọn, chưa được lưu."
 
     generation: ItemBulkGeneratedRequestV1
     position: FactPositionV1
@@ -36,7 +36,7 @@ class ItemFactBatchPreviewInputV1(StrictRequestModel):
 
 
 class ItemFactBatchPreviewEntryV1(StrictResponseModel):
-    """候选身份与完整人工预览保持一一对应。"""
+    "Danh tính ứng viên và bản xem trước thủ công đầy đủ được giữ tương ứng một-một."
 
     candidate_ref: ItemCandidateRef
     preview: ItemFactPreviewV1
@@ -44,21 +44,21 @@ class ItemFactBatchPreviewEntryV1(StrictResponseModel):
 
 
 class ItemFactBatchPreviewV1(StrictResponseModel):
-    """整批可冻结到原草稿表的准备结果。"""
+    "Kết quả chuẩn bị cho phép đóng băng cả lô vào bảng nháp gốc."
 
     generation: ItemBulkGeneratedRequestV1
     entries: list[ItemFactBatchPreviewEntryV1] = Field(min_length=1, max_length=20)
 
 
 class ItemFactBatchConfirmEntryV1(StrictRequestModel):
-    """批次内的一条原创建请求，不单独派发。"""
+    "Một yêu cầu tạo gốc trong lô, không được phân phối riêng lẻ."
 
     candidate_ref: ItemCandidateRef
     command: ItemFactCreateConfirmV1
 
 
 class ItemFactBatchConfirmV1(StrictRequestModel):
-    """一个确认键绑定整批请求，任一条失败则全部回滚。"""
+    "Một khóa xác nhận ràng buộc cả loạt yêu cầu, chỉ cần một mục lỗi là rollback toàn bộ."
 
     generation: ItemBulkGeneratedRequestV1
     entries: list[ItemFactBatchConfirmEntryV1] = Field(min_length=1, max_length=20)

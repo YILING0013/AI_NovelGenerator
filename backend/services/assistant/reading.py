@@ -17,7 +17,7 @@ from .resources import RESOURCES, build_index_record, content_fingerprint, field
 
 
 class ResourceSummary(AssistantModel):
-    """摘要只说明已读取部分，不改写原资料。"""
+    "Bản tóm tắt chỉ mô tả phần đã đọc, không viết lại tài liệu gốc."
 
     summary: str = Field(min_length=1, max_length=3000)
     keywords: list[str] = Field(default_factory=list, max_length=20)

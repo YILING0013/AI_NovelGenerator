@@ -29,7 +29,7 @@ WorldRuleTag = Annotated[str, Field(min_length=1)]
 
 
 class CoreWorldRulesGenerateRequestV1(ReasoningOptions, StrictRequestModel):
-    """核心世界规则候选预览请求，不接收任何正式事实副本。"""
+    "Yêu cầu xem trước ứng viên quy tắc thế giới cốt lòi; không nhận bất kỳ bản sao sự kiện chính thức nào."
 
     core_rule_count: int | None = Field(default=6, ge=1, le=20)
     allow_incremental: bool = False
@@ -44,7 +44,7 @@ class CoreWorldRulesGenerateRequestV1(ReasoningOptions, StrictRequestModel):
 
 
 class CoreWorldRulesGenerationInputV1(ReasoningOptions, StrictRequestModel):
-    """随 basis 原样回传、用于确认时重算指纹的生成输入。"""
+    "Đầu vào tạo sinh gửi lại nguyên trạng cùng basis, dùng để tính lại vân tay khi xác nhận."
 
     novel_id: str = Field(pattern=r"^[0-9a-f]{24}$")
     core_rule_count: int | None = Field(ge=1, le=20)
@@ -59,14 +59,14 @@ class CoreWorldRulesGenerationInputV1(ReasoningOptions, StrictRequestModel):
 
 
 class WorldRuleCandidateExceptionV1(StrictRequestModel):
-    """一条候选规则的例外条件及生效结果。"""
+    "Điều kiện ngoại lệ của một ứng viên quy tắc và kết quả khi áp dụng."
 
     condition: str = Field(min_length=1, max_length=500)
     effect: str = Field(min_length=1, max_length=500)
 
 
 class WorldRuleCandidateV1(StrictRequestModel):
-    """模型可输出且用户可编辑的一条世界规则候选。"""
+    "Một ứng viên quy tắc thế giới mà mô hình có thể xuất và người dùng có thể sửa."
 
     candidate_ref: str = Field(pattern=r"^rule_candidate_[0-9]+$")
     name: str = Field(min_length=1, max_length=80)
@@ -111,7 +111,7 @@ class WorldRuleCandidateV1(StrictRequestModel):
         return self
 
 class CoreWorldRulesResultV1(StrictRequestModel):
-    """Provider 必须完整返回的核心规则候选根对象。"""
+    "Đối tượng gốc của ứng viên quy tắc cốt lòi mà Provider phải trả về đầy đủ."
 
     core_world_rules: list[WorldRuleCandidateV1] = Field(min_length=1, max_length=20)
 
@@ -132,7 +132,7 @@ class CoreWorldRulesResultV1(StrictRequestModel):
 
 
 class CoreWorldRulesBasisV1(CandidateBasisV1):
-    """包含原始严格生成输入的核心规则不透明候选依据。"""
+    "Căn cứ ứng viên opaque của quy tắc thế giới lõi, bao gồm phần nhập sinh nghiêm ngặt gốc."
 
     generation_input: CoreWorldRulesGenerationInputV1
 
@@ -158,7 +158,7 @@ class CoreWorldRulesBasisV1(CandidateBasisV1):
 
 
 class CoreWorldRulesPreviewV1(StrictResponseModel):
-    """普通预览与 SSE done.result 共用的核心规则候选信封。"""
+    "Bao ứng viên quy tắc cốt lòi, dùng chung cho bản xem trước thường và done.result của SSE."
 
     workflow: Literal["create_world_rules_by_ai"]
     step: Literal["create_core_world_rules"]
@@ -169,7 +169,7 @@ class CoreWorldRulesPreviewV1(StrictResponseModel):
 
 
 class CoreWorldRulesConfirmV1(StrictRequestModel):
-    """核心规则候选整批确认请求。"""
+    "Yêu cầu xác nhận cả lô các ứng viên quy tắc cốt lõi."
 
     candidates: list[WorldRuleCandidateV1] = Field(min_length=1, max_length=20)
     basis: CoreWorldRulesBasisV1

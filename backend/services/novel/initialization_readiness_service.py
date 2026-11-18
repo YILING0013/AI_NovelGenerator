@@ -31,7 +31,7 @@ InitializationStepState = Literal["not_started", "in_progress", "ready", "blocke
 
 
 class InitializationStepV1(StrictResponseModel):
-    """一个由正式事实重建的初始化步骤状态。"""
+    "Trạng thái một bước khởi tạo được dựng lại từ các sự kiện chính thức."
 
     key: InitializationStepKey
     state: InitializationStepState
@@ -52,7 +52,7 @@ STEP_HREFS: dict[InitializationStepKey, str] = {
 
 
 class InitializationReadinessResponseV1(StrictResponseModel):
-    """小说全书初始化门禁的只读公开响应。"""
+    "Phản hồi công khai chỉ đọc về cổng kiểm khởi tạo toàn sách của tiểu thuyết."
 
     novel_id: ObjectIdString
     steps: list[InitializationStepV1] = Field(min_length=7, max_length=7)

@@ -270,8 +270,8 @@ async def _get_versioned_faction(
     current_version = int(faction["version"])
     if current_version != normalized_version:
         raise DuplicateKeyError(
-            "势力版本冲突："
-            f"当前版本为 {current_version}, phiên bản yêu cầu là {normalized_version}"
+            "Xung đột phiên bản thế lực: "
+            f"phiên bản hiện tại là {current_version}, phiên bản yêu cầu là {normalized_version}"
         )
     return faction
 
@@ -1570,7 +1570,7 @@ class FactionService:
                 actual_version = int(current_by_id[faction_id]["version"])
                 if expected_version != actual_version:
                     raise DuplicateKeyError(
-                        f"Thế lực '{faction_id}' 版本冲突："
+                        f"Thế lực '{faction_id}' xung đột phiên bản: "
                         f"expected={expected_version}, actual={actual_version}"
                     )
 

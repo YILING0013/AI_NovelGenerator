@@ -154,7 +154,7 @@
           "$defs": {
             "WorldRuleCandidateExceptionV1": {
               "additionalProperties": false,
-              "description": "一条候选规则的例外条件及生效结果。",
+              "description": "Điều kiện ngoại lệ và kết quả có hiệu lực của một quy tắc ứng viên.",
               "properties": {
                 "condition": {
                   "maxLength": 500,
@@ -178,7 +178,7 @@
             },
             "WorldRuleCandidateV1": {
               "additionalProperties": false,
-              "description": "模型可输出且用户可编辑的一条世界规则候选。",
+              "description": "Một quy tắc thế giới ứng viên mà mô hình có thể xuất và người dùng có thể chỉnh sửa.",
               "properties": {
                 "candidate_ref": {
                   "pattern": "^rule_candidate_[0-9]+$",
@@ -308,7 +308,7 @@
           "$defs": {
             "WorldRuleCandidateExceptionV1": {
               "additionalProperties": false,
-              "description": "一条候选规则的例外条件及生效结果。",
+              "description": "Điều kiện ngoại lệ và kết quả có hiệu lực của một quy tắc ứng viên.",
               "properties": {
                 "condition": {
                   "maxLength": 500,
@@ -332,7 +332,7 @@
             },
             "WorldRuleCandidateV1": {
               "additionalProperties": false,
-              "description": "模型可输出且用户可编辑的一条世界规则候选。",
+              "description": "Một quy tắc thế giới ứng viên mà mô hình có thể xuất và người dùng có thể chỉnh sửa.",
               "properties": {
                 "candidate_ref": {
                   "pattern": "^rule_candidate_[0-9]+$",

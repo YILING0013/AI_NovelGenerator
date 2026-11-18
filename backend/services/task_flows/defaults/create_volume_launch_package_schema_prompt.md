@@ -1,1 +1,1 @@
-请严格按目标 JSON Schema 输出启动包，不要输出解释、Markdown、正式 ID、版本或额外字段。
+Hãy xuất gói khởi động theo đúng JSON Schema đích, không xuất lời giải thích, Markdown, ID chính thức, phiên bản hay trường bổ sung.

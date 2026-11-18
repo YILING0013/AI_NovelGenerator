@@ -21,7 +21,7 @@
           "$defs": {
             "VolumeOrderRangeV1": {
               "additionalProperties": false,
-              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "description": "Phạm vi thứ tự liên tiếp (đánh số bắt đầu từ 1) của mục tiêu sinh khung xương quyển.",
               "properties": {
                 "start": {
                   "minimum": 1,
@@ -53,7 +53,7 @@
           "$defs": {
             "VolumeOrderRangeV1": {
               "additionalProperties": false,
-              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "description": "Phạm vi thứ tự liên tiếp (đánh số bắt đầu từ 1) của mục tiêu sinh khung xương quyển.",
               "properties": {
                 "start": {
                   "minimum": 1,
@@ -85,7 +85,7 @@
           "$defs": {
             "VolumeOrderRangeV1": {
               "additionalProperties": false,
-              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "description": "Phạm vi thứ tự liên tiếp (đánh số bắt đầu từ 1) của mục tiêu sinh khung xương quyển.",
               "properties": {
                 "start": {
                   "minimum": 1,
@@ -120,7 +120,7 @@
           "$defs": {
             "VolumeOrderRangeV1": {
               "additionalProperties": false,
-              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "description": "Phạm vi thứ tự liên tiếp (đánh số bắt đầu từ 1) của mục tiêu sinh khung xương quyển.",
               "properties": {
                 "start": {
                   "minimum": 1,
@@ -156,7 +156,7 @@
           "$defs": {
             "VolumeOrderRangeV1": {
               "additionalProperties": false,
-              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "description": "Phạm vi thứ tự liên tiếp (đánh số bắt đầu từ 1) của mục tiêu sinh khung xương quyển.",
               "properties": {
                 "start": {
                   "minimum": 1,
@@ -187,7 +187,7 @@
           "$defs": {
             "VolumeOrderRangeV1": {
               "additionalProperties": false,
-              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "description": "Phạm vi thứ tự liên tiếp (đánh số bắt đầu từ 1) của mục tiêu sinh khung xương quyển.",
               "properties": {
                 "start": {
                   "minimum": 1,
@@ -227,7 +227,7 @@
           "$defs": {
             "VolumeOrderRangeV1": {
               "additionalProperties": false,
-              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "description": "Phạm vi thứ tự liên tiếp (đánh số bắt đầu từ 1) của mục tiêu sinh khung xương quyển.",
               "properties": {
                 "start": {
                   "minimum": 1,
@@ -258,7 +258,7 @@
           "$defs": {
             "VolumeOrderRangeV1": {
               "additionalProperties": false,
-              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "description": "Phạm vi thứ tự liên tiếp (đánh số bắt đầu từ 1) của mục tiêu sinh khung xương quyển.",
               "properties": {
                 "start": {
                   "minimum": 1,
@@ -289,7 +289,7 @@
           "$defs": {
             "VolumeOrderRangeV1": {
               "additionalProperties": false,
-              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "description": "Phạm vi thứ tự liên tiếp (đánh số bắt đầu từ 1) của mục tiêu sinh khung xương quyển.",
               "properties": {
                 "start": {
                   "minimum": 1,
@@ -323,7 +323,7 @@
           "$defs": {
             "VolumeOrderRangeV1": {
               "additionalProperties": false,
-              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "description": "Phạm vi thứ tự liên tiếp (đánh số bắt đầu từ 1) của mục tiêu sinh khung xương quyển.",
               "properties": {
                 "start": {
                   "minimum": 1,
@@ -359,7 +359,7 @@
           "$defs": {
             "VolumeOrderRangeV1": {
               "additionalProperties": false,
-              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "description": "Phạm vi thứ tự liên tiếp (đánh số bắt đầu từ 1) của mục tiêu sinh khung xương quyển.",
               "properties": {
                 "start": {
                   "minimum": 1,
@@ -390,7 +390,7 @@
           "$defs": {
             "VolumeOrderRangeV1": {
               "additionalProperties": false,
-              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "description": "Phạm vi thứ tự liên tiếp (đánh số bắt đầu từ 1) của mục tiêu sinh khung xương quyển.",
               "properties": {
                 "start": {
                   "minimum": 1,
@@ -515,7 +515,7 @@
           "$defs": {
             "VolumePlanningV1": {
               "additionalProperties": false,
-              "description": "一卷唯一正式规划或启动包字段。",
+              "description": "Các trường của một bản quy hoạch chính thức duy nhất hoặc gói khởi động cho một quyển.",
               "properties": {
                 "premise": {
                   "maxLength": 1000,
@@ -572,7 +572,7 @@
             },
             "VolumeSkeletonCandidateV1": {
               "additionalProperties": false,
-              "description": "模型可输出且用户可编辑的一条卷骨架候选。",
+              "description": "Một ứng viên khung xương quyển mà mô hình có thể xuất ra và người dùng có thể chỉnh sửa.",
               "properties": {
                 "candidate_ref": {
                   "maxLength": 100,
@@ -661,7 +661,7 @@
           "$defs": {
             "VolumePlanningV1": {
               "additionalProperties": false,
-              "description": "一卷唯一正式规划或启动包字段。",
+              "description": "Các trường của một bản quy hoạch chính thức duy nhất hoặc gói khởi động cho một quyển.",
               "properties": {
                 "premise": {
                   "maxLength": 1000,
@@ -718,7 +718,7 @@
             },
             "VolumeSkeletonCandidateV1": {
               "additionalProperties": false,
-              "description": "模型可输出且用户可编辑的一条卷骨架候选。",
+              "description": "Một ứng viên khung xương quyển mà mô hình có thể xuất ra và người dùng có thể chỉnh sửa.",
               "properties": {
                 "candidate_ref": {
                   "maxLength": 100,
@@ -786,7 +786,7 @@
           "$defs": {
             "VolumeOrderRangeV1": {
               "additionalProperties": false,
-              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "description": "Phạm vi thứ tự liên tiếp (đánh số bắt đầu từ 1) của mục tiêu sinh khung xương quyển.",
               "properties": {
                 "start": {
                   "minimum": 1,
@@ -817,7 +817,7 @@
           "$defs": {
             "VolumeOrderRangeV1": {
               "additionalProperties": false,
-              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "description": "Phạm vi thứ tự liên tiếp (đánh số bắt đầu từ 1) của mục tiêu sinh khung xương quyển.",
               "properties": {
                 "start": {
                   "minimum": 1,
@@ -848,7 +848,7 @@
           "$defs": {
             "VolumeOrderRangeV1": {
               "additionalProperties": false,
-              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "description": "Phạm vi thứ tự liên tiếp (đánh số bắt đầu từ 1) của mục tiêu sinh khung xương quyển.",
               "properties": {
                 "start": {
                   "minimum": 1,
@@ -882,7 +882,7 @@
           "$defs": {
             "VolumeOrderRangeV1": {
               "additionalProperties": false,
-              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "description": "Phạm vi thứ tự liên tiếp (đánh số bắt đầu từ 1) của mục tiêu sinh khung xương quyển.",
               "properties": {
                 "start": {
                   "minimum": 1,
@@ -918,7 +918,7 @@
           "$defs": {
             "VolumeOrderRangeV1": {
               "additionalProperties": false,
-              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "description": "Phạm vi thứ tự liên tiếp (đánh số bắt đầu từ 1) của mục tiêu sinh khung xương quyển.",
               "properties": {
                 "start": {
                   "minimum": 1,
@@ -949,7 +949,7 @@
           "$defs": {
             "VolumeOrderRangeV1": {
               "additionalProperties": false,
-              "description": "卷骨架生成目标的连续 1-based 顺序范围。",
+              "description": "Phạm vi thứ tự liên tiếp (đánh số bắt đầu từ 1) của mục tiêu sinh khung xương quyển.",
               "properties": {
                 "start": {
                   "minimum": 1,

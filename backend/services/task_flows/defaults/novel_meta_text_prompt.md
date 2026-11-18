@@ -1,12 +1,12 @@
-请严格输出 JSON, 不要输出任何额外内容: 
+Hãy xuất JSON đúng nghiêm ngặt, không xuất thêm bất kỳ nội dung nào khác:
 {
-  "title": "雾城档案",
-  "subtitle": "被改写的昨日",
-  "introduction": "雾城的公共档案从不出错，至少每个人都被这样告知。调查员林澈收到一份不存在的旧案卷宗后，发现自己的童年记忆也与官方记录互相矛盾。她循着被删去的姓名深入封闭城区，却不知道每接近一次真相，身边就会有一个人忘记她。",
-  "summary": "调查员林澈追查一宗十年前的集体失踪案，逐步发现城市管理机构以记忆修订维持秩序。旧友、家人与同僚都被卷入证据争夺，而掌握核心档案的人正试图完成最后一次全城覆盖。林澈必须在公开真相造成社会震荡与继续接受虚假安稳之间选择，并找出保留证据、保护幸存者的第三条道路。",
-  "worldview": "近未来港城以中央档案网络确认身份、财产与公共历史，居民的数字记忆副本被视为司法证据。管理机构掌握有限的记忆修订技术，只能改写与指定事件关联的片段，且会留下感官错位和纸质记录冲突。城市按档案可信等级分区，未登记者无法获得公共服务，地下组织因此保存离线史料并形成独立互助网络。",
-  "writing_style": "克制冷峻的调查叙事",
-  "narrative_pov": "第三人称有限视角",
-  "era_background": "近未来海港城市",
-  "tags": ["悬疑", "记忆", "近未来"]
+  "title": "Hồ sơ thành phố sương",
+  "subtitle": "Ngày hôm qua bị viết lại",
+  "introduction": "Hồ sơ công khai của thành phố sương không bao giờ sai, ít nhất mọi người đều được thông báo như vậy. Sau khi điều tra viên Lâm Triết nhận được một bộ hồ sơ vụ án cũ không tồn tại, cô phát hiện ký ức thời thơ ấu của mình cũng mâu thuẫn với ghi chép chính thức. Cô lần theo những cái tên đã bị xóa để đi sâu vào khu vực đóng kín, không biết rằng mỗi lần tiến gần sự thật, lại có một người quanh cô quên mất cô.",
+  "summary": "Điều tra viên Lâm Triết truy tìm một vụ mất tích tập thể mười năm trước và dần phát hiện cơ quan quản lý thành phố duy trì trật tự bằng kỹ thuật sửa đổi ký ức. Bạn cũ, gia đình và đồng nghiệp đều bị cuốn vào cuộc tranh giành chứng cứ, trong khi người nắm giữ hồ sơ cốt lõi đang cố hoàn tất lần ghi đè toàn thành phố cuối cùng. Lâm Triết phải chọn giữa công bố sự thật gây chấn động xã hội và tiếp tục chấp nhận sự yên ổn giả tạo, đồng thời tìm ra con đường thứ ba để bảo toàn chứng cứ và che chở cho những người còn sống.",
+  "worldview": "Thành phố cảng cận tương lai xác nhận thân phận, tài sản và lịch sử công cộng bằng mạng hồ sơ trung tâm; bản sao ký ức số của cư dân được xem là chứng cứ tư pháp. Cơ quan quản lý nắm kỹ thuật sửa đổi ký ức có giới hạn, chỉ viết lại được những mảnh ký ức gắn với sự kiện được chỉ định và luôn để lại sự lệch lạc cảm giác cùng các xung đột với ghi chép giấy. Thành phố phân khu theo mức độ tin cậy của hồ sơ; người không đăng ký không được dùng dịch vụ công, vì vậy các tổ chức ngầm lưu giữ sử liệu ngoại tuyến và hình thành mạng lưới hỗ trợ lẫn nhau độc lập.",
+  "writing_style": "Lối kể điều tra kiệm lời, lạnh lùng",
+  "narrative_pov": "Ngôi thứ ba hạn tri",
+  "era_background": "Thành phố cảng cận tương lai",
+  "tags": ["huyền nghi", "ký ức", "cận tương lai"]
 }

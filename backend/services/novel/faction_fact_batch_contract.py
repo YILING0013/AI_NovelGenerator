@@ -14,14 +14,14 @@ from backend.services.novel.faction_fact_contract import (
 
 
 class FactionBatchGenerationV1(StrictRequestModel):
-    """冻结生成时的输入及读取依据，确认时不用今天的配置替换。"""
+    "Đóng băng đầu vào và căn cứ đọc tại thời điểm tạo sinh; khi xác nhận không thay bằng cấu hình của hôm nay."
 
     basis: CandidateBasisV1
     generation_input: CoreFactionsGenerationInputV2
 
 
 class FactionBatchCandidateV1(StrictRequestModel):
-    """设计与实际事实分开；旧目标、优势和计划不自动映射成事实。"""
+    "Tách biệt thiết kế và sự kiện thực tế; mục tiêu, ưu thế và kế hoạch cũ không tự động ánh xạ thành sự kiện."
 
     candidate_ref: Annotated[str, Field(pattern=r"^faction_[0-9]{3}$")]
     profile: FactionFactCreateDataV1
@@ -36,7 +36,7 @@ class FactionBatchCandidateV1(StrictRequestModel):
 
 
 class FactionFactBatchCreateV1(StrictRequestModel):
-    """一次确认整批新势力及其关系，共享明确剧情位置。"""
+    "Xác nhận cả loạt thế lực mới cùng quan hệ của chúng trong một lần, chia sẻ vị trí cốt truyện được nêu rõ."
 
     position: FactPositionV1
     candidates: list[FactionBatchCandidateV1] = Field(min_length=1, max_length=50)
@@ -66,21 +66,21 @@ class FactionFactBatchCreateV1(StrictRequestModel):
 
 
 class FactionBatchSavedV1(StrictResponseModel):
-    """每个候选首次保存的完整事实结果，包含当时的内容与来源。"""
+    "Kết quả sự kiện đầy đủ từ lần lưu đầu của mỗi ứng viên, gồm cả nội dung và nguồn tại thời điểm đó."
 
     candidate_ref: Annotated[str, Field(pattern=r"^faction_[0-9]{3}$")]
     result: FactionFactResultV1
 
 
 class FactionBatchRelationSavedV1(StrictResponseModel):
-    """关系首次完整公开结果，不从后来的关系文档重组。"""
+    "Kết quả công khai đầy đủ lần đầu của quan hệ, không tái dựng từ tài liệu quan hệ về sau."
 
     relation_ref: Annotated[str, Field(pattern=r"^relation_[0-9]{3}$")]
     result: FactionRelationResponseV1
 
 
 class FactionFactBatchResultV1(StrictResponseModel):
-    """原顺序、原引用映射和首次完整保存结果。"""
+    "Thứ tự gốc, ánh xạ tham chiếu gốc và kết quả lưu đầy đủ lần đầu."
 
     novel_id: ObjectIdString
     factions: list[FactionBatchSavedV1] = Field(min_length=1, max_length=50)

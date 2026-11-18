@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, PrivateAttr
 
 
 class ProviderProbeDetails(BaseModel):
-    """单项测试的实际生成参数及原生推理证据。"""
+    "Tham số sinh thực tế và bằng chứng suy luận nguyên bản của phép thử đơn lẻ."
 
     sent_parameters: dict[str, str | int | float | bool] = Field(default_factory=dict)
     parameters_adjusted: bool = False

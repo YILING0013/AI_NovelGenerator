@@ -70,12 +70,7 @@ FactConfirmed = Annotated[Literal[True], BeforeValidator(_require_author_confirm
 
 
 class CharacterFactValuesV1(StrictRequestModel):
-    """只表达作者提交的已知值，不从缺省字段推断未知或清空。
-
-    空对象可供全未知的前值结构使用，不代表一个合法确认动作。调用方使用
-    model_dump(exclude_unset=True) 保留字段集合，不能按真假过滤明确的空值。
-    本类型规范化输入，不用于重新解析历史原文或直接提供模型输出 Schema。
-    """
+    "Chỉ thể hiện các giá trị đã biết do tác giả gửi, không suy ra unknown hay đã xóa từ các trường thiếu.\n\n    Đối tượng rỗng có thể dùng cho cấu trúc giá trị trước mà mọi thứ đều chưa biết, nhưng không đại diện cho một hành động xác nhận hợp lệ. Bên gọi dùng\n    model_dump(exclude_unset=True) để giữ tập trường, không được lọc các giá trị rỗng minh thị theo đúng/sai.\n    Kiểu này chỉ chuẩn hóa đầu vào, không dùng để phân tích lại nguyên văn lịch sử hay trực tiếp cung cấp Schema cho đầu ra mô hình.\n    "
 
     gender: str | None = Field(default=None, min_length=1, max_length=80)
     age_group: str | None = Field(default=None, min_length=1, max_length=80)
@@ -113,13 +108,13 @@ class CharacterFactValuesV1(StrictRequestModel):
 
 
 class CharacterFactStoredValuesV1(CharacterFactValuesV1):
-    """记录和冻结依据保留原字符串，不重新清理历史空白。"""
+    "Bản ghi và căn cứ đóng băng giữ nguyên chuỗi gốc, không làm sạch lại khoảng trắng lịch sử."
 
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=False)
 
 
 class CharacterFactPositionV1(StrictResponseModel):
-    """人物资料只保存书初、卷初或章前后的稳定位置，不保存数字章号。"""
+    "Hồ sơ nhân vật chỉ lưu vị trí ổn định ở đầu sách, đầu quyển hoặc trước sau chương, không lưu số chương dạng số."
 
     version: FactSchemaVersion = 1
     intent: Literal["book_start", "volume_start", "chapter_before", "chapter_after"]
@@ -136,7 +131,7 @@ class CharacterFactPositionV1(StrictResponseModel):
 
 
 class CharacterFactReadPositionV1(StrictResponseModel):
-    """共享 P1 的实际读取位置，包含空父级开始与追加。"""
+    "Vị trí đọc thực tế của P1 dùng chung, gồm cả bắt đầu từ cha rỗng và bổ sung dần."
 
     version: FactSchemaVersion = 1
     intent: Literal["book_start", "volume_start", "chapter_before", "chapter_after", "replan", "append"]
@@ -157,7 +152,7 @@ class CharacterFactReadPositionV1(StrictResponseModel):
 
 
 class CharacterFactAuthorSourceV1(StrictResponseModel):
-    """作者说明是人工起点来源，不伪造章节引文。"""
+    "Diễn giải của tác giả là nguồn khởi đầu thủ công, không bịa trích dẫn chương."
 
     kind: Literal["author"]
     note: str = Field(min_length=1, max_length=2000)
@@ -171,7 +166,7 @@ class CharacterFactAuthorSourceV1(StrictResponseModel):
 
 
 class CharacterFactChapterSourceV1(StrictResponseModel):
-    """章后变化保留原修订及码点引文。"""
+    "Thay đổi sau chương giữ lại bản chỉnh sửa gốc và trích dẫn theo code point."
 
     kind: Literal["chapter"]
     evidence: ChapterRecordEvidenceV1
@@ -183,7 +178,7 @@ CharacterFactSourceV1 = Annotated[
 
 
 class CharacterFactBeforeV1(StrictResponseModel):
-    """已知原值和未知原因分开，未知字段绝不夹带猜测值。"""
+    "Tách riêng giá trị gốc đã biết và lý do chưa biết; trường chưa biết tuyệt đối không mang giá trị đoán mò."
 
     values: CharacterFactStoredValuesV1
     unknown: dict[CharacterFactField, CharacterFactUnknownReason]
@@ -197,20 +192,20 @@ class CharacterFactBeforeV1(StrictResponseModel):
 
 
 class CharacterFactActiveV1(StrictResponseModel):
-    """尚未被作者替代或作废的确认。"""
+    "Xác nhận chưa bị tác giả thay thế hoặc huỷ bỏ."
 
     state: Literal["active"]
 
 
 class CharacterFactReplacedV1(StrictResponseModel):
-    """只替代原记录的对应字段。"""
+    "Chỉ thay thế các trường tương ứng của bản ghi gốc."
 
     state: Literal["replaced"]
     by_history_id: ObjectIdString
 
 
 class CharacterFactVoidedV1(StrictResponseModel):
-    """以原成功命令键追溯作废，不反向执行 before。"""
+    "Truy vết hủy bỏ theo khóa lệnh của lần thành công gốc, không thực thi ngược before."
 
     state: Literal["voided"]
     by_receipt_key_hash: FactHash
@@ -223,7 +218,7 @@ CharacterFactValidityV1 = Annotated[
 
 
 class CharacterFactProtectedSourceV1(StrictResponseModel):
-    """真正的位置或引文父链，供永久删除保护使用。"""
+    "Chuỗi cha thật sự của vị trí hoặc trích dẫn, dùng cho cơ chế bảo vệ khi xóa vĩnh viễn."
 
     resource_type: Literal["novel", "volume", "arc", "scene", "chapter"]
     id: ObjectIdString
@@ -248,7 +243,7 @@ def _validate_protected_sources(novel_id: str, position: CharacterFactPositionV1
 
 
 class CharacterFactRecordV1(StrictResponseModel):
-    """同一人物的一次多字段确认；字段有效性以外内容不可改写。"""
+    "Một lượt xác nhận nhiều trường cho cùng một nhân vật; nội dung nằm ngoài tính hợp lệ của trường không được viết lại."
 
     schema_id: Literal["character.fact"]
     schema_version: FactSchemaVersion
@@ -322,7 +317,7 @@ class CharacterFactRecordV1(StrictResponseModel):
 
 
 class CharacterFactDirectoryEntryV1(StrictResponseModel):
-    """冻结 P1 的目录身份、直接父级和顺序，不带正文或统计版本。"""
+    "Đóng băng định danh mục lục, cha trực tiếp và thứ tự của P1, không kèm văn bản chương hay phiên bản thống kê."
 
     resource_type: Literal["volume", "arc", "scene", "chapter"]
     id: ObjectIdString
@@ -331,7 +326,7 @@ class CharacterFactDirectoryEntryV1(StrictResponseModel):
 
 
 class CharacterFactIdentityReadV1(StrictResponseModel):
-    """人物读取身份；无关主档版本变化不直接判事实过期。"""
+    "Danh tính khi đọc nhân vật; thay đổi phiên bản hồ sơ chính không liên quan không trực tiếp cho rằng dữ kiện đã hết hạn."
 
     entity_id: ObjectIdString
     character_id: CharacterId
@@ -340,7 +335,7 @@ class CharacterFactIdentityReadV1(StrictResponseModel):
 
 
 class CharacterFactHistoryObservationV1(StrictResponseModel):
-    """只冻结记录原文摘要和当时逐字段状态，避免重复存整段历史。"""
+    "Chỉ đóng băng tóm tắt nguyên văn của bản ghi và trạng thái từng trường tại thời điểm đó, tránh lưu lặp cả đoạn lịch sử."
 
     history_id: ObjectIdString
     entity_id: ObjectIdString
@@ -349,7 +344,7 @@ class CharacterFactHistoryObservationV1(StrictResponseModel):
 
 
 class CharacterFactSourceObservationV1(StrictResponseModel):
-    """当前正文和不可变修订都参加复验，不使用章节统计版本。"""
+    "Cả nội dung hiện tại và bản chỉnh sửa bất biến đều tham gia kiểm tra lại, không dùng phiên bản thống kê chương."
 
     chapter_id: ObjectIdString
     exists: bool
@@ -376,7 +371,7 @@ class CharacterFactSourceObservationV1(StrictResponseModel):
 
 
 class CharacterFactReadV1(StrictResponseModel):
-    """可按原选择重新查询的事实读取依据，空查询也保留。"""
+    "Căn cứ đọc dữ kiện cho phép truy vấn lại theo lựa chọn gốc, giữ cả khi truy vấn rỗng."
 
     kind: Literal["character_facts"]
     novel_id: ObjectIdString
@@ -406,7 +401,7 @@ class CharacterFactReadV1(StrictResponseModel):
 
 
 class CharacterFactsAtPositionV1(StrictResponseModel):
-    """一个人物在指定位置的十五字段结果；来源只指确认记录。"""
+    "Kết quả mười lăm trường của một nhân vật tại vị trí chỉ định; nguồn chỉ trỏ tới bản ghi xác nhận."
 
     entity_id: ObjectIdString
     character_id: CharacterId
@@ -437,7 +432,7 @@ class CharacterFactsAtPositionV1(StrictResponseModel):
 
 
 class CharacterFactReadResultV1(StrictResponseModel):
-    """共享读取返回值，不把缺失人物或空结果省略出依据。"""
+    "Chia sẻ giá trị trả về của việc đọc, không lược khỏi căn cứ các nhân vật thiếu hay kết quả rỗng."
 
     novel_id: ObjectIdString
     position: CharacterFactReadPositionV1
@@ -447,7 +442,7 @@ class CharacterFactReadResultV1(StrictResponseModel):
 
 
 class CharacterFactCreateDataV1(StrictResponseModel):
-    """新人物索引和设计资料；十五个事实字段只在 after 提交一次。"""
+    "Chỉ mục và tư liệu thiết kế của nhân vật mới; mười lăm trường sự kiện chỉ được gửi một lần trong after."
 
     name: str = Field(min_length=1, max_length=80)
     aliases: list[Annotated[str, Field(min_length=1, max_length=80)]] = Field(default_factory=list, max_length=10)
@@ -477,7 +472,7 @@ class CharacterFactCreateDataV1(StrictResponseModel):
 
 
 class CharacterFactExistingTargetV1(StrictResponseModel):
-    """已有人物必须按物理身份、业务身份和作者原版本确认。"""
+    "Nhân vật đã có phải xác nhận bằng định danh vật lý, định danh nghiệp vụ và phiên bản gốc của tác giả."
 
     kind: Literal["existing"]
     novel_id: ObjectIdString
@@ -488,7 +483,7 @@ class CharacterFactExistingTargetV1(StrictResponseModel):
 
 
 class CharacterFactNewTargetV1(StrictResponseModel):
-    """新建预览不预占业务号或伪造已存在的版本。"""
+    "Xem trước tạo mới không giữ chỗ số nghiệp vụ hay giả mạo phiên bản đã tồn tại."
 
     kind: Literal["new"]
     novel_id: ObjectIdString
@@ -513,7 +508,7 @@ CharacterFactTargetV1 = Annotated[
 
 
 class CharacterFactPreviewExistingTargetV1(StrictRequestModel):
-    """预览请求只传正式身份和原版本，不接受客户端名称替换目标。"""
+    "Yêu cầu xem trước chền truyền định danh chính thức và phiên bản gốc, không nhận việc client thay tên mục tiêu."
 
     entity_id: ObjectIdString
     character_id: CharacterId
@@ -521,13 +516,13 @@ class CharacterFactPreviewExistingTargetV1(StrictRequestModel):
 
 
 class CharacterFactPreviewNewTargetV1(StrictRequestModel):
-    """新人物预览由服务端预分配物理身份。"""
+    "Bản xem trước nhân vật mới được máy chủ cấp trước danh tính vật lý."
 
     candidate: CharacterFactCreateDataV1
 
 
 class CharacterFactCreatePreviewInputV1(StrictRequestModel):
-    """新建预览只选择起点及字段，尚不占用业务 ID。"""
+    "Xem trước tạo mới chỉ chọn điểm khởi đầu và các trường, chưa chiếm ID nghiệp vụ."
 
     operation: Literal["create"]
     target: CharacterFactPreviewNewTargetV1
@@ -538,7 +533,7 @@ class CharacterFactCreatePreviewInputV1(StrictRequestModel):
 
 
 class CharacterFactExistingPreviewInputV1(StrictRequestModel):
-    """已有实体预览明确位置、字段和原记录处置，不接受客户端依据。"""
+    "Xem trước thực thể đã có nêu rõ vị trí, trường và cách xử lý bản ghi gốc; không nhận căn cứ từ client."
 
     operation: Literal["establish", "correct_initial", "change", "replace"]
     target: CharacterFactPreviewExistingTargetV1
@@ -552,7 +547,7 @@ class CharacterFactExistingPreviewInputV1(StrictRequestModel):
 
 
 class CharacterFactVoidPreviewInputV1(StrictRequestModel):
-    """作废位置和来源由原记录决定，客户端只明确所选记录字段。"""
+    "Vị trí và nguồn của việc hủy do bản ghi gốc quyết định; client chỉ minh thị trường của bản ghi đã chọn."
 
     operation: Literal["void"]
     target: CharacterFactPreviewExistingTargetV1
@@ -599,7 +594,7 @@ class CharacterFactPreviewInputV1(RootModel[Annotated[
 
 
 class CharacterFactReferenceReadV1(StrictResponseModel):
-    """人工引用冻结实际物理身份及业务版本，不仅保存可能重绑的业务号。"""
+    "Tham chiếu thủ công đóng băng định danh vật lý và phiên bản nghiệp vụ thực tế, không chỉ lưu mã nghiệp vụ có thể được gán lại."
 
     reference: ChapterRecordEntityRefV1
     entity_id: ObjectIdString
@@ -614,7 +609,7 @@ class CharacterFactReferenceReadV1(StrictResponseModel):
 
 
 class _CharacterFactLegacySparseV1(StrictResponseModel):
-    """HTTP 响应也保留旧原文的缺项，不能把默认 None 伪造为作者看过的 null。"""
+    "Phản hồi HTTP cũng giữ các mục vắng mặt trong nguyên văn, không được ngụy tạo giá trị None mặc định thành null mà tác giả đã xem."
 
     @model_serializer(mode="wrap")
     def serialize_present_values(self, handler: SerializerFunctionWrapHandler) -> dict[str, str | list[str] | None]:
@@ -623,7 +618,7 @@ class _CharacterFactLegacySparseV1(StrictResponseModel):
 
 
 class CharacterFactLegacyProfileRawV1(_CharacterFactLegacySparseV1):
-    """主档保存文字只作作者参考，保留缺项、null、空值和原空白。"""
+    "Văn bản lưu trong hồ sơ gốc chỉ để tác giả tham khảo, giữ nguyên mục thiếu, null, giá trị trống và khoảng trắng gốc."
 
     gender: str | None = None
     age_group: str | None = None
@@ -639,13 +634,13 @@ class CharacterFactLegacyProfileRawV1(_CharacterFactLegacySparseV1):
 
 
 class CharacterFactLegacyProfileNotesV1(_CharacterFactLegacySparseV1):
-    """主档初始状态原文不是已确定剧情时点的事实。"""
+    "Nguyên văn trạng thái ban đầu trong hồ sơ gốc không phải dữ kiện của thời điểm cốt truyện đã xác định."
 
     initial_state: str | None = None
 
 
 class CharacterFactLegacyStateRawV1(_CharacterFactLegacySparseV1):
-    """卷状态保存文字；current_goal 保持旧计划名，不映射实际目标。"""
+    "Trạng thái tập lưu văn bản; current_goal giữ nguyên tên kế hoạch cũ, không ánh xạ tới mục tiêu thực tế."
 
     psychological_state: str | None = None
     public_state: str | None = None
@@ -654,13 +649,13 @@ class CharacterFactLegacyStateRawV1(_CharacterFactLegacySparseV1):
 
 
 class CharacterFactLegacyStateNotesV1(_CharacterFactLegacySparseV1):
-    """卷起始状态原文只供作者核对。"""
+    "Nguyên văn trạng thái mở đầu tập chỉ để tác giả đối chiếu."
 
     start_state: str | None = None
 
 
 class CharacterFactLegacyVolumeV1(StrictResponseModel):
-    """原预览时卷的可读名称、版本和回收状态。"""
+    "Tên dễ đọc, phiên bản và trạng thái thu hồi của quyển tại bản xem trước gốc."
 
     title: str
     version: FactVersion
@@ -668,7 +663,7 @@ class CharacterFactLegacyVolumeV1(StrictResponseModel):
 
 
 class CharacterFactLegacyProfileSourceV1(StrictResponseModel):
-    """每个已有人物预览都冻结同一主档身份及所选原文字段。"""
+    "Mỗi lượt xem trước nhân vật đã có đóng băng cùng một định danh hồ sơ chính và các trường nguyên văn đã chọn."
 
     kind: Literal["profile"]
     entity_id: ObjectIdString
@@ -679,7 +674,7 @@ class CharacterFactLegacyProfileSourceV1(StrictResponseModel):
 
 
 class CharacterFactLegacyStateSourceV1(StrictResponseModel):
-    """卷状态原文包括回收记录，不暗示这些文字生效的位置。"""
+    "Nguyên văn trạng thái quyển gồm cả bản ghi thu hồi, không ngụ ý vị trí mà những chữ đó có hiệu lực."
 
     kind: Literal["volume_state"]
     state_id: ObjectIdString
@@ -699,7 +694,7 @@ CharacterFactLegacySourceV1 = Annotated[
 
 
 class CharacterFactBasisV1(StrictResponseModel):
-    """作者实际预览的固定身份、位置、前值、处置对象和读取依据。"""
+    "Định danh, vị trí, giá trị trước, đối tượng xử lý và căn cứ đọc mà tác giả thực sự đã xem trước."
 
     schema_version: FactSchemaVersion
     operation: CharacterFactOperation
@@ -864,7 +859,7 @@ class CharacterFactBasisV1(StrictResponseModel):
 
 
 class CharacterFactPreviewV1(StrictResponseModel):
-    """预览原依据和所选字段结果，不能只返回不可解释的摘要。"""
+    "Xem trước căn cứ gốc và kết quả các trường đã chọn; không chỉ trả về tóm tắt không giải trình được."
 
     basis: CharacterFactBasisV1
     values: CharacterFactBeforeV1
@@ -878,7 +873,7 @@ class CharacterFactPreviewV1(StrictResponseModel):
 
 
 class CharacterFactCreateConfirmV1(StrictRequestModel):
-    """新建确认不接受旧版本或另一个创建候选。"""
+    "Xác nhận tạo mới không nhận phiên bản cũ hay một ứng viên tạo khác."
 
     operation: Literal["create"]
     basis: CharacterFactBasisV1
@@ -887,7 +882,7 @@ class CharacterFactCreateConfirmV1(StrictRequestModel):
 
 
 class CharacterFactExistingConfirmV1(StrictRequestModel):
-    """作者可改 after 值，目标、来源和原依据始终冻结。"""
+    "Tác giả có thể đổi giá trị after; mục tiêu, nguồn và căn cứ gốc luôn bị đóng băng."
 
     operation: Literal["establish", "correct_initial", "change", "replace"]
     basis: CharacterFactBasisV1
@@ -897,7 +892,7 @@ class CharacterFactExistingConfirmV1(StrictRequestModel):
 
 
 class CharacterFactVoidConfirmV1(StrictRequestModel):
-    """作废只选择原记录字段并说明原因，不接收 after。"""
+    "Hủy bỏ chỉ chọn trường của bản ghi gốc và nêu lý do; không nhận after."
 
     operation: Literal["void"]
     basis: CharacterFactBasisV1
@@ -936,7 +931,7 @@ class CharacterFactConfirmV1(RootModel[Annotated[
 
 
 class CharacterFactValidityChangeV1(StrictResponseModel):
-    """一次命令对原记录单个字段的实际单向处置。"""
+    "Thao tác một chiều thực tế lên một trường duy nhất của bản ghi gốc trong một lệnh."
 
     history_id: ObjectIdString
     field: CharacterFactField
@@ -945,7 +940,7 @@ class CharacterFactValidityChangeV1(StrictResponseModel):
 
 
 class CharacterFactResultV1(StrictResponseModel):
-    """首次完整成功结果；重放不能改成后来查询到的当前值。"""
+    "Kết quả thành công đầy đủ đầu tiên; phát lại không được đổi thành giá trị hiện tại truy vấn về sau."
 
     schema_version: FactSchemaVersion
     operation: CharacterFactOperation
@@ -982,7 +977,7 @@ class CharacterFactResultV1(StrictResponseModel):
 
 
 class CharacterFactReceiptRequestV1(StrictResponseModel):
-    """回执保留用于幂等摘要的完整原请求外壳。"""
+    "Biên nhận giữ lại vỏ yêu cầu gốc đầy đủ phục vụ bản tóm tắt idempotent."
 
     operation: CharacterFactOperation
     novel_id: ObjectIdString
@@ -991,7 +986,7 @@ class CharacterFactReceiptRequestV1(StrictResponseModel):
 
 
 class CharacterFactReceiptV1(StrictResponseModel):
-    """独立于旧章后回执的严格人物事实回执。"""
+    "Biên nhận sự kiện nhân vật nghiêm ngặt, độc lập với biên nhận sau chương cũ."
 
     schema_id: Literal["character.fact.receipt"]
     schema_version: FactSchemaVersion
@@ -1101,7 +1096,7 @@ def character_fact_record_document(record: dict) -> dict:
 
 
 class CharacterFactQueryV1(StrictRequestModel):
-    """人物详情按明确锚读取；省略位置时由服务端解析一次最新位置。"""
+    "Đọc chi tiết nhân vật theo anchor minh thị; nếu bỏ trống vị trí, server phân giải vị trí mới nhất một lần."
 
     character_ids: list[CharacterId] = Field(max_length=200)
     position: CharacterFactPositionV1 | None = None

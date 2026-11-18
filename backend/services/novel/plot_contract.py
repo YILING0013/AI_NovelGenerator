@@ -17,7 +17,7 @@ PLOT_TASKS = {"generate_volume_plot_by_ai": "volume", "generate_arc_plot_by_ai":
 
 
 class PlotGenerateInputV1(StrictRequestModel):
-    """已有卷或篇章的剧情生成输入，目标版本用于防止覆盖手工稿。"""
+    "Đầu vào tạo cốt truyện cho quyển hoặc vòng truyện đã có; phiên bản đích dùng để ngăn ghi đề bản thảo thủ công."
 
     novel_id: ObjectIdString
     target_type: Literal["volume", "arc"]
@@ -27,7 +27,7 @@ class PlotGenerateInputV1(StrictRequestModel):
 
 
 class PlotSourceReferenceV1(StrictRequestModel):
-    """模型指出的保存来源；错误位置和空引用保留给作者核对。"""
+    "Nguồn đã lưu do mô hình chỉ ra; vị trí sai và tham chiếu rỗng được giữ nguyên cho tác giả đối chiếu."
 
     model_config = ConfigDict(str_strip_whitespace=False)
 
@@ -38,7 +38,7 @@ class PlotSourceReferenceV1(StrictRequestModel):
 
 
 class PlotSourceConflictV1(StrictRequestModel):
-    """正文与旧规划的一对疑似冲突，不替作者决定哪边正确。"""
+    "Một cặp nghi xung đột giữa văn bản chương và kế hoạch cũ; không thay tác giả quyết định bên nào đúng."
 
     model_config = ConfigDict(str_strip_whitespace=False)
 
@@ -48,20 +48,20 @@ class PlotSourceConflictV1(StrictRequestModel):
 
 
 class PlotSourceVerificationV1(StrictRequestModel):
-    """引用匹配只表示原句出现在实际输入中，不代表语义判断正确。"""
+    "Khớp trích dẫn chỉ nghĩa là câu gốc xuất hiện trong đầu vào thực tế, không đảm bảo phán đoán ngữ nghĩa là đúng."
 
     status: Literal["matched", "unverified"]
     source_truncated: bool | None
 
 
 class PlotVerifiedSourceV1(PlotSourceReferenceV1):
-    """服务器核对后的引用与实际输入截断状态。"""
+    "Trạng thái tham chiếu đã máy chủ đối chiếu và việc cắt ngắn phần nhập thực tế."
 
     verification: PlotSourceVerificationV1
 
 
 class PlotSourceConflictItemV1(StrictRequestModel):
-    """带稳定编号的双来源报告；服务器没有自动判断冲突真伪。"""
+    "Báo cáo hai nguồn kèm mã ổn định; server không tự phán xung đột là thật hay giả."
 
     model_config = ConfigDict(str_strip_whitespace=False)
 
@@ -73,14 +73,14 @@ class PlotSourceConflictItemV1(StrictRequestModel):
 
 
 class PlotSourceConflictReportV1(StrictRequestModel):
-    """区分未报告与报告为空，不把旧流程解释为已经检查无冲突。"""
+    "Phân biệt chưa báo cáo và báo cáo rỗng, không hiểu luồng cũ là đã kiểm tra mà không có xung đột."
 
     reported: bool
     items: list[PlotSourceConflictItemV1] = Field(max_length=12)
 
 
 class PlotSourceConflictDecisionV1(StrictRequestModel):
-    """作者确认核对过一对来源并批准本次候选，也可认为模型误报。"""
+    "Tác giả xác nhận đã đối chiếu một cặp nguồn và phê duyệt ứng viên lần này, hoặc có thể kết luận mô hình báo động giả."
 
     conflict_id: str = Field(pattern=r"^[0-9a-f]{64}$")
     confirmed: bool
@@ -88,14 +88,14 @@ class PlotSourceConflictDecisionV1(StrictRequestModel):
 
 
 class PlotConfirmedContentV1(StrictRequestModel):
-    """作者勾选确认时看到的实际保存内容，已有下级时不含规划。"""
+    "Nội dung đã lưu thực tế mà tác giả nhìn thấy khi tích chọn xác nhận; khi đã có mục con thì không gồm kế hoạch."
 
     plot: str = Field(min_length=1, max_length=40000)
     planning: VolumePlanningV1 | ArcPlanningV1 | None = None
 
 
 class PlotSourceConflictReviewV1(StrictRequestModel):
-    """随本次确认提交的原报告与逐项作者决定。"""
+    "Báo cáo gốc cùng các quyết định của tác giả theo từng mục, gửi kèm lần xác nhận này."
 
     report: PlotSourceConflictReportV1
     decisions: list[PlotSourceConflictDecisionV1] = Field(max_length=12)
@@ -103,7 +103,7 @@ class PlotSourceConflictReviewV1(StrictRequestModel):
 
 
 class PlotResultV1(StrictRequestModel):
-    """独立长剧情与建议完善的规划，覆盖说明只供审核。"""
+    "Kế hoạch độc lập cho cốt truyện dài và đề xuất hoàn thiện; phần mô tả bao phủ chỉ dùng để duyệt."
 
     plot: str = Field(min_length=1, max_length=40000)
     planning: VolumePlanningV1 | ArcPlanningV1
@@ -112,26 +112,26 @@ class PlotResultV1(StrictRequestModel):
 
 
 class VolumePlotResultV1(PlotResultV1):
-    """卷剧情只能搭配卷规划；共同接口仍兼容已有两类候选。"""
+    "cốt truyện của tập chỉ đi kèm kế hoạch tập; giao diện chung vẫn tương thích hai loại ứng viên đã có."
 
     planning: VolumePlanningV1
 
 
 class ArcPlotResultV1(PlotResultV1):
-    """篇章剧情只能搭配篇章规划，不能接受卷规划字段。"""
+    "cốt truyện của vòng truyện chỉ đi kèm kế hoạch vòng truyện, không nhận trường kế hoạch tập."
 
     planning: ArcPlanningV1
 
 
 class PlotCandidateBasisV1(CandidateBasisV1):
-    """剧情候选绑定原流程、实际读取内容和目标版本。"""
+    "Ứng viêncốt truyện gắn với luồng gốc, nội dung thực đã đọc và phiên bản đích."
 
     generation_input: PlotGenerateInputV1
     context_basis: WritingContextBasisV1
 
 
 class PlotGenerationEnvelopeV1(StrictResponseModel):
-    """普通请求与 SSE 完成事件共用的剧情候选。"""
+    "Ứng viên cốt truyện dùng chung cho yêu cầu thường và sự kiện hoàn tất SSE."
 
     workflow: str
     step: str
@@ -145,7 +145,7 @@ class PlotGenerationEnvelopeV1(StrictResponseModel):
 
 
 class PlotConfirmV1(StrictRequestModel):
-    """确认审核后的剧情，不修改其他部分的规划。"""
+    "Xác nhận cốt truyện sau khi đã duyệt, không sửa kế hoạch của các phần khác."
 
     candidate: PlotResultV1
     basis: PlotCandidateBasisV1
@@ -154,7 +154,7 @@ class PlotConfirmV1(StrictRequestModel):
 
 
 class VolumePreparationConfirmV1(StrictRequestModel):
-    """手工检查已有资料后确认当前准备阶段，允许零参与。"""
+    "Xác nhận giai đoạn chuẩn bị hiện tại sau khi kiểm tra thủ công tài liệu sẵn có, cho phép không tham gia."
 
     expected_version: int = Field(ge=1)
     location_ids: list[str] | None = Field(default=None, max_length=50)

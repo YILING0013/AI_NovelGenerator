@@ -1,1 +1,1 @@
-请严格按目标 JSON Schema 输出核心世界规则候选，不要输出解释、Markdown 或额外字段。不得生成正式 rule_ ID；scope_entity_ids 必须按所选 scope_type 引用输入中已有的角色或势力 ID，全局规则使用空数组。
+Hãy tuân thủ nghiêm ngặt JSON Schema đích để xuất các ứng viên quy tắc thế giới cốt lõi, không xuất giải thích, Markdown hay trường thừa. Không được sinh ID rule_ chính thức; scope_entity_ids phải tham chiếu ID nhân vật hoặc thế lực đã có trong đầu vào tùy theo scope_type đã chọn, quy tắc toàn cục dùng mảng rỗng.

@@ -9,7 +9,7 @@ from backend.db.repositories.faction_repository import normalize_faction_name
 
 
 class FactionCreateRequestV1(BaseModel):
-    """人工势力创建请求，层级归属由 Service 做同书校验。"""
+    "Yêu cầu tạo thế lực thủ công; Service kiểm tra điều kiện cùng sách cho quan hệ phân cấp."
 
     model_config = ConfigDict(
         extra="forbid",

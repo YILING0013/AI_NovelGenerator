@@ -12,7 +12,7 @@ Verbosity = Literal["low", "medium", "high"]
 
 
 class ReasoningOptions(BaseModel):
-    """可选思考参数；空值沿用 Provider 或模型默认值，具体限制由接口检查。"""
+    "Tham số thinking tùy chọn; giá trị rỗng thừa hưởng mặc định của Provider hoặc mô hình, giới hạn cụ thể do giao diện kiểm tra."
 
     reasoning_effort: ReasoningEffort | None = Field(default=None, description="Cấp độ tư duy")
     thinking_mode: ThinkingMode | None = Field(default=None, description="Chế độ tư duy DeepSeek / Claude")

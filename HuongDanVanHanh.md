@@ -34,13 +34,14 @@ Get-Content e:\laragon\www\viettieuthuyet\runtime\logs\mongod.log -Tail 40
 netstat -ano | findstr :27017
 
 # 2.3 Khởi động tay (để đọc thông báo lỗi trực tiếp)
-& 'e:\laragon\www\viettieuthuyet\tools\m\bin\mongod.exe' --dbpath 'e:\laragon\www\viettieuthuyet\mongodata' --replSet rs0 --bind_ip 127.0.0.1 --port 27017
+& 'e:\laragon\www\viettieuthuyet\tools\m5\bin\mongod.exe' --dbpath 'e:\laragon\www\viettieuthuyet\mongodata' --replSet rs0 --bind_ip 127.0.0.1 --port 27017 --wiredTigerCacheSizeGB 1
 ```
 
 | Dòng trong log | Ý nghĩa | Cách sửa |
 |---|---|---|
 | `Failed to acquire lock` / `Unable to lock` | Còn mongod chạy ở tiến trình khác | `taskkill /F /IM mongod.exe` rồi chạy `start-all.bat` |
-| `IllegalInstruction` / `tcmalloc` crash | CPU/Windows không tương thích bản 8.0 | đổi sang MongoDB 7.0 hoặc 8.2 (targeted build) trong `tools\` |
+| `IllegalInstruction` / `tcmalloc` crash khi `Opening WiredTiger` | CPU đời cũ (Intel Ivy Bridge, không có AVX2) không chạy được MongoDB ≥ 6.0 | dùng bản 5.0 trong `tools\m5` (mặc định của bộ script này); KHÔNG đổi sang 8.0 rồi mở lại dữ liệu cũ |
+| `WiredTiger ... recovery` rồi crash | dữ liệu tạo bằng MongoDB 8.0 rồi mở lại bằng 5.0 (ngược lại cũng vậy) | giữ nguyên một phiên bản cho `mongodata`; muốn đổi bản thì tạo db mới và nhập lại từ file xuất |
 | `No replset config has been received` | DATA mới, chưa initiate | script tự gọi `tools\rs_init.py`; hoặc chạy: `python ..\tools\rs_init.py` |
 | `attempt to write a readonly database` | Quyền thư mục `mongodata` | cấp quyền Write cho user hiện hành, không chạy mongod bằng user khác |
 

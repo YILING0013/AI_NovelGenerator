@@ -69,7 +69,7 @@ class ResponsesClient(OpenAICompatibleClient):
                 elif event.type == "error":
                     raise LLMResponseError(event.message, provider=self.provider_name)
         if response is None:
-            raise LLMConnectionError("Responses 响应流提前断开，请重试", provider=self.provider_name)
+            raise LLMConnectionError("Luồng phản hồi Responses bị ngắt sớm, vui lòng thử lại", provider=self.provider_name)
         return response
 
     async def _generate(self, request: LLMRequest, schema: type[BaseModel] | None = None) -> LLMResponse:
@@ -156,7 +156,7 @@ class ResponsesClient(OpenAICompatibleClient):
                         elif event.type == "error":
                             raise LLMResponseError(event.message, provider=self.provider_name, model=model)
                 if not finished:
-                    raise LLMConnectionError("响应流提前断开，请重试", provider=self.provider_name, model=model)
+                    raise LLMConnectionError("Luồng phản hồi bị ngắt sớm, vui lòng thử lại", provider=self.provider_name, model=model)
                 if request.json_output_schema is not None:
                     reject_duplicate_json_keys("".join(call.chunks))
                 tail = stream_filter.finish()

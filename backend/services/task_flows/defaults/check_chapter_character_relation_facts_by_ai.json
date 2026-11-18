@@ -84,7 +84,7 @@
           "$defs": {
             "ChapterCharacterRelationStateCheckSuggestionV1": {
               "additionalProperties": false,
-              "description": "只建议当前关系状态和原文，不允许模型决定身份或其他字段。",
+              "description": "Chỉ gợi ý trạng thái quan hệ hiện tại cùng nguyên văn, không cho phép mô hình quyết định định danh hay các trường khác.",
               "properties": {
                 "current_state": {
                   "minLength": 1,
@@ -92,7 +92,7 @@
                   "type": "string"
                 },
                 "start": {
-                  "description": "从零开始的 Unicode 码点位置。",
+                  "description": "Vị trí mã Unicode tính từ 0.",
                   "maximum": 2147483647,
                   "minimum": 0,
                   "title": "Start",
@@ -128,7 +128,7 @@
           "$defs": {
             "ChapterCharacterRelationStateCheckSuggestionV1": {
               "additionalProperties": false,
-              "description": "只建议当前关系状态和原文，不允许模型决定身份或其他字段。",
+              "description": "Chỉ gợi ý trạng thái quan hệ hiện tại cùng nguyên văn, không cho phép mô hình quyết định định danh hay các trường khác.",
               "properties": {
                 "current_state": {
                   "minLength": 1,
@@ -136,7 +136,7 @@
                   "type": "string"
                 },
                 "start": {
-                  "description": "从零开始的 Unicode 码点位置。",
+                  "description": "Vị trí mã Unicode tính từ 0.",
                   "maximum": 2147483647,
                   "minimum": 0,
                   "title": "Start",
@@ -189,7 +189,7 @@
           "$defs": {
             "ChapterCharacterRelationStateCheckSuggestionV1": {
               "additionalProperties": false,
-              "description": "只建议当前关系状态和原文，不允许模型决定身份或其他字段。",
+              "description": "Chỉ gợi ý trạng thái quan hệ hiện tại cùng nguyên văn, không cho phép mô hình quyết định định danh hay các trường khác.",
               "properties": {
                 "current_state": {
                   "minLength": 1,
@@ -197,7 +197,7 @@
                   "type": "string"
                 },
                 "start": {
-                  "description": "从零开始的 Unicode 码点位置。",
+                  "description": "Vị trí mã Unicode tính từ 0.",
                   "maximum": 2147483647,
                   "minimum": 0,
                   "title": "Start",
@@ -233,7 +233,7 @@
           "$defs": {
             "ChapterCharacterRelationStateCheckSuggestionV1": {
               "additionalProperties": false,
-              "description": "只建议当前关系状态和原文，不允许模型决定身份或其他字段。",
+              "description": "Chỉ gợi ý trạng thái quan hệ hiện tại cùng nguyên văn, không cho phép mô hình quyết định định danh hay các trường khác.",
               "properties": {
                 "current_state": {
                   "minLength": 1,
@@ -241,7 +241,7 @@
                   "type": "string"
                 },
                 "start": {
-                  "description": "从零开始的 Unicode 码点位置。",
+                  "description": "Vị trí mã Unicode tính từ 0.",
                   "maximum": 2147483647,
                   "minimum": 0,
                   "title": "Start",

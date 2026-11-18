@@ -9,7 +9,7 @@ from backend.llm.generation_options import ReasoningOptions
 
 
 class TokenUsage(BaseModel):
-    """Token 用量统计。"""
+    "Thống kê sử dụng Token."
 
     input_tokens: int = 0
     output_tokens: int = 0
@@ -17,7 +17,7 @@ class TokenUsage(BaseModel):
 
 
 class LLMRequest(ReasoningOptions):
-    """统一的 LLM 调用请求参数。"""
+    "Tham số gọi LLM hợp nhất."
 
     model: str | None = Field(default=None, description="Tên mô hình; để trống thì dùng mô hình mặc định của nhà cung cấp")
     messages: list[dict[str, Any]] = Field(default_factory=list, description="Danh sách tin nhắn hội thoại")
@@ -36,7 +36,7 @@ class LLMRequest(ReasoningOptions):
 
 
 class LLMResponse(BaseModel):
-    """统一的 LLM 调用响应结构。"""
+    "Cấu trúc phản hồi gọi LLM hợp nhất."
 
     content: str = Field(default="", description="Nội dung văn bản được tạo")
     raw_response: dict[str, Any] | None = Field(default=None, description="Phản hồi gốc")
@@ -50,7 +50,7 @@ class LLMResponse(BaseModel):
 
 
 class LLMFunctionCallProbe(BaseModel):
-    """Function Calling 能力探测参数。"""
+    "Tham số thăm dò năng lực Function Calling."
 
     tool_name: str = Field(description="Tên công cụ thử nghiệm")
     tool_description: str = Field(description="Mô tả công cụ thử nghiệm")
@@ -62,7 +62,7 @@ class LLMFunctionCallProbe(BaseModel):
 
 
 class LLMToolDefinition(BaseModel):
-    """服务端允许模型调用的一个工具。"""
+    "Một công cụ mà máy chủ cho phép mô hình gọi."
 
     name: str
     description: str
@@ -70,7 +70,7 @@ class LLMToolDefinition(BaseModel):
 
 
 class LLMToolCall(BaseModel):
-    """模型请求的原生调用；Gemini 旧模型可以不返回 ID。"""
+    "Lời gọi native trong yêu cầu mô hình; các mô hình Gemini cũ có thể không trả về ID."
 
     id: str | None = None
     name: str
@@ -78,7 +78,7 @@ class LLMToolCall(BaseModel):
 
 
 class LLMToolResult(BaseModel):
-    """一次调用的执行结果，保留原调用 ID 和名称。"""
+    "Kết quả thực thi của một lần gọi, giữ nguyên ID và tên của lời gọi gốc."
 
     id: str | None = None
     name: str
@@ -87,7 +87,7 @@ class LLMToolResult(BaseModel):
 
 
 class LLMToolTurn(BaseModel):
-    """一轮工具对话；原生历史只供客户端续接，不能发送到浏览器。"""
+    "Một vòng hội thoại công cụ; lịch sử native chỉ để client nối tiếp, không được gửi xuống trình duyệt."
 
     content: str = ""
     calls: list[LLMToolCall] = Field(default_factory=list)

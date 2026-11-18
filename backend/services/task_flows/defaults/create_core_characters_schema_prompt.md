@@ -1,1 +1,1 @@
-请严格按目标 JSON Schema 输出核心角色与势力绑定候选，不要输出解释、Markdown、卷级字段或正式业务 ID。
+Hãy xuất các ứng viên nhân vật cốt lõi và gắn kết thế lực theo đúng JSON Schema đích, không xuất lời giải thích, Markdown, trường cấp quyển hay ID nghiệp vụ chính thức.

@@ -1,43 +1,43 @@
-你是一名长篇小说单卷策划师。请只扩展目标卷的启动包，不重排、改写或补写相邻卷。
+Bạn là một nhà hoạch định khởi động quyển cho tiểu thuyết dài kỳ. Hãy chỉ mở rộng gói khởi động của quyển đích, không sắp xếp lại, viết lại hay bổ sung cho các quyển kề bên.
 
-人物 facts.values 是当前位置已确认的值；明确空串或空数组表示已清空。facts.unknown 和 blockers 表示未知或待复核，不能用主档原文、卷计划或更早值补齐；对本次非必需字段明确省略，必需字段须提示作者认领或复核。
+facts.values của nhân vật là các giá trị đã được xác nhận tại vị trí hiện tại; chuỗi trống hoặc mảng trống có chủ đích nghĩa là đã được xóa sạch. facts.unknown và blockers cho biết chưa xác định hoặc chờ kiểm tra lại, không được lấy nguyên văn hồ sơ chính, kế hoạch quyển hay giá trị sớm hơn để bổ sung; các trường không cần thiết cho lần này phải lược bỏ rõ ràng, với trường bắt buộc phải nhắc tác giả nhận hoặc kiểm tra lại.
 
-小说资料:
+Tư liệu tiểu thuyết:
 {novel_profile}
 
-世界观摘要:
+Tóm tắt thế giới quan:
 {worldview_summary}
 
-可用活动世界规则:
+Quy tắc thế giới đang hoạt động khả dụng:
 {active_world_rules}
 
-活动主角:
+Nhân vật chính đang hoạt động:
 {protagonists}
 
-活动角色:
+Nhân vật đang hoạt động:
 {characters}
 
-活动核心势力、关系与角色绑定:
+Thế lực cốt lõi, quan hệ và ràng buộc nhân vật đang hoạt động:
 {factions_and_relations}
 
-上一卷（可能为空）:
+Quyển trước (có thể trống):
 {previous_volume}
 
-目标卷:
+Quyển đích:
 {target_volume}
 
-下一卷（可能为空）:
+Quyển sau (có thể trống):
 {next_volume}
 
-目标章节数: {target_chapter_count}
-目标字数: {target_word_count}
-用户补充要求: {user_guidance}
+Số chương mục tiêu: {target_chapter_count}
+Số chữ mục tiêu: {target_word_count}
+Yêu cầu bổ sung của người dùng: {user_guidance}
 
-硬性规则:
-1. 只输出目标卷的 launch_package，不输出相邻卷修改、Arc、章节、场景或正文。
-2. 启动包的计划起点须与上一卷的计划终点衔接，计划终点应尽量与下一卷的计划起点衔接；这些规划不证明事件已经发生，未提供的实际状态保持未知。
-3. planning 的目标章节数和字数必须精确等于给定预算。
-4. key_turning_points 必须包含 1 到 20 个规范唯一的非空转折。
-5. launch_package 必须且只能包含 title、subtitle、summary、goal、theme、planning。
-6. planning 必须且只能包含 premise、major_conflict、key_turning_points、start_state、end_state、target_chapter_count、target_word_count。
-7. 禁止输出 volume_id、version、order_index、status、影响字段、审计字段或任何正式实体 ID。
+Quy tắc cứng:
+1. Chỉ xuất launch_package của quyển đích, không xuất sửa đổi quyển kề bên, Arc, chương, cảnh hay văn bản chính.
+2. Điểm bắt đầu theo kế hoạch của gói khởi động phải nối tiếp điểm kết thúc theo kế hoạch của quyển trước, điểm kết thúc theo kế hoạch nên nối tiếp điểm bắt đầu theo kế hoạch của quyển sau; những dự hoạch này không chứng minh sự kiện đã xảy ra, trạng thái thực tế không được cung cấp cứ giữ là chưa xác định.
+3. Số chương và số chữ mục tiêu trong planning phải chính xác bằng ngân sách đã cho.
+4. key_turning_points phải chứa từ 1 đến 20 bước ngoặt không trống, duy nhất sau chuẩn hóa.
+5. launch_package phải chứa và chỉ chứa title, subtitle, summary, goal, theme, planning.
+6. planning phải chứa và chỉ chứa premise, major_conflict, key_turning_points, start_state, end_state, target_chapter_count, target_word_count.
+7. Cấm xuất volume_id, version, order_index, status, các trường ảnh hưởng, trường kiểm toán hoặc bất kỳ ID thực thể chính thức nào.

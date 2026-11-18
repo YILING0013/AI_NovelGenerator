@@ -47,7 +47,7 @@ HTTP_ERROR_STATUS_SEMANTICS: dict[int, str] = {
 
 
 class ApiErrorDetail(BaseModel):
-    """公开错误的稳定 detail 结构。"""
+    "Cấu trúc detail ổn định của lỗi công khai."
 
     model_config = ConfigDict(extra="forbid")
 
@@ -59,7 +59,7 @@ class ApiErrorDetail(BaseModel):
 
 
 class ApiErrorResponse(BaseModel):
-    """FastAPI 错误响应的顶层结构。"""
+    "Cấu trúc cấp cao nhất của phản hồi lỗi FastAPI."
 
     model_config = ConfigDict(extra="forbid")
 
@@ -154,6 +154,90 @@ def normalize_field_errors(
     return normalized
 
 
+# Pydantic/FastAPI tra thong diep dinh dang bang tieng Anh; quy doi uu tien tieng Viet
+# de khach doc duoc tren giao dien. That bai thi giu nguyen ban goc.
+VALIDATION_MESSAGE_EXACT = {
+    "Field required": "Trường này là bắt buộc",
+    "Extra inputs are not permitted": "Không cho phép thêm trường ngoài cấu trúc đã khai báo",
+    "Input should be a valid string": "Đầu vào phải là chuỗi hợp lệ",
+    "Input should be a valid integer": "Đầu vào phải là số nguyên hợp lệ",
+    "Input should be a valid number": "Đầu vào phải là số hợp lệ",
+    "Input should be a valid boolean": "Đầu vào phải là giá trị đúng/sai hợp lệ",
+    "Input should be a valid list": "Đầu vào phải là danh sách hợp lệ",
+    "Input should be a valid dictionary": "Đầu vào phải là đối tượng hợp lệ",
+    "Input should be a valid object": "Đầu vào phải là đối tượng hợp lệ",
+    "JSON input should be string, bytes or bytearray": "Dữ liệu JSON phải là chuỗi, bytes hoặc bytearray",
+    "Invalid JSON: expected value at line 1 column 1": "JSON không hợp lệ: thiếu giá trị ở dòng 1 cột 1",
+    "Value is not valid": "Giá trị không hợp lệ",
+    "Unmapped error": "Lỗi không xác định",
+}
+
+VALIDATION_MESSAGE_PATTERNS = [
+    (re.compile(r"^String should have at least (\d+) characters?$"), "Chuỗi phải có ít nhất {0} ký tự"),
+    (re.compile(r"^String should have at most (\d+) characters?$"), "Chuỗi phải có nhiều nhất {0} ký tự"),
+    (re.compile(r"^String should have (\d+) characters?$"), "Chuỗi phải có đúng {0} ký tự"),
+    (re.compile(r"^String should be at least (\d+) characters? long$"), "Chuỗi phải dài ít nhất {0} ký tự"),
+    (re.compile(r"^List should have at least (\d+) items?$"), "Danh sách phải có ít nhất {0} phần tử"),
+    (re.compile(r"^List should have at most (\d+) items?$"), "Danh sách phải có nhiều nhất {0} phần tử"),
+    # "Input should be a valid <kieu>[, got <gia tri>]" duoc xu ly o VALID_INPUT_VALID
+    # de ten kieu duoc quy qua VALIDATION_TYPE_NAMES (integer -> so nguyen).
+    (re.compile(r"^Value error, (.+)$"), "Giá trị không hợp lệ: {0}"),
+    (re.compile(r"^Input should be (.+) or (.+)$"), "Đầu vào phải là {0} hoặc {1}"),
+    (re.compile(r"^Input should be '([^']+)' or '([^']+)'$"), "Đầu vào phải là '{0}' hoặc '{1}'"),
+    (re.compile(r"^Input should be '([^']+)'$"), "Đầu vào phải là '{0}'"),
+    (re.compile(r"^Integers must not have trailing zeros$"), "Số nguyên không được có số 0 thừa ở cuối"),
+    (re.compile(r"^Input should be a valid (\w[\w ]*)$"), "Đầu vào phải là {0} hợp lệ"),
+    (re.compile(r"^Extra inputs are not permitted: '?([^']*)'?$"), "Không cho phép trường ngoài cấu trúc: {0}"),
+]
+
+
+VALIDATION_TYPE_NAMES = {
+    "string": "chuỗi",
+    "integer": "số nguyên",
+    "number": "số",
+    "boolean": "giá trị đúng/sai",
+    "list": "danh sách",
+    "dict": "đối tượng",
+    "dictionary": "đối tượng",
+    "object": "đối tượng",
+    "uuid": "UUID",
+    "datetime": "ngày giờ",
+    "date": "ngày",
+    "float": "số thập phân",
+    "bytes": "bytes",
+    "json": "JSON",
+}
+
+VALID_INPUT_VALID = re.compile(r"^Input should be a valid ([a-z ]+?)(?:, got (.+))?$")
+
+
+def translate_validation_message(message: str) -> str:
+    """Doi mot thong diep dinh dang cua pydantic sang tieng Viet; khong doi thi giu nguyen."""
+    text = (message or "").strip()
+    if not text:
+        return text
+    exact = VALIDATION_MESSAGE_EXACT.get(text)
+    if exact:
+        return exact
+    if text.startswith("Value error, "):
+        return "Giá trị không hợp lệ: " + text.removeprefix("Value error, ").strip()
+    for pattern, template in VALIDATION_MESSAGE_PATTERNS:
+        match = pattern.match(text)
+        if match:
+            try:
+                return template.format(*match.groups())
+            except (IndexError, KeyError):
+                return template
+    match = VALID_INPUT_VALID.match(text)
+    if match:
+        kind = VALIDATION_TYPE_NAMES.get((match.group(1) or "").strip(), (match.group(1) or "").strip())
+        tail = f", nhưng nhận được {match.group(2)}" if match.group(2) else ""
+        return f"Đầu vào phải là {kind} hợp lệ{tail}"
+    if text.startswith("Input should be ") and text.count("'") >= 2:
+        return "Đầu vào phải là một trong: " + text.removeprefix("Input should be ").strip()
+    return text
+
+
 def validation_field_errors(exc: RequestValidationError) -> dict[str, list[str]]:
     """把 FastAPI/Pydantic 校验错误转换为公共字段错误格式。
 
@@ -173,6 +257,7 @@ def validation_field_errors(exc: RequestValidationError) -> dict[str, list[str]]
         ]
         field = ".".join(location) or "$"
         message = str(sanitize_json_value(error.get("msg", "Trường yêu cầu không hợp lệ"))).strip()
+        message = translate_validation_message(message)
         if message and message not in result.setdefault(field, []):
             result[field].append(message)
     return result

@@ -64,7 +64,7 @@ def _validate_operation(operation, kind, position, source, replaces) -> None:
 
 
 class CharacterRelationFactValuesV1(StrictRequestModel):
-    """关系状态保留作者原文；缺键为未知，不能用 null 或空白代替。"""
+    "Trạng thái quan hệ giữ nguyên văn tác giả; thiếu khóa nghĩa là chưa biết, không được thay bằng null hay khoảng trắng."
 
     model_config = ConfigDict(str_strip_whitespace=False)
 
@@ -96,13 +96,13 @@ class CharacterRelationFactValuesV1(StrictRequestModel):
 
 
 class CharacterRelationFactStoredValuesV1(CharacterRelationFactValuesV1):
-    """已保存的原文不再 trim；仍拒绝空串、纯空白与 null。"""
+    "Nguyên văn đã lưu không còn bị trim; vẫn từ chối chuỗi rỗng, chuỗi chỉ toàn khoảng trắng và null."
 
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=False)
 
 
 class CharacterRelationFactBeforeV1(StrictResponseModel):
-    """原状态的已知值与未知原因分别保存。"""
+    "Giá trị đã biết và lý do chưa biết của trạng thái gốc được lưu riêng."
 
     values: CharacterRelationFactStoredValuesV1
     unknown: dict[CharacterRelationFactField, FactUnknownReason]
@@ -122,7 +122,7 @@ class CharacterRelationFactBeforeV1(StrictResponseModel):
 
 
 class CharacterRelationFactRecordV1(StrictResponseModel):
-    """一次关系状态确认，保存两端物理身份和当时名称，拒绝人物或旧 D 形状。"""
+    "Một lượt xác nhận trạng thái quan hệ, lưu định danh vật lý của hai đầu cuối và tên tại thời điểm đó, từ chối dạng nhân vật hoặc dạng D cũ."
 
     schema_id: Literal["character_relation.fact"]
     schema_version: FactSchemaVersion
@@ -207,7 +207,7 @@ class CharacterRelationFactRecordV1(StrictResponseModel):
 
 
 class CharacterRelationFactsAtPositionV1(StrictResponseModel):
-    """关系在一个明确位置的值或未知；不夹带计划和裸主档状态。"""
+    "Giá trị hoặc trạng thái chưa biết của quan hệ tại một vị trí minh thị; không lẫn kế hoạch hay trạng thái hồ sơ chính trần."
 
     entity_id: ObjectIdString
     relation_id: CharacterRelationId
@@ -250,7 +250,7 @@ class CharacterRelationFactsAtPositionV1(StrictResponseModel):
 
 
 class CharacterRelationFactEndpointReadV1(StrictResponseModel):
-    """读取时的真实人物身份；管理停用不解释为剧情结束。"""
+    "Danh tính nhân vật thực tế lúc đọc; việc tắt trong quản lý không được hiểu là cốt truyện đã kết thúc."
 
     entity_id: ObjectIdString
     character_id: CharacterId
@@ -260,7 +260,7 @@ class CharacterRelationFactEndpointReadV1(StrictResponseModel):
 
 
 class CharacterRelationFactIdentityReadV1(StrictResponseModel):
-    """关系的真实身份和管理状态，不带裸 current_state。"""
+    "Định danh thật và trạng thái quản lý của quan hệ, không kèm current_state trần."
 
     entity_id: ObjectIdString
     relation_id: CharacterRelationId
@@ -278,7 +278,7 @@ class CharacterRelationFactIdentityReadV1(StrictResponseModel):
 
 
 class CharacterRelationFactHistoryObservationV1(StrictResponseModel):
-    """原记录摘要和有效性，不以摘要代替物理身份和动作版本。"""
+    "Tóm tắt và tính hợp lệ của bản ghi gốc; không lấy tóm tắt thay cho định danh vật lý và phiên bản hành động."
 
     history_id: ObjectIdString
     entity_id: ObjectIdString
@@ -289,7 +289,7 @@ class CharacterRelationFactHistoryObservationV1(StrictResponseModel):
 
 
 class CharacterRelationFactReadV1(StrictResponseModel):
-    """按原关系选择复验的读取；空选择不是空的全书搜索。"""
+    "Lần đọc để tái kiểm tra theo lựa chọn quan hệ gốc; lựa chọn rỗng không phải là tìm kiếm rỗng trên toàn sách."
 
     kind: Literal["character_relation_facts"]
     novel_id: ObjectIdString
@@ -355,7 +355,7 @@ class CharacterRelationFactReadV1(StrictResponseModel):
 
 
 class CharacterRelationFactReadResultV1(StrictResponseModel):
-    """明确区分位置结果、缺失关系和原读取依据。"""
+    "Phân định rõ kết quả vị trí, quan hệ bị thiếu và căn cứ của lần đọc gốc."
 
     novel_id: ObjectIdString
     position: FactReadPositionV1
@@ -391,7 +391,7 @@ class CharacterRelationFactReadResultV1(StrictResponseModel):
 
 
 class CharacterRelationFactQueryV1(StrictRequestModel):
-    """按明确 ID 读取；省略位置由服务端解析一次最新位置。"""
+    "Đọc theo ID minh thị; nếu lược vị trí, server phân giải một lần vị trí mới nhất."
 
     relation_ids: list[CharacterRelationId] = Field(max_length=200)
     position: FactPositionV1 | None = None
@@ -405,7 +405,7 @@ class CharacterRelationFactQueryV1(StrictRequestModel):
 
 
 class CharacterRelationFactEndpointV1(CharacterRelationFactEndpointReadV1):
-    """人工确认冻结端点的真实版本，不重新按名称绑定。"""
+    "Xác nhận thủ công đóng băng phiên bản thực của hai đầu, không liên kết lại theo tên."
 
     version: FactVersion
 
@@ -419,7 +419,7 @@ def _validate_available_endpoints(source, target) -> None:
 
 
 class CharacterRelationFactCreateDataV1(StrictResponseModel):
-    """新关系的端点与设计；current_state 只在作者 after 中提供。"""
+    "Đầu cuối và thiết kế của quan hệ mới; current_state chỉ xuất hiện trong after do tác giả cung cấp."
 
     source_character_id: CharacterId
     target_character_id: CharacterId
@@ -447,7 +447,7 @@ class CharacterRelationFactCreateDataV1(StrictResponseModel):
 
 
 class CharacterRelationFactExistingTargetV1(StrictResponseModel):
-    """既有关系及两个端点的原物理身份、名称和版本。"""
+    "Quan hệ đã có cùng danh tính vật lý, tên và phiên bản gốc của hai đầu mối."
 
     kind: Literal["existing"]
     novel_id: ObjectIdString
@@ -465,7 +465,7 @@ class CharacterRelationFactExistingTargetV1(StrictResponseModel):
 
 
 class CharacterRelationFactNewTargetV1(StrictResponseModel):
-    """新建只冻结待用物理身份和空语义查询，不预占关系业务号。"""
+    "Tạo mới chỉ đóng băng định danh vật lý chờ dùng và truy vấn ngữ nghĩa rỗng, không chiếm trước mã nghiệp vụ quan hệ."
 
     kind: Literal["new"]
     novel_id: ObjectIdString
@@ -502,7 +502,7 @@ CharacterRelationFactTargetV1 = Annotated[
 
 
 class CharacterRelationFactPreviewExistingTargetV1(StrictRequestModel):
-    """已有关系预览只接受正式身份和原版本，不接受客户端端点替换。"""
+    "Xem trước quan hệ hiện có chỉ nhận định danh chính thức và phiên bản gốc, không cho client thay đầu cuối."
 
     entity_id: ObjectIdString
     relation_id: CharacterRelationId
@@ -510,13 +510,13 @@ class CharacterRelationFactPreviewExistingTargetV1(StrictRequestModel):
 
 
 class CharacterRelationFactPreviewNewTargetV1(StrictRequestModel):
-    """新建预览尚未提供关系物理或业务身份。"""
+    "Bản xem trước tạo mới chưa cung cấp danh tính vật lý hay danh tính nghiệp vụ của quan hệ."
 
     candidate: CharacterRelationFactCreateDataV1
 
 
 class CharacterRelationFactCreatePreviewInputV1(StrictRequestModel):
-    """作者明确选择新关系状态的起点，不提交虚构 before。"""
+    "Tác giả minh thị chọn điểm khởi đầu cho trạng thái quan hệ mới, không gửi before hư cấu."
 
     operation: Literal["create"]
     target: CharacterRelationFactPreviewNewTargetV1
@@ -526,7 +526,7 @@ class CharacterRelationFactCreatePreviewInputV1(StrictRequestModel):
 
 
 class CharacterRelationFactExistingPreviewInputV1(StrictRequestModel):
-    """已有关系选择起点或变化和明确的原记录处置。"""
+    "Quan hệ đã có chọn điểm khởi đầu hoặc chọn sự thay đổi, kèm cách xử lý rõ ràng với bản ghi gốc."
 
     operation: Literal["establish", "correct_initial", "change", "replace"]
     target: CharacterRelationFactPreviewExistingTargetV1
@@ -539,7 +539,7 @@ class CharacterRelationFactExistingPreviewInputV1(StrictRequestModel):
 
 
 class CharacterRelationFactVoidPreviewInputV1(StrictRequestModel):
-    """作废位置和来源取自原记录，客户端只明确选中记录。"""
+    "Vị trí và nguồn khi vô hiệu hóa lấy từ bản ghi gốc, phía client chỉ cần chọn rõ bản ghi."
 
     operation: Literal["void"]
     target: CharacterRelationFactPreviewExistingTargetV1
@@ -564,7 +564,7 @@ class CharacterRelationFactPreviewInputV1(RootModel[Annotated[
 
 
 class CharacterRelationFactBasisV1(StrictResponseModel):
-    """作者实际看过的关系、端点、前值及原读取；旧裸值单独保留。"""
+    "Quan hệ, đầu cuối, giá trị trước và lượt đọc gốc mà tác giả thực sự đã xem; giá trị trần cũ được giữ riêng."
 
     schema_version: FactSchemaVersion
     operation: CharacterRelationFactOperation
@@ -707,7 +707,7 @@ class CharacterRelationFactBasisV1(StrictResponseModel):
 
 
 class CharacterRelationFactPreviewV1(StrictResponseModel):
-    """作者看到的前值必须就是冻结依据中的前值。"""
+    "Giá trị trước mà tác giả nhìn thấy phải đúng là giá trị trước trong căn cứ đã đóng băng."
 
     basis: CharacterRelationFactBasisV1
     values: CharacterRelationFactBeforeV1
@@ -721,7 +721,7 @@ class CharacterRelationFactPreviewV1(StrictResponseModel):
 
 
 class CharacterRelationFactCreateConfirmV1(StrictRequestModel):
-    """作者状态只提供一次，新建不接受伪造的旧版本。"""
+    "Trạng thái do tác giả cung cấp chỉ một lần; tạo mới không nhận phiên bản cũ giả mạo."
 
     operation: Literal["create"]
     basis: CharacterRelationFactBasisV1
@@ -730,7 +730,7 @@ class CharacterRelationFactCreateConfirmV1(StrictRequestModel):
 
 
 class CharacterRelationFactExistingConfirmV1(StrictRequestModel):
-    """确认已有关系的一个真实动作，保持目标和原读取不变。"""
+    "Xác nhận một hành động thật trên quan hệ đã có, giữ nguyên mục tiêu và lượt đọc gốc."
 
     operation: Literal["establish", "correct_initial", "change", "replace"]
     basis: CharacterRelationFactBasisV1
@@ -740,7 +740,7 @@ class CharacterRelationFactExistingConfirmV1(StrictRequestModel):
 
 
 class CharacterRelationFactVoidConfirmV1(StrictRequestModel):
-    """作废只处置选中记录，不提交 after 或反向恢复 before。"""
+    "Hủy bỏ chỉ xử lý bản ghi được chọn, không gửi after và không khôi phục ngược before."
 
     operation: Literal["void"]
     basis: CharacterRelationFactBasisV1
@@ -773,7 +773,7 @@ class CharacterRelationFactConfirmV1(RootModel[Annotated[
 
 
 class CharacterRelationFactValidityChangeV1(StrictResponseModel):
-    """一个关系动作对原状态记录的实际单向处置。"""
+    "Cách xử lý một chiều thực tế của một hành động quan hệ đối với bản ghi trạng thái gốc."
 
     history_id: ObjectIdString
     field: CharacterRelationFactField
@@ -782,7 +782,7 @@ class CharacterRelationFactValidityChangeV1(StrictResponseModel):
 
 
 class CharacterRelationFactResultV1(StrictResponseModel):
-    """首次成功的完整关系结果；后来改名、回收不改写这份快照。"""
+    "Kết quả quan hệ đầy đủ của lần thành công đầu tiên; đổi tên hay thu hồi về sau không viết lại ảnh chụp nhanh này."
 
     schema_version: FactSchemaVersion
     operation: CharacterRelationFactOperation
@@ -831,7 +831,7 @@ class CharacterRelationFactResultV1(StrictResponseModel):
 
 
 class CharacterRelationFactReceiptRequestV1(StrictResponseModel):
-    """原请求外壳与新关系确认绑定，不能承载旧 D 请求。"""
+    "Vỏ yêu cầu gốc gắn với xác nhận quan hệ mới, không thể chứa yêu cầu D cũ."
 
     operation: CharacterRelationFactOperation
     novel_id: ObjectIdString
@@ -840,7 +840,7 @@ class CharacterRelationFactReceiptRequestV1(StrictResponseModel):
 
 
 class CharacterRelationFactReceiptV1(StrictResponseModel):
-    """新关系事实的独立成功回执，不放宽旧 D 或人物 schema。"""
+    "Biên nhận thành công độc lập cho sự kiện quan hệ mới, không nới lỏng schema nhân vật hay schema D cũ."
 
     schema_id: Literal["character_relation.fact.receipt"]
     schema_version: FactSchemaVersion

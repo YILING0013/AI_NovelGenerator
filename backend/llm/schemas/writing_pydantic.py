@@ -22,7 +22,7 @@ WRITING_SCOPE_FIELDS = {"target_type", "target_id", "mode", "expected_version", 
 
 
 class WritingSelectionV1(StrictRequestModel):
-    """作者选中的资料；不提供任意数据库读取参数。"""
+    "Tài liệu tác giả đã chọn; không cung cấp tham số đọc cơ sở dữ liệu tùy ý."
 
     character_ids: list[str] = Field(default_factory=list, max_length=50)
     faction_ids: list[str] = Field(default_factory=list, max_length=50)
@@ -38,7 +38,7 @@ class WritingSelectionV1(StrictRequestModel):
 
 
 class WritingGenerateInputV1(StrictRequestModel):
-    """服务端固定操作位置，开始表单只收集创作要求。"""
+    "Server cố định vị trí thao tác, biểu mẫu bắt đầu chỉ thu các yêu cầu sáng tác."
 
     novel_id: ObjectIdString
     target_type: Literal["volume", "arc", "scene", "chapter"]
@@ -74,13 +74,13 @@ class WritingGenerateInputV1(StrictRequestModel):
 
 
 class ArcPlansResultV1(StrictRequestModel):
-    """仅提供篇章可编辑内容，不包含正式 ID 或统计。"""
+    "Chỉ cung cấp phần chỉnh sửa được của vòng truyện, không chứa ID chính thức hay số liệu thống kê."
 
     arcs: list[ArcCreateV1] = Field(max_length=20)
 
 
 class ChapterContentResultV1(StrictRequestModel):
-    """章节正文候选；保留作者与模型的换行和首尾空白。"""
+    "Ứng viên văn bản chương; giữ nguyên ngắt dòng cùng khoảng trắng đầu cuối của tác giả và mô hình."
 
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=False)
     content: str = Field(min_length=1, max_length=100000)
@@ -94,13 +94,13 @@ class ChapterContentResultV1(StrictRequestModel):
 
 
 class ScenePlansResultV1(StrictRequestModel):
-    """场景候选不包含正文。"""
+    "Ứng viên cảnh không bao gồm phần nội dung truyện."
 
     scenes: list[SceneCreateV1] = Field(max_length=20)
 
 
 class ChapterPlanCandidateV1(StrictRequestModel):
-    """章计划生成只提供规划，正式新章正文由服务置空。"""
+    "Sinh kế hoạch chương chỉ cung cấp kế hoạch, văn bản chương mới chính thức do dịch vụ đặt trống."
 
     title: str = Field(min_length=1, max_length=120)
     summary: str = Field(default="", max_length=2000)
@@ -108,7 +108,7 @@ class ChapterPlanCandidateV1(StrictRequestModel):
 
 
 class ChapterPlansResultV1(StrictRequestModel):
-    """场景内有序的章计划候选。"""
+    "Các ứng viên kế hoạch chương có thứ tự trong cảnh."
 
     chapters: list[ChapterPlanCandidateV1] = Field(max_length=20)
 

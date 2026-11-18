@@ -39,13 +39,13 @@ NovelStatus = Literal["draft", "ongoing", "completed", "archived"]
 
 
 class NovelManualCreateRequestV1(NovelCreateFieldsV1):
-    """人工创建小说命令。"""
+    "Lệnh tạo tiểu thuyết thủ công."
 
     request_type: Literal["manual"] = "manual"
 
 
 class NovelAIConfirmationRequestV1(StrictRequestModel):
-    """浏览器显式确认 AI 新书候选的严格信封。"""
+    "Phong bì nghiêm ngặt để trình duyệt xác nhận tường minh ứng viên sách mới do AI tạo."
 
     request_type: Literal["ai_confirmation"]
     candidate: NovelCreateFieldsV1
@@ -58,7 +58,7 @@ NovelCreateRequestV1 = NovelManualCreateRequestV1 | NovelAIConfirmationRequestV1
 
 
 class NovelAIFieldConfirmationRequestV1(StrictRequestModel):
-    """保存态小说字段候选的显式确认命令。"""
+    "Lệnh xác nhận tường minh các ứng viên trường của tiểu thuyết ở trạng thái đã lưu."
 
     request_type: Literal["ai_field_confirmation"]
     candidate: NovelFieldRewriteCandidateV1
@@ -78,7 +78,7 @@ class NovelAIFieldConfirmationRequestV1(StrictRequestModel):
 
 
 class NovelUpdateRequestV1(StrictRequestModel):
-    """活动小说资料的人工 CAS 更新命令。"""
+    "Lệnh cập nhật CAS thủ công cho tài liệu tiểu thuyết đang hoạt động."
 
     request_type: Literal["manual"] = "manual"
     expected_version: int = Field(ge=1)
@@ -118,27 +118,27 @@ NovelUpdateCommandV1 = NovelUpdateRequestV1 | NovelAIFieldConfirmationRequestV1
 
 
 class NovelStatusUpdateRequestV1(StrictRequestModel):
-    """小说状态 CAS 更新命令。"""
+    "Lệnh cập nhật trạng thái tiểu thuyết theo CAS."
 
     status: NovelStatus
     expected_version: int = Field(ge=1)
 
 
 class NovelVersionRequestV1(StrictRequestModel):
-    """只需乐观锁版本的小说生命周期命令。"""
+    "Lệnh vòng đời tiểu thuyết chỉ cần phiên bản khoá lạc quan."
 
     expected_version: int = Field(ge=1)
 
 
 class NovelStatsV1(StrictResponseModel):
-    """书架显示的章节数和总字数。"""
+    "Số chương và tổng số chữ hiển thị trên giá sách."
 
     chapter_count: int = Field(ge=0)
     total_word_count: int = Field(ge=0)
 
 
 class NovelResponseV1(StrictResponseModel):
-    """不泄露 Mongo _id 和内部幂等字段的小说公开响应。"""
+    "Phản hồi công khai của tiểu thuyết, không để lộ Mongo _id và các trường idempotent nội bộ."
 
     id: ObjectIdString
     version: int = Field(ge=1)
@@ -172,20 +172,20 @@ class NovelResponseV1(StrictResponseModel):
 
 
 class NovelCreateResponseV1(StrictResponseModel):
-    """小说创建及幂等回放的最小响应。"""
+    "Phản hồi tối thiểu cho việc tạo tiểu thuyết và phát lại idempotent."
 
     id: ObjectIdString
     version: int = Field(ge=1)
 
 
 class NovelListResponseV1(StrictResponseModel):
-    """小说书架或回收站列表响应。"""
+    "Phản hồi danh sách giá sách hoặc thùng rác tiểu thuyết."
 
     data: list[NovelResponseV1]
 
 
 class NovelHardDeleteStatsV1(StrictResponseModel):
-    """小说物理删除当前真实消费者的精确计数。"""
+    "Đếm chính xác số bên tiêu dùng thực tế hiện có của tiểu thuyết khi xóa vật lý."
 
     volumes_deleted: int = Field(ge=0)
     arcs_deleted: int = Field(ge=0)
@@ -224,7 +224,7 @@ class NovelHardDeleteStatsV1(StrictResponseModel):
 
 
 class NovelHardDeleteResponseV1(StrictResponseModel):
-    """不可恢复的小说物理删除响应。"""
+    "Phản hồi xoá vật lý tiểu thuyết không thể khôi phục."
 
     stats: NovelHardDeleteStatsV1
 
@@ -513,7 +513,7 @@ async def hard_delete(
 
 
 class NovelHistoryDeleteImpactV1(StrictResponseModel):
-    """作品永久删除前的历史数量与已读版本。"""
+    "Số lượng lịch sử và phiên bản đã đọc trước khi xóa vĩnh viễn tác phẩm."
 
     novel_id: ObjectIdString
     foreshadowings: int = Field(default=0, ge=0)

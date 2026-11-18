@@ -35,7 +35,7 @@ SECRET_PATTERN = re.compile(r"(sk-[A-Za-z0-9_-]{8,}|Bearer\s+[A-Za-z0-9._-]{12,}
 
 
 class ProviderTestRequest(BaseModel):
-    """前端发起 Provider 接口测试的请求体。"""
+    "Thân yêu cầu do front-end khởi tạo để kiểm thử giao diện của Provider."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -68,7 +68,7 @@ class ProviderTestRequest(BaseModel):
 
 
 class ProviderCapabilityResult(BaseModel):
-    """单项能力测试结果。"""
+    "Kết quả kiểm thử cho một khả năng."
 
     capability: ProviderTestCapability = Field(description="Mã định danh khả năng")
     label: str = Field(description="Tên hiển thị trên giao diện")
@@ -80,7 +80,7 @@ class ProviderCapabilityResult(BaseModel):
 
 
 class ProviderCapabilityRecommendation(BaseModel):
-    """接口测试完成后建议回填的 Provider 能力开关。"""
+    "Các công tắc năng lực Provider được đề xuất ghi lại sau khi kiểm thử giao diện hoàn tất."
 
     supports_streaming: bool = Field(default=False, description="Có đề xuất bật streaming")
     supports_json_schema: bool = Field(default=False, description="Có đề xuất bật JSON Schema")
@@ -89,7 +89,7 @@ class ProviderCapabilityRecommendation(BaseModel):
 
 
 class ProviderTestResponse(BaseModel):
-    """Provider 接口测试响应体。"""
+    "Thân phản hồi kiểm thử giao diện nhà cung cấp."
 
     alias: str = Field(default="", description="Biệt danh nhà cung cấp hiện tại")
     provider_type: str = Field(default="", description="Loại client nhà cung cấp")
@@ -105,7 +105,7 @@ class ProviderTestResponse(BaseModel):
 
 
 class ProviderJsonProbeSchema(BaseModel):
-    """JSON Schema 探测期望模型返回的最小结构。"""
+    "Cấu trúc tối thiểu mà phép thăm dò JSON Schema kỳ vọng mô hình trả về."
 
     code: Literal["ok"] = Field(description="Luôn trả về ok")
     message: str = Field(description="Văn bản trạng thái ngắn gọn")

@@ -37,7 +37,7 @@ from .contracts import ResourceRef
 
 @dataclass(frozen=True)
 class ResourceDefinition:
-    """真实集合及原业务字段，供目录、工具和写入共同使用。"""
+    "Tập hợp thực tế cùng các trường nghiệp vụ gốc, dùng chung cho danh mục, công cụ và thao tác ghi."
 
     collection: str
     identity: str

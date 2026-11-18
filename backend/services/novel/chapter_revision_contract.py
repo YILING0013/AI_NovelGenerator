@@ -10,7 +10,7 @@ from backend.services.novel.chapter_contract import ChapterPlanV2, ChapterReadV2
 
 
 class ChapterRevisionSummaryV1(StrictResponseModel):
-    """历史列表不加载长正文，修订由章节 ID 和业务版本定位。"""
+    "Danh sách lịch sử không nạp nội dung dài; bản chỉnh sửa được xác định bằng ID chương và phiên bản nghiệp vụ."
 
     revision_id: ObjectIdString
     chapter_id: ObjectIdString
@@ -28,7 +28,7 @@ class ChapterRevisionSummaryV1(StrictResponseModel):
 
 
 class ChapterRevisionReadV1(ChapterRevisionSummaryV1):
-    """保留当时标题、摘要、计划与完整正文。"""
+    "Giữ tiêu đề, tóm tắt, kế hoạch và toàn bộ văn bản chương tại thời điểm đó."
 
     summary: str
     planning: ChapterPlanV2
@@ -36,20 +36,20 @@ class ChapterRevisionReadV1(ChapterRevisionSummaryV1):
 
 
 class ChapterRevisionListV1(StrictResponseModel):
-    """按版本倒序返回章节历史。"""
+    "Trả về lịch sử chương theo thứ tự phiên bản giảm dần."
 
     data: list[ChapterRevisionSummaryV1]
     next_before_version: int | None = Field(ge=1)
 
 
 class ChapterRevisionRestoreV1(StrictRequestModel):
-    """明确按已读章节版本恢复整份旧稿。"""
+    "Khôi phục rõ ràng toàn bộ bản thảo cũ theo phiên bản chương đã đọc."
 
     expected_version: int = Field(ge=1)
 
 
 class ChapterRevisionCompareV1(StrictResponseModel):
-    """同一读取中的旧稿和当前章，标出实际变化的字段。"""
+    "Bản thảo cũ và chương hiện tại trong cùng một lần đọc, chỉ ra các trường thực sự thay đổi."
 
     revision: ChapterRevisionReadV1
     current: ChapterReadV2
@@ -58,7 +58,7 @@ class ChapterRevisionCompareV1(StrictResponseModel):
 
 
 class ChapterHistoryDeleteImpactV1(StrictResponseModel):
-    """永久删除前显示并绑定作者确认的历史数量。"""
+    "Số lượng lịch sử hiển thị và ràng buộc với xác nhận của tác giả trước khi xóa vĩnh viễn."
 
     chapter_id: ObjectIdString
     foreshadowings: int = Field(default=0, ge=0)

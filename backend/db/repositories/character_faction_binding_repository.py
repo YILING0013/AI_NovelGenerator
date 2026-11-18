@@ -491,7 +491,7 @@ class CharacterFactionBindingRepository(BaseRepository):
             raise NotFoundError(f"Liên kết nhân vật—thế lực '{binding_id}' tại{state}không tồn tại")
         actual_version = current["version"]
         raise DuplicateKeyError(
-            f"Liên kết nhân vật—thế lực '{binding_id}' 版本冲突："
+            f"Liên kết nhân vật—thế lực '{binding_id}' xung đột phiên bản: "
             f"expected={expected_version}, actual={actual_version}"
         )
 

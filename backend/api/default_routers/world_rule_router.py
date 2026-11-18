@@ -31,7 +31,7 @@ CostString = Annotated[str, Field(min_length=1, max_length=500)]
 
 
 class WorldRuleExceptionV1(BaseModel):
-    """一条例外条件及其生效结果。"""
+    "Một điều kiện ngoại lệ và kết quả khi áp dụng."
 
     model_config = ConfigDict(
         extra="forbid",
@@ -44,7 +44,7 @@ class WorldRuleExceptionV1(BaseModel):
 
 
 class WorldRuleCreateV1(BaseModel):
-    """人工创建正式世界规则的严格请求。"""
+    "Yêu cầu nghiêm ngặt tạo thủ công quy tắc thế giới chính thức."
 
     model_config = ConfigDict(
         extra="forbid",
@@ -84,7 +84,7 @@ class WorldRuleCreateV1(BaseModel):
 
 
 class WorldRuleUpdateV1(BaseModel):
-    """以公开版本更新正式世界规则的严格请求。"""
+    "Yêu cầu nghiêm ngặt cập nhật quy tắc thế giới chính thức bằng phiên bản công khai."
 
     model_config = ConfigDict(
         extra="forbid",
@@ -134,7 +134,7 @@ class WorldRuleUpdateV1(BaseModel):
 
 
 class WorldRuleReadV1(BaseModel):
-    """正式世界规则的严格公开响应。"""
+    "Phản hồi công khai nghiêm ngặt của quy tắc thế giới chính thức."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -160,7 +160,7 @@ class WorldRuleReadV1(BaseModel):
 
 
 class WorldRuleReorderItemV1(BaseModel):
-    """一条完整同分类重排的 CAS 条目。"""
+    "Một mục CAS của đợt sắp xếp lại đầy đủ trong cùng phân loại."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -170,7 +170,7 @@ class WorldRuleReorderItemV1(BaseModel):
 
 
 class WorldRuleReorderRequestV1(BaseModel):
-    """完整同分类规则重排请求。"""
+    "Yêu cầu sắp xếp lại đầy đủ các quy tắc cùng phân loại."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -178,7 +178,7 @@ class WorldRuleReorderRequestV1(BaseModel):
 
 
 class WorldRuleRestoreRequestV1(BaseModel):
-    """恢复回收站规则的 CAS 请求。"""
+    "Yêu cầu CAS khôi phục quy tắc trong thùng rác."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -186,7 +186,7 @@ class WorldRuleRestoreRequestV1(BaseModel):
 
 
 class WorldRuleReferenceCountsV1(BaseModel):
-    """规则永久删除前的受保护正式引用统计。"""
+    "Thống kê các tham chiếu chính thức được bảo vệ trước khi xóa vĩnh viễn quy tắc."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -198,7 +198,7 @@ class WorldRuleReferenceCountsV1(BaseModel):
 
 
 class WorldRuleHardDeleteResponseV1(BaseModel):
-    """世界规则永久删除结果。"""
+    "Kết quả xoá vĩnh viễn quy tắc thế giới."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -208,7 +208,7 @@ class WorldRuleHardDeleteResponseV1(BaseModel):
 
 
 class WorldRuleContextDiagnosticV1(BaseModel):
-    """活动规则因实体引用不可用而被排除的只读诊断。"""
+    "Chẩn đoán chỉ đọc về các quy tắc đang hoạt động bị loại ra vì tham chiếu thực thể không dùng được."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -220,7 +220,7 @@ class WorldRuleContextDiagnosticV1(BaseModel):
 
 
 class WorldRuleContextV1(BaseModel):
-    """worldview 摘要与可用正式规则的分来源只读投影。"""
+    "Bản chiếu chỉ đọc theo từng nguồn của tóm tắt thế giới quan và các quy tắc chính thức đang khả dụng."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -230,7 +230,7 @@ class WorldRuleContextV1(BaseModel):
 
 
 class CoreWorldRulesConfirmResponseV1(BaseModel):
-    """核心世界规则批量确认后的正式映射与完整规则。"""
+    "Ánh xạ chính thức cùng các quy tắc đầy đủ sau khi xác nhận hàng loạt quy tắc thế giới cốt lõi."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 

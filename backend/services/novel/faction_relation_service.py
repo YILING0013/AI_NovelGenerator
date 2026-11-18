@@ -224,7 +224,7 @@ class FactionRelationService:
         actual_version = int(relation["version"])
         if actual_version != expected_version:
             raise VersionConflictError(
-                f"Quan hệ thế lực '{relation.get('relation_id')}' 版本冲突："
+                f"Quan hệ thế lực '{relation.get('relation_id')}' xung đột phiên bản: "
                 f"expected={expected_version}, actual={actual_version}"
             )
 
@@ -597,7 +597,7 @@ class FactionRelationService:
                     raise ValueError(f"Không hỗ trợ basis resource_type={resource_type}")
                 if int(current["version"]) != expected_version:
                     raise VersionConflictError(
-                        f"AI 阵营关系候选依据版本冲突: {resource_type}:{resource_id}"
+                        f"Xung đột phiên bản căn cứ của ứng viên quan hệ thế lực do AI tạo: {resource_type}:{resource_id}"
                     )
             selected_faction_ids = set(source["generation_input"]["faction_ids"])
             if novel_source_count != 1 or basis_faction_ids != selected_faction_ids:

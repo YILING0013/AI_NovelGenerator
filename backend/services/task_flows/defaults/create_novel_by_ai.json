@@ -54,7 +54,7 @@
       },
       "outputs": {
         "plot": {
-          "description": "完整的约3000字长篇压缩故事正文",
+          "description": "Toàn bộ văn bản chính của truyện dài được nén gọn, khoảng 3000 chữ",
           "maxLength": 5000,
           "minLength": 200,
           "title": "Plot",
@@ -83,7 +83,7 @@
       "label": "extract_idea",
       "inputs": {
         "plot": {
-          "description": "完整的约3000字长篇压缩故事正文",
+          "description": "Toàn bộ văn bản chính của truyện dài được nén gọn, khoảng 3000 chữ",
           "maxLength": 5000,
           "minLength": 200,
           "title": "Plot",
@@ -93,7 +93,7 @@
       },
       "outputs": {
         "genre": {
-          "description": "小说类型，如玄幻、科幻、都市、悬疑、历史、仙侠等",
+          "description": "Thể loại tiểu thuyết, như huyền huyễn, khoa học viễn tưởng, đô thị, bí ẩn hồi hộp, lịch sử, tiên hiệp, v.v.",
           "maxLength": 30,
           "minLength": 1,
           "title": "Genre",
@@ -101,7 +101,7 @@
           "required": true
         },
         "tone": {
-          "description": "整体基调，如热血、黑暗、轻松、搞笑、治愈、压抑等",
+          "description": "Giọng điệu tổng thể, như máu lửa, tăm tối, nhẹ nhàng, hài hước, chữa lành, u ám, v.v.",
           "maxLength": 30,
           "minLength": 1,
           "title": "Tone",
@@ -109,7 +109,7 @@
           "required": true
         },
         "target_audience": {
-          "description": "目标读者群体，如男频、女频、青少年、泛幻想读者等",
+          "description": "Nhóm độc giả mục tiêu, như dành cho nam, dành cho nữ, thanh thiếu niên, độc giả đại chúng yêu kỳ ảo, v.v.",
           "maxLength": 30,
           "minLength": 1,
           "title": "Target Audience",
@@ -117,7 +117,7 @@
           "required": true
         },
         "core_idea": {
-          "description": "用1-2句话描述故事的核心设想",
+          "description": "Mô tả ý tưởng cốt lõi của truyện trong 1-2 câu",
           "maxLength": 300,
           "minLength": 10,
           "title": "Core Idea",
@@ -146,7 +146,7 @@
       "label": "core_seed",
       "inputs": {
         "core_idea": {
-          "description": "用1-2句话描述故事的核心设想",
+          "description": "Mô tả ý tưởng cốt lõi của truyện trong 1-2 câu",
           "maxLength": 300,
           "minLength": 10,
           "title": "Core Idea",
@@ -154,7 +154,7 @@
           "required": true
         },
         "genre": {
-          "description": "小说类型，如玄幻、科幻、都市、悬疑、历史、仙侠等",
+          "description": "Thể loại tiểu thuyết, như huyền huyễn, khoa học viễn tưởng, đô thị, bí ẩn hồi hộp, lịch sử, tiên hiệp, v.v.",
           "maxLength": 30,
           "minLength": 1,
           "title": "Genre",
@@ -170,7 +170,7 @@
           "required": false
         },
         "plot": {
-          "description": "完整的约3000字长篇压缩故事正文",
+          "description": "Toàn bộ văn bản chính của truyện dài được nén gọn, khoảng 3000 chữ",
           "maxLength": 5000,
           "minLength": 200,
           "title": "Plot",
@@ -178,7 +178,7 @@
           "required": true
         },
         "target_audience": {
-          "description": "目标读者群体，如男频、女频、青少年、泛幻想读者等",
+          "description": "Nhóm độc giả mục tiêu, như dành cho nam, dành cho nữ, thanh thiếu niên, độc giả đại chúng yêu kỳ ảo, v.v.",
           "maxLength": 30,
           "minLength": 1,
           "title": "Target Audience",
@@ -186,7 +186,7 @@
           "required": true
         },
         "tone": {
-          "description": "整体基调，如热血、黑暗、轻松、搞笑、治愈、压抑等",
+          "description": "Giọng điệu tổng thể, như máu lửa, tăm tối, nhẹ nhàng, hài hước, chữa lành, u ám, v.v.",
           "maxLength": 30,
           "minLength": 1,
           "title": "Tone",
@@ -204,7 +204,7 @@
       },
       "outputs": {
         "core_seed": {
-          "description": "故事核心公式，需包含显性冲突、潜在危机、人物核心驱动力与世界观关键矛盾暗示，长度30-100字",
+          "description": "Công thức cốt lõi của truyện, cần bao gồm xung đột tường minh, nguy cơ tiềm ẩn, động lực cốt lõi của nhân vật và gợi mở mâu thuẫn then chốt của thế giới quan, độ dài 30-100 chữ",
           "maxLength": 150,
           "minLength": 30,
           "title": "Core Seed",
@@ -233,7 +233,7 @@
       "label": "novel_meta",
       "inputs": {
         "core_idea": {
-          "description": "用1-2句话描述故事的核心设想",
+          "description": "Mô tả ý tưởng cốt lõi của truyện trong 1-2 câu",
           "maxLength": 300,
           "minLength": 10,
           "title": "Core Idea",
@@ -241,7 +241,7 @@
           "required": true
         },
         "core_seed": {
-          "description": "故事核心公式，需包含显性冲突、潜在危机、人物核心驱动力与世界观关键矛盾暗示，长度30-100字",
+          "description": "Công thức cốt lõi của truyện, cần bao gồm xung đột tường minh, nguy cơ tiềm ẩn, động lực cốt lõi của nhân vật và gợi mở mâu thuẫn then chốt của thế giới quan, độ dài 30-100 chữ",
           "maxLength": 150,
           "minLength": 30,
           "title": "Core Seed",
@@ -249,7 +249,7 @@
           "required": true
         },
         "genre": {
-          "description": "小说类型，如玄幻、科幻、都市、悬疑、历史、仙侠等",
+          "description": "Thể loại tiểu thuyết, như huyền huyễn, khoa học viễn tưởng, đô thị, bí ẩn hồi hộp, lịch sử, tiên hiệp, v.v.",
           "maxLength": 30,
           "minLength": 1,
           "title": "Genre",
@@ -265,7 +265,7 @@
           "required": false
         },
         "plot": {
-          "description": "完整的约3000字长篇压缩故事正文",
+          "description": "Toàn bộ văn bản chính của truyện dài được nén gọn, khoảng 3000 chữ",
           "maxLength": 5000,
           "minLength": 200,
           "title": "Plot",
@@ -273,7 +273,7 @@
           "required": true
         },
         "target_audience": {
-          "description": "目标读者群体，如男频、女频、青少年、泛幻想读者等",
+          "description": "Nhóm độc giả mục tiêu, như dành cho nam, dành cho nữ, thanh thiếu niên, độc giả đại chúng yêu kỳ ảo, v.v.",
           "maxLength": 30,
           "minLength": 1,
           "title": "Target Audience",
@@ -281,7 +281,7 @@
           "required": true
         },
         "tone": {
-          "description": "整体基调，如热血、黑暗、轻松、搞笑、治愈、压抑等",
+          "description": "Giọng điệu tổng thể, như máu lửa, tăm tối, nhẹ nhàng, hài hước, chữa lành, u ám, v.v.",
           "maxLength": 30,
           "minLength": 1,
           "title": "Tone",
@@ -299,7 +299,7 @@
       },
       "outputs": {
         "title": {
-          "description": "小说主标题，具有吸引力和传播性，符合类型读者审美",
+          "description": "Tiêu đề chính của tiểu thuyết, có sức hấp dẫn và khả năng lan truyền, phù hợp thị hiếu độc giả của thể loại",
           "maxLength": 30,
           "minLength": 1,
           "title": "Title",
@@ -307,7 +307,7 @@
           "required": true
         },
         "subtitle": {
-          "description": "副标题，补充核心冲突或主题，具有一定文学感或商业感",
+          "description": "Tiêu đề phụ, bổ sung xung đột hoặc chủ đề cốt lõi, mang cảm giác văn chương hoặc thương mại",
           "maxLength": 50,
           "minLength": 1,
           "title": "Subtitle",
@@ -315,7 +315,7 @@
           "required": true
         },
         "introduction": {
-          "description": "小说引言，100-300字，引入故事，吸引读者阅读兴趣",
+          "description": "Lời mở đầu của tiểu thuyết, 100-300 chữ, dẫn vào truyện, thu hút hứng thú đọc của độc giả",
           "maxLength": 300,
           "minLength": 100,
           "title": "Introduction",
@@ -323,7 +323,7 @@
           "required": true
         },
         "summary": {
-          "description": "小说简介，100-500字，需清晰呈现主线冲突与悬念",
+          "description": "Tóm tắt tiểu thuyết, 100-500 chữ, cần thể hiện rõ ràng xung đột tuyến chính và các móc treo",
           "maxLength": 500,
           "minLength": 100,
           "title": "Summary",
@@ -331,7 +331,7 @@
           "required": true
         },
         "worldview": {
-          "description": "世界观设定，说明世界规则、力量体系、社会结构等，不少于100字",
+          "description": "Thiết lập thế giới quan, giải thích quy tắc thế giới, hệ thống sức mạnh, cấu trúc xã hội, v.v., không ít hơn 100 chữ",
           "maxLength": 800,
           "minLength": 100,
           "title": "Worldview",
@@ -339,7 +339,7 @@
           "required": true
         },
         "writing_style": {
-          "description": "创作风格，如偏黑暗现实、轻快幽默、史诗宏大等",
+          "description": "Phong cách sáng tác, như thiên hiện thực tăm tối, nhẹ nhàng hài hước, sử thi hùng tráng, v.v.",
           "maxLength": 50,
           "minLength": 2,
           "title": "Writing Style",
@@ -347,18 +347,18 @@
           "required": true
         },
         "narrative_pov": {
-          "description": "叙事视角，只能为第一人称、第三人称有限视角、全知视角之一",
+          "description": "Góc nhìn kể chuyện, chỉ được chọn một trong: ngôi thứ nhất, ngôi thứ ba hạn tri, toàn tri",
           "enum": [
-            "第一人称",
-            "第三人称有限视角",
-            "全知视角"
+            "Ngôi thứ nhất",
+            "Ngôi thứ ba hạn tri",
+            "Toàn tri"
           ],
           "title": "Narrative Pov",
           "type": "string",
           "required": true
         },
         "era_background": {
-          "description": "时代背景，如架空古代、未来星际、现代都市、末世废土等",
+          "description": "Bối cảnh thời đại, như cổ đại hư cấu, liên sao tương lai, đô thị hiện đại, hậu tận thế, v.v.",
           "maxLength": 50,
           "minLength": 2,
           "title": "Era Background",
@@ -366,7 +366,7 @@
           "required": true
         },
         "tags": {
-          "description": "小说标签，3-5个，概括小说核心元素，如硬科幻、冒险、爱情等",
+          "description": "Nhãn tiểu thuyết, 3-5 cái, khái quát các nguyên tố cốt lõi của truyện, như hard sci-fi, phiêu lưu, tình cảm, v.v.",
           "items": {
             "type": "string"
           },
@@ -396,7 +396,7 @@
       "label": "任务结果",
       "inputs": {
         "title": {
-          "description": "小说主标题，具有吸引力和传播性，符合类型读者审美",
+          "description": "Tiêu đề chính của tiểu thuyết, có sức hấp dẫn và khả năng lan truyền, phù hợp thị hiếu độc giả của thể loại",
           "maxLength": 30,
           "minLength": 1,
           "title": "Title",
@@ -404,7 +404,7 @@
           "required": true
         },
         "subtitle": {
-          "description": "副标题，补充核心冲突或主题，具有一定文学感或商业感",
+          "description": "Tiêu đề phụ, bổ sung xung đột hoặc chủ đề cốt lõi, mang cảm giác văn chương hoặc thương mại",
           "maxLength": 50,
           "minLength": 1,
           "title": "Subtitle",
@@ -412,7 +412,7 @@
           "required": true
         },
         "genre": {
-          "description": "小说类型，如玄幻、科幻、都市、悬疑、历史、仙侠等",
+          "description": "Thể loại tiểu thuyết, như huyền huyễn, khoa học viễn tưởng, đô thị, bí ẩn hồi hộp, lịch sử, tiên hiệp, v.v.",
           "maxLength": 30,
           "minLength": 1,
           "title": "Genre",
@@ -420,7 +420,7 @@
           "required": true
         },
         "tags": {
-          "description": "小说标签，3-5个，概括小说核心元素，如硬科幻、冒险、爱情等",
+          "description": "Nhãn tiểu thuyết, 3-5 cái, khái quát các nguyên tố cốt lõi của truyện, như hard sci-fi, phiêu lưu, tình cảm, v.v.",
           "items": {
             "type": "string"
           },
@@ -429,7 +429,7 @@
           "required": false
         },
         "introduction": {
-          "description": "小说引言，100-300字，引入故事，吸引读者阅读兴趣",
+          "description": "Lời mở đầu của tiểu thuyết, 100-300 chữ, dẫn vào truyện, thu hút hứng thú đọc của độc giả",
           "maxLength": 300,
           "minLength": 100,
           "title": "Introduction",
@@ -437,7 +437,7 @@
           "required": true
         },
         "summary": {
-          "description": "小说简介，100-500字，需清晰呈现主线冲突与悬念",
+          "description": "Tóm tắt tiểu thuyết, 100-500 chữ, cần thể hiện rõ ràng xung đột tuyến chính và các móc treo",
           "maxLength": 500,
           "minLength": 100,
           "title": "Summary",
@@ -445,7 +445,7 @@
           "required": true
         },
         "core_seed": {
-          "description": "故事核心公式，需包含显性冲突、潜在危机、人物核心驱动力与世界观关键矛盾暗示，长度30-100字",
+          "description": "Công thức cốt lõi của truyện, cần bao gồm xung đột tường minh, nguy cơ tiềm ẩn, động lực cốt lõi của nhân vật và gợi mở mâu thuẫn then chốt của thế giới quan, độ dài 30-100 chữ",
           "maxLength": 150,
           "minLength": 30,
           "title": "Core Seed",
@@ -453,7 +453,7 @@
           "required": true
         },
         "worldview": {
-          "description": "世界观设定，说明世界规则、力量体系、社会结构等，不少于100字",
+          "description": "Thiết lập thế giới quan, giải thích quy tắc thế giới, hệ thống sức mạnh, cấu trúc xã hội, v.v., không ít hơn 100 chữ",
           "maxLength": 800,
           "minLength": 100,
           "title": "Worldview",
@@ -461,7 +461,7 @@
           "required": true
         },
         "writing_style": {
-          "description": "创作风格，如偏黑暗现实、轻快幽默、史诗宏大等",
+          "description": "Phong cách sáng tác, như thiên hiện thực tăm tối, nhẹ nhàng hài hước, sử thi hùng tráng, v.v.",
           "maxLength": 50,
           "minLength": 2,
           "title": "Writing Style",
@@ -469,18 +469,18 @@
           "required": true
         },
         "narrative_pov": {
-          "description": "叙事视角，只能为第一人称、第三人称有限视角、全知视角之一",
+          "description": "Góc nhìn kể chuyện, chỉ được chọn một trong: ngôi thứ nhất, ngôi thứ ba hạn tri, toàn tri",
           "enum": [
-            "第一人称",
-            "第三人称有限视角",
-            "全知视角"
+            "Ngôi thứ nhất",
+            "Ngôi thứ ba hạn tri",
+            "Toàn tri"
           ],
           "title": "Narrative Pov",
           "type": "string",
           "required": true
         },
         "era_background": {
-          "description": "时代背景，如架空古代、未来星际、现代都市、末世废土等",
+          "description": "Bối cảnh thời đại, như cổ đại hư cấu, liên sao tương lai, đô thị hiện đại, hậu tận thế, v.v.",
           "maxLength": 50,
           "minLength": 2,
           "title": "Era Background",
@@ -488,7 +488,7 @@
           "required": true
         },
         "plot": {
-          "description": "完整的约3000字长篇压缩故事正文",
+          "description": "Toàn bộ văn bản chính của truyện dài được nén gọn, khoảng 3000 chữ",
           "maxLength": 5000,
           "minLength": 200,
           "title": "Plot",
@@ -496,7 +496,7 @@
           "required": true
         },
         "tone": {
-          "description": "整体基调，如热血、黑暗、轻松、搞笑、治愈、压抑等",
+          "description": "Giọng điệu tổng thể, như máu lửa, tăm tối, nhẹ nhàng, hài hước, chữa lành, u ám, v.v.",
           "maxLength": 30,
           "minLength": 1,
           "title": "Tone",
@@ -504,7 +504,7 @@
           "required": true
         },
         "target_audience": {
-          "description": "目标读者群体，如男频、女频、青少年、泛幻想读者等",
+          "description": "Nhóm độc giả mục tiêu, như dành cho nam, dành cho nữ, thanh thiếu niên, độc giả đại chúng yêu kỳ ảo, v.v.",
           "maxLength": 30,
           "minLength": 1,
           "title": "Target Audience",
@@ -512,7 +512,7 @@
           "required": true
         },
         "core_idea": {
-          "description": "用1-2句话描述故事的核心设想",
+          "description": "Mô tả ý tưởng cốt lõi của truyện trong 1-2 câu",
           "maxLength": 300,
           "minLength": 10,
           "title": "Core Idea",

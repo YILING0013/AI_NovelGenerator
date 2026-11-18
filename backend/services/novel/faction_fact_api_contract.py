@@ -11,7 +11,7 @@ from backend.services.novel.faction_fact_contract import (
 
 
 class FactionFactQueryV1(StrictRequestModel):
-    """明确选择稳定势力编号；省略位置时由服务解析最新位置。"""
+    "Minh thị chọn mã số thế lực ổn định; nếu lược vị trí, dịch vụ sẽ phân giải vị trí mới nhất."
 
     faction_ids: list[FactionId] = Field(max_length=200)
     position: FactPositionV1 | None = None
@@ -29,7 +29,7 @@ FactionFactPreviewRequestV1 = FactionFactPreviewInputV1
 
 
 class FactionFactPreviewV1(StrictResponseModel):
-    """返回原内部预览，前值缺项与明确空值保持独立。"""
+    "Trả về bản xem trước nội bộ gốc; mục thiếu của giá trị trước và giá trị rỗng rõ ràng được giữ tách biệt."
 
     basis: FactionFactBasisV1
     values: FactionFactBeforeV1

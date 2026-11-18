@@ -16,7 +16,7 @@ from backend.services.novel.faction_fact_contract import FactionFactReadV1
 
 
 class WritingReadV1(StrictRequestModel):
-    """一种固定语义的内容读取，包括空查询。"""
+    "Một kiểu đọc nội dung với ngữ nghĩa cố định, bao gồm cả truy vấn trống."
 
     kind: Literal["parent_chain", "children", "neighbors", "previous_written", "selected_entities", "selected_relations", "volume_states", "literal_search", "edit_target", "plot_sources", "volume_participants", "reading_position"]
     scope: dict[str, Any]
@@ -24,21 +24,21 @@ class WritingReadV1(StrictRequestModel):
 
 
 class WritingContextBasisV1(StrictRequestModel):
-    """仅散列实际业务内容，不使用祖先统计版本。"""
+    "Chỉ băm nội dung nghiệp vụ thực tế, không dùng phiên bản thống kê của phần tử tổ tiên."
 
     version: Literal[1] = 1
     reads: list[WritingReadV1 | CharacterFactReadV1 | CharacterRelationFactReadV1 | ItemFactReadV1 | FactionFactReadV1] = Field(min_length=1, max_length=200)
 
 
 class WritingCandidateBasisV1(CandidateBasisV1):
-    """四类写作任务专用依据，旧任务继续使用原版本契约。"""
+    "Căn cứ dành riêng cho bốn loại tác vụ viết, các tác vụ cũ tiếp tục dùng hợp đồng phiên bản nguyên bản."
 
     generation_input: WritingGenerateInputV1
     context_basis: WritingContextBasisV1
 
 
 class WritingGenerationEnvelopeV1(StrictResponseModel):
-    """普通响应和 SSE done.result 使用相同结果。"""
+    "Phản hồi thường và done.result của SSE dùng chung cùng một kết quả."
 
     workflow: str
     step: str
@@ -52,7 +52,7 @@ class WritingGenerationEnvelopeV1(StrictResponseModel):
 
 
 class WritingConfirmV1(StrictRequestModel):
-    """只提交作者审核后的内容和生成依据；追加不要求祖先旧版本。"""
+    "Chỉ gửi nội dung đã được tác giả duyệt cùng căn cứ tạo sinh; bổ sung không yêu cầu phiên bản cũ của tổ tiên."
 
     candidate: dict[str, Any] = Field(min_length=1)
     basis: WritingCandidateBasisV1
@@ -60,7 +60,7 @@ class WritingConfirmV1(StrictRequestModel):
 
 
 class WritingConfirmResultV1(StrictResponseModel):
-    """同一次确认的正式对象和稳定 ID，供前端定位当前分支。"""
+    "Đối tượng chính thức và ID ổn định của cùng lượt xác nhận, giúp frontend định vị nhánh hiện tại."
 
     operation: str
     ids: list[ObjectIdString]
@@ -68,14 +68,14 @@ class WritingConfirmResultV1(StrictResponseModel):
 
 
 class WritingMissingV1(StrictResponseModel):
-    """当前对象需要补齐的字段。"""
+    "Các trường mà đối tượng hiện tại cần bổ sung."
 
     field: str
     message: str
 
 
 class WritingReadinessV1(StrictResponseModel):
-    """当前部分的可执行状态，不持久保存进度。"""
+    "Trạng thái có thể thực thi của phần hiện tại, không lưu tiến độ lâu dài."
 
     target_type: Literal["volume", "arc", "scene", "chapter"]
     target_id: ObjectIdString

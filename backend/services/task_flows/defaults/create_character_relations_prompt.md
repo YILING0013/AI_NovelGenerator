@@ -1,30 +1,30 @@
-你是一名长篇小说人物关系架构师。请只为已经确认的全书级核心角色设计可推动主线的关系边。
+Bạn là một kiến trúc sư quan hệ nhân vật cho tiểu thuyết dài kỳ. Hãy chỉ thiết kế các cạnh quan hệ có khả năng thúc đẩy tuyến truyện chính cho các nhân vật cốt lõi cấp toàn thư đã được xác nhận.
 
-人物和关系 unlocated_profile 只是未指定剧情位置的主档参考原文，可用于全书设计，不能据此宣称某章已经发生的事实。
+unlocated_profile của nhân vật và quan hệ chỉ là nguyên văn hồ sơ gốc chưa gắn với vị trí cụ thể trong cốt truyện, có thể dùng cho thiết kế toàn thư, nhưng không được dựa vào đó mà tuyên bố dữ kiện nào đó đã xảy ra trong một chương.
 
-小说设定:
+Thiết định tiểu thuyết:
 {novel_profile_json}
 
-本次可用角色（端点只能使用其中的 character_id）:
+Nhân vật khả dụng lần này (điểm cuối chỉ được dùng character_id trong danh sách này):
 {characters_json}
 
-角色当前势力绑定:
+Ràng buộc thế lực hiện tại của nhân vật:
 {faction_bindings_json}
 
-已有活动关系（本次只能追加，禁止产生任何语义重复）:
+Quan hệ đang hoạt động đã có (lần này chỉ được bổ sung, cấm tạo ra bất kỳ sự trùng lặp ngữ nghĩa nào):
 {existing_relations_json}
 
-是否允许孤立角色: {allow_isolated_characters}
-本次关系数量上限: {relation_count_limit}
-用户补充要求: {user_guidance}
+Có cho phép nhân vật cô lập hay không: {allow_isolated_characters}
+Giới hạn số lượng quan hệ lần này: {relation_count_limit}
+Yêu cầu bổ sung của người dùng: {user_guidance}
 
-硬性规则:
-1. 只输出 1 到关系数量上限条全书级关系，不生成卷、篇章、章节、场景或图布局信息。
-2. relation_ref 使用 relation_001 这类本次候选引用并保持唯一；不得输出正式 cr_ ID。
-3. source_character_id 与 target_character_id 必须来自输入角色，禁止名称端点和自引用。
-4. relation_type 只能使用 friend/romantic/ally/rival/enemy/parent_of/mentor_of/superior_of/protector_of/debtor_to。
-5. friend/romantic/ally/rival/enemy 为对称关系，同一语义边不得反向重复。
-6. 未明确允许孤立时，每个输入角色至少参与一条能推动主线的关系。
-7. 每条候选必须完整包含 relation_ref、source_character_id、target_character_id、relation_type、
-   current_state、core_conflict、hidden_tension、possible_change、story_value、intensity、is_active。
-8. is_active 必须为 true；只能追加新关系，禁止替换、停用、清空或覆盖任何已有关系。
+Quy tắc cứng:
+1. Chỉ xuất từ 1 đến đúng giới hạn số lượng quan hệ cấp toàn thư, không sinh thông tin quyển, vòng truyện, chương, cảnh hay bố cục đồ thị.
+2. relation_ref dùng tham chiếu ứng viên của lần này theo dạng relation_001 và giữ duy nhất; không được xuất ID cr_ chính thức.
+3. source_character_id và target_character_id phải lấy từ nhân vật đầu vào, cấm điểm cuối là tên và cấm tự tham chiếu.
+4. relation_type chỉ được dùng friend/romantic/ally/rival/enemy/parent_of/mentor_of/superior_of/protector_of/debtor_to.
+5. friend/romantic/ally/rival/enemy là quan hệ đối xứng, cùng một cạnh ngữ nghĩa không được lặp lại theo chiều ngược.
+6. Khi chưa được cho phép rõ ràng về nhân vật cô lập, mỗi nhân vật đầu vào phải tham gia ít nhất một quan hệ có khả năng thúc đẩy tuyến truyện chính.
+7. Mỗi ứng viên phải có đầy đủ relation_ref, source_character_id, target_character_id, relation_type,
+   current_state, core_conflict, hidden_tension, possible_change, story_value, intensity, is_active.
+8. is_active phải là true; chỉ được bổ sung quan hệ mới, cấm thay thế, ngừng kích hoạt, xóa sạch hay ghi đè bất kỳ quan hệ đã có nào.

@@ -94,7 +94,7 @@ NovelTag = Annotated[str, Field(min_length=1, max_length=50)]
 
 
 class NovelCreateFieldsV1(StrictRequestModel):
-    """人工创建与 AI 新书确认共用的小说业务字段白名单。"""
+    "Danh sách trắng trường nghiệp vụ tiểu thuyết dùng chung cho tạo thủ công và xác nhận sách mới bằng AI."
 
     title: str = Field(min_length=1, max_length=200)
     subtitle: str | None = Field(default=None, max_length=500)
@@ -124,7 +124,7 @@ class NovelCreateFieldsV1(StrictRequestModel):
 
 
 class AICreateGenerationInputV1(ReasoningOptions, StrictRequestModel):
-    """四步 AI 建书指纹使用的业务输入和六项生成参数。"""
+    "Đầu vào nghiệp vụ và sáu tham số tạo sinh dùng cho vân tay tạo sách AI bốn bước."
 
     user_idea: str = Field(min_length=1, max_length=20_000)
     number_of_chapters: int = Field(default=100, ge=1, le=10_000)
@@ -138,20 +138,20 @@ class AICreateGenerationInputV1(ReasoningOptions, StrictRequestModel):
 
 
 class AICreateNovelRequestV1(AICreateGenerationInputV1):
-    """四步 AI 建书 SSE 请求。"""
+    "Request SSE tạo sách bốn bước bằng AI."
 
     use_stream: bool = True
 
 
 class NovelRewriteChatMessageV1(StrictRequestModel):
-    """字段改写的一条浏览器本地对话消息。"""
+    "Một tin nhắn hội thoại cục bộ trên trình duyệt dùng để viết lại trường."
 
     role: Literal["user", "assistant"]
     content: str = Field(min_length=1, max_length=8000)
 
 
 class NovelFieldRewriteGenerationInputV1(ReasoningOptions, StrictRequestModel):
-    """字段候选生成和保存确认共用的严格输入白名单。"""
+    "Danh sách trắng đầu vào nghiêm ngặt dùng chung cho việc sinh ứng viên trường và xác nhận lưu."
 
     provider: str = Field(min_length=1, max_length=100)
     novel_id: ObjectIdString | None = None
@@ -172,13 +172,13 @@ class NovelFieldRewriteGenerationInputV1(ReasoningOptions, StrictRequestModel):
 
 
 class NovelFieldRewriteRequestV1(NovelFieldRewriteGenerationInputV1):
-    """字段改写普通或 SSE 预览请求。"""
+    "Request xem trước thường hoặc SSE khi viết lại một trường."
 
     use_stream: bool = True
 
 
 class NovelFieldRewriteCandidateV1(StrictRequestModel):
-    """必须回显目标字段且值类型与目标一致的字段候选。"""
+    "Ứng viên trường phải hiển thị lại đúng trường đích và có kiểu giá trị khớp với đích."
 
     target_field: NOVEL_REWRITE_FIELDS
     value: str | list[str]

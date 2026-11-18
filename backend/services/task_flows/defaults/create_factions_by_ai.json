@@ -25,7 +25,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -58,7 +58,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -90,7 +90,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -130,7 +130,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -161,7 +161,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -195,7 +195,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -235,7 +235,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -280,7 +280,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -313,7 +313,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -345,7 +345,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -385,7 +385,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -416,7 +416,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -450,7 +450,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -490,7 +490,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -641,7 +641,7 @@
       },
       "outputs": {
         "core_factions": {
-          "description": "全书级核心阵营列表",
+          "description": "Danh sách thế lực cốt lõi cấp toàn thư",
           "items": {
             "$ref": "#/$defs/CoreFactionSchema"
           },
@@ -653,7 +653,7 @@
           "$defs": {
             "CandidateFactionEndpointV2": {
               "additionalProperties": false,
-              "description": "引用本次尚未落库势力的关系端点。",
+              "description": "Điểm cuối quan hệ tham chiếu thế lực lần này chưa được lưu vào cơ sở dữ liệu.",
               "properties": {
                 "kind": {
                   "const": "candidate",
@@ -675,7 +675,7 @@
             },
             "CoreFactionRelationSchema": {
               "additionalProperties": false,
-              "description": "AI 生成阶段只使用候选 ref 或正式 ID 引用端点的阵营关系。",
+              "description": "Quan hệ giữa các thế lực, ở giai đoạn AI sinh chỉ dùng ref ứng viên hoặc ID chính thức để tham chiếu điểm cuối.",
               "properties": {
                 "relation_ref": {
                   "pattern": "^relation_[0-9]{3}$",
@@ -719,7 +719,7 @@
                   "title": "Target"
                 },
                 "relation_type": {
-                  "description": "阵营关系类型",
+                  "description": "Loại quan hệ giữa các thế lực",
                   "enum": [
                     "hostile",
                     "allied",
@@ -734,14 +734,14 @@
                   "type": "string"
                 },
                 "current_state": {
-                  "description": "当前关系状态",
+                  "description": "Trạng thái quan hệ hiện tại",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Current State",
                   "type": "string"
                 },
                 "core_conflict": {
-                  "description": "关系中的核心矛盾",
+                  "description": "Mâu thuẫn cốt lõi trong quan hệ",
                   "maxLength": 600,
                   "minLength": 5,
                   "title": "Core Conflict",
@@ -749,20 +749,20 @@
                 },
                 "hidden_tension": {
                   "default": "",
-                  "description": "尚未爆发的深层张力",
+                  "description": "Căng thẳng sâu chưa bộc phát",
                   "maxLength": 500,
                   "title": "Hidden Tension",
                   "type": "string"
                 },
                 "possible_change": {
-                  "description": "后续可能变化",
+                  "description": "Khả năng biến đổi về sau",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Possible Change",
                   "type": "string"
                 },
                 "intensity": {
-                  "description": "关系强度，1到5",
+                  "description": "Cường độ quan hệ, từ 1 đến 5",
                   "maximum": 5,
                   "minimum": 1,
                   "title": "Intensity",
@@ -770,7 +770,7 @@
                 },
                 "is_active": {
                   "default": true,
-                  "description": "关系是否当前有效",
+                  "description": "Quan hệ có đang hiệu lực hay không",
                   "title": "Is Active",
                   "type": "boolean"
                 }
@@ -790,44 +790,44 @@
             },
             "CoreFactionSchema": {
               "additionalProperties": false,
-              "description": "全书级核心阵营生成结果。",
+              "description": "Kết quả sinh thế lực cốt lõi cấp toàn thư.",
               "properties": {
                 "faction_ref": {
-                  "description": "本次候选内稳定引用，例如 faction_001",
+                  "description": "Tham chiếu ổn định trong các ứng viên lần này, ví dụ faction_001",
                   "pattern": "^faction_[0-9]{3}$",
                   "title": "Faction Ref",
                   "type": "string"
                 },
                 "name": {
-                  "description": "阵营名称",
+                  "description": "Tên thế lực",
                   "maxLength": 80,
                   "minLength": 1,
                   "title": "Name",
                   "type": "string"
                 },
                 "faction_type": {
-                  "description": "阵营类型",
+                  "description": "Loại thế lực",
                   "maxLength": 80,
                   "minLength": 1,
                   "title": "Faction Type",
                   "type": "string"
                 },
                 "positioning": {
-                  "description": "阵营在世界结构中的定位",
+                  "description": "Vị trí của thế lực trong kết cấu thế giới",
                   "maxLength": 500,
                   "minLength": 10,
                   "title": "Positioning",
                   "type": "string"
                 },
                 "public_stance": {
-                  "description": "阵营公开对外立场",
+                  "description": "Lập trường công khai đối ngoại của thế lực",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Public Stance",
                   "type": "string"
                 },
                 "core_goal": {
-                  "description": "阵营真实核心目标",
+                  "description": "Mục tiêu cốt lõi thực sự của thế lực",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Core Goal",
@@ -835,13 +835,13 @@
                 },
                 "hidden_goal": {
                   "default": "",
-                  "description": "阵营隐藏目标",
+                  "description": "Mục tiêu ẩn của thế lực",
                   "maxLength": 500,
                   "title": "Hidden Goal",
                   "type": "string"
                 },
                 "resources_and_advantages": {
-                  "description": "阵营主要资源或优势",
+                  "description": "Nguồn tài nguyên hoặc ưu thế chủ yếu của thế lực",
                   "items": {
                     "maxLength": 80,
                     "minLength": 1,
@@ -853,14 +853,14 @@
                   "type": "array"
                 },
                 "organization_style": {
-                  "description": "组织气质或行动风格",
+                  "description": "Khí chất tổ chức hoặc phong cách hành động",
                   "maxLength": 300,
                   "minLength": 5,
                   "title": "Organization Style",
                   "type": "string"
                 },
                 "core_values": {
-                  "description": "核心价值观",
+                  "description": "Giá trị cốt lõi",
                   "items": {
                     "maxLength": 80,
                     "minLength": 1,
@@ -872,7 +872,7 @@
                   "type": "array"
                 },
                 "conflict_with_mainline": {
-                  "description": "与主线冲突的关系",
+                  "description": "Quan hệ với xung đột của tuyến truyện chính",
                   "maxLength": 600,
                   "minLength": 10,
                   "title": "Conflict With Mainline",
@@ -880,26 +880,26 @@
                 },
                 "is_public": {
                   "default": true,
-                  "description": "阵营是否公开存在",
+                  "description": "Thế lực có tồn tại công khai hay không",
                   "title": "Is Public",
                   "type": "boolean"
                 },
                 "influence_scope": {
-                  "description": "影响范围",
+                  "description": "Phạm vi ảnh hưởng",
                   "maxLength": 80,
                   "minLength": 2,
                   "title": "Influence Scope",
                   "type": "string"
                 },
                 "expandability": {
-                  "description": "后续可扩展方向",
+                  "description": "Hướng có thể mở rộng về sau",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Expandability",
                   "type": "string"
                 },
                 "tags": {
-                  "description": "阵营标签",
+                  "description": "Thẻ thế lực",
                   "items": {
                     "maxLength": 80,
                     "minLength": 1,
@@ -929,7 +929,7 @@
             },
             "ExistingFactionEndpointV2": {
               "additionalProperties": false,
-              "description": "引用已有正式势力的关系端点。",
+              "description": "Điểm cuối quan hệ tham chiếu thế lực chính thức đã có.",
               "properties": {
                 "kind": {
                   "const": "existing",
@@ -952,7 +952,7 @@
           }
         },
         "faction_relations": {
-          "description": "核心阵营之间的关系列表",
+          "description": "Danh sách quan hệ giữa các thế lực cốt lõi",
           "items": {
             "$ref": "#/$defs/CoreFactionRelationSchema"
           },
@@ -963,7 +963,7 @@
           "$defs": {
             "CandidateFactionEndpointV2": {
               "additionalProperties": false,
-              "description": "引用本次尚未落库势力的关系端点。",
+              "description": "Điểm cuối quan hệ tham chiếu thế lực lần này chưa được lưu vào cơ sở dữ liệu.",
               "properties": {
                 "kind": {
                   "const": "candidate",
@@ -985,7 +985,7 @@
             },
             "CoreFactionRelationSchema": {
               "additionalProperties": false,
-              "description": "AI 生成阶段只使用候选 ref 或正式 ID 引用端点的阵营关系。",
+              "description": "Quan hệ giữa các thế lực, ở giai đoạn AI sinh chỉ dùng ref ứng viên hoặc ID chính thức để tham chiếu điểm cuối.",
               "properties": {
                 "relation_ref": {
                   "pattern": "^relation_[0-9]{3}$",
@@ -1029,7 +1029,7 @@
                   "title": "Target"
                 },
                 "relation_type": {
-                  "description": "阵营关系类型",
+                  "description": "Loại quan hệ giữa các thế lực",
                   "enum": [
                     "hostile",
                     "allied",
@@ -1044,14 +1044,14 @@
                   "type": "string"
                 },
                 "current_state": {
-                  "description": "当前关系状态",
+                  "description": "Trạng thái quan hệ hiện tại",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Current State",
                   "type": "string"
                 },
                 "core_conflict": {
-                  "description": "关系中的核心矛盾",
+                  "description": "Mâu thuẫn cốt lõi trong quan hệ",
                   "maxLength": 600,
                   "minLength": 5,
                   "title": "Core Conflict",
@@ -1059,20 +1059,20 @@
                 },
                 "hidden_tension": {
                   "default": "",
-                  "description": "尚未爆发的深层张力",
+                  "description": "Căng thẳng sâu chưa bộc phát",
                   "maxLength": 500,
                   "title": "Hidden Tension",
                   "type": "string"
                 },
                 "possible_change": {
-                  "description": "后续可能变化",
+                  "description": "Khả năng biến đổi về sau",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Possible Change",
                   "type": "string"
                 },
                 "intensity": {
-                  "description": "关系强度，1到5",
+                  "description": "Cường độ quan hệ, từ 1 đến 5",
                   "maximum": 5,
                   "minimum": 1,
                   "title": "Intensity",
@@ -1080,7 +1080,7 @@
                 },
                 "is_active": {
                   "default": true,
-                  "description": "关系是否当前有效",
+                  "description": "Quan hệ có đang hiệu lực hay không",
                   "title": "Is Active",
                   "type": "boolean"
                 }
@@ -1100,44 +1100,44 @@
             },
             "CoreFactionSchema": {
               "additionalProperties": false,
-              "description": "全书级核心阵营生成结果。",
+              "description": "Kết quả sinh thế lực cốt lõi cấp toàn thư.",
               "properties": {
                 "faction_ref": {
-                  "description": "本次候选内稳定引用，例如 faction_001",
+                  "description": "Tham chiếu ổn định trong các ứng viên lần này, ví dụ faction_001",
                   "pattern": "^faction_[0-9]{3}$",
                   "title": "Faction Ref",
                   "type": "string"
                 },
                 "name": {
-                  "description": "阵营名称",
+                  "description": "Tên thế lực",
                   "maxLength": 80,
                   "minLength": 1,
                   "title": "Name",
                   "type": "string"
                 },
                 "faction_type": {
-                  "description": "阵营类型",
+                  "description": "Loại thế lực",
                   "maxLength": 80,
                   "minLength": 1,
                   "title": "Faction Type",
                   "type": "string"
                 },
                 "positioning": {
-                  "description": "阵营在世界结构中的定位",
+                  "description": "Vị trí của thế lực trong kết cấu thế giới",
                   "maxLength": 500,
                   "minLength": 10,
                   "title": "Positioning",
                   "type": "string"
                 },
                 "public_stance": {
-                  "description": "阵营公开对外立场",
+                  "description": "Lập trường công khai đối ngoại của thế lực",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Public Stance",
                   "type": "string"
                 },
                 "core_goal": {
-                  "description": "阵营真实核心目标",
+                  "description": "Mục tiêu cốt lõi thực sự của thế lực",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Core Goal",
@@ -1145,13 +1145,13 @@
                 },
                 "hidden_goal": {
                   "default": "",
-                  "description": "阵营隐藏目标",
+                  "description": "Mục tiêu ẩn của thế lực",
                   "maxLength": 500,
                   "title": "Hidden Goal",
                   "type": "string"
                 },
                 "resources_and_advantages": {
-                  "description": "阵营主要资源或优势",
+                  "description": "Nguồn tài nguyên hoặc ưu thế chủ yếu của thế lực",
                   "items": {
                     "maxLength": 80,
                     "minLength": 1,
@@ -1163,14 +1163,14 @@
                   "type": "array"
                 },
                 "organization_style": {
-                  "description": "组织气质或行动风格",
+                  "description": "Khí chất tổ chức hoặc phong cách hành động",
                   "maxLength": 300,
                   "minLength": 5,
                   "title": "Organization Style",
                   "type": "string"
                 },
                 "core_values": {
-                  "description": "核心价值观",
+                  "description": "Giá trị cốt lõi",
                   "items": {
                     "maxLength": 80,
                     "minLength": 1,
@@ -1182,7 +1182,7 @@
                   "type": "array"
                 },
                 "conflict_with_mainline": {
-                  "description": "与主线冲突的关系",
+                  "description": "Quan hệ với xung đột của tuyến truyện chính",
                   "maxLength": 600,
                   "minLength": 10,
                   "title": "Conflict With Mainline",
@@ -1190,26 +1190,26 @@
                 },
                 "is_public": {
                   "default": true,
-                  "description": "阵营是否公开存在",
+                  "description": "Thế lực có tồn tại công khai hay không",
                   "title": "Is Public",
                   "type": "boolean"
                 },
                 "influence_scope": {
-                  "description": "影响范围",
+                  "description": "Phạm vi ảnh hưởng",
                   "maxLength": 80,
                   "minLength": 2,
                   "title": "Influence Scope",
                   "type": "string"
                 },
                 "expandability": {
-                  "description": "后续可扩展方向",
+                  "description": "Hướng có thể mở rộng về sau",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Expandability",
                   "type": "string"
                 },
                 "tags": {
-                  "description": "阵营标签",
+                  "description": "Thẻ thế lực",
                   "items": {
                     "maxLength": 80,
                     "minLength": 1,
@@ -1239,7 +1239,7 @@
             },
             "ExistingFactionEndpointV2": {
               "additionalProperties": false,
-              "description": "引用已有正式势力的关系端点。",
+              "description": "Điểm cuối quan hệ tham chiếu thế lực chính thức đã có.",
               "properties": {
                 "kind": {
                   "const": "existing",
@@ -1283,7 +1283,7 @@
       "label": "任务结果",
       "inputs": {
         "core_factions": {
-          "description": "全书级核心阵营列表",
+          "description": "Danh sách thế lực cốt lõi cấp toàn thư",
           "items": {
             "$ref": "#/$defs/CoreFactionSchema"
           },
@@ -1295,7 +1295,7 @@
           "$defs": {
             "CandidateFactionEndpointV2": {
               "additionalProperties": false,
-              "description": "引用本次尚未落库势力的关系端点。",
+              "description": "Điểm cuối quan hệ tham chiếu thế lực lần này chưa được lưu vào cơ sở dữ liệu.",
               "properties": {
                 "kind": {
                   "const": "candidate",
@@ -1317,7 +1317,7 @@
             },
             "CoreFactionRelationSchema": {
               "additionalProperties": false,
-              "description": "AI 生成阶段只使用候选 ref 或正式 ID 引用端点的阵营关系。",
+              "description": "Quan hệ giữa các thế lực, ở giai đoạn AI sinh chỉ dùng ref ứng viên hoặc ID chính thức để tham chiếu điểm cuối.",
               "properties": {
                 "relation_ref": {
                   "pattern": "^relation_[0-9]{3}$",
@@ -1361,7 +1361,7 @@
                   "title": "Target"
                 },
                 "relation_type": {
-                  "description": "阵营关系类型",
+                  "description": "Loại quan hệ giữa các thế lực",
                   "enum": [
                     "hostile",
                     "allied",
@@ -1376,14 +1376,14 @@
                   "type": "string"
                 },
                 "current_state": {
-                  "description": "当前关系状态",
+                  "description": "Trạng thái quan hệ hiện tại",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Current State",
                   "type": "string"
                 },
                 "core_conflict": {
-                  "description": "关系中的核心矛盾",
+                  "description": "Mâu thuẫn cốt lõi trong quan hệ",
                   "maxLength": 600,
                   "minLength": 5,
                   "title": "Core Conflict",
@@ -1391,20 +1391,20 @@
                 },
                 "hidden_tension": {
                   "default": "",
-                  "description": "尚未爆发的深层张力",
+                  "description": "Căng thẳng sâu chưa bộc phát",
                   "maxLength": 500,
                   "title": "Hidden Tension",
                   "type": "string"
                 },
                 "possible_change": {
-                  "description": "后续可能变化",
+                  "description": "Khả năng biến đổi về sau",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Possible Change",
                   "type": "string"
                 },
                 "intensity": {
-                  "description": "关系强度，1到5",
+                  "description": "Cường độ quan hệ, từ 1 đến 5",
                   "maximum": 5,
                   "minimum": 1,
                   "title": "Intensity",
@@ -1412,7 +1412,7 @@
                 },
                 "is_active": {
                   "default": true,
-                  "description": "关系是否当前有效",
+                  "description": "Quan hệ có đang hiệu lực hay không",
                   "title": "Is Active",
                   "type": "boolean"
                 }
@@ -1432,44 +1432,44 @@
             },
             "CoreFactionSchema": {
               "additionalProperties": false,
-              "description": "全书级核心阵营生成结果。",
+              "description": "Kết quả sinh thế lực cốt lõi cấp toàn thư.",
               "properties": {
                 "faction_ref": {
-                  "description": "本次候选内稳定引用，例如 faction_001",
+                  "description": "Tham chiếu ổn định trong các ứng viên lần này, ví dụ faction_001",
                   "pattern": "^faction_[0-9]{3}$",
                   "title": "Faction Ref",
                   "type": "string"
                 },
                 "name": {
-                  "description": "阵营名称",
+                  "description": "Tên thế lực",
                   "maxLength": 80,
                   "minLength": 1,
                   "title": "Name",
                   "type": "string"
                 },
                 "faction_type": {
-                  "description": "阵营类型",
+                  "description": "Loại thế lực",
                   "maxLength": 80,
                   "minLength": 1,
                   "title": "Faction Type",
                   "type": "string"
                 },
                 "positioning": {
-                  "description": "阵营在世界结构中的定位",
+                  "description": "Vị trí của thế lực trong kết cấu thế giới",
                   "maxLength": 500,
                   "minLength": 10,
                   "title": "Positioning",
                   "type": "string"
                 },
                 "public_stance": {
-                  "description": "阵营公开对外立场",
+                  "description": "Lập trường công khai đối ngoại của thế lực",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Public Stance",
                   "type": "string"
                 },
                 "core_goal": {
-                  "description": "阵营真实核心目标",
+                  "description": "Mục tiêu cốt lõi thực sự của thế lực",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Core Goal",
@@ -1477,13 +1477,13 @@
                 },
                 "hidden_goal": {
                   "default": "",
-                  "description": "阵营隐藏目标",
+                  "description": "Mục tiêu ẩn của thế lực",
                   "maxLength": 500,
                   "title": "Hidden Goal",
                   "type": "string"
                 },
                 "resources_and_advantages": {
-                  "description": "阵营主要资源或优势",
+                  "description": "Nguồn tài nguyên hoặc ưu thế chủ yếu của thế lực",
                   "items": {
                     "maxLength": 80,
                     "minLength": 1,
@@ -1495,14 +1495,14 @@
                   "type": "array"
                 },
                 "organization_style": {
-                  "description": "组织气质或行动风格",
+                  "description": "Khí chất tổ chức hoặc phong cách hành động",
                   "maxLength": 300,
                   "minLength": 5,
                   "title": "Organization Style",
                   "type": "string"
                 },
                 "core_values": {
-                  "description": "核心价值观",
+                  "description": "Giá trị cốt lõi",
                   "items": {
                     "maxLength": 80,
                     "minLength": 1,
@@ -1514,7 +1514,7 @@
                   "type": "array"
                 },
                 "conflict_with_mainline": {
-                  "description": "与主线冲突的关系",
+                  "description": "Quan hệ với xung đột của tuyến truyện chính",
                   "maxLength": 600,
                   "minLength": 10,
                   "title": "Conflict With Mainline",
@@ -1522,26 +1522,26 @@
                 },
                 "is_public": {
                   "default": true,
-                  "description": "阵营是否公开存在",
+                  "description": "Thế lực có tồn tại công khai hay không",
                   "title": "Is Public",
                   "type": "boolean"
                 },
                 "influence_scope": {
-                  "description": "影响范围",
+                  "description": "Phạm vi ảnh hưởng",
                   "maxLength": 80,
                   "minLength": 2,
                   "title": "Influence Scope",
                   "type": "string"
                 },
                 "expandability": {
-                  "description": "后续可扩展方向",
+                  "description": "Hướng có thể mở rộng về sau",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Expandability",
                   "type": "string"
                 },
                 "tags": {
-                  "description": "阵营标签",
+                  "description": "Thẻ thế lực",
                   "items": {
                     "maxLength": 80,
                     "minLength": 1,
@@ -1571,7 +1571,7 @@
             },
             "ExistingFactionEndpointV2": {
               "additionalProperties": false,
-              "description": "引用已有正式势力的关系端点。",
+              "description": "Điểm cuối quan hệ tham chiếu thế lực chính thức đã có.",
               "properties": {
                 "kind": {
                   "const": "existing",
@@ -1594,7 +1594,7 @@
           }
         },
         "faction_relations": {
-          "description": "核心阵营之间的关系列表",
+          "description": "Danh sách quan hệ giữa các thế lực cốt lõi",
           "items": {
             "$ref": "#/$defs/CoreFactionRelationSchema"
           },
@@ -1605,7 +1605,7 @@
           "$defs": {
             "CandidateFactionEndpointV2": {
               "additionalProperties": false,
-              "description": "引用本次尚未落库势力的关系端点。",
+              "description": "Điểm cuối quan hệ tham chiếu thế lực lần này chưa được lưu vào cơ sở dữ liệu.",
               "properties": {
                 "kind": {
                   "const": "candidate",
@@ -1627,7 +1627,7 @@
             },
             "CoreFactionRelationSchema": {
               "additionalProperties": false,
-              "description": "AI 生成阶段只使用候选 ref 或正式 ID 引用端点的阵营关系。",
+              "description": "Quan hệ giữa các thế lực, ở giai đoạn AI sinh chỉ dùng ref ứng viên hoặc ID chính thức để tham chiếu điểm cuối.",
               "properties": {
                 "relation_ref": {
                   "pattern": "^relation_[0-9]{3}$",
@@ -1671,7 +1671,7 @@
                   "title": "Target"
                 },
                 "relation_type": {
-                  "description": "阵营关系类型",
+                  "description": "Loại quan hệ giữa các thế lực",
                   "enum": [
                     "hostile",
                     "allied",
@@ -1686,14 +1686,14 @@
                   "type": "string"
                 },
                 "current_state": {
-                  "description": "当前关系状态",
+                  "description": "Trạng thái quan hệ hiện tại",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Current State",
                   "type": "string"
                 },
                 "core_conflict": {
-                  "description": "关系中的核心矛盾",
+                  "description": "Mâu thuẫn cốt lõi trong quan hệ",
                   "maxLength": 600,
                   "minLength": 5,
                   "title": "Core Conflict",
@@ -1701,20 +1701,20 @@
                 },
                 "hidden_tension": {
                   "default": "",
-                  "description": "尚未爆发的深层张力",
+                  "description": "Căng thẳng sâu chưa bộc phát",
                   "maxLength": 500,
                   "title": "Hidden Tension",
                   "type": "string"
                 },
                 "possible_change": {
-                  "description": "后续可能变化",
+                  "description": "Khả năng biến đổi về sau",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Possible Change",
                   "type": "string"
                 },
                 "intensity": {
-                  "description": "关系强度，1到5",
+                  "description": "Cường độ quan hệ, từ 1 đến 5",
                   "maximum": 5,
                   "minimum": 1,
                   "title": "Intensity",
@@ -1722,7 +1722,7 @@
                 },
                 "is_active": {
                   "default": true,
-                  "description": "关系是否当前有效",
+                  "description": "Quan hệ có đang hiệu lực hay không",
                   "title": "Is Active",
                   "type": "boolean"
                 }
@@ -1742,44 +1742,44 @@
             },
             "CoreFactionSchema": {
               "additionalProperties": false,
-              "description": "全书级核心阵营生成结果。",
+              "description": "Kết quả sinh thế lực cốt lõi cấp toàn thư.",
               "properties": {
                 "faction_ref": {
-                  "description": "本次候选内稳定引用，例如 faction_001",
+                  "description": "Tham chiếu ổn định trong các ứng viên lần này, ví dụ faction_001",
                   "pattern": "^faction_[0-9]{3}$",
                   "title": "Faction Ref",
                   "type": "string"
                 },
                 "name": {
-                  "description": "阵营名称",
+                  "description": "Tên thế lực",
                   "maxLength": 80,
                   "minLength": 1,
                   "title": "Name",
                   "type": "string"
                 },
                 "faction_type": {
-                  "description": "阵营类型",
+                  "description": "Loại thế lực",
                   "maxLength": 80,
                   "minLength": 1,
                   "title": "Faction Type",
                   "type": "string"
                 },
                 "positioning": {
-                  "description": "阵营在世界结构中的定位",
+                  "description": "Vị trí của thế lực trong kết cấu thế giới",
                   "maxLength": 500,
                   "minLength": 10,
                   "title": "Positioning",
                   "type": "string"
                 },
                 "public_stance": {
-                  "description": "阵营公开对外立场",
+                  "description": "Lập trường công khai đối ngoại của thế lực",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Public Stance",
                   "type": "string"
                 },
                 "core_goal": {
-                  "description": "阵营真实核心目标",
+                  "description": "Mục tiêu cốt lõi thực sự của thế lực",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Core Goal",
@@ -1787,13 +1787,13 @@
                 },
                 "hidden_goal": {
                   "default": "",
-                  "description": "阵营隐藏目标",
+                  "description": "Mục tiêu ẩn của thế lực",
                   "maxLength": 500,
                   "title": "Hidden Goal",
                   "type": "string"
                 },
                 "resources_and_advantages": {
-                  "description": "阵营主要资源或优势",
+                  "description": "Nguồn tài nguyên hoặc ưu thế chủ yếu của thế lực",
                   "items": {
                     "maxLength": 80,
                     "minLength": 1,
@@ -1805,14 +1805,14 @@
                   "type": "array"
                 },
                 "organization_style": {
-                  "description": "组织气质或行动风格",
+                  "description": "Khí chất tổ chức hoặc phong cách hành động",
                   "maxLength": 300,
                   "minLength": 5,
                   "title": "Organization Style",
                   "type": "string"
                 },
                 "core_values": {
-                  "description": "核心价值观",
+                  "description": "Giá trị cốt lõi",
                   "items": {
                     "maxLength": 80,
                     "minLength": 1,
@@ -1824,7 +1824,7 @@
                   "type": "array"
                 },
                 "conflict_with_mainline": {
-                  "description": "与主线冲突的关系",
+                  "description": "Quan hệ với xung đột của tuyến truyện chính",
                   "maxLength": 600,
                   "minLength": 10,
                   "title": "Conflict With Mainline",
@@ -1832,26 +1832,26 @@
                 },
                 "is_public": {
                   "default": true,
-                  "description": "阵营是否公开存在",
+                  "description": "Thế lực có tồn tại công khai hay không",
                   "title": "Is Public",
                   "type": "boolean"
                 },
                 "influence_scope": {
-                  "description": "影响范围",
+                  "description": "Phạm vi ảnh hưởng",
                   "maxLength": 80,
                   "minLength": 2,
                   "title": "Influence Scope",
                   "type": "string"
                 },
                 "expandability": {
-                  "description": "后续可扩展方向",
+                  "description": "Hướng có thể mở rộng về sau",
                   "maxLength": 500,
                   "minLength": 5,
                   "title": "Expandability",
                   "type": "string"
                 },
                 "tags": {
-                  "description": "阵营标签",
+                  "description": "Thẻ thế lực",
                   "items": {
                     "maxLength": 80,
                     "minLength": 1,
@@ -1881,7 +1881,7 @@
             },
             "ExistingFactionEndpointV2": {
               "additionalProperties": false,
-              "description": "引用已有正式势力的关系端点。",
+              "description": "Điểm cuối quan hệ tham chiếu thế lực chính thức đã có.",
               "properties": {
                 "kind": {
                   "const": "existing",
@@ -1916,7 +1916,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -1949,7 +1949,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -1981,7 +1981,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -2021,7 +2021,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -2052,7 +2052,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -2086,7 +2086,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",
@@ -2126,7 +2126,7 @@
           "$defs": {
             "ExistingFactionRelationTargetV2": {
               "additionalProperties": false,
-              "description": "核心势力生成时用户指定的已有正式关系端点。",
+              "description": "Điểm cuối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi.",
               "properties": {
                 "faction_id": {
                   "pattern": "^fac_[0-9]{6,}$",

@@ -1,9 +1,9 @@
-在正式写作前，请先确保你写的是：
-- 一整本长篇小说的完整故事，这篇内容必须覆盖“整本书”的完整主线，而不是某一个阶段。
-- 要有明显的时间推进、冲突升级、人物成长与最终结局。
-- 允许适度概括次要过程，但不能因此失去故事连贯性。
-- 应当让读者感受到：这是一本几十万字长篇小说被压缩成了3000字。
-- 不可只写一个事件，也不可只写前期成长。
-- 不可只埋伏笔不回收，必须完成主线回收与结局落点。
+Trước khi chính thức viết, hãy bảo đảm rằng những gì bạn viết là:
+- Toàn bộ câu chuyện của một cuốn tiểu thuyết dài; phần này phải bao quát tuyến chuyện chính hoàn chỉnh của "cả cuốn sách", chứ không phải một giai đoạn nào đó.
+- Phải có bước tiến thời gian rõ rệt, xung đột leo thang, sự trưởng thành của nhân vật và kết cục cuối cùng.
+- Được phép tóm lược vừa phải các diễn biến phụ, nhưng không vì thế mà mất đi sự mạch lạc của câu chuyện.
+- Phải khiến người đọc cảm nhận được: đây là một cuốn tiểu thuyết dài vài chục vạn chữ được nén lại còn 3000 chữ.
+- Không được chỉ viết một sự kiện, cũng không được chỉ viết giai đoạn trưởng thành đầu truyện.
+- Không được chỉ cài chi tiết phục bút mà không thu hồi; phải hoàn tất việc thu hồi tuyến chính và điểm đáp của kết cục.
 
-现在请直接开始创作正文。
+Bây giờ hãy bắt đầu sáng tác phần văn bản chính ngay.

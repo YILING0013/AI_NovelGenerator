@@ -1,4 +1,4 @@
-请只输出严格 JSON，不要输出解释或 Markdown。根字段必须且只能是 relations，并严格使用以下完整结构:
+Hãy chỉ xuất JSON đúng nghiêm ngặt, không xuất giải thích hay Markdown. Trường gốc bắt buộc và chỉ được là relations, đồng thời sử dụng đúng cấu trúc đầy đủ sau:
 {
   "relations": [
     {
@@ -6,11 +6,11 @@
       "source_character_id": "char_000001",
       "target_character_id": "char_000002",
       "relation_type": "ally",
-      "current_state": "当前关系状态",
-      "core_conflict": "档案控制权的长期争夺",
-      "hidden_tension": "深层张力",
-      "possible_change": "跨全书可能发生的变化",
-      "story_value": "推动主线的叙事价值",
+      "current_state": "Trạng thái quan hệ hiện tại",
+      "core_conflict": "Cuộc tranh giành dài hạn quyền kiểm soát hồ sơ",
+      "hidden_tension": "Căng thẳng sâu",
+      "possible_change": "Biến đổi có thể xảy ra xuyên suốt toàn bộ tác phẩm",
+      "story_value": "Giá trị tự sự thúc đẩy tuyến chính",
       "intensity": 4,
       "is_active": true
     }

@@ -427,7 +427,7 @@ class FactionRepository(BaseRepository):
             state = "回收站中" if require_deleted else "未删除状态下"
             raise NotFoundError(f"Thế lực '{faction_id}' tại{state}không tồn tại")
         raise DuplicateKeyError(
-            f"Thế lực '{faction_id}' 版本冲突："
+            f"Thế lực '{faction_id}' xung đột phiên bản: "
             f"expected={expected_version}, actual={current['version']}"
         )
 
@@ -578,7 +578,7 @@ class FactionRepository(BaseRepository):
             ):
                 raise NotFoundError(f"Thế lực nòng cốt đang hoạt động '{faction_id}' không tồn tại trong tiểu thuyết {novel_id}")
             raise DuplicateKeyError(
-                f"Thế lực '{faction_id}' 版本冲突："
+                f"Thế lực '{faction_id}' xung đột phiên bản: "
                 f"expected={expected_version}, actual={current['version']}"
             )
         return updated

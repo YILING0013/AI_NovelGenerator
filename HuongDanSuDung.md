@@ -38,7 +38,7 @@ start-all.bat        <- bấm đúp để chạy  (quan trọng nhất)
 stop-all.bat         <- bấm đúp để tắt
 status.bat           <- xem đang chạy hay đã tắt
 scripts\stack.ps1    <- script điều khiển 3 dịch vụ
-tools\m\bin\mongod.exe        <- MongoDB 8.0 đi kèm (không cần cài đặt)
+tools\m5\bin\mongod.exe       <- MongoDB 5.0 đi kèm (không cần cài đặt)
 frontend\                     <- giao diện website
 backend\                      <- trí tuệ nhân tạo + lưu trữ
 HuongDanSuDung.md             <- tài liệu này
@@ -257,7 +257,16 @@ Xem log chi tiết: bấm đúp `log.bat` (hoặc mở `runtime\logs\*.log`).
 Máy Windows 10/11, Python 3.13, Node.js, một khóa API của nhà cung cấp AI, và khoảng 2 GB ổ cứng.
 
 **2. Có cần Docker không?**
-Không. Bản này dùng MongoDB chạy trực tiếp từ `tools\m\bin\mongod.exe`, do `start-all.bat` tự bật.
+Không. Bản này dùng MongoDB chạy trực tiếp từ `tools\m5\bin\mongod.exe`, do `start-all.bat` tự bật
+và tự tắt. Vì vậy không cần cài Docker Desktop hay MongoDB thủ công.
+
+**2b. Vì sao dùng MongoDB 5.0 chứ không phải 8.0?**
+Máy cài đặt chạy CPU Intel thế hệ cũ (Ivy Bridge, ví dụ i7-3537U) **không có tập lệnh AVX2**,
+mà MongoDB từ bản 6.0 yêu cầu AVX2. Biểu hiện: server khởi động được lần đầu nhưng **crash khi mở lại
+thư mục dữ liệu đã dùng** (`illegal instruction`). Bản 5.0.28 vẫn hỗ trợ replica set + transaction
+nên toàn bộ tính năng app chạy bình thường. Nếu máy của bạn là CPU từ 2016 trở lên (có AVX2) và muốn
+dùng 8.0, đặt biến `VT_MONGO_HOME=C:\...\mongodb-windows-x86_64-8.0.38` trước khi chạy `start-all.bat`;
+lưu ý dữ liệu tạo bởi 8.0 không mở được bằng 5.0 và ngược lại.
 
 **3. Truyện có thuộc về tôi không?AI có giữ bản sao không?**
 Toàn bộ nằm trên máy bạn. Chỉ nội dung cần thiết được gửi tới nhà cung cấp AI bạn cấu hình.

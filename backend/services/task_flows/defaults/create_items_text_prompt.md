@@ -1,23 +1,23 @@
-请只输出严格 JSON，不要输出解释或 Markdown。根字段必须且只能是 items，并严格使用以下结构:
+Hãy chỉ xuất JSON đúng nghiêm ngặt, không xuất giải thích hay Markdown. Trường gốc bắt buộc và chỉ được là items, đồng thời sử dụng đúng cấu trúc sau:
 {
   "items": [
     {
       "candidate_ref": "item_candidate_1",
-      "name": "物品名称",
-      "aliases": ["物品别名"],
-      "item_type": "物品类型",
-      "description": "物品的用途、影响和重要特征",
-      "appearance": "外观",
-      "origin": "来源",
-      "abilities": ["能力"],
-      "limitations": ["限制"],
-      "costs": ["使用代价"],
+      "name": "Tên vật phẩm",
+      "aliases": ["Bí danh vật phẩm"],
+      "item_type": "Loại vật phẩm",
+      "description": "Công dụng, ảnh hưởng và đặc điểm quan trọng của vật phẩm",
+      "appearance": "Ngoại hình",
+      "origin": "Nguồn gốc",
+      "abilities": ["Năng lực"],
+      "limitations": ["Hạn chế"],
+      "costs": ["Cái giá khi sử dụng"],
       "owner_character_id": null,
       "controlling_faction_id": null,
       "current_location_id": null,
       "lifecycle_status": "available",
-      "story_function": "该物品如何推动主线或人物选择",
-      "tags": ["标签"]
+      "story_function": "Vật phẩm này thúc đẩy tuyến chính hoặc lựa chọn của nhân vật như thế nào",
+      "tags": ["Nhãn"]
     }
   ]
 }

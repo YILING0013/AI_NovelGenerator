@@ -33,6 +33,8 @@ WORK = ROOT / ".err-work"
 CJK = re.compile(r"[㐀-䶿一-鿿豈-﫿]")
 TECH = re.compile(r"[\\^$]")
 SCAN_DIRS = ["backend"]
+# `title` KHONG dich: no la gia tri so khop o frontend (WRITING_DEFAULT_TITLES trong
+# TaskFlowForm.tsx) va duoc thay bang nhan i18n `inputLabels.*` -> giu nguyen tieng Trung.
 TEXT_KWARGS = {"description", "examples", "detail", "message", "help", "fallback_message", "reason"}
 RE_FUNCS = {"compile", "search", "match", "fullmatch", "sub", "subn", "findall", "split", "finditer"}
 
@@ -64,7 +66,8 @@ def file_segments(path: Path):
     """[{kind, start, end, source, fstring, line}] cua mot file Python."""
     raw = path.read_bytes()
     try:
-        tree = ast.parse(raw.decode("utf-8"))
+        source_text = raw.decode("utf-8")
+        tree = ast.parse(source_text)
     except Exception:  # noqa: BLE001
         return []
     starts = byte_line_starts(raw)
@@ -75,6 +78,33 @@ def file_segments(path: Path):
             body = getattr(node, "body", [])
             if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
                 docstrings.add(id(body[0].value))
+
+    # DOCSTRING CUA LOI PYDANTIC LA MO TA HIEN TRONG JSON SCHEMA + /docs -> DUOC phep dich.
+    # Nhan dien: (1) ten lop ke thua *BaseModel/*Model/*Schema, (2) than chua Field( /
+    # model_config, hoac (3) module co import pydantic va lop co dinh nghieu duoc kieu
+    # (AnnAssign) -- truong hop `class X(Base): ten: str` khong dung Field().
+    class_docstrings: set[int] = set()
+    module_uses_pydantic = bool(re.search(r"\bfrom\s+pydantic\b|\bimport\s+pydantic\b", source_text))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef):
+            base_names = []
+            for base in node.bases:
+                name = getattr(base, "id", "") or getattr(base, "attr", "")
+                base_names.append(name)
+            is_pydantic = any(n.endswith("BaseModel") or n.endswith("Model") or n.endswith("Schema") for n in base_names)
+            if not is_pydantic:
+                for child in node.body:
+                    source = ast.unparse(child)
+                    if "Field(" in source or "model_config" in source:
+                        is_pydantic = True
+                        break
+            if not is_pydantic and module_uses_pydantic:
+                is_pydantic = any(isinstance(child, ast.AnnAssign) for child in node.body)
+            if not is_pydantic:
+                continue
+            body = getattr(node, "body", [])
+            if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
+                class_docstrings.add(id(body[0].value))
 
     protected: set[int] = set()
 
@@ -111,10 +141,20 @@ def file_segments(path: Path):
     def add(node, kind: str):
         if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
             return
-        if id(node) in protected or id(node) in docstrings or id(node) in found:
+        if kind == "class_doc":
+            # cho phep docstring cua lop; van bao ve if bi dung trong so sanh/regex
+            if id(node) not in class_docstrings or id(node) in protected or id(node) in found:
+                return
+        elif id(node) in protected or id(node) in docstrings or id(node) in found:
             return
         if has_cjk(node.value) and not TECH.search(node.value):
             found[id(node)] = kind
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef):
+            body = getattr(node, "body", [])
+            if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
+                add(body[0].value, "class_doc")
 
     # f-string dang ky TRUOC: ast.walk theo chieu rong nen node Call den truoc
     # JoinedStr con cua no; neu khong thu tu nay thi manh f-string bi coi la chuoi thuong

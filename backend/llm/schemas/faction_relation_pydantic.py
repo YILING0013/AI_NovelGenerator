@@ -115,7 +115,7 @@ def build_faction_relation_semantic_key(
 
 
 class FactionRelationCreateRequestV1(StrictSchemaModel):
-    """人工创建阵营关系时允许写入的字段。"""
+    "Các trường được phép ghi khi tạo thủ công quan hệ thế lực."
 
     source_faction_id: str = Field(pattern=FACTION_BUSINESS_ID_PATTERN)
     target_faction_id: str = Field(pattern=FACTION_BUSINESS_ID_PATTERN)
@@ -143,7 +143,7 @@ class FactionRelationCreateRequestV1(StrictSchemaModel):
 
 
 class FactionRelationUpdateRequestV1(StrictSchemaModel):
-    """更新阵营关系内容时允许写入的完整字段集合。"""
+    "Tập hợp trường đầy đủ được phép ghi khi cập nhật nội dung quan hệ thế lực."
 
     expected_version: int = Field(ge=1, strict=True)
     relation_type: FactionRelationType
@@ -155,20 +155,20 @@ class FactionRelationUpdateRequestV1(StrictSchemaModel):
 
 
 class FactionRelationActiveRequestV1(StrictSchemaModel):
-    """显式变更阵营关系用户启停意图的请求。"""
+    "Yêu cầu thay đổi tường minh ý định bật hay tắt của người dùng đối với quan hệ thế lực."
 
     expected_version: int = Field(ge=1, strict=True)
     is_active: bool
 
 
 class FactionRelationVersionRequestV1(StrictSchemaModel):
-    """仅携带乐观锁版本的阵营关系生命周期请求。"""
+    "Yêu cầu vòng đời quan hệ thế lực chỉ mang theo phiên bản khóa lạc quan."
 
     expected_version: int = Field(ge=1, strict=True)
 
 
 class FactionRelationResponseV1(StrictSchemaModel):
-    """阵营关系当前事实的完整公开响应。"""
+    "Phản hồi công khai đầy đủ về sự kiện hiện tại của quan hệ thế lực."
 
     novel_id: str = Field(pattern=_OBJECT_ID_PATTERN)
     relation_id: str = Field(pattern=_RELATION_ID_PATTERN)
@@ -234,7 +234,7 @@ class FactionRelationResponseV1(StrictSchemaModel):
 
 
 class FactionRelationsAppendResponseV1(StrictSchemaModel):
-    """阵营关系批量追加的严格公开响应。"""
+    "Phản hồi công khai nghiêm ngặt khi thêm hàng loạt quan hệ thế lực."
 
     faction_relations: list[FactionRelationResponseV1]
     relation_ref_map: dict[
@@ -265,14 +265,14 @@ class FactionRelationsAppendResponseV1(StrictSchemaModel):
 
 
 class FactionRelationHardDeleteResponseV1(StrictSchemaModel):
-    """阵营关系硬删除公开响应。"""
+    "Phản hồi công khai xoá cứng quan hệ thế lực."
 
     deleted: bool
     relation_id: str = Field(pattern=_RELATION_ID_PATTERN)
 
 
 class FactionRelationsGenerationInputV1(ReasoningOptions, StrictSchemaModel):
-    """确认阶段允许回传并重算指纹的阵营关系生成输入。"""
+    "Đầu vào sinh quan hệ thế lực được phép gửi lại và tính lại dấu vân tay ở giai đoạn xác nhận."
 
     novel_id: str = Field(pattern=_OBJECT_ID_PATTERN)
     faction_ids: list[str] = Field(min_length=2, max_length=100)
@@ -355,13 +355,13 @@ class FactionRelationsGenerationInputV1(ReasoningOptions, StrictSchemaModel):
 
 
 class FactionRelationsGenerateRequestV1(FactionRelationsGenerationInputV1):
-    """阵营关系生成 HTTP 请求，在业务输入外增加传输模式。"""
+    "Request HTTP tạo quan hệ thế lực, bổ sung phương thức truyền ngoài phần nhập nghiệp vụ."
 
     use_stream: bool = True
 
 
 class FactionRelationCandidateV1(StrictSchemaModel):
-    """模型输出或用户编辑后的单条阵营关系候选。"""
+    "Một ứng viên quan hệ thế lực do mô hình xuất ra hoặc người dùng đã chỉnh sửa."
 
     relation_ref: str = Field(
         pattern=_RELATION_REF_PATTERN,
@@ -418,7 +418,7 @@ class FactionRelationCandidateV1(StrictSchemaModel):
 
 
 class FactionRelationsResultSchemaV1(StrictSchemaModel):
-    """Provider 返回的阵营关系候选数组。"""
+    "Mảng ứng viên quan hệ thế lực do Provider trả về."
 
     relations: list[FactionRelationCandidateV1] = Field(
         min_length=1,
@@ -454,7 +454,7 @@ class FactionRelationsResultSchemaV1(StrictSchemaModel):
 
 
 class FactionRelationsManualAppendRequestV1(StrictSchemaModel):
-    """人工批量追加阵营关系的严格请求。"""
+    "Yêu cầu nghiêm ngặt thêm thủ công hàng loạt quan hệ thế lực."
 
     request_type: Literal["manual"] = "manual"
     relations: list[FactionRelationCreateRequestV1] = Field(
@@ -464,7 +464,7 @@ class FactionRelationsManualAppendRequestV1(StrictSchemaModel):
 
 
 class FactionRelationsAIConfirmationRequestV1(StrictSchemaModel):
-    """AI 阵营关系候选显式确认请求。"""
+    "Yêu cầu xác nhận tường minh ứng viên quan hệ thế lực do AI tạo."
 
     request_type: Literal["ai_confirmation"]
     candidate: FactionRelationsResultSchemaV1

@@ -1,30 +1,30 @@
-请只输出严格 JSON，不要输出解释或 Markdown。根字段必须且只能是 core_characters 与 binding_candidates，并严格使用以下完整结构:
+Hãy chỉ xuất JSON đúng nghiêm ngặt, không xuất giải thích hay Markdown. Các trường gốc bắt buộc và chỉ được là core_characters và binding_candidates, đồng thời sử dụng đúng cấu trúc đầy đủ sau:
 {
   "core_characters": [
     {
       "character_ref": "character_01",
-      "name": "角色名",
-      "aliases": ["别名"],
+      "name": "Tên nhân vật",
+      "aliases": ["Bí danh"],
       "role_type": "protagonist",
       "importance_level": "core",
-      "gender": "性别描述",
-      "age_group": "年龄阶段",
-      "race": "种族或物种",
-      "identity": "身份与社会位置",
-      "appearance": "外貌特征",
-      "personality": "核心性格",
-      "core_desire": "核心欲望",
-      "core_fear": "核心恐惧",
-      "strengths": ["优势"],
-      "weaknesses": ["弱点"],
-      "abilities": ["能力"],
-      "conflict_with_mainline": "与全书主线的核心冲突",
-      "relationship_with_protagonist": "与主角的初始关系",
-      "initial_state": "故事开始时的状态",
-      "growth_direction": "跨全书成长或堕落方向",
-      "story_function": "推动主线的叙事功能",
-      "arc_seed": "可跨卷展开的角色弧种子",
-      "tags": ["标签"]
+      "gender": "Mô tả giới tính",
+      "age_group": "Giai đoạn tuổi",
+      "race": "Chủng tộc hoặc giống loài",
+      "identity": "Thân phận và vị trí xã hội",
+      "appearance": "Đặc điểm ngoại hình",
+      "personality": "Tính cách cốt lõi",
+      "core_desire": "Khao khát cốt lõi",
+      "core_fear": "Nỗi sợ cốt lõi",
+      "strengths": ["Ưu điểm"],
+      "weaknesses": ["Điểm yếu"],
+      "abilities": ["Năng lực"],
+      "conflict_with_mainline": "Xung đột cốt lõi với tuyến chính của toàn truyện",
+      "relationship_with_protagonist": "Quan hệ ban đầu với nhân vật chính",
+      "initial_state": "Trạng thái khi truyện bắt đầu",
+      "growth_direction": "Hướng trưởng thành hoặc sa ngã xuyên suốt toàn truyện",
+      "story_function": "Chức năng tự sự thúc đẩy tuyến chính",
+      "arc_seed": "Hạt mầm vòng cung nhân vật có thể triển khai qua nhiều quyển",
+      "tags": ["Nhãn"]
     }
   ],
   "binding_candidates": [

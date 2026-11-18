@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/task-flows", tags=["task-flows"])
 
 
 class CreateFlow(FlowModel):
-    """复制当前或内置方案，创建独立方案 ID。"""
+    "Sao chép phương án hiện tại hoặc phương án tích hợp sẵn để tạo ID phương án độc lập."
     task: str
     name: str = Field(min_length=1, max_length=200)
     definition: Flow | None = None
@@ -28,18 +28,18 @@ class CreateFlow(FlowModel):
 
 
 class SaveFlow(FlowModel):
-    """编辑时读到的修订与待保存图。"""
+    "Bản chỉnh sửa đọc được khi biên tập và đồ thị chờ lưu."
     expected_revision: int = Field(ge=1)
     definition: Flow
 
 
 class ValidateFlow(FlowModel):
-    """允许编辑器提交尚未通过检查的图。"""
+    "Cho phép trình soạn thảo gửi đồ thị chưa vượt qua kiểm tra."
     definition: dict[str, Any]
 
 
 class DefaultFlow(FlowModel):
-    """锁定默认方案修改时的目录版本。"""
+    "Phiên bản thư mục bị khoá khi sửa phương án mặc định."
     flow_ref: FlowRef
     expected_version: int = Field(ge=0)
 

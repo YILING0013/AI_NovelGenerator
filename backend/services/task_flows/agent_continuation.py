@@ -24,7 +24,7 @@ MAX_TOTAL_BYTES = 32 * 1024 * 1024
 
 
 class AgentContinuation(BaseModel):
-    """作者明确选择的续跑凭证；网络恢复不增加模型轮数。"""
+    "Phiếu chạy tiếp do tác giả chọn rõ; mạng hồi phục không làm tăng số vòng gọi mô hình."
 
     model_config = ConfigDict(extra="forbid")
     token: str = Field(min_length=20, max_length=128)
@@ -33,7 +33,7 @@ class AgentContinuation(BaseModel):
 
 @dataclass
 class FlowContinuationState:
-    """原续跑记录的流程状态；只保存在服务端，不信任浏览器的整理结果。"""
+    "Trạng thái luồng của bản ghichạy tiếp gốc; chỉ lưu ở phía máy chủ, không tin kết quả do trình duyệt soạn."
 
     agent: Any = None
     # 图按顺序执行，只需保存当前未完成模型节点的完整生成和审校回复。

@@ -11,20 +11,20 @@ ResourceKind = Literal["novel", "volume", "arc", "scene", "chapter", "character"
 
 
 class AssistantModel(BaseModel):
-    """拒绝未声明参数，正文空白保持原样。"""
+    "Từ chối tham số không khai báo; khoảng trắng trong nội dung giữ nguyên."
 
     model_config = ConfigDict(extra="forbid")
 
 
 class ResourceRef(AssistantModel):
-    """小说内一种资料的稳定位置。"""
+    "Vị trí ổn định của một loại tài liệu trong tiểu thuyết."
 
     resource_type: ResourceKind
     id: str = Field(min_length=1, max_length=100)
 
 
 class ContextAttachment(ResourceRef):
-    """用户明确选定的资料或草稿，不把页面草稿当成已保存内容。"""
+    "Tư liệu hoặc bản thảo mà người dùng minh thị chọn; không coi bản thảo trên trang là nội dung đã lưu."
 
     fields: list[str] = Field(default_factory=list, max_length=30)
     usage: Literal["reference", "target"] = "reference"
@@ -34,7 +34,7 @@ class ContextAttachment(ResourceRef):
 
 
 class SessionCreate(AssistantModel):
-    """新建当前小说的独立对话。"""
+    "Tạo một hội thoại độc lập mới cho tiểu thuyết hiện tại."
 
     title: str = Field(default="Cuộc trò chuyện mới", min_length=1, max_length=100)
     mode: Literal["review", "auto"] = "review"
@@ -43,7 +43,7 @@ class SessionCreate(AssistantModel):
 
 
 class SessionUpdate(AssistantModel):
-    """修改会话设置；正在执行的轮次保留发送时的配置。"""
+    "Sửa cài đặt phiên; vòng đang thực thi giữ nguyên cấu hình lúc gửi."
 
     title: str | None = Field(default=None, min_length=1, max_length=100)
     archived: bool | None = None
@@ -53,7 +53,7 @@ class SessionUpdate(AssistantModel):
 
 
 class TurnRequest(AssistantModel):
-    """发送时固定当前页面和作者附件。"""
+    "Cố định trang hiện tại và tệp đính kèm của tác giả khi gửi."
 
     message: str = Field(min_length=1, max_length=16000)
     attachments: list[ContextAttachment] = Field(default_factory=list, max_length=20)
@@ -64,7 +64,7 @@ class TurnRequest(AssistantModel):
 
 
 class AnswerRequest(AssistantModel):
-    """回答原问题，不能替换原目标、模型设置或修改修订。"""
+    "Trả lời câu hỏi gốc; không được thay mục tiêu gốc, cài đặt mô hình hay sửa bản chỉnh sửa."
 
     question_id: str = Field(min_length=1, max_length=100)
     message: str = Field(min_length=1, max_length=5000)
@@ -72,13 +72,13 @@ class AnswerRequest(AssistantModel):
 
 
 class ContinueRequest(AssistantModel):
-    """零表示按剩余预算续跑；正数是作者明确追加的轮数。"""
+    "Số 0 nghĩa là chạy tiếp theo ngân sách còn lại; số dương là số vòng tác giả minh thị cộng thêm."
 
     additional_rounds: int = Field(default=4, ge=0, le=16)
 
 
 class WritingAnswerMeaning(AssistantModel):
-    """外层用完整问答解释指代；子任务只接受这些固定创作动作。"""
+    "Lớp ngoài dùng bộ hỏi đáp đầy đủ để làm rõ đối tượng được chỉ; subtask chỉ nhận các hành động sáng tác cố định này."
 
     answer_id: str
     supported: bool
@@ -87,13 +87,13 @@ class WritingAnswerMeaning(AssistantModel):
 
 
 class WritingAnswerReview(AssistantModel):
-    """按原顺序核实每个回答，不允许模型输出摘要、引文或剧情自由文本。"""
+    "Đối chiếu từng câu trả lời theo đúng thứ tự gốc, không cho phép mô hình xuất tóm tắt, trích dẫn hay văn bản cốt truyện tự do."
 
     answers: list[WritingAnswerMeaning]
 
 
 class ChangeOperation(AssistantModel):
-    """一项候选业务操作；服务端另行固定原版本和前值。"""
+    "Một thao tác nghiệp vụ ứng viên; phía server riêng cố định phiên bản gốc và giá trị trước."
 
     action: Literal["create", "update", "delete", "restore", "reorder", "status", "preparation"]
     resource_type: ResourceKind
@@ -118,7 +118,7 @@ class ChangeOperation(AssistantModel):
 
 
 class ChangeEdit(AssistantModel):
-    """编辑未保存的业务候选，原依据不能由浏览器替换。"""
+    "Chỉnh sửa ứng viên nghiệp vụ chưa lưu, căn cứ gốc không được trình duyệt thay thế."
 
     expected_revision: int = Field(ge=1)
     operations: list[ChangeOperation] | None = Field(default=None, min_length=1, max_length=50)
@@ -133,7 +133,7 @@ class ChangeEdit(AssistantModel):
 
 
 class ChangeApproval(AssistantModel):
-    """接受指定修改版本；危险操作和内容风险分别表达。"""
+    "Chấp nhận phiên bản chỉnh sửa được chỉ định; tách riêng rủi ro thao tác nguy hiểm và rủi ro nội dung."
 
     expected_revision: int = Field(ge=1)
     confirm_lifecycle: bool = False
@@ -142,7 +142,7 @@ class ChangeApproval(AssistantModel):
 
 
 class ReviewIssue(AssistantModel):
-    """内容检查必须指向真实来源，未检查内容独立列出。"""
+    "Kiểm tra nội dung phải chỉ tới nguồn thực tế, nội dung chưa kiểm tra được liệt kê riêng."
 
     severity: Literal["conflict", "suggestion", "unchecked"]
     message: str = Field(min_length=1, max_length=2000)
@@ -150,7 +150,7 @@ class ReviewIssue(AssistantModel):
 
 
 class ReviewResult(AssistantModel):
-    """独立模型审核的结构化结论。"""
+    "Kết luận có cấu trúc từ một lượt mô hình xét duyệt độc lập."
 
     summary: str = Field(min_length=1, max_length=2000)
     issues: list[ReviewIssue] = Field(default_factory=list, max_length=50)
@@ -158,13 +158,13 @@ class ReviewResult(AssistantModel):
 
 
 class NavigationTarget(ResourceRef):
-    """前端按业务类型映射内部位置，不执行模型返回的 URL。"""
+    "Frontend ánh xạ vị trí nội bộ theo loại nghiệp vụ, không thực thi URL do mô hình trả về."
 
     field: str | None = Field(default=None, max_length=100)
 
 
 class FactChangeRequest(AssistantModel):
-    """助手只提供拟改内容；依据、作者原话和 confirmed 均由服务端产生。"""
+    "Trợ lý chỉ cung cấp nội dung đề xuất sửa; căn cứ, nguyên văn tác giả và confirmed đều do phía server tạo."
 
     resource_type: Literal["character", "character_relation", "item", "faction"]
     operation: Literal["create", "establish", "correct_initial", "change", "replace"]

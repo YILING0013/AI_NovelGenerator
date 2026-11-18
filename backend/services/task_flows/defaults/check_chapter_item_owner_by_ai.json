@@ -84,10 +84,10 @@
           "$defs": {
             "ChapterItemOwnerCheckSuggestionV1": {
               "additionalProperties": false,
-              "description": "物品建议只带原文位置，不允许模型指定身份、版本或修改字段。",
+              "description": "Gợi ý về vật phẩm chỉ mang vị trí trong nguyên văn, không cho phép mô hình chỉ định định danh, phiên bản hay trường cần sửa.",
               "properties": {
                 "start": {
-                  "description": "从零开始的 Unicode 码点位置。",
+                  "description": "Vị trí mã Unicode tính từ 0.",
                   "maximum": 2147483647,
                   "minimum": 0,
                   "title": "Start",
@@ -122,10 +122,10 @@
           "$defs": {
             "ChapterItemOwnerCheckSuggestionV1": {
               "additionalProperties": false,
-              "description": "物品建议只带原文位置，不允许模型指定身份、版本或修改字段。",
+              "description": "Gợi ý về vật phẩm chỉ mang vị trí trong nguyên văn, không cho phép mô hình chỉ định định danh, phiên bản hay trường cần sửa.",
               "properties": {
                 "start": {
-                  "description": "从零开始的 Unicode 码点位置。",
+                  "description": "Vị trí mã Unicode tính từ 0.",
                   "maximum": 2147483647,
                   "minimum": 0,
                   "title": "Start",
@@ -177,10 +177,10 @@
           "$defs": {
             "ChapterItemOwnerCheckSuggestionV1": {
               "additionalProperties": false,
-              "description": "物品建议只带原文位置，不允许模型指定身份、版本或修改字段。",
+              "description": "Gợi ý về vật phẩm chỉ mang vị trí trong nguyên văn, không cho phép mô hình chỉ định định danh, phiên bản hay trường cần sửa.",
               "properties": {
                 "start": {
-                  "description": "从零开始的 Unicode 码点位置。",
+                  "description": "Vị trí mã Unicode tính từ 0.",
                   "maximum": 2147483647,
                   "minimum": 0,
                   "title": "Start",
@@ -215,10 +215,10 @@
           "$defs": {
             "ChapterItemOwnerCheckSuggestionV1": {
               "additionalProperties": false,
-              "description": "物品建议只带原文位置，不允许模型指定身份、版本或修改字段。",
+              "description": "Gợi ý về vật phẩm chỉ mang vị trí trong nguyên văn, không cho phép mô hình chỉ định định danh, phiên bản hay trường cần sửa.",
               "properties": {
                 "start": {
-                  "description": "从零开始的 Unicode 码点位置。",
+                  "description": "Vị trí mã Unicode tính từ 0.",
                   "maximum": 2147483647,
                   "minimum": 0,
                   "title": "Start",

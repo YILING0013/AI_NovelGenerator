@@ -1,76 +1,76 @@
-你是一名资深中文长篇小说世界观策划，正在为一部已保存的小说创建“全书级核心阵营”和“阵营之间的核心关系”。
+Bạn là một chuyên gia thiết kế thế giới quan dày dạn kinh nghiệm cho tiểu thuyết dài tập, đang tạo "thế lực cốt lõi cấp toàn thư" và "quan hệ cốt lõi giữa các thế lực" cho một bộ tiểu thuyết đã được lưu.
 
-小说基础信息:
-标题: {title}
-类型: {genre}
-基调: {tone}
-目标读者: {target_audience}
-核心设想: {core_idea}
-篇幅: 约{number_of_chapters}章（每章{words_per_chapter}字）
-标签: {tags_json}
+Thông tin cơ bản của tiểu thuyết:
+Tiêu đề: {title}
+Thể loại: {genre}
+Giọng điệu: {tone}
+Đối tượng độc giả: {target_audience}
+Ý tưởng cốt lõi: {core_idea}
+Dung lượng: khoảng {number_of_chapters} chương (mỗi chương {words_per_chapter} chữ)
+Thẻ: {tags_json}
 
-故事核心:
+Hạt nhân câu chuyện:
 {core_seed}
 
-简介:
+Giới thiệu sơ lược:
 {summary}
 
-世界观:
+Thế giới quan:
 {worldview}
 
-创作风格: {writing_style}
-叙事视角: {narrative_pov}
-时代背景: {era_background}
+Phong cách viết: {writing_style}
+Góc nhìn kể chuyện: {narrative_pov}
+Bối cảnh thời đại: {era_background}
 
-主线剧情文本:
+Văn bản cốt truyện chính:
 {plot}
 
-已保存核心阵营（只可作为上下文和关系端点参考，禁止重复输出到 core_factions）:
+Thế lực cốt lõi đã lưu (chỉ dùng làm ngữ cảnh và điểm nối quan hệ tham khảo, cấm xuất lặp lại vào core_factions):
 {existing_core_factions_json}
 
-本次生成参数:
-- 目标新阵营数量（null/None 由 AI 决定）: {faction_count}
-- 追加生成策略:
+Tham số tạo lần này:
+- Số thế lực mới mục tiêu (null/None để AI tự quyết): {faction_count}
+- Chiến lược tạo bổ sung:
 {generation_strategy}
 
-生成目标:
-1. 只生成会长期影响主线冲突和主要角色站位的全书级核心阵营。
-2. 指定整数时本次 core_factions 数量必须严格等于“目标新阵营数量”，且只能输出新阵营。
-3. 核心阵营不是世界百科，不要生成卷级地方组织、临时小队、任务型团体或章节事件组织。
-4. 本阶段角色尚未创建，严禁输出角色名单、角色归属、角色身份、角色绑定、角色派系职位。
-5. 如果主线剧情文本里已经出现人名，也只能把它当作剧情线索，不要围绕人物创建角色信息。
-6. 每个阵营必须直接服务主线，写清它在多卷中具体提供什么帮助或造成什么阻碍，不必都承担对抗或阴谋。
-7. faction_relations 可以为空；如果输出关系，新阵营端点只能使用 faction_ref，已有阵营端点只能使用输入中的正式 faction_id，每条关系至少连接一个本次新阵营。
-8. 本批不建立直接关系的势力不得出现在 faction_relations 的 source 或 target 中，数量须与生成参数一致；其余新势力须与新旧阵营建立关系。这里只限制本批关系输出，不代表势力永久独立、不隶属其他势力或隐藏存在。
-9. 如果用户提供正直度或关系量化度，必须按追加生成策略执行，不要把滑块说明写入字段文本。
-10. 按已有小说设定和用户明确要求设计秘密与矛盾；普通救援机构、公共职业或亲属关系本身不是秘密组织、秘密身份或幕后利益链的依据，不无据扩大亲属责任。有依据的秘密与矛盾可以保留和展开，不为填字段硬造秘密。
+Mục tiêu tạo:
+1. Chỉ tạo các thế lực cốt lõi cấp toàn thư có tác động lâu dài tới xung độtcủa tuyến chính và vị trí đứng của các nhân vật chính.
+2. Khi chỉ định một số nguyên, số lượng core_factions của lần này phải bằng đúng "số thế lực mới mục tiêu", và chỉ được xuất ra các thế lực mới.
+3. Thế lực cốt lõi không phải bách khoa thư thế giới, đừng tạo tổ chức địa phương cấp quyển, đội tạm thời, nhóm theo nhiệm vụ hoặc tổ chức của sự kiện trong chương.
+4. Giai đoạn này nhân vật chưa được tạo, tuyệt đối cấm xuất danh sách nhân vật,sự thuộc về của nhân vật, thân phận nhân vật, liên kết nhân vật, chức vụ phái hệ của nhân vật.
+5. Nếu văn bản cốt truyện chính đã xuất hiện tên người, cũng chỉ được coi đó là manh mối cốt truyện, không tạo thông tin nhân vật xoay quanh người đó.
+6. Mỗi thế lực phải phục vụ trực tiếp tuyến truyện chính, nêu rõ nó cụ thể mang lại trợ giúp gì hoặc gây trở ngại gì trong nhiều quyển, không nhất thiết thế lực nào cũng phải gánh việc đối đầu hay âm mưu.
+7. faction_relations có thể để trống; nếu xuất quan hệ, điểm đầu thuộc thế lực mới chỉ được dùng faction_ref, điểm đầu thuộc thế lực đã có chỉ được dùng faction_id chính thức có trong đầu vào, mỗi quan hệ phải nối ít nhất một thế lực mới của lần này.
+8. Thế lực không được thiết lập quan hệ trực tiếp trong lô này không được xuất hiện trong source hoặc target của faction_relations, số lượng phải khớp với tham số tạo; các thế lực mới còn lại phải có quan hệ với thế lực cũ và mới. Ở đây chỉ giới hạn quan hệ xuất ra của lô này, không có nghĩa là thế lực đó vĩnh viễn độc lập, không thuộc về thế lực nào hoặc tồn tại ẩn.
+9. Nếu người dùng cung cấp độ chính trực hoặc độ lượng hóa quan hệ, phải thi hành theo chiến lược tạo bổ sung, không viết phần mô tả của thanh trượt vào văn bản trường.
+10. Hãy thiết kế bí mật và mâu thuẫn dựa theo thiết lập sẵn có của tiểu thuyết và yêu cầu rõ ràng của người dùng; bản thân tổ chức cứu trợ thông thường, nghề nghiệp công cộng hay quan hệ thân nhân không phải là căn cứ để cho rằng đó là tổ chức bí mật, thân phận bí mật hay chuỗi lợi ích đứng sau màn. Bí mật và mâu thuẫn có căn cứ thì có thể giữ lại và triển khai, không vì muốn điền đủ trường mà bịa ra bí mật.
 
-每个核心阵营必须包含:
-- faction_ref: faction_001 这类本次候选内稳定且唯一的引用，不得输出正式 fac_ ID
-- name: 阵营名称
-- faction_type: 阵营类型
-- positioning: 阵营在世界中的实际职责，具体负责什么
-- public_stance: 对外公开的表态或主张，不用职责或目标口号重复填充
-- core_goal: 想争取的具体利益、诉求或结果，不要求与公开表态相反
-- hidden_goal: 有设定或用户要求支持的未公开目标；无依据时为空字符串，不为填满字段硬造秘密
-- resources_and_advantages: 1 到 6 项资源或优势
-- organization_style: 组织气质或行动风格
-- core_values: 1 到 6 项价值观
-- conflict_with_mainline: 对主线行动提供的具体帮助或造成的具体阻碍
-- is_public: 是否公开存在
-- influence_scope: 影响范围
-- expandability: 后续可能的发展方向，不能当作开局已发生的事实
-- tags: 阵营标签，可为空数组
+Mỗi thế lực cốt lõi phải bao gồm:
+- faction_ref: tham chiếu ổn định và duy nhất trong phạm vi các ứng viên của lần này, dạng như faction_001, không được xuất ID chính thức dạng fac_
+- name: tên thế lực
+- faction_type: loại thế lực
+- positioning: chức trách thực tế của thế lực trong thế giới, cụ thể phụ trách việc gì
+- public_stance: tuyên bố hoặc chủ trương công khai ra bên ngoài, không lặp lại chức trách hay khẩu hiệu mục tiêu để điền cho đủ
+- core_goal: lợi ích, yêu sách hoặc kết quả cụ thể mà thế lực muốn giành lấy, không yêu cầu phải trái ngược với tuyên bố công khai
+- hidden_goal: mục tiêu chưa công khai, phải có thiết lập hoặc yêu cầu của người dùng làm hậu thuẫn; không có căn cứ thì để chuỗi rỗng, không vì muốn điền đủ trường mà bịa ra bí mật
+- resources_and_advantages: 1 đến 6 tài nguyên hoặc ưu thế
+- organization_style: khí chất tổ chức hoặc phong cách hành động
+- core_values: 1 đến 6 giá trị cốt lõi
+- conflict_with_mainline: sự trợ giúp cụ thể mang lại hoặc trở ngại cụ thể gây ra cho hành động của tuyến truyện chính
+- is_public: có tồn tại công khai hay không
+- influence_scope: phạm vi ảnh hưởng
+- expandability: hướng phát triển có thể có về sau, không được coi như sự kiện đã xảy ra lúc mở đầu
+- tags: thẻ của thế lực, có thể là mảng rỗng
 
-每条阵营关系必须包含:
-- relation_ref: relation_001 这类本次候选内稳定且唯一的引用
-- source/target: 严格判别端点；新势力使用 {"kind":"candidate","faction_ref":"faction_001"}，已有势力使用 {"kind":"existing","faction_id":"fac_000001"}
-- relation_type: 只能使用 hostile/allied/cold_war/dependent/subordinate/trade_partner/secret_cooperation/historical_enemy
-- current_state: 故事开局的关系状态，不提前写入后续结盟、反目或终局结果
-- core_conflict: 关系中的核心矛盾
-- hidden_tension: 深层未爆发矛盾，可为空字符串
-- possible_change: 后续可能变化，作为计划或可能性，不写成已发生事实
-- intensity: 1 到 5 的关系强度
-- is_active: 是否当前有效
+Mỗi quan hệ giữa các thế lực phải bao gồm:
+- relation_ref: tham chiếu ổn định và duy nhất trong phạm vi các ứng viên của lần này, dạng như relation_001
+- source/target: phân biệt nghiêm ngặt hai điểm đầu; thế lực mới dùng {"kind":"candidate","faction_ref":"faction_001"}, thế lực đã có dùng {"kind":"existing","faction_id":"fac_000001"}
+- relation_type: chỉ được dùng hostile/allied/cold_war/dependent/subordinate/trade_partner/secret_cooperation/historical_enemy
+- current_state: trạng thái quan hệ lúc mở đầu câu chuyện, không viết trước liên minh, phản bội hay kết cục về sau
+- core_conflict: mâu thuẫn cốt lõi trong quan hệ
+- hidden_tension: mâu thuẫn sâu chưa bùng phát, có thể để chuỗi rỗng
+- possible_change: biến đổi có thể xảy ra về sau, viết dưới dạng kế hoạch hoặc khả năng, không viết thành sự kiện đã xảy ra
+- intensity: cường độ quan hệ từ 1 đến 5
+- is_active: có hiệu lực ở thời điểm hiện tại hay không
 
-数量参数 faction_count 为 null 或 None 时，由你根据故事实际需要决定数量，至少 1 个、最多 6 个；不要把上限当成目标，也不要默认凑满。指定整数时严格遵守该数量。
+Khi tham số số lượng faction_count là null hoặc None, bạn tự quyết định số lượng theo nhu cầu thực tế của câu chuyện, tối thiểu 1 và tối đa 6; không coi mức trần là mục tiêu, cũng không mặc định phải cho đủ số lượng. Khi chỉ định một số nguyên thì tuân thủ nghiêm ngặt số lượng đó.

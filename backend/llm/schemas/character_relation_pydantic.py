@@ -115,7 +115,7 @@ def build_relation_semantic_key(
 
 
 class CharacterRelationCreateRequestV1(StrictSchemaModel):
-    """人工创建全书级角色关系时允许写入的字段。"""
+    "Các trường được phép ghi khi tạo thủ công quan hệ nhân vật cấp toàn sách."
 
     source_character_id: str = Field(pattern=_CHARACTER_ID_PATTERN)
     target_character_id: str = Field(pattern=_CHARACTER_ID_PATTERN)
@@ -145,7 +145,7 @@ class CharacterRelationCreateRequestV1(StrictSchemaModel):
 
 
 class CharacterRelationUpdateRequestV1(StrictSchemaModel):
-    """更新角色关系内容时允许写入的完整字段集合。"""
+    "Tập hợp trường đầy đủ được phép ghi khi cập nhật nội dung quan hệ nhân vật."
 
     expected_version: int = Field(ge=1, strict=True)
     relation_type: CharacterRelationType
@@ -158,7 +158,7 @@ class CharacterRelationUpdateRequestV1(StrictSchemaModel):
 
 
 class CharacterRelationDesignUpdateRequestV1(StrictSchemaModel):
-    """只修改关系设计，不接收当前状态、端点或管理状态。"""
+    "Chỉ sửa thiết kế quan hệ; không nhận trạng thái hiện tại, đầu cuối hay trạng thái quản lý."
 
     expected_version: int = Field(ge=1, strict=True)
     relation_type: CharacterRelationType
@@ -170,20 +170,20 @@ class CharacterRelationDesignUpdateRequestV1(StrictSchemaModel):
 
 
 class CharacterRelationActiveRequestV1(StrictSchemaModel):
-    """显式变更角色关系用户启停意图的请求。"""
+    "Yêu cầu thay đổi tường minh ý định bật hay tắt của người dùng đối với quan hệ nhân vật."
 
     expected_version: int = Field(ge=1, strict=True)
     is_active: bool
 
 
 class CharacterRelationVersionRequestV1(StrictSchemaModel):
-    """仅携带乐观锁版本的关系生命周期请求。"""
+    "Yêu cầu vòng đời quan hệ chỉ mang theo phiên bản khóa lạc quan."
 
     expected_version: int = Field(ge=1, strict=True)
 
 
 class CharacterRelationResponseV1(StrictSchemaModel):
-    """角色关系主档的完整公开响应。"""
+    "Phản hồi công khai đầy đủ của hồ sơ chính quan hệ nhân vật."
 
     novel_id: str = Field(pattern=_OBJECT_ID_PATTERN)
     relation_id: str = Field(pattern=_RELATION_ID_PATTERN)
@@ -238,7 +238,7 @@ class CharacterRelationResponseV1(StrictSchemaModel):
 
 
 class CharacterRelationsAppendResponseV1(StrictSchemaModel):
-    """角色关系批量追加的严格公开响应。"""
+    "Phản hồi công khai nghiêm ngặt khi thêm hàng loạt quan hệ nhân vật."
 
     character_relations: list[CharacterRelationResponseV1]
     relation_ref_map: dict[
@@ -269,14 +269,14 @@ class CharacterRelationsAppendResponseV1(StrictSchemaModel):
 
 
 class CharacterRelationHardDeleteResponseV1(StrictSchemaModel):
-    """角色关系硬删除公开响应。"""
+    "Phản hồi công khai xoá cứng quan hệ nhân vật."
 
     deleted: bool
     relation_id: str = Field(pattern=_RELATION_ID_PATTERN)
 
 
 class CharacterRelationsGenerationInputV1(ReasoningOptions, StrictSchemaModel):
-    """角色关系候选确认可重算的严格业务输入。"""
+    "Đầu vào nghiệp vụ nghiêm ngặt, có thể tính lại khi xác nhận ứng viên quan hệ nhân vật."
 
     novel_id: str = Field(pattern=_OBJECT_ID_PATTERN)
     character_ids: list[str] = Field(min_length=2, max_length=100)
@@ -359,13 +359,13 @@ class CharacterRelationsGenerationInputV1(ReasoningOptions, StrictSchemaModel):
 
 
 class CharacterRelationsGenerateRequestV1(CharacterRelationsGenerationInputV1):
-    """直接生成全书级角色关系预览的请求。"""
+    "Request sinh trực tiếp bản xem trước quan hệ nhân vật cấp toàn sách."
 
     use_stream: bool = True
 
 
 class CharacterRelationCandidateV1(StrictSchemaModel):
-    """模型输出或用户编辑后的单条角色关系候选。"""
+    "Một ứng viên quan hệ nhân vật do mô hình xuất ra hoặc người dùng đã chỉnh sửa."
 
     relation_ref: str = Field(
         pattern=_RELATION_REF_PATTERN,
@@ -444,7 +444,7 @@ class CharacterRelationCandidateV1(StrictSchemaModel):
 
 
 class CharacterRelationsResultSchemaV1(StrictSchemaModel):
-    """Provider 返回的角色关系候选数组。"""
+    "Mảng ứng viên quan hệ nhân vật do Provider trả về."
 
     relations: list[CharacterRelationCandidateV1] = Field(
         min_length=1,
@@ -480,7 +480,7 @@ class CharacterRelationsResultSchemaV1(StrictSchemaModel):
 
 
 class CharacterRelationsManualAppendRequestV1(StrictSchemaModel):
-    """人工批量追加角色关系的严格请求。"""
+    "Yêu cầu nghiêm ngặt thêm thủ công hàng loạt quan hệ nhân vật."
 
     request_type: Literal["manual"] = "manual"
     relations: list[CharacterRelationCreateRequestV1] = Field(
@@ -490,7 +490,7 @@ class CharacterRelationsManualAppendRequestV1(StrictSchemaModel):
 
 
 class CharacterRelationsAIConfirmationRequestV1(StrictSchemaModel):
-    """AI 角色关系候选显式确认请求。"""
+    "Yêu cầu xác nhận tường minh ứng viên quan hệ nhân vật do AI tạo."
 
     request_type: Literal["ai_confirmation"]
     candidate: CharacterRelationsResultSchemaV1

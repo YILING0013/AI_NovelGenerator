@@ -14,7 +14,7 @@ from backend.services.llm.candidate_contract import CandidateBasisV1
 
 
 class ChapterRecordEvidenceV1(StrictRequestModel):
-    """作者选定的不可变章修订和原文，start 从零按 Unicode 码点计算。"""
+    "Bản chỉnh sửa chương bất biến và nguyên văn do tác giả chọn, start tính từ 0 theo mã Unicode code point."
 
     # 引文的空白和换行也是正文，不能套用普通表单的 strip。
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=False)
@@ -27,7 +27,7 @@ class ChapterRecordEvidenceV1(StrictRequestModel):
 
 
 class ChapterRecordEntityRefV1(StrictRequestModel):
-    """相关实体仅使用现有类别和稳定 ID；同书归属仍须保存服务核验。"""
+    "Thực thể liên quan chỉ dùng danh mục hiện có và ID ổn định; việc thuộc cùng một cuốn sách vẫn phải được dịch vụ lưu xác minh."
 
     entity_type: Literal[
         "character", "faction", "character_relation", "faction_relation",
@@ -53,7 +53,7 @@ class ChapterRecordEntityRefV1(StrictRequestModel):
 
 
 class ChapterEventConfirmV1(StrictRequestModel):
-    """作者确认已发生事件的固定输入；不接受计划、模型状态或任意 patch。"""
+    "Đầu vào cố định để tác giả xác nhận sự kiện đã xảy ra; không nhận kế hoạch, trạng thái mô hình hay patch tùy ý."
 
     title: str = Field(min_length=1, max_length=120)
     content: str = Field(min_length=1, max_length=12000)
@@ -62,7 +62,7 @@ class ChapterEventConfirmV1(StrictRequestModel):
 
 
 class ChapterReportConfirmV1(StrictRequestModel):
-    """追加同章报告；首次期望版本为零，后续绑定作者已读报告版本。"""
+    "Bổ sung báo cáo trong cùng chương; phiên bản kỳ vọng đầu tiên bằng 0, các lần sau gắn với phiên bản báo cáo tác giả đã đọc."
 
     expected_report_version: int = Field(ge=0, le=2**63 - 2)
     summary: str = Field(min_length=1, max_length=12000)
@@ -72,7 +72,7 @@ class ChapterReportConfirmV1(StrictRequestModel):
 
 
 class ChapterEventReadV1(StrictResponseModel):
-    """不可变事件的公开字段，不包含数据库护栏或请求键。"""
+    "Các trường công khai của sự kiện bất biến, không gồm rào chṙn cơ sở dữ liệu hay khóa yêu cầu."
 
     event_id: ObjectIdString
     novel_id: ObjectIdString
@@ -87,7 +87,7 @@ class ChapterEventReadV1(StrictResponseModel):
 
 
 class ChapterReportReadV1(StrictResponseModel):
-    """每版报告保留自己的身份、来源与确认时间。"""
+    "Mỗi bản báo cáo giữ danh tính, nguồn và thời gian xác nhận riêng."
 
     report_id: ObjectIdString
     novel_id: ObjectIdString
@@ -105,13 +105,13 @@ class ChapterReportReadV1(StrictResponseModel):
 
 
 class ChapterRecordVoidV1(StrictRequestModel):
-    """单向作废，不修改原内容、不撤销实体变化。"""
+    "Vô hiệu hóa một chiều, không sửa nội dung gốc và không hoàn tác thay đổi thực thể."
 
     reason: str = Field(min_length=1, max_length=1000)
 
 
 class ChapterPsychologicalStateConfirmV1(StrictRequestModel):
-    """明确确认人物本卷实际心理状态，不接收计划或任意修改。"""
+    "Xác nhận minh thị trạng thái tâm lý thực tế của nhân vật trong quyển này; không nhận kế hoạch hay sửa đổi tùy ý."
 
     state_id: ObjectIdString
     expected_version: int = Field(ge=1, le=2**63 - 2)
@@ -120,13 +120,13 @@ class ChapterPsychologicalStateConfirmV1(StrictRequestModel):
 
 
 class ChapterPsychologicalValuesV1(StrictResponseModel):
-    """实际修改的唯一允许字段。"""
+    "Trường được phép duy nhất thực sự được sửa."
 
     psychological_state: str = Field(max_length=1000)
 
 
 class EntityStateHistoryReadV1(StrictResponseModel):
-    """真实领域更新的前后值；普通编辑造成的版本空号允许保留。"""
+    "Giá trị trước/sau của cập nhật domain thật; khoảng trống phiên bản do chỉnh sửa thường được phép giữ."
 
     history_id: ObjectIdString
     novel_id: ObjectIdString
@@ -144,7 +144,7 @@ class EntityStateHistoryReadV1(StrictResponseModel):
 
 
 class ChapterPsychologicalStateResultV1(StrictResponseModel):
-    """原成功响应；无变化只保留回执，不虚构状态历史。"""
+    "Phản hồi thành công gốc; khi không có thay đổi thì chỉ giữ biên nhận, không bịa lịch sử trạng thái."
 
     novel_id: ObjectIdString
     state_id: ObjectIdString
@@ -157,7 +157,7 @@ class ChapterPsychologicalStateResultV1(StrictResponseModel):
 
 
 class ChapterItemOwnerConfirmV1(StrictRequestModel):
-    """确认检查时固定的物品持有人 A→B，只能更新持有人字段。"""
+    "Người giữ vật phẩm A→B được cố định khi xác nhận kiểm tra; chỉ được cập nhật trường người giữ."
 
     item_id: str = Field(pattern=r"^item_[0-9]{6,19}$")
     expected_version: int = Field(ge=1, le=2**63 - 2)
@@ -181,13 +181,13 @@ class ChapterItemOwnerConfirmV1(StrictRequestModel):
 
 
 class ChapterItemOwnerValuesV1(StrictResponseModel):
-    """本次实际修改的唯一物品字段。"""
+    "Trường vật phẩm duy nhất thực sự được sửa trong lần này."
 
     owner_character_id: str = Field(pattern=r"^char_[0-9]{6,19}$")
 
 
 class ItemStateHistoryReadV1(StrictResponseModel):
-    """全书物品的实际持有人变化，不添加人物卷状态专用字段。"""
+    "Thay đổi người giữ thực tế của vật phẩm toàn sách; không thêm trường đặc thù của trạng thái quyển nhân vật."
 
     history_id: ObjectIdString
     novel_id: ObjectIdString
@@ -204,7 +204,7 @@ class ItemStateHistoryReadV1(StrictResponseModel):
 
 
 class ChapterCharacterRelationStateConfirmV1(StrictRequestModel):
-    """作者确认既有关系的当前状态，身份和端点沿用原检查依据。"""
+    "Tác giả xác nhận trạng thái hiện tại của quan hệ đã có, định danh và đầu cuối giữ theo căn cứ kiểm tra gốc."
 
     relation_id: str = Field(pattern=r"^cr_[0-9]{6,19}$")
     expected_version: int = Field(ge=1, le=2**63 - 2)
@@ -214,13 +214,13 @@ class ChapterCharacterRelationStateConfirmV1(StrictRequestModel):
 
 
 class ChapterCharacterRelationStateValuesV1(StrictResponseModel):
-    """保留关系状态原值，不对历史执行 trim 或 Unicode 规范化。"""
+    "Giữ nguyên giá trị gốc của trạng thái quan hệ, không trim hay chuẩn hóa Unicode với dữ liệu lịch sử."
 
     current_state: str = Field(min_length=1, max_length=2000)
 
 
 class CharacterRelationStateHistoryReadV1(StrictResponseModel):
-    """全书人物关系的真实状态变化，固定原物理身份和两个端点。"""
+    "Thay đổi trạng thái thật của quan hệ nhân vật toàn sách; đóng băng định danh vật lý gốc và hai đầu cuối."
 
     history_id: ObjectIdString
     novel_id: ObjectIdString
@@ -245,7 +245,7 @@ ChapterStateHistoryReadV1 = Annotated[
 
 
 class ChapterItemOwnerResultV1(StrictResponseModel):
-    """原成功响应保留实际版本与变化历史，重放不覆盖当前物品。"""
+    "Phản hồi thành công gốc giữ phiên bản thực tế và lịch sử thay đổi; phát lại không ghi đề vật phẩm hiện tại."
 
     novel_id: ObjectIdString
     item_id: str = Field(pattern=r"^item_[0-9]{6,19}$")
@@ -258,7 +258,7 @@ class ChapterItemOwnerResultV1(StrictResponseModel):
 
 
 class ChapterCharacterRelationStateResultV1(StrictResponseModel):
-    """无变化也保留原关系身份和端点，回执不会被后来删除或修改替换。"""
+    "Dù không thay đổi vẫn giữ định danh quan hệ và hai đầu cuối gốc; biên nhận không bị các lượt xóa hoặc sửa về sau thay thế."
 
     novel_id: ObjectIdString
     entity_id: ObjectIdString
@@ -274,7 +274,7 @@ class ChapterCharacterRelationStateResultV1(StrictResponseModel):
 
 
 class ChapterRecordDeleteCountsV1(StrictRequestModel):
-    """整书删除必须明确批准的完整数量，包括作废、旧版和无变化回执。"""
+    "Xóa toàn sách phải được phê duyệt minh thị với đầy đủ số lượng, gồm biên nhận đã hủy, bản cũ và không thay đổi."
 
     events: int = Field(ge=0)
     chapter_reports: int = Field(ge=0)
@@ -284,7 +284,7 @@ class ChapterRecordDeleteCountsV1(StrictRequestModel):
 
 
 class ChapterReportHeadReadV1(StrictResponseModel):
-    """当前报告头仍占版本；作废后不把旧报告当作当前报告。"""
+    "Đầu báo cáo hiện hành vẫn chiếm phiên bản; sau khi hủy không coi báo cáo cũ là báo cáo hiện hành."
 
     chapter_id: ObjectIdString
     report_version: int = Field(ge=0)
@@ -293,7 +293,7 @@ class ChapterReportHeadReadV1(StrictResponseModel):
 
 
 class ChapterRecordSourceReadV1(StrictResponseModel):
-    """只读原修订和当前回收位置，不改变记录及原成功回执。"""
+    "Chỉ đọc bản chỉnh sửa gốc và vị trí thu hồi hiện tại; không thay đổi bản ghi cùng biên nhận thành công gốc."
 
     revision: ChapterRevisionReadV1
     deleted_sources: list[Literal["novel", "volume", "arc", "scene", "chapter"]]

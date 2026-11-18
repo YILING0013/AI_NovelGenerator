@@ -11,7 +11,7 @@ from backend.api.contracts import ObjectIdString, StrictRequestModel, StrictResp
 
 
 class ChapterPlanV2(StrictRequestModel):
-    """当前章节计划；正文单独保存，人物视角可暂不选择。"""
+    "Kế hoạch chương hiện tại; nội dung lưu riêng, điểm nhìn nhân vật có thể tạm chưa chọn."
 
     goal: str = Field(default="", max_length=2000)
     start_state: str = Field(default="", max_length=2000)
@@ -38,7 +38,7 @@ class ChapterPlanV2(StrictRequestModel):
 
 
 class ChapterCreateV2(StrictRequestModel):
-    """场景下的标题、章计划和可选正文。"""
+    "Tiêu đề, kế hoạch chương và nội dung tuỳ chọn trong cảnh."
 
     # 正文缩进和首尾空行属于作品内容，不沿用请求基类的 strip。
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=False)
@@ -74,7 +74,7 @@ class ChapterCreateV2(StrictRequestModel):
 
 
 class ChapterUpdateV2(ChapterCreateV2):
-    """章计划和正文共用一个版本，省略字段不改变原值。"""
+    "Kế hoạch chương và văn bản dùng chung một phiên bản; trường bị lược không làm thay đổi giá trị gốc."
 
     expected_version: int = Field(ge=1)
     title: str | None = Field(default=None, min_length=1, max_length=120)
@@ -101,13 +101,13 @@ class ChapterUpdateV2(ChapterCreateV2):
 
 
 class ChapterVersionV2(StrictRequestModel):
-    """章节回收站操作使用的版本。"""
+    "Phiên bản dùng cho các thao tác thùng rác của chương."
 
     expected_version: int = Field(ge=1)
 
 
 class ChapterSummaryV2(StrictResponseModel):
-    """不含正文的章节目录；显示章号由当前阅读顺序计算。"""
+    "Mục lục chương không kèm nội dung; số chương hiển thị được tính theo thứ tự đọc hiện tại."
 
     chapter_id: ObjectIdString
     novel_id: ObjectIdString
@@ -128,7 +128,7 @@ class ChapterSummaryV2(StrictResponseModel):
 
 
 class ChapterReadV2(StrictResponseModel):
-    """当前章计划和正文。"""
+    "Kế hoạch chương và nội dung hiện tại."
 
     chapter_id: ObjectIdString
     novel_id: ObjectIdString
@@ -149,20 +149,20 @@ class ChapterReadV2(StrictResponseModel):
 
 
 class ChapterListV2(StrictResponseModel):
-    """按父链顺序排列的章节目录。"""
+    "Mục lục chương sắp xếp theo thứ tự chuỗi cha."
 
     data: list[ChapterSummaryV2]
 
 
 class ChapterHardDeleteV2(StrictResponseModel):
-    """永久删除完成的章节标识。"""
+    "Định danh chương sau khi hoàn tất xoá vĩnh viễn."
 
     chapter_id: ObjectIdString
     deleted: bool
 
 
 class ChapterReorderItemV2(StrictRequestModel):
-    """一章的新场景内序号和已读版本。"""
+    "Số thứ tự mới của một chương trong cảnh và phiên bản đã đọc."
 
     chapter_id: ObjectIdString
     expected_version: int = Field(ge=1)
@@ -170,7 +170,7 @@ class ChapterReorderItemV2(StrictRequestModel):
 
 
 class ChapterReorderV2(StrictRequestModel):
-    """完整提交当前场景的活动章节排序。"""
+    "Gửi đầy đủ thứ tự chương đang hoạt động của cảnh hiện tại."
 
     items: list[ChapterReorderItemV2] = Field(min_length=1, max_length=10000)
 

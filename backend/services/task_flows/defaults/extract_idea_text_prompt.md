@@ -1,7 +1,7 @@
-请严格输出 JSON, 不要输出任何额外内容: 
+Hãy xuất JSON thật nghiêm ngặt, không xuất bất kỳ nội dung thừa nào: 
 {
-  "genre": "悬疑科幻",
-  "tone": "冷峻而克制",
-  "target_audience": "成年悬疑读者",
-  "core_idea": "调查员追索被篡改的城市记忆，在公开真相与保护亲友之间作出不可逆的选择。"
+  "genre": "Kỳ bí khoa tưởng",
+  "tone": "Lạnh lùng và kiệm lời",
+  "target_audience": "Độc giả trưởng thành yêu thích truyện kỳ bí",
+  "core_idea": "Một điều tra viên truy tìm ký ức thành phố bị xuyên tạc, giữa việc công bố sự thật và bảo vệ người thân, anh phải đưa ra lựa chọn không thể đảo ngược."
 }

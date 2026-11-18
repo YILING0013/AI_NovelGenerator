@@ -161,7 +161,7 @@
       },
       "outputs": {
         "relations": {
-          "description": "仅追加到当前小说的阵营关系候选列表。",
+          "description": "Danh sách ứng viên quan hệ thế lực, chỉ được thêm mới vào tiểu thuyết hiện tại.",
           "items": {
             "$ref": "#/$defs/FactionRelationCandidateV1"
           },
@@ -173,28 +173,28 @@
           "$defs": {
             "FactionRelationCandidateV1": {
               "additionalProperties": false,
-              "description": "模型输出或用户编辑后的单条阵营关系候选。",
+              "description": "Một ứng viên quan hệ thế lực sau khi mô hình xuất ra hoặc người dùng chỉnh sửa.",
               "properties": {
                 "relation_ref": {
-                  "description": "仅在本次候选中使用的稳定引用，例如 relation_001。",
+                  "description": "Tham chiếu ổn định chỉ dùng trong tập ứng viên lần này, ví dụ relation_001.",
                   "pattern": "^relation_[0-9]{3}$",
                   "title": "Relation Ref",
                   "type": "string"
                 },
                 "source_faction_id": {
-                  "description": "关系来源阵营业务 ID，必须来自本次输入阵营。",
+                  "description": "ID nghiệp vụ của thế lực nguồn trong quan hệ, phải lấy từ các thế lực đầu vào lần này.",
                   "pattern": "^fac_[0-9]{6,}$",
                   "title": "Source Faction Id",
                   "type": "string"
                 },
                 "target_faction_id": {
-                  "description": "关系目标阵营业务 ID，必须来自本次输入阵营。",
+                  "description": "ID nghiệp vụ của thế lực đích trong quan hệ, phải lấy từ các thế lực đầu vào lần này.",
                   "pattern": "^fac_[0-9]{6,}$",
                   "title": "Target Faction Id",
                   "type": "string"
                 },
                 "relation_type": {
-                  "description": "阵营关系类型。",
+                  "description": "Loại quan hệ giữa các thế lực.",
                   "enum": [
                     "hostile",
                     "allied",
@@ -238,7 +238,7 @@
                   "type": "integer"
                 },
                 "is_active": {
-                  "description": "新生成关系固定为 true。",
+                  "description": "Quan hệ mới sinh luôn đặt cố định là true.",
                   "title": "Is Active",
                   "type": "boolean"
                 }
@@ -280,7 +280,7 @@
       "label": "任务结果",
       "inputs": {
         "relations": {
-          "description": "仅追加到当前小说的阵营关系候选列表。",
+          "description": "Danh sách ứng viên quan hệ thế lực, chỉ được thêm mới vào tiểu thuyết hiện tại.",
           "items": {
             "$ref": "#/$defs/FactionRelationCandidateV1"
           },
@@ -292,28 +292,28 @@
           "$defs": {
             "FactionRelationCandidateV1": {
               "additionalProperties": false,
-              "description": "模型输出或用户编辑后的单条阵营关系候选。",
+              "description": "Một ứng viên quan hệ thế lực sau khi mô hình xuất ra hoặc người dùng chỉnh sửa.",
               "properties": {
                 "relation_ref": {
-                  "description": "仅在本次候选中使用的稳定引用，例如 relation_001。",
+                  "description": "Tham chiếu ổn định chỉ dùng trong tập ứng viên lần này, ví dụ relation_001.",
                   "pattern": "^relation_[0-9]{3}$",
                   "title": "Relation Ref",
                   "type": "string"
                 },
                 "source_faction_id": {
-                  "description": "关系来源阵营业务 ID，必须来自本次输入阵营。",
+                  "description": "ID nghiệp vụ của thế lực nguồn trong quan hệ, phải lấy từ các thế lực đầu vào lần này.",
                   "pattern": "^fac_[0-9]{6,}$",
                   "title": "Source Faction Id",
                   "type": "string"
                 },
                 "target_faction_id": {
-                  "description": "关系目标阵营业务 ID，必须来自本次输入阵营。",
+                  "description": "ID nghiệp vụ của thế lực đích trong quan hệ, phải lấy từ các thế lực đầu vào lần này.",
                   "pattern": "^fac_[0-9]{6,}$",
                   "title": "Target Faction Id",
                   "type": "string"
                 },
                 "relation_type": {
-                  "description": "阵营关系类型。",
+                  "description": "Loại quan hệ giữa các thế lực.",
                   "enum": [
                     "hostile",
                     "allied",
@@ -357,7 +357,7 @@
                   "type": "integer"
                 },
                 "is_active": {
-                  "description": "新生成关系固定为 true。",
+                  "description": "Quan hệ mới sinh luôn đặt cố định là true.",
                   "title": "Is Active",
                   "type": "boolean"
                 }

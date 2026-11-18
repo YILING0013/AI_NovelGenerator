@@ -1,1 +1,1 @@
-请只生成目标字段改写结果，不要输出任何额外内容。
+Hãy chỉ tạo kết quả viết lại của trường đích, không xuất thêm bất kỳ nội dung nào.

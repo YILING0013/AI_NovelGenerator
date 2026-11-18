@@ -134,7 +134,7 @@ def require_prepared_generation(flow):
 
 @dataclass(frozen=True)
 class TaskSpec:
-    """一个已有业务按钮的输入、输出与候选标识。"""
+    "Phần nhập, phần xuất và định danh ứng viên của một nút nghiệp vụ đã có."
 
     task: str
     label: str

@@ -325,7 +325,7 @@ def validate_values(
 
 
 class _StructuredOutput(BaseModel):
-    """把可编辑 JSON 结构接到现有要求 Pydantic 的 Provider 接口。"""
+    "Kết nối cấu trúc JSON cho phép chỉnh sửa với giao diện Provider hiện tại vốn yêu cầu Pydantic."
 
     model_config = ConfigDict(extra="forbid", populate_by_name=False)
     declared_schema: ClassVar[JSONSchema] = {}

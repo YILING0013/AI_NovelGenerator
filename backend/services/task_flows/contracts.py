@@ -20,13 +20,13 @@ NodeType = Literal[
 
 
 class FlowModel(BaseModel):
-    """拒绝未声明的文件字段，保留提示词中的原始空白。"""
+    "Từ chối trường tệp không khai báo, giữ nguyên khoảng trắng gốc trong câu lệnh."
 
     model_config = ConfigDict(extra="forbid")
 
 
 class Node(FlowModel):
-    """一个节点及其输入输出端口。"""
+    "Một nút cùng các cổng đầu vào và đầu ra của nó."
 
     id: str = Field(min_length=1, max_length=120, pattern=r"^[A-Za-z0-9_-]+$")
     type: NodeType
@@ -38,7 +38,7 @@ class Node(FlowModel):
 
 
 class Edge(FlowModel):
-    """把一个输出字段连接到另一个节点的输入。"""
+    "Kết nối một trường đầu ra vào đầu vào của một nút khác."
 
     id: str = Field(min_length=1, max_length=200)
     source: str
@@ -49,7 +49,7 @@ class Edge(FlowModel):
 
 
 class ControlEdge(FlowModel):
-    """指定执行顺序或条件节点的 true/false 分支。"""
+    "Nhánh true/false của nút chỉ định thứ tự chạy hoặc nút điều kiện."
 
     id: str = Field(min_length=1, max_length=200)
     source: str
@@ -58,7 +58,7 @@ class ControlEdge(FlowModel):
 
 
 class Flow(FlowModel):
-    """一个任务方案的完整修订，包含其引用的子流程。"""
+    "Bản chỉnh sửa đầy đủ của một phương án tác vụ, gồm cả các luồng con mà nó tham chiếu."
 
     format_version: Literal[1] = 1
     id: str = Field(min_length=1, max_length=120, pattern=r"^[A-Za-z0-9_-]+$")
@@ -75,14 +75,14 @@ class Flow(FlowModel):
 
 
 class FlowRef(FlowModel):
-    """锁定方案 ID 和修订，避免续跑时换成另一份默认方案。"""
+    "Khóa ID phương án và bản chỉnh sửa, tránh khi chạy tiếp bị đổi sang phương án mặc định khác."
 
     id: str = Field(min_length=1, max_length=120, pattern=r"^[A-Za-z0-9_-]+$")
     revision: int = Field(ge=1)
 
 
 class CachedNode(FlowModel):
-    """浏览器保存的一个节点实例结果，续跑时必须重算输入指纹。"""
+    "Kết quả một instance nút do trình duyệt lưu; khi chạy tiếp phải tính lại vân tay đầu vào."
 
     node_id: str
     instance_path: str = Field(min_length=1, max_length=2000)
@@ -91,7 +91,7 @@ class CachedNode(FlowModel):
 
 
 class RepairFlowSnapshot(FlowModel):
-    """修复时仍须核对原流程、业务输入与读取过的资料。"""
+    "Khi sửa vẫn phải đối chiếu luồng gốc, đầu vào nghiệp vụ và tài liệu đã đọc."
 
     flow_ref: FlowRef
     definition_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -102,7 +102,7 @@ class RepairFlowSnapshot(FlowModel):
 
 
 class GraphResultRepair(FlowModel):
-    """保留校验失败的完整候选，供作者主动发起一次 AI 修复。"""
+    "Giữ nguyên ứng viên đầy đủ khi hợp lệ hóa thất bại, để tác giả chủ động khởi chạy một lượt sửa bằng AI."
 
     candidate: dict[str, Any]
     business_inputs: dict[str, Any]
@@ -111,7 +111,7 @@ class GraphResultRepair(FlowModel):
 
 
 class GraphRunRequest(FlowModel):
-    """任务图运行请求，包含作者输入、模型参数和操作位置。"""
+    "Yêu cầu chạy đồ thị công việc, gồm đầu vào tác giả, tham số mô hình và vị trí thao tác."
 
     request_mode: Literal["task_flow"] = "task_flow"
     flow_ref: FlowRef | None = None
@@ -125,7 +125,7 @@ class GraphRunRequest(FlowModel):
 
 
 class PreviewOverride(FlowModel):
-    """仅本次模拟使用的源字段内容，不写入流程或小说。"""
+    "Nội dung trường nguồn chỉ dùng cho lần mô phỏng này, không ghi vào luồng hay tiểu thuyết."
 
     instance_path: str = Field(min_length=1, max_length=2000)
     port: str = Field(min_length=1, max_length=200)
@@ -134,7 +134,7 @@ class PreviewOverride(FlowModel):
 
 
 class PreviewRequest(FlowModel):
-    """编辑器提交当前草稿、资料范围和临时示例。"""
+    "Trình soạn thảo gửi bản nháp hiện tại, phạm vi tài liệu và ví dụ tạm thời."
 
     definition: dict[str, Any]
     scope: dict[str, Any] = Field(default_factory=dict)
@@ -142,7 +142,7 @@ class PreviewRequest(FlowModel):
 
 
 class PreviewOrigin(FlowModel):
-    """字段的真实或假设来源；地址始终指向可查看的源端口。"""
+    "Nguồn thật hoặc giả định của một trường; địa chỉ luôn trỏ tới cổng nguồn có thể xem."
 
     path: list[str] = Field(default_factory=list)
     kind: Literal["actual", "user_example", "ai_example", "missing_example", "constant", "computed"]
@@ -154,7 +154,7 @@ class PreviewOrigin(FlowModel):
 
 
 class PreviewPort(FlowModel):
-    """保持原运行类型的端口值，JSON 字符串另标记内容格式。"""
+    "Giữ giá trị cổng theo kiểu chạy gốc; chuỗi JSON có cờ riêng đánh dấu định dạng nội dung."
 
     value: Any
     origins: list[PreviewOrigin] = Field(default_factory=list)
@@ -162,7 +162,7 @@ class PreviewPort(FlowModel):
 
 
 class PreviewAIRequest(FlowModel):
-    """本轮预期发送的完整提示词与格式约束，不含模型凭据。"""
+    "Toàn bộ câu lệnh và ràng buộc định dạng dự kiến gửi trong vòng này; không kèm credential của mô hình."
 
     messages: list[dict[str, str]]
     mode: Literal["text", "json"]
@@ -178,7 +178,7 @@ class PreviewAIRequest(FlowModel):
 
 
 class PreviewNode(FlowModel):
-    """编辑器某一层图中的节点资料。"""
+    "Dữ liệu của một nút trong một lớp đồ thị của trình soạn thảo."
 
     node_id: str
     graph_path: list[str] = Field(default_factory=list)
@@ -188,7 +188,7 @@ class PreviewNode(FlowModel):
 
 
 class PreviewStep(PreviewNode):
-    """一次真实经过或跳过的节点实例，可供浏览器逐步播放。"""
+    "Một instance nút thực sự đã đi qua hoặc bị bỏ qua, để trình duyệt phát lại từng bước."
 
     instance_path: str
     state: Literal["done", "skipped", "error"]

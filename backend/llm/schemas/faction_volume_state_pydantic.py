@@ -20,7 +20,7 @@ ResourceText = Annotated[str, Field(min_length=1)]
 
 
 class FactionVolumeStateFieldsV1(StrictRequestModel):
-    """势力在一卷内可人工维护的完整业务字段。"""
+    "Các trường nghiệp vụ đầy đủ của thế lực trong một quyển mà con người có thể bảo trì."
 
     participation_scope: ParticipationScope
     current_goal: str = Field(min_length=1, max_length=1000)
@@ -49,13 +49,13 @@ class FactionVolumeStateFieldsV1(StrictRequestModel):
 
 
 class FactionVolumeStateUpsertV1(FactionVolumeStateFieldsV1):
-    """按卷与势力复合路径创建或完整更新状态的请求。"""
+    "Yêu cầu tạo mới hoặc cập nhật đầy đủ trạng thái theo đường dẫn phức hợp quyển và thế lực."
 
     expected_version: int | None = Field(default=None, ge=1)
 
 
 class FactionVolumeStateUpdateV1(StrictRequestModel):
-    """按状态 ObjectId 局部更新业务字段的请求。"""
+    "Yêu cầu cập nhật cục bộ các trường nghiệp vụ theo ObjectId trạng thái."
 
     expected_version: int = Field(ge=1)
     participation_scope: ParticipationScope | None = None
@@ -91,13 +91,13 @@ class FactionVolumeStateUpdateV1(StrictRequestModel):
 
 
 class FactionVolumeStateVersionRequestV1(StrictRequestModel):
-    """势力卷状态生命周期命令的版本请求。"""
+    "Yêu cầu phiên bản cho lệnh vòng đời trạng thái thế lực theo quyển."
 
     expected_version: int = Field(ge=1)
 
 
 class FactionVolumeStateInitializeV1(StrictRequestModel):
-    """从上一正式卷批量初始化选中势力的请求。"""
+    "Yêu cầu khởi tạo hàng loạt các thế lực đã chọn từ quyển chính thức trước đó."
 
     faction_ids: list[FactionId] = Field(min_length=1, max_length=500)
     skip_existing: Literal[False] = False
@@ -118,7 +118,7 @@ class FactionVolumeStateInitializeV1(StrictRequestModel):
 
 
 class FactionVolumeStateReadV1(StrictResponseModel):
-    """一条势力卷级参与状态的完整公开投影。"""
+    "Bản chiếu công khai đầy đủ của một trạng thái tham gia cấp quyển của thế lực."
 
     state_id: ObjectIdString
     novel_id: ObjectIdString
@@ -163,7 +163,7 @@ class FactionVolumeStateReadV1(StrictResponseModel):
 
 
 class FactionVolumePlanFieldsV1(StrictRequestModel):
-    """卷参与设计只保存计划，不补实力、资源或剧情状态。"""
+    "Thiết kế tham gia quyển chỉ lưu kế hoạch, không bổ sung thực lực, tài nguyên hay trạng thái cốt truyện."
 
     participation_scope: ParticipationScope
     current_goal: str = Field(min_length=1, max_length=1000)
@@ -173,7 +173,7 @@ class FactionVolumePlanFieldsV1(StrictRequestModel):
 
 
 class FactionVolumePlanUpdateV1(StrictRequestModel):
-    """普通卷计划编辑只提交实际改动的计划字段。"""
+    "Chỉnh sửa kế hoạch quyển thông thường chỉ gửi các trường kế hoạch thực sự thay đổi."
 
     expected_version: int = Field(ge=1)
     participation_scope: ParticipationScope | None = None
@@ -192,7 +192,7 @@ class FactionVolumePlanUpdateV1(StrictRequestModel):
 
 
 class FactionVolumePlanReadV1(FactionVolumeStateReadV1):
-    """新卷计划显式标识事实缺席；旧完整状态响应合同保持原样。"""
+    "Kế hoạch tập mới đánh dấu rõ sự vắng mặt của dữ kiện; hợp đồng phản hồi trạng thái đầy đủ cũ giữ nguyên."
 
     content_contract: Literal["participation_plan_v1"]
     power_level: None = None
@@ -206,13 +206,13 @@ FactionVolumeReadV1: TypeAlias = FactionVolumeStateReadV1 | FactionVolumePlanRea
 
 
 class FactionVolumeStateListV1(StrictResponseModel):
-    """卷列表和势力历史共用的严格响应外壳。"""
+    "Vỏ phản hồi nghiêm ngặt dùng chung cho danh sách quyển và lịch sử thế lực."
 
     data: list[FactionVolumeStateReadV1 | FactionVolumePlanReadV1]
 
 
 class FactionVolumeStateInitializeResultV1(StrictResponseModel):
-    """从上一卷初始化成功后的严格结果。"""
+    "Kết quả nghiêm ngặt sau khi khởi tạo thành công từ quyển trước."
 
     source_volume_id: ObjectIdString
     target_volume_id: ObjectIdString
@@ -220,7 +220,7 @@ class FactionVolumeStateInitializeResultV1(StrictResponseModel):
 
 
 class FactionVolumeStateHardDeleteV1(StrictResponseModel):
-    """势力卷状态永久删除结果。"""
+    "Kết quả xoá vĩnh viễn trạng thái thế lực theo quyển."
 
     deleted: Literal[True]
     state_id: ObjectIdString

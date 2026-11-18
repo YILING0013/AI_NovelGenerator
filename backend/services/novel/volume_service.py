@@ -547,7 +547,7 @@ class VolumeService:
         if current != expected:
             raise _volume_error(
                 "VOLUME_VERSION_CONFLICT",
-                f"卷版本冲突：当前版本为 {current}, phiên bản yêu cầu là {expected}",
+                f"xung đột phiên bản tập: phiên bản hiện tại là {current}, phiên bản yêu cầu là {expected}",
                 status_code=409,
                 details={"expected_version": expected, "actual_version": current},
             )

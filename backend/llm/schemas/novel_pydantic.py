@@ -17,9 +17,7 @@ CORE_FACTION_RELATION_REF_PATTERN = r"^relation_[0-9]{3}$"
 
 
 class ExpandIdeaSchema(BaseModel):
-    """
-    将用户创意扩写为完整长篇小说压缩故事
-    """
+    "\n    Mở rộng ý tưởng của người dùng thành truyện dài dạng bản tóm tắt nén\n    "
     model_config = ConfigDict(extra="forbid")
 
     plot: str = Field(
@@ -31,9 +29,7 @@ class ExpandIdeaSchema(BaseModel):
 
 
 class ExtractIdeaSchema(BaseModel):
-    """
-    从扩展剧情中提炼出的故事构思要素
-    """
+    "\n    Các yếu tố ý tưởng câu chuyện được chắt lọc từ cốt truyện mở rộng\n    "
     model_config = ConfigDict(extra="forbid")
 
     genre: str = Field(
@@ -63,9 +59,7 @@ class ExtractIdeaSchema(BaseModel):
 
 
 class CoreSeedSchema(BaseModel):
-    """
-    雪花写作法第一步生成的故事核心公式
-    """
+    "\n    Công thức cốt lòi câu chuyện được tạo ở bước một của phương pháp viết bông tuyết\n    "
     model_config = ConfigDict(extra="forbid")
 
     core_seed: str = Field(
@@ -77,9 +71,7 @@ class CoreSeedSchema(BaseModel):
 
 
 class NovelMetaSchema(BaseModel):
-    """
-    小说整体设定
-    """
+    "\n    Thiết lập tổng thể của tiểu thuyết\n    "
     model_config = ConfigDict(extra="forbid")
 
     title: str = Field(
@@ -147,9 +139,7 @@ FactionRelationType = Literal[
 
 
 class CoreFactionSchema(BaseModel):
-    """
-    全书级核心阵营生成结果。
-    """
+    "\n    Kết quả sinh thế lực cốt lõi cấp toàn sách.\n    "
     model_config = ConfigDict(
         extra="forbid",
         strict=True,
@@ -191,7 +181,7 @@ class CoreFactionSchema(BaseModel):
 
 
 class CandidateFactionEndpointV2(BaseModel):
-    """引用本次尚未落库势力的关系端点。"""
+    "Điểm cuối quan hệ tham chiếu thế lực chưa được lưu xuống trong lần này."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -200,7 +190,7 @@ class CandidateFactionEndpointV2(BaseModel):
 
 
 class ExistingFactionEndpointV2(BaseModel):
-    """引用已有正式势力的关系端点。"""
+    "Điểm cuối quan hệ tham chiếu một thế lực chính thức đã có."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -215,9 +205,7 @@ CoreFactionRelationEndpointV2: TypeAlias = Annotated[
 
 
 class CoreFactionRelationSchema(BaseModel):
-    """
-    AI 生成阶段只使用候选 ref 或正式 ID 引用端点的阵营关系。
-    """
+    "\n    Quan hệ thế lực ở giai đoạn AI tạo sinh chỉ tham chiếu các đầu cuối bằng ref ứng viên hoặc ID chính thức.\n    "
     model_config = ConfigDict(
         extra="forbid",
         strict=True,
@@ -254,9 +242,7 @@ class CoreFactionRelationSchema(BaseModel):
 
 
 class CoreFactionsResultSchema(BaseModel):
-    """
-    全书核心阵营和阵营关系的完整生成结果。
-    """
+    "\n    Kết quả tạo đầy đủ các thế lực cốt lòi của toàn sách và quan hệ giữa chúng.\n    "
     model_config = ConfigDict(extra="forbid", strict=True)
 
     core_factions: list[CoreFactionSchema] = Field(
@@ -338,7 +324,7 @@ class CoreFactionsResultSchema(BaseModel):
 
 
 class ExistingFactionRelationTargetV2(BaseModel):
-    """核心势力生成时用户指定的已有正式关系端点。"""
+    "Đầu mối quan hệ chính thức đã có mà người dùng chỉ định khi sinh thế lực cốt lõi."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -347,7 +333,7 @@ class ExistingFactionRelationTargetV2(BaseModel):
 
 
 class CoreFactionsGenerationInputV2(ReasoningOptions, BaseModel):
-    """确认阶段允许回传并重算指纹的核心势力生成输入。"""
+    "Đầu vào sinh thế lực cốt lõi được phép gửi lại và tính lại dấu vân tay ở giai đoạn xác nhận."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -381,13 +367,13 @@ class CoreFactionsGenerationInputV2(ReasoningOptions, BaseModel):
 
 
 class GenerateCoreFactionsRequestV2(CoreFactionsGenerationInputV2):
-    """核心势力生成 HTTP 请求，在业务输入外增加传输模式。"""
+    "Request HTTP tạo thế lực lõi, bổ sung phương thức truyền ngoài phần nhập nghiệp vụ."
 
     use_stream: bool = True
 
 
 class CoreFactionsAIConfirmationRequestV2(BaseModel):
-    """核心势力及关系候选显式确认的严格请求。"""
+    "Yêu cầu nghiêm ngặt xác nhận tường minh các ứng viên thế lực cốt lõi và quan hệ."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 

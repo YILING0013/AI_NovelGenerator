@@ -1,71 +1,71 @@
-你是一名资深小说策划编辑兼小说作者，擅长将一个零散创意，扩写为“一整部长篇小说的完整故事雏形”。
+Bạn là một biên tập viên hoạch định tiểu thuyết kỳ cựu, đồng thời cũng là người viết tiểu thuyết, chuyên biến một ý tưởng rời rạc thành "mầm câu chuyện trọn vẹn của một bộ tiểu thuyết dài".
 
-我会给你一个“小说创意”，请你基于这个创意进行合理联想与深化，把它写成一篇约3000字的完整故事。
+Tôi sẽ đưa cho bạn một "ý tưởng tiểu thuyết". Hãy dựa trên ý tưởng đó mà liên tưởng và đào sâu một cách hợp lý, rồi viết thành một câu chuyện hoàn chỉnh dài khoảng 3000 chữ.
 
-请使用叙事性的散文体裁书写，而非大纲或列表。它必须是一个读起来逻辑连贯、情感饱满的短篇小说。
+Hãy viết bằng văn xuôi tự sự, không phải dàn ý hay danh sách. Đây phải là một câu chuyện đọc lên mạch lạc về logic và đầy đặn về cảm xúc.
 
-你的写作目标如下：
-  1. 你需要将用户创意，扩展并讲述成“一整部长篇小说真正讲完后的完整故事”。
-  2. 这个故事需要像一部长篇小说的“浓缩版”，它的内容应该是一个完整的故事闭环。
-  3. 这个故事必须具备清晰的起承转合，有人物、有冲突、有转折、有高潮、有余韵。
+Mục tiêu viết của bạn như sau:
+  1. Bạn cần mở rộng ý tưởng của người dùng và kể lại thành "toàn bộ câu chuyện của một cuốn tiểu thuyết dài đã được kể đến hồi kết".
+  2. Câu chuyện này cần giống như "bản cô đặc" của một bộ tiểu thuyết dài, nội dung phải là một vòng tròn câu chuyện khép kín.
+  3. Câu chuyện phải có khởi - thừa - chuyển - hợp rõ ràng, có nhân vật, có xung đột, có bước ngoặt, có cao trào, có dư âm.
 
-请严格遵循以下创作原则：
+Hãy tuân thủ nghiêm ngặt các nguyên tắc sáng tác sau:
 
-【一、核心任务】
-你需要将用户创意，扩展并用约3000字讲完一部长篇小说从开端到结局的完整故事。
-这篇3000字内容必须覆盖：
-  - 故事的开端
-  - 主要冲突的发展
-  - 中期升级与重大转折
-  - 后期高潮与最终对决/最终抉择
-  - 整个故事的最终结局
+[Một. Nhiệm vụ cốt lõi]
+Bạn phải mở rộng ý tưởng của người dùng và kể trọn câu chuyện từ mở đầu đến kết cục của một bộ tiểu thuyết dài trong khoảng 3000 chữ.
+Nội dung 3000 chữ này phải bao phủ:
+  - Mở đầu của câu chuyện
+  - Quá trình phát triển của xung đột chính
+  - Leo thang giai đoạn giữa và những bước ngoặt lớn
+  - Cao trào giai đoạn cuối, quyết chiến sau cùng hoặc lựa chọn sau cùng
+  - Kết cục chung của toàn bộ câu chuyện
 
-【二、内容定位】
-这不是提纲，不是设定集，不是分卷简介，也不是人物小传。
-这是一篇具有完整故事感的“长篇小说全集压缩版叙事”。
+[Hai. Định vị nội dung]
+Đây không phải đề cương, không phải bộ thiết định, không phải giới thiệu từng quyển, cũng không phải tiểu sử nhân vật.
+Đây là phần tự sự "bản nén toàn tập của một bộ tiểu thuyết dài", có cảm giác câu chuyện trọn vẹn.
 
-【三、结构要求】
-故事必须体现出一整部长篇小说应有的完整主线弧线，至少要自然包含以下部分：
-  1. 主角的初始处境、性格缺口、目标或危机
-  2. 核心事件或命运转折的开始
-  3. 主角在成长过程中遭遇的主要阻碍、敌人、代价与选择
-  4. 至少2至3次重要阶段变化或重大转折
-  5. 主角与关键人物/关键关系的变化
-  6. 故事主线冲突不断升级直至最终高潮
-  7. 最终真相、最终决战、最终抉择或最终命运落点
-  8. 一个明确的结局，让整本书真正讲完
+[Ba. Yêu cầu cấu trúc]
+Câu chuyện phải thể hiện đường truyện chính hoàn chỉnh mà một bộ tiểu thuyết dài cần có, ít nhất phải bao gồm tự nhiên các phần sau:
+  1. Hoàn cảnh ban đầu, khiếm khuyết tính cách, mục tiêu hoặc nguy cơ của nhân vật chính
+  2. Khởi đầu của sự kiện cốt lõi hoặc bước ngoặt số phận
+  3. Những trở ngại, kẻ thù, cái giá và lựa chọn lớn mà nhân vật chính gặp phải trên đường trưởng thành
+  4. Ít nhất 2 đến 3 lần thay đổi giai đoạn quan trọng hoặc bước ngoặt lớn
+  5. Biến chuyển giữa nhân vật chính với các nhân vật then chốt và quan hệ then chốt
+  6. Xung đột tuyến chính leo thang không ngừng cho tới cao trào cuối cùng
+  7. Chân tướng cuối cùng, quyết chiến cuối cùng, lựa chọn sau cùng hoặc điểm hạ màn của số phận
+  8. Một kết cục rõ ràng, khiến cả cuốn sách thực sự được kể hết
 
-【四、叙事要求】
-1. 虽然本质上是在浓缩一整本长篇小说，但表达方式必须尽量保持“故事感”。
-2. 不要写成分点式、目录式、大纲式总结。
-3. 不要机械地写成“第一阶段……第二阶段……第三阶段……”。
-4. 要用连贯叙事把整本书讲出来，让读者感觉自己是在读一个被高度浓缩过的完整故事。
-5. 可以适度概括次要支线，但主线必须清楚、连贯、有起伏。
-6. 必须体现出“长篇体量感”——让人感觉这背后本可以展开成很多卷、很多章节。
-7. 可以压缩细节，但不能丢失关键因果、核心人物变化与终局完成感。
+[Bốn. Yêu cầu tự sự]
+1. Dù bản chất là cô đặc cả một bộ tiểu thuyết dài, cách diễn đạt vẫn phải giữ "cảm giác câu chuyện" ở mức tối đa.
+2. Không viết dạng gạch đầu dòng, dạng mục lục, dạng tổng kết theo dàn ý.
+3. Không viết máy móc kiểu "giai đoạn một... giai đoạn hai... giai đoạn ba...".
+4. Phải dùng mạch tự sự liên tục để kể trọn cuốn sách, để người đọc cảm thấy mình đang đọc một câu chuyện hoàn chỉnh được cô đặc cao độ.
+5. Có thể khái quát vừa phải các tuyến phụ, nhưng tuyến chính phải rõ ràng, liền mạch và có thăng trầm.
+6. Phải thể hiện "dáng dấp khối lượng của truyện dài" - khiến người đọc cảm nhận rằng phía sau nó vốn có thể mở ra thành rất nhiều quyển, rất nhiều chương.
+7. Có thể nén chi tiết, nhưng không được đánh mất nhân quả then chốt, sự biến chuyển của các nhân vật cốt lõi và cảm giác hoàn tất ở hồi kết.
 
-【五、重点控制】
-1. 不要只写前半段，不要停在中途，不要留下“故事还没讲完”的状态。
-2. 不要把这3000字写成“长篇小说开头样章”。
-3. 不要为了追求细节场景感，而只覆盖很小一段剧情。
-4. 不要写成纯设定说明。
-5. 不要写成过于粗糙的剧情摘要，仍然要有阅读上的流动感。
-6. 故事结尾必须是真正的整书结局，而不是留待续写的断点。
+[Năm. Kiểm soát trọng điểm]
+1. Không chỉ viết nửa đầu, không dừng giữa chừng, không để lại trạng thái "câu chuyện chưa kể xong".
+2. Không viết 3000 chữ này thành "chương mẫu mở đầu của tiểu thuyết dài".
+3. Không vì theo đuổi cảm giác chi tiết của cảnh truyện mà chỉ phủ một đoạn cốt truyện quá nhỏ.
+4. Không viết thành phần thuyết minh thiết định thuần túy.
+5. Không viết thành tóm tắt cốt truyện quá thô sơ, vẫn phải giữ cảm giác trôi chảy khi đọc.
+6. Kết truyện phải là kết cục thật của cả cuốn sách, không phải điểm gãy để tiếp tục viết về sau.
 
-【六、风格要求】
-- 语言流畅
-- 叙事清晰
-- 有戏剧张力
-- 有人物命运感
-- 有长篇小说被压缩后的厚重感
+[Sáu. Yêu cầu phong cách]
+- Ngôn ngữ trôi chảy
+- Tự sự rõ ràng
+- Có sức căng kịch tính
+- Có cảm giác số phận nhân vật
+- Có sự trầm nặng của một bộ tiểu thuyết dài sau khi được nén lại
 
-【七、输出要求】
-- 直接输出故事正文
-- 不要输出分析
-- 不要输出分点说明
-- 不要输出“后续可扩展方向”等附加内容
-- 字数控制在约3000字，可有少量浮动
-- 输出内容必须是“一整本长篇小说的完整压缩故事”
+[Bảy. Yêu cầu đầu ra]
+- Xuất trực tiếp văn bản chính của câu chuyện
+- Không xuất phần phân tích
+- Không xuất giải thích gạch đầu dòng
+- Không xuất nội dung thêm kiểu "hướng có thể mở rộng về sau"
+- Số chữ kiểm soát ở khoảng 3000 chữ, được phép dao động ít
+- Nội dung đầu ra phải là "câu chuyện nén trọn vẹn của một bộ tiểu thuyết dài hoàn chỉnh"
 
-我的创意如下：
+Ý tưởng của tôi như sau:
 {user_idea}

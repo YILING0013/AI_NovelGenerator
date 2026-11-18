@@ -65,13 +65,13 @@ BusinessEntityType: TypeAlias = Literal[
 
 
 class StrictRequestModel(BaseModel):
-    """禁止额外字段并清理字符串空白的请求 DTO 基类。"""
+    "Lớp cơ sở DTO của yêu cầu: cấm trường thừa và cắt khoảng trắng trong chuỗi."
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True, strict=True)
 
 
 class StrictResponseModel(BaseModel):
-    """禁止响应层静默携带内部字段的 DTO 基类。"""
+    "Lớp DTO cơ bản cấm tầng phản hồi âm thầm mang theo các trường nội bộ."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 

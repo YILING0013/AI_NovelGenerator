@@ -37,7 +37,7 @@ _config_update_lock = asyncio.Lock()
 
 
 class SecretUpdateRequest(BaseModel):
-    """描述浏览器对受保护配置值的显式操作。"""
+    "Mô tả thao tác tường minh của trình duyệt đối với giá trị cấu hình được bảo vệ."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -62,7 +62,7 @@ class SecretUpdateRequest(BaseModel):
 
 
 class ProviderConfigPatch(ReasoningOptions):
-    """设置工作台允许提交的单个 Provider 字段。"""
+    "Một trường của Provider mà workbench cài đặt cho phép gửi lên."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -110,7 +110,7 @@ class ProviderConfigPatch(ReasoningOptions):
 
 
 class LLMConfigPatch(BaseModel):
-    """设置工作台允许提交的 LLM 配置字段。"""
+    "Các trường cấu hình LLM mà bàn làm việc cài đặt cho phép gửi lên."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -120,7 +120,7 @@ class LLMConfigPatch(BaseModel):
 
 
 class ProviderRenameRequest(BaseModel):
-    """Provider 别名重命名操作。"""
+    "Thao tác đổi tên bí danh nhà cung cấp."
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True, strict=True)
 
@@ -131,7 +131,7 @@ class ProviderRenameRequest(BaseModel):
 
 
 class ConfigPatch(BaseModel):
-    """设置工作台可修改的根配置字段白名单。"""
+    "Danh sách trắng các trường cấu hình gốc mà bàn làm việc cài đặt có thể sửa."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -147,7 +147,7 @@ class ConfigPatch(BaseModel):
 
 
 class ConfigUpdateRequest(BaseModel):
-    """严格包裹设置工作台的配置 patch 与 CAS 版本。"""
+    "Bọc khầt khe patch cấu hình của workbench cài đặt cùng phiên bản CAS."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 

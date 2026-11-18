@@ -20,21 +20,21 @@ CandidateRef = Annotated[str, Field(pattern=r"^[a-zA-Z][a-zA-Z0-9_-]{0,79}$")]
 
 
 class CharacterBatchGenerationV1(StrictRequestModel):
-    """保留原人物生成输入，不能用当前配置替换旧依据。"""
+    "Giữ nguyên đầu vào sinh nhân vật gốc, không được dùng cấu hình hiện tại để thay căn cứ cũ."
 
     basis: CandidateBasisV1
     generation_input: CoreCharactersGenerationInputV1
 
 
 class CharacterRelationBatchGenerationV1(StrictRequestModel):
-    """保留原关系生成输入及所选人物。"""
+    "Giữ lại đầu vào sinh quan hệ gốc và các nhân vật đã chọn."
 
     basis: CandidateBasisV1
     generation_input: CharacterRelationsGenerationInputV1
 
 
 class CharacterBatchBindingV1(StrictRequestModel):
-    """新人物的初始归属；已有主归属切换仍使用原专用接口。"""
+    "Quy thuộc ban đầu của nhân vật mới; chuyển quy thuộc chính của nhân vật đã có vẫn dùng giao diện chuyên dụng cũ."
 
     faction_id: str = Field(pattern=r"^fac_[0-9]{6,19}$")
     faction_version: FactVersion
@@ -46,7 +46,7 @@ class CharacterBatchBindingV1(StrictRequestModel):
 
 
 class CharacterBatchCandidateV1(StrictRequestModel):
-    """每个人物始终按稳定引用保存，不依赖页面当前选中索引。"""
+    "Mỗi nhân vật luôn được lưu theo tham chiếu ổn định, không phụ thuộc chỉ mục đang chọn trên trang."
 
     candidate_ref: CandidateRef
     profile: CharacterFactCreateDataV1
@@ -62,7 +62,7 @@ class CharacterBatchCandidateV1(StrictRequestModel):
 
 
 class CharacterRelationBatchCandidateV1(StrictRequestModel):
-    """关系设计和已明确的起点状态分别提交。"""
+    "Thiết kế quan hệ và trạng thái khởi điểm đã xác định được gửi riêng biệt."
 
     candidate_ref: CandidateRef
     profile: CharacterRelationFactCreateDataV1
@@ -77,7 +77,7 @@ class CharacterRelationBatchCandidateV1(StrictRequestModel):
 
 
 class CharacterFactBatchCreateV1(StrictRequestModel):
-    """一次采用整批人物；内部预览不需要作者逐人操作。"""
+    "Chấp nhận cả loạt nhân vật trong một lần; xem trước nội bộ không cần tác giả thao tác từng nhân vật."
 
     position: CharacterFactPositionV1
     candidates: list[CharacterBatchCandidateV1] = Field(min_length=1, max_length=50)
@@ -94,7 +94,7 @@ class CharacterFactBatchCreateV1(StrictRequestModel):
 
 
 class CharacterRelationFactBatchCreateV1(StrictRequestModel):
-    """一次采用整批关系，已有内容覆盖仍走原比较确认接口。"""
+    "Áp dụng cả loạt quan hệ trong một lần; ghi đề nội dung đã có vẫn đi qua giao diện so sánh và xác nhận cũ."
 
     position: CharacterFactPositionV1
     candidates: list[CharacterRelationBatchCandidateV1] = Field(min_length=1, max_length=500)
@@ -111,7 +111,7 @@ class CharacterRelationFactBatchCreateV1(StrictRequestModel):
 
 
 class CharacterBatchSavedV1(StrictResponseModel):
-    """保存结果只返回刷新与定位需要的身份和版本。"""
+    "Kết quả lưu chỉ trả về danh tính và phiên bản cần cho việc làm mới và định vị."
 
     candidate_ref: CandidateRef
     entity_id: ObjectIdString
@@ -121,7 +121,7 @@ class CharacterBatchSavedV1(StrictResponseModel):
 
 
 class CharacterBatchBindingSavedV1(StrictResponseModel):
-    """绑定结果通过人物候选引用回到原列表。"""
+    "Kết quả liên kết trỏ về danh sách gốc qua tham chiếu ứng viên nhân vật."
 
     candidate_ref: CandidateRef
     binding_id: str = Field(pattern=r"^cfb_[0-9]{6,19}$")
@@ -129,7 +129,7 @@ class CharacterBatchBindingSavedV1(StrictResponseModel):
 
 
 class CharacterFactBatchResultV1(StrictResponseModel):
-    """整批人物首次保存的不可变结果。"""
+    "Kết quả bất biến của lần lưu đầu tiên cho cả lô nhân vật."
 
     novel_id: ObjectIdString
     characters: list[CharacterBatchSavedV1] = Field(min_length=1, max_length=50)
@@ -137,7 +137,7 @@ class CharacterFactBatchResultV1(StrictResponseModel):
 
 
 class CharacterRelationBatchSavedV1(StrictResponseModel):
-    """关系的稳定身份与起点记录。"""
+    "Danh tính ổn định của quan hệ và bản ghi khởi điểm."
 
     candidate_ref: CandidateRef
     entity_id: ObjectIdString
@@ -147,7 +147,7 @@ class CharacterRelationBatchSavedV1(StrictResponseModel):
 
 
 class CharacterRelationFactBatchResultV1(StrictResponseModel):
-    """整批关系首次保存的不可变结果。"""
+    "Kết quả bất biến của lần lưu đầu tiên cho cả lô quan hệ."
 
     novel_id: ObjectIdString
     relations: list[CharacterRelationBatchSavedV1] = Field(min_length=1, max_length=500)

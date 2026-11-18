@@ -115,7 +115,7 @@
       "outputs": {
         "prepared_context": {
           "additionalProperties": false,
-          "description": "下一步生成需要的固定资料报告；正式详情由服务端填入。",
+          "description": "Báo cáo tư liệu cố định cần thiết cho bước sinh tiếp theo; chi tiết chính thức sẽ do server điền vào.",
           "properties": {
             "schema_version": {
               "const": 1,
@@ -125,7 +125,7 @@
             },
             "target": {
               "additionalProperties": false,
-              "description": "由服务端固定的小说和操作位置。",
+              "description": "Tiểu thuyết và vị trí thao tác được cố định bởi server.",
               "properties": {
                 "novel_id": {
                   "maxLength": 24,
@@ -168,7 +168,7 @@
             },
             "selected_entities": {
               "additionalProperties": false,
-              "description": "作者选中的资料；不提供任意数据库读取参数。",
+              "description": "Tư liệu do tác giả lựa chọn; không cung cấp tham số đọc cơ sở dữ liệu tùy ý.",
               "properties": {
                 "character_ids": {
                   "items": {
@@ -217,7 +217,7 @@
             "selection_reasons": {
               "items": {
                 "additionalProperties": false,
-                "description": "采用已读实体的具体原因。",
+                "description": "Lý do cụ thể khi áp dụng thực thể đã đọc.",
                 "properties": {
                   "resource_type": {
                     "enum": [
@@ -258,7 +258,7 @@
             "entity_needs": {
               "items": {
                 "additionalProperties": false,
-                "description": "当前资料无法承担的一项剧情职责。",
+                "description": "Một trách nhiệm cốt truyện mà tư liệu hiện tại không thể đảm nhận.",
                 "properties": {
                   "resource_type": {
                     "enum": [
@@ -298,7 +298,7 @@
             },
             "new_counts": {
               "additionalProperties": false,
-              "description": "各类新实体建议数量，最终仍由相应领域上限校验。",
+              "description": "Số lượng khuyến nghị cho từng loại thực thể mới; cuối cùng vẫn được kiểm tra theo giới hạn của lĩnh vực tương ứng.",
               "properties": {
                 "character": {
                   "default": 0,
@@ -340,28 +340,28 @@
               "type": "object"
             },
             "suggested_count": {
-              "description": "本次应新增的下级数量。仍有未覆盖剧情时为1至20；全部剧情已被现有下级覆盖时必须为0。遵守本次输入明确给定的固定数量，auto时自主估计。",
+              "description": "Số lượng thực thể cấp dưới cần bổ sung trong lần này. Nếu vẫn còn cốt truyện chưa được bao phủ thì phải từ 1 đến 20; khi toàn bộ cốt truyện đã được các thực thể cấp dưới hiện có bao phủ thì bắt buộc phải là 0. Tuân thủ số lượng cố định được nêu rõ trong đầu vào lần này; khi giá trị là auto thì tự ước lượng.",
               "maximum": 20,
               "minimum": 0,
               "title": "Suggested Count",
               "type": "integer"
             },
             "coverage": {
-              "description": "分别说明已有下级已覆盖什么、还剩什么；当前没有下级时不能声称剧情已经覆盖。",
+              "description": "Trình bày riêng các thực thể cấp dưới hiện có đã bao phủ những gì và còn lại gì; khi hiện tại chưa có thực thể cấp dưới nào thì không được khẳng định cốt truyện đã được bao phủ.",
               "maxLength": 12000,
               "minLength": 1,
               "title": "Coverage",
               "type": "string"
             },
             "remaining": {
-              "description": "是否还有需要本次生成的未覆盖内容。true表示仍需生成，suggested_count必须大于0；false表示已有内容完整覆盖、无需新增，suggested_count必须为0。不是‘资料是否还需补齐’。",
+              "description": "Liệu còn nội dung chưa được bao phủ cần sinh trong lần này hay không. true nghĩa là vẫn cần sinh, suggested_count phải lớn hơn 0; false nghĩa là nội dung hiện có đã bao phủ đầy đủ, không cần bổ sung, suggested_count phải bằng 0. Không phải là 'tư liệu còn cần bổ sung hay không'.",
               "title": "Remaining",
               "type": "boolean"
             },
             "missing_required": {
               "items": {
                 "additionalProperties": false,
-                "description": "作者需要在指定位置补齐的内容。",
+                "description": "Nội dung tác giả cần bổ sung tại vị trí được chỉ định.",
                 "properties": {
                   "field": {
                     "maxLength": 200,
@@ -437,7 +437,7 @@
       },
       "values": {},
       "config": {
-        "prompt": "当前任务：create_characters_for_volume_by_ai。先使用工具核对本次资料，再给出可直接执行的整理报告。已有对象先读取详情，只有缺少职责时才建议新增。\n本次资料和作者参数见下方“实际输入”。",
+        "prompt": "Nhiệm vụ hiện tại: create_characters_for_volume_by_ai. Hãy dùng công cụ đối chiếu tư liệu lần này trước, rồi đưa ra báo cáo sắp xếp có thể thi hành trực tiếp. Với đối tượng đã có, hãy đọc chi tiết trước; chỉ đề xuất bổ sung mới khi thiếu trách nhiệm.\nTư liệu và tham số của tác giả cho lần này xem ở phần \"đầu vào thực tế\" bên dưới.",
         "provider": "",
         "model": "",
         "parameters": {},
@@ -459,26 +459,26 @@
           {
             "id": "story_boundaries",
             "name": "剧情边界",
-            "description": "核对主线、当前位置、上下部分与已保存下级。",
-            "instructions": "先读取当前范围和目录。卷剧情承接全书剧情，篇章剧情承接本卷剧情；保留相邻已定起止。下级只补尚未覆盖的剧情，不重复已保存内容。末卷给出收束，不虚构下一卷。"
+            "description": "Đối chiếu tuyến truyện chính, vị trí hiện tại, các phần trước và sau với thực thể cấp dưới đã lưu.",
+            "instructions": "Hãy đọc phạm vi và mục lục hiện tại trước. Cốt truyện của quyển tiếp nối cốt truyện toàn thư, cốt truyện của vòng truyện tiếp nối cốt truyện của quyển này; giữ nguyên mốc bắt đầu và kết thúc đã chốt của các phần liền kề. Thực thể cấp dưới chỉ bổ sung phần cốt truyện chưa được bao phủ, không lặp lại nội dung đã lưu. Quyển cuối phải đưa ra hướng khép lại, không bịa đặt quyển tiếp theo."
           },
           {
             "id": "people_factions",
             "name": "人物与势力",
-            "description": "查找可复用人物、势力以及当前卷状态。",
-            "instructions": "先查找再读详情，按动机和冲突选择实际需要的角色与势力。当前卷状态优先于全书介绍。每项选择说明作用；已有资料不能承担的职责才提出新增，未读详情的 ID 不得采用。"
+            "description": "Tìm nhân vật, thế lực có thể tái sử dụng cùng trạng thái của quyển hiện tại.",
+            "instructions": "Hãy tìm trước rồi đọc chi tiết, chọn nhân vật và thế lực thực sự cần thiết dựa trên động cơ và xung đột. Trạng thái quyển hiện tại được ưu tiên hơn phần giới thiệu toàn thư. Mỗi lựa chọn phải nêu rõ tác dụng; chỉ đề xuất bổ sung mới những trách nhiệm mà tư liệu hiện có không đảm nhận được; không được dùng các ID chưa đọc chi tiết."
           },
           {
             "id": "places_rules",
             "name": "地点与设定",
-            "description": "核对场所、物品和世界规则。",
-            "instructions": "查找并读取支撑行动的已有地点、物品与规则，核对距离、功能和限制；没有合适地点才建议新增。篇章及以下需要缺失实体时明确报告补齐位置，不在正文中暗中建档。"
+            "description": "Đối chiếu địa điểm, vật phẩm và quy tắc thế giới.",
+            "instructions": "Hãy tìm và đọc các địa điểm, vật phẩm và quy tắc hiện có để nâng đỡ hành động, đối chiếu khoảng cách, công năng và hạn chế; chỉ đề xuất bổ sung mới khi không có địa điểm phù hợp. Khi vòng truyện trở xuống cần thực thể còn thiếu, phải báo rõ vị trí cần bổ sung, không âm thầm lập hồ sơ trong phần văn bản chính."
           },
           {
             "id": "continuity",
             "name": "前文衔接",
-            "description": "读取当前位置以前的正文并检查衔接。",
-            "instructions": "阅读已写前文，区分正式正文和规划；保持已发生事件、人物状态和因果。工具没有返回的正文不要编造。说明尚未覆盖的剧情与拆分建议。"
+            "description": "Đọc phần văn bản chính trước vị trí hiện tại và kiểm tra tính kết nối.",
+            "instructions": "Hãy đọc phần nội dung đã viết trước đó, phân biệt văn bản chính thức với dàn ý; giữ đúng các sự kiện đã xảy ra, trạng thái nhân vật và quan hệ nhân quả. Không bịa phần văn bản mà công cụ chưa trả về. Nêu rõ các phần cốt truyện chưa được bao phủ và đề xuất tách nhỏ."
           }
         ]
       }
@@ -523,7 +523,7 @@
         },
         "prepared_context": {
           "additionalProperties": false,
-          "description": "下一步生成需要的固定资料报告；正式详情由服务端填入。",
+          "description": "Báo cáo tư liệu cố định cần thiết cho bước sinh tiếp theo; chi tiết chính thức sẽ do server điền vào.",
           "properties": {
             "schema_version": {
               "const": 1,
@@ -533,7 +533,7 @@
             },
             "target": {
               "additionalProperties": false,
-              "description": "由服务端固定的小说和操作位置。",
+              "description": "Tiểu thuyết và vị trí thao tác được cố định bởi server.",
               "properties": {
                 "novel_id": {
                   "maxLength": 24,
@@ -576,7 +576,7 @@
             },
             "selected_entities": {
               "additionalProperties": false,
-              "description": "作者选中的资料；不提供任意数据库读取参数。",
+              "description": "Tư liệu do tác giả lựa chọn; không cung cấp tham số đọc cơ sở dữ liệu tùy ý.",
               "properties": {
                 "character_ids": {
                   "items": {
@@ -625,7 +625,7 @@
             "selection_reasons": {
               "items": {
                 "additionalProperties": false,
-                "description": "采用已读实体的具体原因。",
+                "description": "Lý do cụ thể khi áp dụng thực thể đã đọc.",
                 "properties": {
                   "resource_type": {
                     "enum": [
@@ -666,7 +666,7 @@
             "entity_needs": {
               "items": {
                 "additionalProperties": false,
-                "description": "当前资料无法承担的一项剧情职责。",
+                "description": "Một trách nhiệm cốt truyện mà tư liệu hiện tại không thể đảm nhận.",
                 "properties": {
                   "resource_type": {
                     "enum": [
@@ -706,7 +706,7 @@
             },
             "new_counts": {
               "additionalProperties": false,
-              "description": "各类新实体建议数量，最终仍由相应领域上限校验。",
+              "description": "Số lượng khuyến nghị cho từng loại thực thể mới; cuối cùng vẫn được kiểm tra theo giới hạn của lĩnh vực tương ứng.",
               "properties": {
                 "character": {
                   "default": 0,
@@ -748,28 +748,28 @@
               "type": "object"
             },
             "suggested_count": {
-              "description": "本次应新增的下级数量。仍有未覆盖剧情时为1至20；全部剧情已被现有下级覆盖时必须为0。遵守本次输入明确给定的固定数量，auto时自主估计。",
+              "description": "Số lượng thực thể cấp dưới cần bổ sung trong lần này. Nếu vẫn còn cốt truyện chưa được bao phủ thì phải từ 1 đến 20; khi toàn bộ cốt truyện đã được các thực thể cấp dưới hiện có bao phủ thì bắt buộc phải là 0. Tuân thủ số lượng cố định được nêu rõ trong đầu vào lần này; khi giá trị là auto thì tự ước lượng.",
               "maximum": 20,
               "minimum": 0,
               "title": "Suggested Count",
               "type": "integer"
             },
             "coverage": {
-              "description": "分别说明已有下级已覆盖什么、还剩什么；当前没有下级时不能声称剧情已经覆盖。",
+              "description": "Trình bày riêng các thực thể cấp dưới hiện có đã bao phủ những gì và còn lại gì; khi hiện tại chưa có thực thể cấp dưới nào thì không được khẳng định cốt truyện đã được bao phủ.",
               "maxLength": 12000,
               "minLength": 1,
               "title": "Coverage",
               "type": "string"
             },
             "remaining": {
-              "description": "是否还有需要本次生成的未覆盖内容。true表示仍需生成，suggested_count必须大于0；false表示已有内容完整覆盖、无需新增，suggested_count必须为0。不是‘资料是否还需补齐’。",
+              "description": "Liệu còn nội dung chưa được bao phủ cần sinh trong lần này hay không. true nghĩa là vẫn cần sinh, suggested_count phải lớn hơn 0; false nghĩa là nội dung hiện có đã bao phủ đầy đủ, không cần bổ sung, suggested_count phải bằng 0. Không phải là 'tư liệu còn cần bổ sung hay không'.",
               "title": "Remaining",
               "type": "boolean"
             },
             "missing_required": {
               "items": {
                 "additionalProperties": false,
-                "description": "作者需要在指定位置补齐的内容。",
+                "description": "Nội dung tác giả cần bổ sung tại vị trí được chỉ định.",
                 "properties": {
                   "field": {
                     "maxLength": 200,
@@ -861,7 +861,7 @@
         },
         "prepared_context": {
           "additionalProperties": false,
-          "description": "下一步生成需要的固定资料报告；正式详情由服务端填入。",
+          "description": "Báo cáo tư liệu cố định cần thiết cho bước sinh tiếp theo; chi tiết chính thức sẽ do server điền vào.",
           "properties": {
             "schema_version": {
               "const": 1,
@@ -871,7 +871,7 @@
             },
             "target": {
               "additionalProperties": false,
-              "description": "由服务端固定的小说和操作位置。",
+              "description": "Tiểu thuyết và vị trí thao tác được cố định bởi server.",
               "properties": {
                 "novel_id": {
                   "maxLength": 24,
@@ -914,7 +914,7 @@
             },
             "selected_entities": {
               "additionalProperties": false,
-              "description": "作者选中的资料；不提供任意数据库读取参数。",
+              "description": "Tư liệu do tác giả lựa chọn; không cung cấp tham số đọc cơ sở dữ liệu tùy ý.",
               "properties": {
                 "character_ids": {
                   "items": {
@@ -963,7 +963,7 @@
             "selection_reasons": {
               "items": {
                 "additionalProperties": false,
-                "description": "采用已读实体的具体原因。",
+                "description": "Lý do cụ thể khi áp dụng thực thể đã đọc.",
                 "properties": {
                   "resource_type": {
                     "enum": [
@@ -1004,7 +1004,7 @@
             "entity_needs": {
               "items": {
                 "additionalProperties": false,
-                "description": "当前资料无法承担的一项剧情职责。",
+                "description": "Một trách nhiệm cốt truyện mà tư liệu hiện tại không thể đảm nhận.",
                 "properties": {
                   "resource_type": {
                     "enum": [
@@ -1044,7 +1044,7 @@
             },
             "new_counts": {
               "additionalProperties": false,
-              "description": "各类新实体建议数量，最终仍由相应领域上限校验。",
+              "description": "Số lượng khuyến nghị cho từng loại thực thể mới; cuối cùng vẫn được kiểm tra theo giới hạn của lĩnh vực tương ứng.",
               "properties": {
                 "character": {
                   "default": 0,
@@ -1086,28 +1086,28 @@
               "type": "object"
             },
             "suggested_count": {
-              "description": "本次应新增的下级数量。仍有未覆盖剧情时为1至20；全部剧情已被现有下级覆盖时必须为0。遵守本次输入明确给定的固定数量，auto时自主估计。",
+              "description": "Số lượng thực thể cấp dưới cần bổ sung trong lần này. Nếu vẫn còn cốt truyện chưa được bao phủ thì phải từ 1 đến 20; khi toàn bộ cốt truyện đã được các thực thể cấp dưới hiện có bao phủ thì bắt buộc phải là 0. Tuân thủ số lượng cố định được nêu rõ trong đầu vào lần này; khi giá trị là auto thì tự ước lượng.",
               "maximum": 20,
               "minimum": 0,
               "title": "Suggested Count",
               "type": "integer"
             },
             "coverage": {
-              "description": "分别说明已有下级已覆盖什么、还剩什么；当前没有下级时不能声称剧情已经覆盖。",
+              "description": "Trình bày riêng các thực thể cấp dưới hiện có đã bao phủ những gì và còn lại gì; khi hiện tại chưa có thực thể cấp dưới nào thì không được khẳng định cốt truyện đã được bao phủ.",
               "maxLength": 12000,
               "minLength": 1,
               "title": "Coverage",
               "type": "string"
             },
             "remaining": {
-              "description": "是否还有需要本次生成的未覆盖内容。true表示仍需生成，suggested_count必须大于0；false表示已有内容完整覆盖、无需新增，suggested_count必须为0。不是‘资料是否还需补齐’。",
+              "description": "Liệu còn nội dung chưa được bao phủ cần sinh trong lần này hay không. true nghĩa là vẫn cần sinh, suggested_count phải lớn hơn 0; false nghĩa là nội dung hiện có đã bao phủ đầy đủ, không cần bổ sung, suggested_count phải bằng 0. Không phải là 'tư liệu còn cần bổ sung hay không'.",
               "title": "Remaining",
               "type": "boolean"
             },
             "missing_required": {
               "items": {
                 "additionalProperties": false,
-                "description": "作者需要在指定位置补齐的内容。",
+                "description": "Nội dung tác giả cần bổ sung tại vị trí được chỉ định.",
                 "properties": {
                   "field": {
                     "maxLength": 200,
@@ -1185,7 +1185,7 @@
         "characters": {
           "items": {
             "additionalProperties": false,
-            "description": "仅在模型响应边界接收未知标记，不接收旧 state 事实字段。",
+            "description": "Chỉ chấp nhận các ký hiệu chưa xác định ở ranh giới phản hồi của mô hình; không chấp nhận trường dữ kiện của state cũ.",
             "properties": {
               "candidate_ref": {
                 "pattern": "^[a-z][a-z0-9_]{0,63}$",
@@ -1209,7 +1209,7 @@
                 "anyOf": [
                   {
                     "additionalProperties": false,
-                    "description": "新卷人物的设计资料；实际事实仅由 initial_facts 提交。",
+                    "description": "Tư liệu thiết kế cho nhân vật của quyển mới; dữ kiện thực tế chỉ được gửi qua initial_facts.",
                     "properties": {
                       "name": {
                         "maxLength": 80,
@@ -1329,7 +1329,7 @@
               },
               "state": {
                 "additionalProperties": false,
-                "description": "角色本卷的参与安排与计划，不接受实际处境。",
+                "description": "Sắp xếp và kế hoạch tham gia của nhân vật trong quyển này; không chấp nhận hoàn cảnh thực tế.",
                 "properties": {
                   "participation_scope": {
                     "enum": [
@@ -1662,7 +1662,7 @@
         "characters": {
           "items": {
             "additionalProperties": false,
-            "description": "仅在模型响应边界接收未知标记，不接收旧 state 事实字段。",
+            "description": "Chỉ chấp nhận các ký hiệu chưa xác định ở ranh giới phản hồi của mô hình; không chấp nhận trường dữ kiện của state cũ.",
             "properties": {
               "candidate_ref": {
                 "pattern": "^[a-z][a-z0-9_]{0,63}$",
@@ -1686,7 +1686,7 @@
                 "anyOf": [
                   {
                     "additionalProperties": false,
-                    "description": "新卷人物的设计资料；实际事实仅由 initial_facts 提交。",
+                    "description": "Tư liệu thiết kế cho nhân vật của quyển mới; dữ kiện thực tế chỉ được gửi qua initial_facts.",
                     "properties": {
                       "name": {
                         "maxLength": 80,
@@ -1806,7 +1806,7 @@
               },
               "state": {
                 "additionalProperties": false,
-                "description": "角色本卷的参与安排与计划，不接受实际处境。",
+                "description": "Sắp xếp và kế hoạch tham gia của nhân vật trong quyển này; không chấp nhận hoàn cảnh thực tế.",
                 "properties": {
                   "participation_scope": {
                     "enum": [
@@ -2153,7 +2153,7 @@
         },
         "prepared_context": {
           "additionalProperties": false,
-          "description": "下一步生成需要的固定资料报告；正式详情由服务端填入。",
+          "description": "Báo cáo tư liệu cố định cần thiết cho bước sinh tiếp theo; chi tiết chính thức sẽ do server điền vào.",
           "properties": {
             "schema_version": {
               "const": 1,
@@ -2163,7 +2163,7 @@
             },
             "target": {
               "additionalProperties": false,
-              "description": "由服务端固定的小说和操作位置。",
+              "description": "Tiểu thuyết và vị trí thao tác được cố định bởi server.",
               "properties": {
                 "novel_id": {
                   "maxLength": 24,
@@ -2206,7 +2206,7 @@
             },
             "selected_entities": {
               "additionalProperties": false,
-              "description": "作者选中的资料；不提供任意数据库读取参数。",
+              "description": "Tư liệu do tác giả lựa chọn; không cung cấp tham số đọc cơ sở dữ liệu tùy ý.",
               "properties": {
                 "character_ids": {
                   "items": {
@@ -2255,7 +2255,7 @@
             "selection_reasons": {
               "items": {
                 "additionalProperties": false,
-                "description": "采用已读实体的具体原因。",
+                "description": "Lý do cụ thể khi áp dụng thực thể đã đọc.",
                 "properties": {
                   "resource_type": {
                     "enum": [
@@ -2296,7 +2296,7 @@
             "entity_needs": {
               "items": {
                 "additionalProperties": false,
-                "description": "当前资料无法承担的一项剧情职责。",
+                "description": "Một trách nhiệm cốt truyện mà tư liệu hiện tại không thể đảm nhận.",
                 "properties": {
                   "resource_type": {
                     "enum": [
@@ -2336,7 +2336,7 @@
             },
             "new_counts": {
               "additionalProperties": false,
-              "description": "各类新实体建议数量，最终仍由相应领域上限校验。",
+              "description": "Số lượng khuyến nghị cho từng loại thực thể mới; cuối cùng vẫn được kiểm tra theo giới hạn của lĩnh vực tương ứng.",
               "properties": {
                 "character": {
                   "default": 0,
@@ -2378,28 +2378,28 @@
               "type": "object"
             },
             "suggested_count": {
-              "description": "本次应新增的下级数量。仍有未覆盖剧情时为1至20；全部剧情已被现有下级覆盖时必须为0。遵守本次输入明确给定的固定数量，auto时自主估计。",
+              "description": "Số lượng thực thể cấp dưới cần bổ sung trong lần này. Nếu vẫn còn cốt truyện chưa được bao phủ thì phải từ 1 đến 20; khi toàn bộ cốt truyện đã được các thực thể cấp dưới hiện có bao phủ thì bắt buộc phải là 0. Tuân thủ số lượng cố định được nêu rõ trong đầu vào lần này; khi giá trị là auto thì tự ước lượng.",
               "maximum": 20,
               "minimum": 0,
               "title": "Suggested Count",
               "type": "integer"
             },
             "coverage": {
-              "description": "分别说明已有下级已覆盖什么、还剩什么；当前没有下级时不能声称剧情已经覆盖。",
+              "description": "Trình bày riêng các thực thể cấp dưới hiện có đã bao phủ những gì và còn lại gì; khi hiện tại chưa có thực thể cấp dưới nào thì không được khẳng định cốt truyện đã được bao phủ.",
               "maxLength": 12000,
               "minLength": 1,
               "title": "Coverage",
               "type": "string"
             },
             "remaining": {
-              "description": "是否还有需要本次生成的未覆盖内容。true表示仍需生成，suggested_count必须大于0；false表示已有内容完整覆盖、无需新增，suggested_count必须为0。不是‘资料是否还需补齐’。",
+              "description": "Liệu còn nội dung chưa được bao phủ cần sinh trong lần này hay không. true nghĩa là vẫn cần sinh, suggested_count phải lớn hơn 0; false nghĩa là nội dung hiện có đã bao phủ đầy đủ, không cần bổ sung, suggested_count phải bằng 0. Không phải là 'tư liệu còn cần bổ sung hay không'.",
               "title": "Remaining",
               "type": "boolean"
             },
             "missing_required": {
               "items": {
                 "additionalProperties": false,
-                "description": "作者需要在指定位置补齐的内容。",
+                "description": "Nội dung tác giả cần bổ sung tại vị trí được chỉ định.",
                 "properties": {
                   "field": {
                     "maxLength": 200,

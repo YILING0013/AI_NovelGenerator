@@ -541,7 +541,7 @@ class ItemService:
             if actual != expected:
                 raise _item_error(
                     "ITEM_VERSION_CONFLICT",
-                    f"Vật phẩm {item_id} 版本冲突",
+                    f"Vật phẩm {item_id} xung đột phiên bản",
                     status_code=409,
                     details={"expected_version": expected, "actual_version": actual},
                 )
@@ -1148,7 +1148,7 @@ class ItemService:
                     if int(current["version"]) != int(entry["expected_version"]):
                         raise _item_error(
                             "ITEM_VERSION_CONFLICT",
-                            f"Vật phẩm {entry['item_id']} 版本冲突",
+                            f"Vật phẩm {entry['item_id']} xung đột phiên bản",
                             status_code=409,
                         )
                 staged: dict[str, dict[str, Any]] = {}

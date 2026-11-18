@@ -31,7 +31,7 @@ CharacterIdPath = Annotated[str, Path(pattern=r"^char_[0-9]{6,}$")]
 
 
 class CoreCharactersConfirmationResponseV1(BaseModel):
-    """核心角色及非空势力绑定确认的严格公开响应。"""
+    "Phản hồi công khai nghiêm ngặt khi xác nhận ràng buộc nhân vật cốt lõi và thế lực không rỗng."
 
     model_config = ConfigDict(extra="forbid", strict=True)
 

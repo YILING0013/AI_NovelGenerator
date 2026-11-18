@@ -1,37 +1,37 @@
-你是一名长篇小说物品设计师。请根据已经确认的小说资料，生成能直接服务人物行动和主线冲突的全书级物品候选。
+Bạn là nhà thiết kế vật phẩm cho tiểu thuyết dài tập. Hãy dựa trên tư liệu tiểu thuyết đã được xác nhận để sinh các ứng viên vật phẩm cấp toàn thư, phục vụ trực tiếp cho hành động của nhân vật và xung đột của tuyến truyện chính.
 
-人物 unlocated_profile 只是未指定剧情位置的主档参考原文，可用于全书设计，不能据此宣称某章已经发生的事实。
+unlocated_profile của nhân vật chỉ là nguyên văn hồ sơ chính tham khảo, chưa gắn vị trí tình tiết; có thể dùng cho thiết kế toàn thư, nhưng không được dựa vào đó mà khẳng định dữ kiện đã xảy ra ở một chương nào đó.
 
-小说资料:
+Tư liệu tiểu thuyết:
 {novel_profile_json}
 
-可用世界规则（只能引用其中已经给出的事实，不要创建新规则）:
+Quy tắc thế giới khả dụng (chỉ được tham chiếu các dữ kiện đã nêu trong đó, không tạo quy tắc mới):
 {active_world_rules_json}
 
-活动角色（owner_character_id 只能使用其中的 character_id）:
+Nhân vật đang hoạt động (owner_character_id chỉ được dùng character_id trong danh sách này):
 {characters_json}
 
-活动势力（controlling_faction_id 只能使用其中的 faction_id）:
+Thế lực đang hoạt động (controlling_faction_id chỉ được dùng faction_id trong danh sách này):
 {factions_json}
 
-活动地点（current_location_id 只能使用其中的 location_id）:
+Địa điểm đang hoạt động (current_location_id chỉ được dùng location_id trong danh sách này):
 {locations_json}
 
-已有物品（只能用于去重和整体平衡，禁止重复输出）:
+Vật phẩm đã có (chỉ dùng để khử trùng lặp và cân bằng tổng thể, cấm xuất lặp lại):
 {existing_items_json}
 
-本次数量参数（null/None 由 AI 决定）: {item_count}
-是否允许在已有物品基础上继续补充: {allow_incremental}
-用户补充要求: {user_guidance}
+Tham số số lượng lần này (null/None do AI quyết định): {item_count}
+Có cho phép tiếp tục bổ sung trên cơ sở vật phẩm đã có hay không: {allow_incremental}
+Yêu cầu bổ sung của người dùng: {user_guidance}
 
-硬性规则:
-1. items 指定整数时数量必须严格等于本次要求，只生成对主线、角色选择或世界规则有明确作用的物品。
-2. 名称和别名不得与已有物品或本批其他候选重复，不要换一个近似名称复制已有物品。
-3. candidate_ref 使用 item_candidate_1、item_candidate_2 这类本批引用并保持唯一；不得输出正式 item_ ID。
-4. owner_character_id、controlling_faction_id、current_location_id 只能使用输入白名单中的正式 ID，也可以为 null。
-5. lifecycle_status 只能是 available、held、lost、destroyed、consumed。held 必须具有角色所有者或控制势力；destroyed 和 consumed 的三类当前引用必须全部为 null。
-6. 每条候选必须且只能包含 candidate_ref、name、aliases、item_type、description、appearance、origin、abilities、limitations、costs、owner_character_id、controlling_faction_id、current_location_id、lifecycle_status、story_function、tags。
-7. aliases、abilities、limitations、costs、tags 必须使用 JSON 数组；没有内容时使用空数组，各数组内不要重复。
-8. 禁止输出正式 item_id、order_index、version、删除或审计字段，也不要宣称候选已经保存。
+Quy tắc cứng:
+1. Khi items chỉ định một số nguyên, số lượng phải bằng đúng yêu cầu của lần này; chỉ sinh những vật phẩm có tác dụng rõ ràng với tuyến truyện chính, lựa chọn của nhân vật hoặc quy tắc thế giới.
+2. Tên và biệt danh không được trùng với vật phẩm đã có hoặc với các ứng viên khác trong lô này; không sao chép vật phẩm đã có bằng một tên gần giống.
+3. candidate_ref dùng các tham chiếu trong lô như item_candidate_1, item_candidate_2 và phải duy nhất; không được xuất ID chính thức dạng item_.
+4. owner_character_id, controlling_faction_id, current_location_id chỉ được dùng ID chính thức có trong danh sách trắng của đầu vào, cũng có thể để null.
+5. lifecycle_status chỉ có thể là available, held, lost, destroyed, consumed. held phải có nhân vật sở hữu hoặc thế lực kiểm soát; ba loại tham chiếu hiện tại của destroyed và consumed đều bắt buộc là null.
+6. Mỗi ứng viên bắt buộc và chỉ được chứa các trường: candidate_ref, name, aliases, item_type, description, appearance, origin, abilities, limitations, costs, owner_character_id, controlling_faction_id, current_location_id, lifecycle_status, story_function, tags.
+7. aliases, abilities, limitations, costs, tags bắt buộc dùng mảng JSON; khi không có nội dung thì dùng mảng rỗng, trong mỗi mảng không được lặp lại phần tử.
+8. Cấm xuất item_id chính thức, order_index, version, trường xóa hoặc trường kiểm toán, đồng thời không được khẳng định ứng viên đã được lưu.
 
-数量参数 item_count 为 null 或 None 时，由你根据故事实际需要决定数量，至少 1 个、最多 20 个；不要把上限当成目标，也不要默认凑满。指定整数时严格遵守该数量。
+Khi tham số số lượng item_count là null hoặc None, bạn tự quyết định số lượng theo nhu cầu thực tế của câu chuyện, tối thiểu 1 và tối đa 20; không coi mức trần là mục tiêu, cũng không mặc định làm cho đủ. Khi chỉ định một số nguyên thì tuân thủ nghiêm ngặt số lượng đó.

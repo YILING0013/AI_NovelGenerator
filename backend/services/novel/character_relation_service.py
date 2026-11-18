@@ -250,7 +250,7 @@ class CharacterRelationService:
         actual_version = int(relation["version"])
         if actual_version != expected_version:
             raise VersionConflictError(
-                f"Quan hệ nhân vật '{relation.get('relation_id')}' 版本冲突："
+                f"Quan hệ nhân vật '{relation.get('relation_id')}' xung đột phiên bản: "
                 f"expected={expected_version}, actual={actual_version}"
             )
 

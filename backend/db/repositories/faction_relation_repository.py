@@ -390,7 +390,7 @@ class FactionRelationRepository(BaseRepository):
             raise NotFoundError(f"Quan hệ thế lực '{relation_id}' tại{state}không tồn tại")
         actual_version = current["version"]
         raise VersionConflictError(
-            f"Quan hệ thế lực '{relation_id}' 版本冲突：expected={expected_version}, actual={actual_version}"
+            f"Quan hệ thế lực '{relation_id}' xung đột phiên bản: expected={expected_version}, actual={actual_version}"
         )
 
     async def update_relation(

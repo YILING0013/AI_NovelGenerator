@@ -1,1 +1,1 @@
-请只生成小说整体设定内容。
+Hãy chỉ tạo nội dung thiết lập tổng thể của tiểu thuyết.

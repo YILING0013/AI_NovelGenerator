@@ -1,53 +1,53 @@
-你是一名专业小说策划人, 请基于以下信息构建小说的整体设定。
+Bạn là một nhà hoạch định tiểu thuyết chuyên nghiệp. Hãy dựa trên các thông tin sau đây để xây dựng thiết lập tổng thể của tiểu thuyết.
 
-基础信息: 
-剧情: {plot}
-类型: {genre}
-基调: {tone}
-目标读者: {target_audience}
-核心设想: {core_idea}
-篇幅: 约{number_of_chapters}章（每章{words_per_chapter}字）
+Thông tin cơ bản:
+Cốt truyện: {plot}
+Thể loại: {genre}
+Giọng điệu: {tone}
+Đối tượng độc giả: {target_audience}
+Ý tưởng cốt lõi: {core_idea}
+Quy mô: khoảng {number_of_chapters} chương (mỗi chương {words_per_chapter} chữ)
 
-故事核心: 
+Lõi câu chuyện:
 {core_seed}
 
-请在保持逻辑一致的前提下, 进行创造性扩展, 生成完整的小说基础信息。
+Trên nền tảng giữ logic nhất quán, hãy mở rộng một cách sáng tạo để tạo ra đầy đủ thông tin nền tảng của tiểu thuyết.
 
-生成要求: 
+Yêu cầu tạo ra:
 
-1. 标题: 
-   - 具有吸引力和传播性
-   - 符合该类型读者审美
+1. Tiêu đề:
+   - Có sức hấp dẫn và khả năng lan truyền
+   - Phù hợp thị hiếu của độc giả thể loại này
 
-2. 副标题: 
-   - 补充核心冲突或主题
-   - 具有一定文学感或商业感
+2. Tiêu đề phụ:
+   - Bổ sung mâu thuẫn hoặc chủ đề cốt lõi
+   - Có chất văn học hoặc chất thương mại
 
-3. 引言: 
-   - 100-300字
-   - 引入故事，吸引读者阅读兴趣
+3. Lời dẫn:
+   - 100-300 chữ
+   - Dẫn vào câu chuyện, khơi gợi hứng thú đọc của độc giả
 
-4. 简介: 
-   - 100-500字
-   - 需清晰呈现主线冲突与悬念
+4. Giới thiệu:
+   - 100-500 chữ
+   - Cần trình bày rõ mâu thuẫn tuyến chính và các treo gợi tò mò
 
-5. 世界观: 
-   - 说明世界规则 / 力量体系 / 社会结构
-   - 不少于100字
+5. Thế giới quan:
+   - Nêu rõ quy tắc thế giới / hệ thống sức mạnh / cấu trúc xã hội
+   - Không ít hơn 100 chữ
 
-6. 创作风格: 
-   - 如“偏黑暗现实”“轻快幽默”“史诗宏大”等
+6. Phong cách sáng tác:
+   - Ví dụ "dark hiện thực", "nhẹ nhàng hài hước", "sử thi hoành tráng", v.v.
 
-7. 叙事视角: 
-   - 如“第一人称 / 第三人称有限视角 / 全知视角”
+7. Góc nhìn kể chuyện:
+   - Ví dụ "ngôi thứ nhất / ngôi thứ ba giới hạn / toàn tri"
 
-8. 时代背景: 
-   - 如“架空古代 / 未来星际 / 现代都市 / 末世废土”等
+8. Bối cảnh thời đại:
+   - Ví dụ "cổ đại hư cấu / tương lai liên sao / đô thị hiện đại / hậu tận thế hoang vu", v.v.
 
-9. 标签: 
-   - 3-5个, 概括小说核心元素, 如“硬科幻”“冒险”“爱情”等
+9. Nhãn:
+   - 3-5 nhãn khái quát nguyên tố cốt lõi của tiểu thuyết, ví dụ "khoa học viễn tưởng cứng", "phiêu lưu", "tình cảm", v.v.
 
-要求: 
-- 所有设定必须围绕故事核心展开
-- 风格与类型保持一致
-- 不要出现自相矛盾
+Yêu cầu:
+- Mọi thiết lập phải triển khai xoay quanh lõi câu chuyện
+- Giữ phong cách nhất quán với thể loại
+- Không được tự mâu thuẫn

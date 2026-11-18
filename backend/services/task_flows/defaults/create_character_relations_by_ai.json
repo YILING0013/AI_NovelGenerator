@@ -167,7 +167,7 @@
       },
       "outputs": {
         "relations": {
-          "description": "仅追加到当前小说的全书级角色关系候选列表。",
+          "description": "Danh sách ứng viên quan hệ nhân vật cấp toàn thư, chỉ được thêm mới vào tiểu thuyết hiện tại.",
           "items": {
             "$ref": "#/$defs/CharacterRelationCandidateV1"
           },
@@ -179,28 +179,28 @@
           "$defs": {
             "CharacterRelationCandidateV1": {
               "additionalProperties": false,
-              "description": "模型输出或用户编辑后的单条角色关系候选。",
+              "description": "Một ứng viên quan hệ nhân vật sau khi mô hình xuất ra hoặc người dùng chỉnh sửa.",
               "properties": {
                 "relation_ref": {
-                  "description": "仅在本次候选中使用的稳定引用，如 relation_001。",
+                  "description": "Tham chiếu ổn định chỉ dùng trong tập ứng viên lần này, ví dụ relation_001.",
                   "pattern": "^relation_[0-9]{3}$",
                   "title": "Relation Ref",
                   "type": "string"
                 },
                 "source_character_id": {
-                  "description": "关系源角色业务 ID，必须来自本次输入角色。",
+                  "description": "ID nghiệp vụ của nhân vật nguồn trong quan hệ, phải lấy từ các nhân vật đầu vào lần này.",
                   "pattern": "^char_[0-9]{6,}$",
                   "title": "Source Character Id",
                   "type": "string"
                 },
                 "target_character_id": {
-                  "description": "关系目标角色业务 ID，必须来自本次输入角色。",
+                  "description": "ID nghiệp vụ của nhân vật đích trong quan hệ, phải lấy từ các nhân vật đầu vào lần này.",
                   "pattern": "^char_[0-9]{6,}$",
                   "title": "Target Character Id",
                   "type": "string"
                 },
                 "relation_type": {
-                  "description": "关系类型。",
+                  "description": "Loại quan hệ.",
                   "enum": [
                     "friend",
                     "romantic",
@@ -217,49 +217,49 @@
                   "type": "string"
                 },
                 "current_state": {
-                  "description": "故事开始时双方关系的当前状态。",
+                  "description": "Trạng thái hiện tại của quan hệ giữa hai bên lúc câu chuyện bắt đầu.",
                   "maxLength": 2000,
                   "minLength": 1,
                   "title": "Current State",
                   "type": "string"
                 },
                 "core_conflict": {
-                  "description": "关系中的核心矛盾。",
+                  "description": "Mâu thuẫn cốt lõi trong quan hệ.",
                   "maxLength": 2000,
                   "minLength": 1,
                   "title": "Core Conflict",
                   "type": "string"
                 },
                 "hidden_tension": {
-                  "description": "未公开或尚未爆发的深层张力。",
+                  "description": "Căng thẳng sâu xa chưa công khai hoặc chưa bùng phát.",
                   "maxLength": 2000,
                   "minLength": 1,
                   "title": "Hidden Tension",
                   "type": "string"
                 },
                 "possible_change": {
-                  "description": "跨全书可能发生的关系变化。",
+                  "description": "Biến đổi quan hệ có thể xảy ra xuyên suốt toàn thư.",
                   "maxLength": 2000,
                   "minLength": 1,
                   "title": "Possible Change",
                   "type": "string"
                 },
                 "story_value": {
-                  "description": "该关系推动主线的叙事价值。",
+                  "description": "Giá trị tự sự của quan hệ này trong việc thúc đẩy tuyến chính.",
                   "maxLength": 2000,
                   "minLength": 1,
                   "title": "Story Value",
                   "type": "string"
                 },
                 "intensity": {
-                  "description": "关系强度，1 至 5。",
+                  "description": "Cường độ quan hệ, từ 1 đến 5.",
                   "maximum": 5,
                   "minimum": 1,
                   "title": "Intensity",
                   "type": "integer"
                 },
                 "is_active": {
-                  "description": "新生成关系固定为 true。",
+                  "description": "Quan hệ mới sinh luôn đặt cố định là true.",
                   "title": "Is Active",
                   "type": "boolean"
                 }
@@ -302,7 +302,7 @@
       "label": "任务结果",
       "inputs": {
         "relations": {
-          "description": "仅追加到当前小说的全书级角色关系候选列表。",
+          "description": "Danh sách ứng viên quan hệ nhân vật cấp toàn thư, chỉ được thêm mới vào tiểu thuyết hiện tại.",
           "items": {
             "$ref": "#/$defs/CharacterRelationCandidateV1"
           },
@@ -314,28 +314,28 @@
           "$defs": {
             "CharacterRelationCandidateV1": {
               "additionalProperties": false,
-              "description": "模型输出或用户编辑后的单条角色关系候选。",
+              "description": "Một ứng viên quan hệ nhân vật sau khi mô hình xuất ra hoặc người dùng chỉnh sửa.",
               "properties": {
                 "relation_ref": {
-                  "description": "仅在本次候选中使用的稳定引用，如 relation_001。",
+                  "description": "Tham chiếu ổn định chỉ dùng trong tập ứng viên lần này, ví dụ relation_001.",
                   "pattern": "^relation_[0-9]{3}$",
                   "title": "Relation Ref",
                   "type": "string"
                 },
                 "source_character_id": {
-                  "description": "关系源角色业务 ID，必须来自本次输入角色。",
+                  "description": "ID nghiệp vụ của nhân vật nguồn trong quan hệ, phải lấy từ các nhân vật đầu vào lần này.",
                   "pattern": "^char_[0-9]{6,}$",
                   "title": "Source Character Id",
                   "type": "string"
                 },
                 "target_character_id": {
-                  "description": "关系目标角色业务 ID，必须来自本次输入角色。",
+                  "description": "ID nghiệp vụ của nhân vật đích trong quan hệ, phải lấy từ các nhân vật đầu vào lần này.",
                   "pattern": "^char_[0-9]{6,}$",
                   "title": "Target Character Id",
                   "type": "string"
                 },
                 "relation_type": {
-                  "description": "关系类型。",
+                  "description": "Loại quan hệ.",
                   "enum": [
                     "friend",
                     "romantic",
@@ -352,49 +352,49 @@
                   "type": "string"
                 },
                 "current_state": {
-                  "description": "故事开始时双方关系的当前状态。",
+                  "description": "Trạng thái hiện tại của quan hệ giữa hai bên lúc câu chuyện bắt đầu.",
                   "maxLength": 2000,
                   "minLength": 1,
                   "title": "Current State",
                   "type": "string"
                 },
                 "core_conflict": {
-                  "description": "关系中的核心矛盾。",
+                  "description": "Mâu thuẫn cốt lõi trong quan hệ.",
                   "maxLength": 2000,
                   "minLength": 1,
                   "title": "Core Conflict",
                   "type": "string"
                 },
                 "hidden_tension": {
-                  "description": "未公开或尚未爆发的深层张力。",
+                  "description": "Căng thẳng sâu xa chưa công khai hoặc chưa bùng phát.",
                   "maxLength": 2000,
                   "minLength": 1,
                   "title": "Hidden Tension",
                   "type": "string"
                 },
                 "possible_change": {
-                  "description": "跨全书可能发生的关系变化。",
+                  "description": "Biến đổi quan hệ có thể xảy ra xuyên suốt toàn thư.",
                   "maxLength": 2000,
                   "minLength": 1,
                   "title": "Possible Change",
                   "type": "string"
                 },
                 "story_value": {
-                  "description": "该关系推动主线的叙事价值。",
+                  "description": "Giá trị tự sự của quan hệ này trong việc thúc đẩy tuyến chính.",
                   "maxLength": 2000,
                   "minLength": 1,
                   "title": "Story Value",
                   "type": "string"
                 },
                 "intensity": {
-                  "description": "关系强度，1 至 5。",
+                  "description": "Cường độ quan hệ, từ 1 đến 5.",
                   "maximum": 5,
                   "minimum": 1,
                   "title": "Intensity",
                   "type": "integer"
                 },
                 "is_active": {
-                  "description": "新生成关系固定为 true。",
+                  "description": "Quan hệ mới sinh luôn đặt cố định là true.",
                   "title": "Is Active",
                   "type": "boolean"
                 }

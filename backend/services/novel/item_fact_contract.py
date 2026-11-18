@@ -29,7 +29,7 @@ from backend.services.novel.character_fact_contract import (
 
 
 class FactAuthorSourceV1(StrictResponseModel):
-    """物品起点由作者明确确认；补充说明可留空，不代填作者的话。"""
+    "Điểm khởi đầu vật phẩm do tác giả minh thị xác nhận; phần giải thích bổ sung có thể để trống, không viết thay lời tác giả."
 
     kind: Literal["author"]
     note: str = Field(default="", max_length=2000)
@@ -39,7 +39,7 @@ FactSourceV1 = Annotated[FactAuthorSourceV1 | CharacterFactChapterSourceV1, Fiel
 
 
 class ItemFactValuesV1(StrictResponseModel):
-    """四字段必须同时提供；引用的 null 是明确无引用，不表示未知。"""
+    "Bốn trường phải cung cấp đồng thời; tham chiếu null là minh thị không có tham chiếu, không biểu thị chưa biết."
 
     lifecycle_status: ItemLifecycleStatus
     owner_character_id: CharacterId | None
@@ -69,7 +69,7 @@ ItemFactOperation = Literal["create", "establish", "correct_initial", "change", 
 
 
 class ItemFactBeforeV1(StrictResponseModel):
-    """整组已知或整组未知，禁止保留部分可信的物品字段。"""
+    "Cả nhóm đã biết hoặc cả nhóm chưa biết, cấm giữ lại các trường vật phẩm chỉ đáng tin một phần."
 
     values: ItemFactValuesV1 | None
     unknown: FactUnknownReason | None
@@ -89,7 +89,7 @@ class ItemFactBeforeV1(StrictResponseModel):
 
 
 class ItemFactRecordV1(StrictResponseModel):
-    """一次物品确认只推进一个实体版本，前值和处置均指向整个组。"""
+    "Một lượt xác nhận vật phẩm chỉ tiến một phiên bản thực thể; giá trị trước và cách xử lý đều nhấm cả nhóm."
 
     schema_id: Literal["item.fact"]
     schema_version: FactSchemaVersion
@@ -167,7 +167,7 @@ class ItemFactRecordV1(StrictResponseModel):
 
 
 class ItemFactsAtPositionV1(ItemFactBeforeV1):
-    """物品在明确位置的完整组，来源、阻断和认领状态也按组返回。"""
+    "Toàn bộ nhóm của một vật phẩm tại vị trí minh thị; nguồn, trạng thái chặn và trạng thái nhận cũng trả theo nhóm."
 
     entity_id: ObjectIdString
     item_id: ItemId
@@ -197,7 +197,7 @@ class ItemFactsAtPositionV1(ItemFactBeforeV1):
 
 
 class ItemFactIdentityV1(StrictResponseModel):
-    """只冻结物品身份与版本，不把裸状态当作历史。"""
+    "Chỉ đóng băng danh tính và phiên bản vật phẩm, không coi trạng thái trần là lịch sử."
 
     entity_id: ObjectIdString
     item_id: ItemId
@@ -207,7 +207,7 @@ class ItemFactIdentityV1(StrictResponseModel):
 
 
 class ItemFactReferenceV1(StrictResponseModel):
-    """某个实际引用当时存在或缺失，保留物理身份供复验。"""
+    "Ghi nhận một tham chiếu thực tế đã tồn tại hay còn thiếu vào thời điểm đó, giữ danh tính vật lý để tái kiểm tra."
 
     resource_type: Literal["character", "faction", "location"]
     business_id: CharacterId | FactionId | LocationId
@@ -239,7 +239,7 @@ class ItemFactReferenceV1(StrictResponseModel):
 
 
 class ItemFactReferenceSelectionV1(StrictResponseModel):
-    """预览时明确要使用的三类引用，null 表示本次不选该引用。"""
+    "Nêu minh thị ba loại tham chiếu sẽ dùng khi xem trước; null nghĩa là lần này không chọn tham chiếu đó."
 
     owner_character_id: CharacterId | None
     controlling_faction_id: FactionId | None
@@ -247,7 +247,7 @@ class ItemFactReferenceSelectionV1(StrictResponseModel):
 
 
 class ItemFactReadV1(StrictResponseModel):
-    """同一事务的目录、完整记录与真实引用；空选择也保存原范围。"""
+    "Mục lục, bản ghi đầy đủ và tham chiếu thật trong cùng một giao dịch; chọn rỗng vẫn lưu phạm vi gốc."
 
     kind: Literal["item_facts"]
     novel_id: ObjectIdString
@@ -322,7 +322,7 @@ class ItemFactReadV1(StrictResponseModel):
 
 
 class ItemFactCreateDataV1(StrictResponseModel):
-    """新物品只提供设计字段，四字段事实由确认 after 单独提供。"""
+    "Vật phẩm mới chỉ cung cấp trường thiết kế; sự kiện bốn trường được cung cấp riêng trong after của bước xác nhận."
 
     name: str = Field(min_length=1, max_length=80)
     aliases: list[NonBlankText] = Field(default_factory=list, max_length=10)
@@ -352,14 +352,14 @@ class ItemFactCreateDataV1(StrictResponseModel):
 
 
 class ItemFactExistingTargetV1(ItemFactIdentityV1):
-    """已有物品的原物理身份、业务号和编辑版本。"""
+    "Danh tính vật lý gốc, số nghiệp vụ và phiên bản biên tập của vật phẩm đã có."
 
     kind: Literal["existing"]
     novel_id: ObjectIdString
 
 
 class ItemFactNewTargetV1(StrictResponseModel):
-    """新建只冻结待用物理 ID，不预占业务号和排序。"""
+    "Tạo mới chỉ đóng băng ID vật lý chờ dùng, không giữ chỗ số nghiệp vụ hay thứ tự sắp xếp."
 
     kind: Literal["new"]
     novel_id: ObjectIdString
@@ -368,7 +368,7 @@ class ItemFactNewTargetV1(StrictResponseModel):
 
 
 class ItemFactPreviewTargetV1(StrictRequestModel):
-    """既有预览只接受物理身份、业务 ID 与原版本。"""
+    "Xem trước cho đối tượng đã có chỉ nhận danh tính vật lý, ID nghiệp vụ và phiên bản gốc."
 
     entity_id: ObjectIdString
     item_id: ItemId
@@ -376,7 +376,7 @@ class ItemFactPreviewTargetV1(StrictRequestModel):
 
 
 class ItemFactCreatePreviewV1(StrictRequestModel):
-    """作者为新物品明确选择起点。"""
+    "Tác giả chọn rõ khởi điểm cho vật phẩm mới."
 
     operation: Literal["create"]
     candidate: ItemFactCreateDataV1
@@ -386,7 +386,7 @@ class ItemFactCreatePreviewV1(StrictRequestModel):
 
 
 class ItemFactExistingPreviewV1(StrictRequestModel):
-    """起点、变化和替代都只能操作完整业务组。"""
+    "Điểm khởi đầu, thay đổi và thay thế đều chỉ được thao tác trên nguyên nhóm nghiệp vụ."
 
     operation: Literal["establish", "correct_initial", "change", "replace"]
     target: ItemFactPreviewTargetV1
@@ -399,7 +399,7 @@ class ItemFactExistingPreviewV1(StrictRequestModel):
 
 
 class ItemFactVoidPreviewV1(StrictRequestModel):
-    """作废只选一条整组记录，来源由服务读取。"""
+    "Vô hiệu hóa chỉ chọn một bản ghi nguyên nhóm; nguồn do dịch vụ đọc."
 
     operation: Literal["void"]
     target: ItemFactPreviewTargetV1
@@ -457,7 +457,7 @@ class ItemFactPreviewInputV1(RootModel[Annotated[
 
 
 class ItemFactBasisV1(StrictResponseModel):
-    """作者实际预览的整组原值、原记录及原读取，不能在确认时偷换。"""
+    "Nguyên bộ giá trị gốc, bản ghi gốc và lượt đọc gốc mà tác giả thực sự xem trước, không được tráo khi xác nhận."
 
     schema_version: FactSchemaVersion
     operation: ItemFactOperation
@@ -558,7 +558,7 @@ class ItemFactBasisV1(StrictResponseModel):
 
 
 class ItemFactPreviewV1(StrictResponseModel):
-    """显示值就是作者冻结的原整组值。"""
+    "Giá trị hiển thị chính là giá trị toàn nhóm gốc do tác giả đóng băng."
 
     basis: ItemFactBasisV1
     values: ItemFactBeforeV1
@@ -578,7 +578,7 @@ class ItemFactPreviewV1(StrictResponseModel):
 
 
 class ItemFactCreateConfirmV1(StrictRequestModel):
-    """新建不接受虚构旧版本，作者一次提供完整 after。"""
+    "Tạo mới không nhận phiên bản cũ hư cấu; tác giả cung cấp after đầy đủ trong một lần."
 
     operation: Literal["create"]
     basis: ItemFactBasisV1
@@ -587,7 +587,7 @@ class ItemFactCreateConfirmV1(StrictRequestModel):
 
 
 class ItemFactExistingConfirmV1(StrictRequestModel):
-    """已有物品的原版本与完整整组后值。"""
+    "Phiên bản gốc của vật phẩm đã có và giá trị sau của toàn nhóm."
 
     operation: Literal["establish", "correct_initial", "change", "replace"]
     basis: ItemFactBasisV1
@@ -597,7 +597,7 @@ class ItemFactExistingConfirmV1(StrictRequestModel):
 
 
 class ItemFactVoidConfirmV1(StrictRequestModel):
-    """作废不接收 after，不反向执行原 before。"""
+    "Hủy bỏ không nhận after và không thực thi ngược before gốc."
 
     operation: Literal["void"]
     basis: ItemFactBasisV1
@@ -639,7 +639,7 @@ class ItemFactConfirmV1(RootModel[Annotated[
 
 
 class ItemFactValidityChangeV1(StrictResponseModel):
-    """一次动作只处置一条完整物品组。"""
+    "Một hành động chỉ xử lý một nhóm vật phẩm hoàn chỉnh."
 
     history_id: ObjectIdString
     before: FactActiveV1
@@ -647,7 +647,7 @@ class ItemFactValidityChangeV1(StrictResponseModel):
 
 
 class ItemFactResultV1(StrictResponseModel):
-    """首次完整成功结果，后续回放不查询今天的实体。"""
+    "Kết quả thành công đầy đủ lần đầu; các lần phát lại sau không truy vấn thực thể của hôm nay."
 
     schema_version: FactSchemaVersion
     operation: ItemFactOperation
@@ -687,7 +687,7 @@ class ItemFactResultV1(StrictResponseModel):
 
 
 class ItemFactReceiptRequestV1(StrictResponseModel):
-    """原物品人工确认请求外壳，不承载旧 B。"""
+    "Vỏ yêu cầu xác nhận thủ công cho vật phẩm gốc, không mang theo B cũ."
 
     operation: ItemFactOperation
     novel_id: ObjectIdString
@@ -696,7 +696,7 @@ class ItemFactReceiptRequestV1(StrictResponseModel):
 
 
 class ItemFactReceiptV1(StrictResponseModel):
-    """保留原请求和首次结果的独立物品回执。"""
+    "Biên nhận vật phẩm độc lập giữ lại yêu cầu gốc và kết quả lần đầu."
 
     schema_id: Literal["item.fact.receipt"]
     schema_version: FactSchemaVersion

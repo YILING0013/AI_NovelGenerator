@@ -1,1 +1,1 @@
-只返回一个符合以下 JSON Schema 的 JSON 对象，不使用代码围栏；不输出正式 ID、祖先、版本、顺序、统计或正文。
+Chỉ trả về một đối tượng JSON tuân theo JSON Schema dưới đây, không dùng hàng rào code; không xuất ID chính thức, tổ tiên, phiên bản, thứ tự, thống kê hay phần văn bản chính.

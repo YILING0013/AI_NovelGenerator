@@ -894,7 +894,7 @@ class LocationService:
             if actual != expected:
                 raise _location_error(
                     "LOCATION_VERSION_CONFLICT",
-                    f"Địa điểm {location_id} 版本冲突",
+                    f"Địa điểm {location_id} xung đột phiên bản",
                     status_code=409,
                     details={
                         "expected_version": expected,
@@ -2052,7 +2052,7 @@ class LocationService:
                     ):
                         raise _location_error(
                             "LOCATION_VERSION_CONFLICT",
-                            f"Địa điểm {item['location_id']} 版本冲突",
+                            f"Địa điểm {item['location_id']} xung đột phiên bản",
                             status_code=409,
                         )
                 for offset, location_id in enumerate(requested_ids):

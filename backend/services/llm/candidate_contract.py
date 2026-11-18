@@ -28,7 +28,7 @@ MAX_CANDIDATE_SOURCE_REFS = 2000
 
 
 class CandidateSourceRefV1(StrictRequestModel):
-    """生成候选时读取的一项正式事实引用。"""
+    "Một tham chiếu sự kiện chính thức được đọc khi sinh ứng viên."
 
     resource_type: str = Field(pattern=r"^[a-z][a-z0-9_]{1,63}$")
     id: str = Field(min_length=1, max_length=100)
@@ -36,7 +36,7 @@ class CandidateSourceRefV1(StrictRequestModel):
 
 
 class CandidateBasisV1(StrictRequestModel):
-    """绑定候选与生成输入的可重算依据。"""
+    "Căn cứ có thể tính lại cho ứng viên liên kết và đầu vào sinh."
 
     novel_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{24}$")
     workflow: str = Field(pattern=r"^[a-z][a-z0-9_]{2,127}$")
@@ -88,7 +88,7 @@ class CandidateBasisV1(StrictRequestModel):
 
 
 class CandidateConfirmationEnvelopeV1(StrictRequestModel):
-    """领域确认接口复用的候选提交外壳。"""
+    "Vỏ gửi ứng viên tái sử dụng bởi giao diện xác nhận theo miền."
 
     candidate: dict[str, Any] = Field(min_length=1)
     basis: CandidateBasisV1
@@ -117,7 +117,7 @@ class CandidateConfirmationEnvelopeV1(StrictRequestModel):
 
 
 class CandidateGenerationEnvelopeV1(StrictResponseModel):
-    """普通响应与 SSE ``done.result`` 共用的候选信封。"""
+    "Bao ứng viên dùng chung cho phản hồi thường và ``done.result`` của SSE."
 
     workflow: str = Field(pattern=r"^[a-z][a-z0-9_]{2,127}$")
     step: str = Field(pattern=r"^[a-z][a-z0-9_]{1,127}$")

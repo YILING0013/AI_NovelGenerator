@@ -154,7 +154,7 @@
           "$defs": {
             "ItemCandidateV1": {
               "additionalProperties": false,
-              "description": "模型输出且用户可编辑的一条物品候选。",
+              "description": "Một vật phẩm ứng viên mà mô hình xuất ra và người dùng có thể chỉnh sửa.",
               "properties": {
                 "candidate_ref": {
                   "pattern": "^item_candidate_[0-9]+$",
@@ -344,7 +344,7 @@
           "$defs": {
             "ItemCandidateV1": {
               "additionalProperties": false,
-              "description": "模型输出且用户可编辑的一条物品候选。",
+              "description": "Một vật phẩm ứng viên mà mô hình xuất ra và người dùng có thể chỉnh sửa.",
               "properties": {
                 "candidate_ref": {
                   "pattern": "^item_candidate_[0-9]+$",

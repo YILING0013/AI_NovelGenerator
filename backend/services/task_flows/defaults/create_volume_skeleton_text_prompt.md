@@ -1,20 +1,20 @@
-请只输出严格 JSON，不要输出解释或 Markdown。根字段必须且只能是 volumes，并严格使用以下结构:
+Hãy chỉ xuất JSON đúng nghiêm ngặt, không xuất giải thích hay Markdown. Trường gốc bắt buộc và chỉ được là volumes, đồng thời sử dụng đúng cấu trúc sau:
 {
   "volumes": [
     {
       "candidate_ref": "volume_candidate_1",
-      "title": "卷标题",
-      "subtitle": "卷副标题",
+      "title": "Tiêu đề quyển",
+      "subtitle": "Tiêu đề phụ của quyển",
       "order_index": 1,
-      "summary": "卷摘要",
-      "goal": "本卷目标",
-      "theme": "本卷主题",
+      "summary": "Tóm tắt quyển",
+      "goal": "Mục tiêu của quyển này",
+      "theme": "Chủ đề của quyển này",
       "planning": {
-        "premise": "本卷前提",
-        "major_conflict": "主要冲突",
-        "key_turning_points": ["关键转折"],
-        "start_state": "起始状态",
-        "end_state": "结束状态",
+        "premise": "Tiền đề của quyển này",
+        "major_conflict": "Xung đột chính",
+        "key_turning_points": ["Bước ngoặt then chốt"],
+        "start_state": "Trạng thái khởi đầu",
+        "end_state": "Trạng thái kết thúc",
         "target_chapter_count": 10,
         "target_word_count": 100000
       }

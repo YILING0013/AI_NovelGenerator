@@ -28,7 +28,7 @@ CHARACTER_PLAN_CONTRACT = "character_plan_initial_facts_v1"
 
 
 class VolumeEntityParametersV1(StrictRequestModel):
-    """两个卷内实体任务共用的作者选择。"""
+    "Lựa chọn của tác giả dùng chung cho hai nhiệm vụ thực thể trong quyển."
 
     new_count: int = Field(default=2, ge=0, le=20)
     selection_mode: Literal["manual", "auto"] = "manual"
@@ -47,7 +47,7 @@ class VolumeEntityParametersV1(StrictRequestModel):
 
 
 class VolumeEntityGenerateRequestV1(ReasoningOptions, VolumeEntityParametersV1):
-    """普通请求及任务图使用的卷内实体生成参数。"""
+    "Tham số sinh thực thể trong quyển dùng cho yêu cầu thường và đồ thị tác vụ."
 
     volume_expected_version: int = Field(ge=1)
     temperature: float | None = Field(default=None, ge=0, le=2)
@@ -60,7 +60,7 @@ class VolumeEntityGenerateRequestV1(ReasoningOptions, VolumeEntityParametersV1):
 
 
 class VolumeEntityGenerationInputV1(VolumeEntityParametersV1):
-    """确认时重新读取当前卷和所选档案的原始输入。"""
+    "Đầu vào gốc đọc lại quyển hiện tại và hồ sơ đã chọn vào lúc xác nhận."
 
     novel_id: ObjectIdString
     volume_id: ObjectIdString
@@ -68,13 +68,13 @@ class VolumeEntityGenerationInputV1(VolumeEntityParametersV1):
 
 
 class VolumeCharacterProfileV1(CharacterCreateRequestV1):
-    """本卷新增人物沿用档案字段，始终为非核心人物。"""
+    "Nhân vật mới trong tập dùng lại trường hồ sơ, luôn là nhân vật không lõi."
 
     is_core_character: Literal[False] = False
 
 
 class VolumeFactionProfileV1(FactionCreateRequestV1):
-    """本卷新增势力只允许 volume 或 local，父势力可选。"""
+    "Thế lực mới trong tập chỉ cho phép volume hoặc local, thế lực cha là tùy chọn."
 
     level_type: Literal["volume", "local"] = "volume"
     first_appearance_volume_id: None = None
@@ -87,7 +87,7 @@ class VolumeFactionProfileV1(FactionCreateRequestV1):
 
 
 class VolumeCharacterCandidateV1(StrictRequestModel):
-    """一条新人物或已有档案的当前卷状态候选。"""
+    "Một ứng viên trạng thái quyển hiện tại cho nhân vật mới hoặc hồ sơ đã có."
 
     candidate_ref: CandidateRef
     character_id: CharacterId | None = None
@@ -106,7 +106,7 @@ class VolumeCharacterCandidateV1(StrictRequestModel):
 
 
 class VolumeFactionCandidateV1(StrictRequestModel):
-    """一条新势力或已有档案的当前卷状态候选。"""
+    "Một ứng viên trạng thái quyển hiện tại cho thế lực mới hoặc hồ sơ đã có."
 
     candidate_ref: CandidateRef
     faction_id: EntityId | None = None
@@ -143,13 +143,13 @@ class GeneratedVolumeFactionCandidateV1(VolumeFactionCandidateV1):
 
 
 class VolumeFactionsResultV1(StrictRequestModel):
-    """模型返回的卷内势力候选。"""
+    "Ứng viên thế lực trong quyển do mô hình trả về."
 
     factions: list[GeneratedVolumeFactionCandidateV1] = Field(max_length=20)
 
 
 class VolumeEntityBasisV1(CandidateBasisV1):
-    """保留原图、当前卷和所用档案／卷状态版本的依据。"""
+    "Căn cứ giữ lại đồ thị gốc, quyển hiện tại cùng phiên bản hồ sơ/trạng thái quyển đã dùng."
 
     generation_input: VolumeEntityGenerationInputV1
     content_fingerprint: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
@@ -172,7 +172,7 @@ class VolumeEntityBasisV1(CandidateBasisV1):
 
 
 class VolumeFactionsPreviewV1(StrictResponseModel):
-    """普通响应与 SSE 完成事件使用的卷内势力信封。"""
+    "Bao thế lực trong quyển, dùng chung cho phản hồi thường và sự kiện hoàn tất SSE."
 
     workflow: Literal["create_factions_for_volume_by_ai"]
     step: Literal["create_factions_for_volume"]
@@ -183,20 +183,20 @@ class VolumeFactionsPreviewV1(StrictResponseModel):
 
 
 class VolumeCharactersLegacyResultV1(StrictRequestModel):
-    """旧确认入口的完整候选结构；不用于当前生成或预览。"""
+    "Cấu trúc ứng viên đầy đủ của cửa xác nhận cũ; không dùng cho tạo sinh hay xem trước hiện tại."
 
     characters: list[VolumeCharacterCandidateV1] = Field(max_length=20)
 
 
 class VolumeCharactersConfirmV1(StrictRequestModel):
-    """作者审核后确认的当前卷人物列表和原始依据。"""
+    "Danh sách nhân vật và căn cứ gốc của quyển hiện tại đã được tác giả duyệt rồi xác nhận."
 
     candidates: list[VolumeCharacterCandidateV1] = Field(max_length=20)
     basis: VolumeEntityBasisV1
 
 
 class VolumeCharacterPlanProfileV1(CharacterFactCreateDataV1):
-    """新卷人物的设计资料；实际事实仅由 initial_facts 提交。"""
+    "Tư liệu thiết kế nhân vật của tập mới; dữ kiện thực tế chỉ được gửi qua initial_facts."
 
     is_core_character: Literal[False] = False
 
@@ -207,7 +207,7 @@ class VolumeCharacterPlanProfileV1(CharacterFactCreateDataV1):
 
 
 class VolumeCharacterPlanCandidateV1(VolumeCharacterCandidateV1):
-    """采用本卷计划；新人物的明确初始状态单独保存。"""
+    "Áp dụng kế hoạch của tập; trạng thái ban đầu rõ ràng của nhân vật mới lưu riêng."
 
     state: CharacterVolumePlanFieldsV1
     initial_facts: CharacterFactValuesV1 | None = None
@@ -221,13 +221,13 @@ class VolumeCharacterPlanCandidateV1(VolumeCharacterCandidateV1):
 
 
 class VolumeCharactersPlanResultV1(StrictRequestModel):
-    """六字段计划确认的候选集合。"""
+    "Tập hợp ứng viên cho xác nhận kế hoạch sáu trường."
 
     characters: list[VolumeCharacterPlanCandidateV1] = Field(max_length=20)
 
 
 class VolumeCharacterInitialFactsCandidateV1(VolumeCharacterPlanCandidateV1):
-    """独立的新合同：设计档案与明确初始事实分开，不改变旧计划请求。"""
+    "Hợp đồng mới độc lập: tách hồ sơ thiết kế khỏi dữ kiện ban đầu rõ ràng, không thay đổi request kế hoạch cũ."
 
     profile: VolumeCharacterPlanProfileV1 | None = None
 
@@ -243,7 +243,7 @@ class VolumeCharactersInitialFactsResultV1(StrictRequestModel):
 
 
 class VolumeCharactersPreviewV1(StrictResponseModel):
-    """普通响应与 SSE 完成事件使用的卷内人物信封。"""
+    "Bao nhân vật trong quyển, dùng chung cho phản hồi thường và sự kiện hoàn tất SSE."
 
     workflow: Literal["create_characters_for_volume_by_ai"]
     step: Literal["create_characters_for_volume"]
@@ -255,7 +255,7 @@ class VolumeCharactersPreviewV1(StrictResponseModel):
 
 
 class _GeneratedCharacterInitialFacts(StrictRequestModel):
-    """模型传输专用：null 表示未知，预览和确认只保留明确的事实值。"""
+    "Dùng riêng cho kênh truyền tới mô hình: null biểu thị chưa biết; bản xem trước và xác nhận chỉ giữ giá trị sự kiện minh thị."
 
     @model_serializer(mode="wrap")
     def serialize_known_values(self, handler):
@@ -270,19 +270,19 @@ GeneratedCharacterInitialFactsV1 = create_model(
 
 
 class GeneratedVolumeCharacterPlanCandidateV1(VolumeCharacterInitialFactsCandidateV1):
-    """仅在模型响应边界接收未知标记，不接收旧 state 事实字段。"""
+    "Chỉ nhận ký hiệu chưa xác định ở ranh giới phản hồi của mô hình, không nhận trường dữ kiện state cũ."
 
     initial_facts: GeneratedCharacterInitialFactsV1 | None = None
 
 
 class VolumeCharactersResultV1(StrictRequestModel):
-    """人物生成采用卷计划语义，未知初始事实在序列化时保持省略。"""
+    "Tạo nhân vật áp dụng ngữ nghĩa kế hoạch quyển; sự kiện ban đầu chưa biết vẫn để lược khi tuần tự hóa."
 
     characters: list[GeneratedVolumeCharacterPlanCandidateV1] = Field(max_length=20)
 
 
 class VolumeCharactersPlanConfirmV1(StrictRequestModel):
-    """新保存显式采用计划合同，旧九字段原请求仍独立处理。"""
+    "Bản lưu mới minh thị áp dụng hợp đồng kế hoạch; yêu cầu gốc chín trường kiểu cũ vẫn xử lý riêng."
 
     contract: Literal["participation_plan_v1"]
     candidates: list[VolumeCharacterPlanCandidateV1] = Field(max_length=20)
@@ -290,7 +290,7 @@ class VolumeCharactersPlanConfirmV1(StrictRequestModel):
 
 
 class VolumeCharactersInitialFactsConfirmV1(StrictRequestModel):
-    """新生成合同有独立身份；原 v1 的输入、摘要及执行保持原样。"""
+    "Hợp đồng tạo sinh mới có định danh riêng; đầu vào, tóm tắt và cách thực thi của bản v1 gốc giữ nguyên."
 
     contract: Literal["character_plan_initial_facts_v1"]
     candidates: list[VolumeCharacterInitialFactsCandidateV1] = Field(max_length=20)
@@ -304,14 +304,14 @@ class VolumeCharactersInitialFactsConfirmV1(StrictRequestModel):
 
 
 class VolumeFactionsConfirmV1(StrictRequestModel):
-    """作者审核后确认的当前卷势力列表和原始依据。"""
+    "Danh sách thế lực và căn cứ gốc của quyển hiện tại đã được tác giả duyệt rồi xác nhận."
 
     candidates: list[VolumeFactionCandidateV1] = Field(max_length=20)
     basis: VolumeEntityBasisV1
 
 
 class VolumeFactionPlanCandidateV1(VolumeFactionCandidateV1):
-    """卷内新势力的明确事实与参与计划分别保存。"""
+    "Dữ kiện rõ ràng và kế hoạch tham gia của thế lực mới trong tập lưu riêng biệt."
 
     state: FactionVolumePlanFieldsV1
     initial_facts: FactionFactValuesV1 | None = None
@@ -325,13 +325,13 @@ class VolumeFactionPlanCandidateV1(VolumeFactionCandidateV1):
 
 
 class VolumeFactionsPlanResultV1(StrictRequestModel):
-    """卷内势力参与计划候选。"""
+    "Ứng viên thế lực trong quyển tham gia kế hoạch."
 
     factions: list[VolumeFactionPlanCandidateV1] = Field(max_length=20)
 
 
 class VolumeFactionsPlanConfirmV1(StrictRequestModel):
-    """新保存采用计划合同；旧未知请求不得偷偷升级。"""
+    "Bản lưu mới dùng hợp đồng kế hoạch; yêu cầu cũ không rõ ràng không được âm thầm nâng cấp."
 
     contract: Literal["participation_plan_v1"]
     candidates: list[VolumeFactionPlanCandidateV1] = Field(max_length=20)
@@ -339,7 +339,7 @@ class VolumeFactionsPlanConfirmV1(StrictRequestModel):
 
 
 class VolumeCharactersConfirmedV1(StrictResponseModel):
-    """已保存人物卷状态及候选到正式人物 ID 的映射。"""
+    "Trạng thái quyển của nhân vật đã lưu cùng ánh xạ từ ứng viên sang ID nhân vật chính thức."
 
     novel_id: ObjectIdString
     volume_id: ObjectIdString
@@ -348,7 +348,7 @@ class VolumeCharactersConfirmedV1(StrictResponseModel):
 
 
 class VolumeFactionsConfirmedV1(StrictResponseModel):
-    """已保存势力卷状态及候选到正式势力 ID 的映射。"""
+    "Trạng thái quyển của thế lực đã lưu cùng ánh xạ từ ứng viên sang ID thế lực chính thức."
 
     novel_id: ObjectIdString
     volume_id: ObjectIdString

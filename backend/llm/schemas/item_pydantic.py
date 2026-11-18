@@ -90,7 +90,7 @@ def _validate_unique_texts(
 
 
 class ItemCreateV1(StrictRequestModel):
-    """人工创建一个全书级正式物品的严格请求。"""
+    "Yêu cầu nghiêm ngặt để tạo thủ công một vật phẩm chính thức cấp toàn sách."
 
     name: str = Field(min_length=1, max_length=80)
     aliases: list[NonBlankText] = Field(default_factory=list, max_length=10)
@@ -135,7 +135,7 @@ class ItemCreateV1(StrictRequestModel):
 
 
 class ItemsGenerateRequestV1(ReasoningOptions, StrictRequestModel):
-    """小说物品候选预览请求，不接收正式事实副本。"""
+    "Yêu cầu xem trước ứng viên vật phẩm của tiểu thuyết, không nhận bản sao dữ kiện chính thức."
 
     item_count: int | None = Field(default=6, ge=1, le=20)
     allow_incremental: bool = True
@@ -150,7 +150,7 @@ class ItemsGenerateRequestV1(ReasoningOptions, StrictRequestModel):
 
 
 class ItemsGenerationInputV1(ReasoningOptions, StrictRequestModel):
-    """随 basis 回传并供确认时重算的物品生成输入。"""
+    "Đầu vào tạo vật phẩm gửi lại cùng basis và dùng để tính lại khi xác nhận."
 
     novel_id: ObjectIdString
     item_count: int | None = Field(ge=1, le=20)
@@ -165,7 +165,7 @@ class ItemsGenerationInputV1(ReasoningOptions, StrictRequestModel):
 
 
 class ItemCandidateV1(StrictRequestModel):
-    """模型输出且用户可编辑的一条物品候选。"""
+    "Một ứng viên vật phẩm do mô hình xuất và người dùng có thể sửa."
 
     candidate_ref: ItemCandidateRef
     name: str = Field(min_length=1, max_length=80)
@@ -211,7 +211,7 @@ class ItemCandidateV1(StrictRequestModel):
 
 
 class ItemsResultV1(StrictRequestModel):
-    """Provider 必须完整返回的物品候选根对象。"""
+    "Đối tượng gốc của ứng viên vật phẩm mà Provider phải trả về đầy đủ."
 
     items: list[ItemCandidateV1] = Field(min_length=1, max_length=20)
 
@@ -225,7 +225,7 @@ class ItemsResultV1(StrictRequestModel):
 
 
 class ItemsBasisV1(CandidateBasisV1):
-    """包含原始生成输入的物品候选依据。"""
+    "Căn cứ ứng viên vật phẩm bao gồm phần nhập sinh gốc."
 
     generation_input: ItemsGenerationInputV1
 
@@ -251,7 +251,7 @@ class ItemsBasisV1(CandidateBasisV1):
 
 
 class ItemsPreviewV1(StrictResponseModel):
-    """普通响应与 SSE done.result 共用的物品候选信封。"""
+    "Bao ứng viên vật phẩm, dùng chung cho phản hồi thường và done.result của SSE."
 
     workflow: Literal["create_items_by_ai"]
     step: Literal["create_items"]
@@ -262,7 +262,7 @@ class ItemsPreviewV1(StrictResponseModel):
 
 
 class ItemBulkGeneratedRequestV1(StrictRequestModel):
-    """物品 AI 候选整批确认的严格信封。"""
+    "Phong bì nghiêm ngặt để xác nhận cả loạt ứng viên AI của vật phẩm."
 
     candidates: list[ItemCandidateV1] = Field(min_length=1, max_length=20)
     basis: ItemsBasisV1
@@ -302,7 +302,7 @@ class ItemBulkGeneratedRequestV1(StrictRequestModel):
 
 
 class ItemUpdateV1(StrictRequestModel):
-    """按公开版本局部更新物品内容，不允许绕过专用状态命令。"""
+    "Cập nhật cục bộ nội dung vật phẩm theo phiên bản công khai, không được bỏ qua các lệnh trạng thái chuyên dụng."
 
     expected_version: int = Field(ge=1)
     name: str | None = Field(default=None, min_length=1, max_length=80)
@@ -338,7 +338,7 @@ class ItemUpdateV1(StrictRequestModel):
 
 
 class ItemReorderItemV1(StrictRequestModel):
-    """完整活动集合重排中的一个物品版本项。"""
+    "Một mục phiên bản vật phẩm trong đợt sắp xếp lại đầy đủ của tập đang hoạt động."
 
     item_id: ItemId
     order_index: int = Field(ge=1)
@@ -346,7 +346,7 @@ class ItemReorderItemV1(StrictRequestModel):
 
 
 class ItemReorderRequestV1(StrictRequestModel):
-    """完整提交小说内全部活动物品的重排请求。"""
+    "Yêu cầu sắp xếp lại, gửi đầy đủ toàn bộ vật phẩm đang hoạt động trong tiểu thuyết."
 
     items: list[ItemReorderItemV1] = Field(min_length=1)
 
@@ -363,13 +363,13 @@ class ItemReorderRequestV1(StrictRequestModel):
 
 
 class ItemVersionRequestV1(StrictRequestModel):
-    """物品状态和恢复命令使用的公开版本。"""
+    "Phiên bản công khai dùng cho lệnh trạng thái vật phẩm và lệnh khôi phục."
 
     expected_version: int = Field(ge=1)
 
 
 class ItemReadV1(StrictResponseModel):
-    """正式物品的完整公开投影。"""
+    "Phản chiếu công khai đầy đủ của vật phẩm chính thức."
 
     item_id: ItemId
     novel_id: ObjectIdString
@@ -414,14 +414,14 @@ class ItemReadV1(StrictResponseModel):
 
 
 class ItemBulkGeneratedResponseV1(StrictResponseModel):
-    """物品候选映射与正式物品写后快照。"""
+    "Ánh xạ ứng viên vật phẩm và ảnh chụp nhanh vật phẩm chính thức sau khi ghi."
 
     candidate_ref_map: dict[ItemCandidateRef, ItemId]
     items: list[ItemReadV1] = Field(min_length=1, max_length=20)
 
 
 class ItemDeleteImpactV1(StrictResponseModel):
-    """物品永久删除前的正式消费者影响。"""
+    "Tác động lên các bên dùng chính thức trước khi xoá vĩnh viễn vật phẩm."
 
     item_id: ItemId
     arcs: int = Field(ge=0)
@@ -433,7 +433,7 @@ class ItemDeleteImpactV1(StrictResponseModel):
 
 
 class ItemHardDeleteResponseV1(StrictResponseModel):
-    """物品永久删除结果及最终影响。"""
+    "Kết quả xoá vĩnh viễn vật phẩm và tác động cuối cùng."
 
     message: Literal["Hard deleted successfully"]
     item_id: ItemId

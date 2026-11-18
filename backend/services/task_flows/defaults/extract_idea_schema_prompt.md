@@ -1,1 +1,1 @@
-请只提炼出故事构思要素, 不要输出任何额外内容。
+Hãy chỉ rút ra các yếu tố ý tưởng câu chuyện, không xuất thêm bất kỳ nội dung nào.

@@ -93,7 +93,7 @@ def _validate_unique_texts(
 
 
 class LocationCreateV1(StrictRequestModel):
-    """人工创建一个全书级正式地点的严格请求。"""
+    "Yêu cầu nghiêm ngặt để tạo thủ công một địa điểm chính thức cấp toàn sách."
 
     name: str = Field(min_length=1, max_length=80)
     aliases: list[NonBlankText] = Field(default_factory=list, max_length=10)
@@ -138,7 +138,7 @@ class LocationCreateV1(StrictRequestModel):
 
 
 class LocationUpdateV1(StrictRequestModel):
-    """按公开版本局部更新一个正式地点。"""
+    "Cập nhật một phần một địa điểm chính thức theo phiên bản công khai."
 
     expected_version: int = Field(ge=1)
     name: str | None = Field(default=None, min_length=1, max_length=80)
@@ -182,7 +182,7 @@ class LocationUpdateV1(StrictRequestModel):
 
 
 class LocationReorderItemV1(StrictRequestModel):
-    """完整同父重排中的一个地点版本项。"""
+    "Một mục phiên bản địa điểm trong lệnh sắp xếp lại đầy đủ cùng cha."
 
     location_id: LocationId
     order_index: int = Field(ge=1)
@@ -190,7 +190,7 @@ class LocationReorderItemV1(StrictRequestModel):
 
 
 class LocationReorderRequestV1(StrictRequestModel):
-    """完整提交一个父级下全部活动地点的重排请求。"""
+    "Yêu cầu sắp xếp lại, gửi đầy đủ toàn bộ địa điểm hoạt động dưới một mục cha."
 
     parent_location_id: LocationId | None
     items: list[LocationReorderItemV1] = Field(min_length=1)
@@ -215,13 +215,13 @@ class LocationReorderRequestV1(StrictRequestModel):
 
 
 class LocationVersionRequestV1(StrictRequestModel):
-    """地点恢复等生命周期命令使用的公开版本。"""
+    "Phiên bản công khai dùng cho các lệnh vòng đời như khôi phục địa điểm."
 
     expected_version: int = Field(ge=1)
 
 
 class VolumeLocationsGenerateRequestV1(ReasoningOptions, StrictRequestModel):
-    """单卷按需地点候选预览请求。"""
+    "Yêu cầu xem trước ứng viên địa điểm theo nhu cầu cho một quyển."
 
     location_count: int = Field(ge=0, le=20)
     selection_mode: Literal["manual", "auto"] = "manual"
@@ -257,7 +257,7 @@ class VolumeLocationsGenerateRequestV1(ReasoningOptions, StrictRequestModel):
 
 
 class VolumeLocationsGenerationInputV1(ReasoningOptions, StrictRequestModel):
-    """随 basis 回传并供确认时重算的单卷地点生成输入。"""
+    "Đầu vào tạo địa điểm cho một quyển, gửi lại cùng basis và dùng để tính lại khi xác nhận."
 
     novel_id: ObjectIdString
     volume_id: ObjectIdString
@@ -294,7 +294,7 @@ class VolumeLocationsGenerationInputV1(ReasoningOptions, StrictRequestModel):
 
 
 class GeneratedLocationCandidateV1(StrictRequestModel):
-    """V2-WLD-05 可编辑后交给正式领域确认的一条地点候选。"""
+    "Một ứng viên địa điểm có thể chỉnh sửa sau V2-WLD-05 rồi chuyển cho bước xác nhận domain chính thức."
 
     candidate_ref: LocationCandidateRef
     name: str = Field(min_length=1, max_length=80)
@@ -360,7 +360,7 @@ class LocationCandidateV1(GeneratedLocationCandidateV1):
 
 
 class VolumeLocationsResultV1(StrictRequestModel):
-    """Provider 必须完整返回的单卷地点候选根对象。"""
+    "Đối tượng gốc của ứng viên địa điểm một quyển mà Provider phải trả về đầy đủ."
 
     locations: list[LocationCandidateV1] = Field(max_length=20)
 
@@ -388,7 +388,7 @@ class VolumeLocationsResultV1(StrictRequestModel):
 
 
 class VolumeLocationsBasisV1(CandidateBasisV1):
-    """包含目标卷和原始请求的单卷地点候选依据。"""
+    "Căn cứ ứng viên địa điểm của một quyển, gồm quyển đích và yêu cầu gốc."
 
     generation_input: VolumeLocationsGenerationInputV1
     content_fingerprint: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
@@ -443,7 +443,7 @@ class VolumeLocationsBasisV1(CandidateBasisV1):
 
 
 class VolumeLocationsPreviewV1(StrictResponseModel):
-    """普通响应与 SSE done.result 共用的单卷地点候选信封。"""
+    "Bao ứng viên địa điểm của một quyển, dùng chung cho phản hồi thường và done.result của SSE."
 
     workflow: Literal["create_locations_for_volume_by_ai"]
     step: Literal["create_locations_for_volume"]
@@ -454,7 +454,7 @@ class VolumeLocationsPreviewV1(StrictResponseModel):
 
 
 class LocationBulkGeneratedRequestV1(StrictRequestModel):
-    """地点 AI 候选整批确认的严格信封。"""
+    "Phong bì nghiêm ngặt để xác nhận cả loạt ứng viên AI của địa điểm."
 
     candidates: list[GeneratedLocationCandidateV1] = Field(max_length=20)
     basis: VolumeLocationsBasisV1
@@ -517,7 +517,7 @@ class LocationBulkGeneratedRequestV1(StrictRequestModel):
 
 
 class LocationReadV1(StrictResponseModel):
-    """正式地点的完整公开投影。"""
+    "Phản chiếu công khai đầy đủ của địa điểm chính thức."
 
     location_id: LocationId
     novel_id: ObjectIdString
@@ -544,7 +544,7 @@ class LocationReadV1(StrictResponseModel):
 
 
 class LocationDeleteImpactV1(StrictResponseModel):
-    """地点删除前的直接子级与受保护消费者影响。"""
+    "Ảnh hưởng tới các con trực tiếp và các bên tiêu dùng được bảo vệ trước khi xóa địa điểm."
 
     location_id: LocationId
     direct_child_location_ids: list[LocationId]
@@ -563,7 +563,7 @@ class LocationDeleteImpactV1(StrictResponseModel):
 
 
 class LocationHardDeleteResponseV1(StrictResponseModel):
-    """地点永久删除结果及最终零引用影响。"""
+    "Kết quả xoá vĩnh viễn địa điểm cùng tác động không còn tham chiếu ở bước cuối."
 
     message: Literal["Hard deleted successfully"]
     location_id: LocationId
@@ -571,7 +571,7 @@ class LocationHardDeleteResponseV1(StrictResponseModel):
 
 
 class LocationBulkGeneratedResponseV1(StrictResponseModel):
-    """地点候选映射与正式地点写后快照。"""
+    "Ánh xạ ứng viên địa điểm và ảnh chụp nhanh địa điểm chính thức sau khi ghi."
 
     candidate_ref_map: dict[LocationCandidateRef, LocationId]
     locations: list[LocationReadV1] = Field(max_length=20)

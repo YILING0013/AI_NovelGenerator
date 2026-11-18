@@ -591,7 +591,7 @@ class WorldRuleService:
         if actual != expected:
             raise DomainApiError(
                 "WORLD_RULE_VERSION_CONFLICT",
-                f"Quy tắc {rule.get('rule_id')} 版本冲突",
+                f"Quy tắc {rule.get('rule_id')} xung đột phiên bản",
                 status_code=409,
                 details={"expected_version": expected, "actual_version": actual},
             )

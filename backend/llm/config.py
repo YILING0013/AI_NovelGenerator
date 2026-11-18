@@ -17,11 +17,7 @@ StructuredOutputMode = Literal["auto", "json_schema", "json_object", "tool_call"
 
 
 class LLMProviderConfig(ReasoningOptions):
-    """单个 LLM 服务商的接入配置。
-
-    type 字段决定接口模式（openai / gemini / claude / deepseek），
-    配置的 key 作为用户自定义别名，同一 type 可定义多个不同别名的配置。
-    """
+    "Cấu hình kết nối của một nhà cung cấp LLM.\n\n    Trường type quyết định chế độ giao diện (openai / gemini / claude / deepseek),\n    key cấu hình đóng vai trò bí danh do người dùng tự đặt, cùng một type có thể khai báo nhiều cấu hình với bí danh khác nhau.\n    "
 
     type: LLMProviderType = Field(default="openai", description="Chế độ API: openai / gemini / claude / deepseek")
     base_url: str = Field(default="", description="Địa chỉ gốc API của nhà cung cấp")
@@ -119,7 +115,7 @@ class LLMProviderConfig(ReasoningOptions):
 
 
 class LLMConfig(BaseModel):
-    """LLM 总体配置，包含默认服务商与所有服务商列表。"""
+    "Cấu hình tổng thể LLM, gồm nhà cung cấp mặc định và danh sách toàn bộ nhà cung cấp."
 
     default_provider: str = Field(default="openai_gpt4o_mini", description="Biệt danh nhà cung cấp mặc định")
     format_review_provider: str = Field(default="", description="Biệt danh nhà cung cấp dùng để kiểm tra định dạng, cần hỗ trợ JSON Schema hoặc JSON Output")

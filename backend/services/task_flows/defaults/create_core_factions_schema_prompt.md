@@ -1,1 +1,1 @@
-请只生成全书核心阵营与阵营关系，不要输出解释、Markdown 或角色信息。
+Hãy chỉ tạo các thế lực cốt lõi cấp toàn thư và quan hệ giữa các thế lực, không xuất lời giải thích, Markdown hay thông tin nhân vật.

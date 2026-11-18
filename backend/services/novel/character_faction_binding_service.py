@@ -737,7 +737,7 @@ class CharacterFactionBindingService:
         actual_version = int(binding["version"])
         if actual_version != expected_version:
             raise DuplicateKeyError(
-                f"Liên kết nhân vật—thế lực '{binding.get('binding_id')}' 版本冲突："
+                f"Liên kết nhân vật—thế lực '{binding.get('binding_id')}' xung đột phiên bản: "
                 f"expected={expected_version}, actual={actual_version}"
             )
 
