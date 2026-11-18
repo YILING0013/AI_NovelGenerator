@@ -62,6 +62,62 @@ def callee_name(func) -> str:
     return ""
 
 
+_MODEL_SUFFIX = ("BaseModel", "Model", "Schema", "Contract", "Envelope", "Request", "Response")
+_pydantic_cache: set[str] | None = None
+
+
+def pydantic_class_names() -> set[str]:
+    """Ten lop duoc coi la pydantic/toan (JSON Schema) tren TOAN backend.
+
+    Lan 1: lop ke thua *BaseModel/*Model/*Schema/*Request/*Response/*Contract hoac co
+    `Field(`/`model_config`/dinh nghieu kieu o cap lop.
+    Lan 2..n: truyen theo chuoi ke thua trong nuoc (vi du `SuggestionV2(SuggestionV1)`).
+    """
+    global _pydantic_cache
+    if _pydantic_cache is not None:
+        return _pydantic_cache
+    facts: list[tuple[str, list[str], bool]] = []
+    for rel_dir in SCAN_DIRS:
+        for path in sorted(p for p in (ROOT / rel_dir).rglob("*.py") if ".venv" not in p.parts):
+            try:
+                text = path.read_text(encoding="utf-8")
+            except Exception:  # noqa: BLE001
+                continue
+            uses_pydantic = bool(re.search(r"\bfrom\s+pydantic\b|\bimport\s+pydantic\b", text))
+            try:
+                tree = ast.parse(text)
+            except Exception:  # noqa: BLE001
+                continue
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.ClassDef):
+                    continue
+                bases = [getattr(b, "id", "") or getattr(b, "attr", "") for b in node.bases]
+                own = any(
+                    n.endswith(_MODEL_SUFFIX)
+                    for n in bases
+                    if n
+                ) or any(
+                    ("Field(" in ast.unparse(child)) or ("model_config" in ast.unparse(child))
+                    for child in node.body
+                )
+                if not own and uses_pydantic:
+                    own = any(isinstance(child, ast.AnnAssign) for child in node.body)
+                facts.append((node.name, [b for b in bases if b], own))
+    names = {name for name, _bases, own in facts if own}
+    for _ in range(6):
+        added = False
+        for name, bases, own in facts:
+            if name in names:
+                continue
+            if any(b in names for b in bases):
+                names.add(name)
+                added = True
+        if not added:
+            break
+    _pydantic_cache = names
+    return names
+
+
 def file_segments(path: Path):
     """[{kind, start, end, source, fstring, line}] cua mot file Python."""
     raw = path.read_bytes()
@@ -84,6 +140,7 @@ def file_segments(path: Path):
     # model_config, hoac (3) module co import pydantic va lop co dinh nghieu duoc kieu
     # (AnnAssign) -- truong hop `class X(Base): ten: str` khong dung Field().
     class_docstrings: set[int] = set()
+    known_models = pydantic_class_names()
     module_uses_pydantic = bool(re.search(r"\bfrom\s+pydantic\b|\bimport\s+pydantic\b", source_text))
     for node in ast.walk(tree):
         if isinstance(node, ast.ClassDef):
@@ -92,6 +149,7 @@ def file_segments(path: Path):
                 name = getattr(base, "id", "") or getattr(base, "attr", "")
                 base_names.append(name)
             is_pydantic = any(n.endswith("BaseModel") or n.endswith("Model") or n.endswith("Schema") for n in base_names)
+            is_pydantic = is_pydantic or node.name in known_models
             if not is_pydantic:
                 for child in node.body:
                     source = ast.unparse(child)

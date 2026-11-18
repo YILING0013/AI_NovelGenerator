@@ -48,7 +48,7 @@ class CharacterVolumePlanFieldsV1(StrictRequestModel):
 
 
 class CharacterVolumePlanCreateV1(CharacterVolumePlanFieldsV1):
-    """建立本卷参与与计划；实际处境仅由事实记录提供。"""
+    "Thiết lập tham gia và kế hoạch của tập này; hoàn cảnh thực tế chỉ do bản ghi dữ kiện cung cấp."
 
 
 class CharacterVolumeStateFieldsV1(CharacterVolumePlanFieldsV1):

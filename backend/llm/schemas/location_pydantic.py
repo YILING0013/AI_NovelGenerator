@@ -356,7 +356,7 @@ class GeneratedLocationCandidateV1(StrictRequestModel):
 
 
 class LocationCandidateV1(GeneratedLocationCandidateV1):
-    """模型可输出且用户可编辑的一条单卷地点候选。"""
+    "Một ứng viên địa điểm cấp tập mà mô hình có thể xuất và người dùng có thể sửa."
 
 
 class VolumeLocationsResultV1(StrictRequestModel):

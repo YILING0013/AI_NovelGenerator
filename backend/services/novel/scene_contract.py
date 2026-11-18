@@ -12,7 +12,7 @@ from backend.services.novel.arc_contract import ArcPlanningV1
 
 
 class ScenePlanningV1(ArcPlanningV1):
-    """场景沿用篇章规划字段，可关联多个地点，不保存正文。"""
+    "Cảnh dùng lại trường kế hoạch vòng truyện, có thể liên kết nhiều địa điểm, không lưu văn bản chính."
 
 
 class SceneCreateV1(StrictRequestModel):

@@ -51,7 +51,7 @@ FACTION_DESIGN_TASKS = {"create_factions_by_ai", "create_characters_by_ai", "cre
 
 
 class TaskFlowStreamingResponse(StreamingResponse):
-    """发送中断时，在原迭代任务内关闭流程，及时释放续跑占用。"""
+    "Khi luồng gửi bị gián đoạn, đóng quy trình ngay trong task lặp gốc để giải phóng kịp thời slot chạy tiếp."
 
     async def stream_response(self, send: Send) -> None:
         """兼容框架直接发送和子任务发送两条路径，保留原取消异常。

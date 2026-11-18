@@ -125,7 +125,7 @@ class VolumeFactionCandidateV1(StrictRequestModel):
 
 
 class GeneratedVolumeFactionCandidateV1(VolumeFactionCandidateV1):
-    """新生成候选只传出模型明确给出的实际值；旧确认模型保持不变。"""
+    "Ứng viên mới sinh chỉ truyền ra giá trị thực mà mô hình đưa rõ; mô hình xác nhận cũ giữ nguyên."
 
     @model_serializer(mode="wrap")
     def preserve_explicit_facts(self, handler):

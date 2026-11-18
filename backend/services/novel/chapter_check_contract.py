@@ -135,7 +135,7 @@ class ChapterCharacterRelationStateCheckResultV1(StrictResponseModel):
 
 
 class ChapterCharacterRelationStateCheckSuggestionV2(ChapterCharacterRelationStateCheckSuggestionV1):
-    """新版建议交给作者准备事实时，关系值和引文都原样保留。"""
+    "Khi bản đề xuất mới giao cho tác giả chuẩn bị dữ kiện, giá trị quan hệ và trích dẫn được giữ nguyên."
 
     @field_validator("current_state", mode="before")
     @classmethod

@@ -51,7 +51,7 @@ plan_router = APIRouter(prefix="/api/character-volume-states", tags=["character-
 
 
 class CharacterVolumePlanCreateRequestV1(CharacterVolumePlanCreateV1):
-    """HTTP 创建请求固定卷和人物，业务内容仍严格限定原六个计划字段。"""
+    "Request tạo HTTP cố định tập và nhân vật; nội dung nghiệp vụ vẫn giới hạn nghiêm ngặt sáu trường kế hoạch gốc."
 
     volume_id: ObjectIdString
     character_id: CharacterId
