@@ -30,12 +30,12 @@ def raise_arc_http_error(exc: Exception, *, prefix: str = "ARC", label: str = "�
         不返回，抛出对应 HTTP 异常。
     """
     if isinstance(exc, TransactionNotSupportedError):
-        raise api_http_exception(status_code=503, code=f"{prefix}_TRANSACTION_REQUIRED", message=f"{label}保存需要启用 MongoDB 事务并连接副本集") from exc
+        raise api_http_exception(status_code=503, code=f"{prefix}_TRANSACTION_REQUIRED", message=f"{label}Việc lưu cần bật transaction MongoDB và kết nối replica set") from exc
     if isinstance(exc, PyMongoError):
         if exc.has_error_label("TransientTransactionError") or getattr(exc, "code", None) in {11000, 112}:
-            raise api_http_exception(status_code=409, code=f"{prefix}_WRITE_CONFLICT", message="资料正在被其他操作修改，请使用原请求重试") from exc
-        raise api_http_exception(status_code=503, code="DATABASE_UNAVAILABLE", message="数据库暂时不可用，请稍后重试") from exc
-    status, code, message, fields, details = exception_to_error(exc, fallback_message=f"{label}请求处理失败")
+            raise api_http_exception(status_code=409, code=f"{prefix}_WRITE_CONFLICT", message="Tư liệu đang bị thao tác khác sửa đổi, hãy thử lại bằng yêu cầu gốc") from exc
+        raise api_http_exception(status_code=503, code="DATABASE_UNAVAILABLE", message="Cơ sở dữ liệu tạm thời không khả dụng, vui lòng thử lại sau") from exc
+    status, code, message, fields, details = exception_to_error(exc, fallback_message=f"{label}Xử lý yêu cầu thất bại")
     if isinstance(exc, IdempotencyConflictError):
         code = f"{prefix}_IDEMPOTENCY_CONFLICT"
     elif isinstance(exc, VersionConflictError):

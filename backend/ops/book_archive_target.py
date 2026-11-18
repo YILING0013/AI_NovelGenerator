@@ -55,25 +55,25 @@ async def inspect_target(
     }
     try:
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", target_uri_env):
-            raise ArchiveTargetError("INVALID_INPUT", "target_uri_env", "必须指定有效的环境变量名")
+            raise ArchiveTargetError("INVALID_INPUT", "target_uri_env", "Phải chỉ định tên biến môi trường hợp lệ")
         uri = os.environ.get(target_uri_env)
         if not uri or not uri.strip():
-            raise ArchiveTargetError("INVALID_INPUT", "target_uri_env", "指定的目标连接环境变量没有值")
+            raise ArchiveTargetError("INVALID_INPUT", "target_uri_env", "Biến môi trường kết nối đích được chỉ định không có giá trị")
         if (not target_database or len(target_database.encode("utf-8")) > 63
                 or re.search(r'[/\\. "$*<>:|?\s\x00]', target_database)
                 or target_database.lower() in {"admin", "local", "config"}):
-            raise ArchiveTargetError("INVALID_INPUT", "target_database", "必须指定有效的目标库名，不能使用系统库")
+            raise ArchiveTargetError("INVALID_INPUT", "target_database", "Phải chỉ định tên database đích hợp lệ, không được dùng database hệ thống")
         report["target_database"] = target_database
         if not str(target_covers_dir).strip():
-            raise ArchiveTargetError("INVALID_INPUT", "target_covers_dir", "必须明确指定封面目录")
+            raise ArchiveTargetError("INVALID_INPUT", "target_covers_dir", "Phải chỉ định rõ thư mục bìa")
         try:
             covers = Path(target_covers_dir).absolute()
             directory = covers.lstat()
             if (not stat.S_ISDIR(directory.st_mode) or stat.S_ISLNK(directory.st_mode)
                     or getattr(directory, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
-                raise ArchiveTargetError("INVALID_INPUT", "target_covers_dir", "封面目录必须是现有普通目录，不能是链接")
+                raise ArchiveTargetError("INVALID_INPUT", "target_covers_dir", "Thư mục bìa phải là thư mục thường đã có, không được là liên kết")
         except (OSError, ValueError):
-            raise ArchiveTargetError("INVALID_INPUT", "target_covers_dir", "封面目录无效、缺失或不可访问") from None
+            raise ArchiveTargetError("INVALID_INPUT", "target_covers_dir", "Thư mục bìa không hợp lệ, thiếu hoặc không thể truy cập") from None
 
         report["archive_validation"] = verify_archive(archive_path)
         # 只用验证器已核对过的文件描述，不重开 ZIP，也不扫描封面目录。
@@ -92,7 +92,7 @@ async def inspect_target(
                 if (not stat.S_ISREG(before.st_mode) or stat.S_ISLNK(before.st_mode)
                         or getattr(before, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
                         or before.st_size != entry["size_bytes"]):
-                    raise ArchiveTargetError("COVER_CONFLICT", "target_cover", "目标封面不是大小相同的普通文件")
+                    raise ArchiveTargetError("COVER_CONFLICT", "target_cover", "File bìa đích không phải tệp thường có cùng kích thước")
                 flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
                 with os.fdopen(os.open(path, flags), "rb") as stream:
                     opened = os.fstat(stream.fileno())
@@ -100,13 +100,13 @@ async def inspect_target(
                     if (not stat.S_ISREG(opened.st_mode) or not os.path.samestat(before, opened)
                             or not os.path.samestat(opened, current) or stat.S_ISLNK(current.st_mode)
                             or getattr(current, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
-                        raise ArchiveTargetError("COVER_CONFLICT", "target_cover", "目标封面在打开时被替换")
+                        raise ArchiveTargetError("COVER_CONFLICT", "target_cover", "File bìa đích bị thay thế khi đang mở")
                     content = stream.read(entry["size_bytes"] + 1)
                 if len(content) != entry["size_bytes"] or hashlib.sha256(content).hexdigest() != entry["sha256"]:
-                    raise ArchiveTargetError("COVER_CONFLICT", "target_cover", "目标封面大小或 SHA256 与包内文件不同")
+                    raise ArchiveTargetError("COVER_CONFLICT", "target_cover", "Kích thước hoặc SHA256 của file bìa đích khác với tệp trong gói")
                 observed["status"] = "same"
             except OSError:
-                raise ArchiveTargetError("COVER_CONFLICT", "target_cover", "无法完整读取目标封面") from None
+                raise ArchiveTargetError("COVER_CONFLICT", "target_cover", "Không thể đọc đầy đủ file bìa đích") from None
 
         # 所有本地检查通过后才加载驱动；不用应用数据库或可能写索引的入口。
         from pymongo import AsyncMongoClient, ReadPreference
@@ -124,7 +124,7 @@ async def inspect_target(
                     hello = await client.admin.command("hello")
                     if (hello.get("maxWireVersion", 0) < 13 or hello.get("logicalSessionTimeoutMinutes") is None
                             or not hello.get("setName") or hello.get("msg") == "isdbgrid"):
-                        raise ArchiveTargetError("UNSUPPORTED_TARGET", "target", "首版恢复目标只支持 MongoDB 5+ 且支持会话的副本集")
+                        raise ArchiveTargetError("UNSUPPORTED_TARGET", "target", "Đích khôi phục bản đầu tiên chỉ hỗ trợ MongoDB 5+ và replica set có hỗ trợ session")
                     database = client.get_database(target_database, read_preference=ReadPreference.PRIMARY)
                     # listCollections 不支持 snapshot 会话；这只是当下观察，不保证未来仍为空。
                     async with client.start_session(causal_consistency=False) as session:
@@ -138,13 +138,13 @@ async def inspect_target(
                                 count += 1
                         report["namespace_count"] = count
                     if count:
-                        raise ArchiveTargetError("TARGET_NOT_FRESH", "target", "目标库已有集合或视图，必须使用完全没有集合和视图的目标库")
+                        raise ArchiveTargetError("TARGET_NOT_FRESH", "target", "Database đích đã có collection hoặc view, phải dùng database đích hoàn toàn không có collection và view")
                 finally:
                     await client.close()
         except (PyMongoError, OSError, ValueError, Warning) as exc:
             if isinstance(exc, ArchiveTargetError):
                 raise
-            raise ArchiveTargetError("TARGET_INSPECTION_FAILED", "target", "目标连接、完整目录读取或客户端关闭失败") from None
+            raise ArchiveTargetError("TARGET_INSPECTION_FAILED", "target", "Kết nối đích, đọc thư mục đầy đủ hoặc đóng máy khách thất bại") from None
         report["status"] = "target_empty_observed"
         return report
     except ArchiveValidationError as exc:

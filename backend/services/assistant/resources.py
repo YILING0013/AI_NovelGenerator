@@ -113,18 +113,18 @@ async def get_resource(novel_id: str, ref: ResourceRef, *, session=None, include
     if ref.resource_type == "foreshadowing":
         return await ForeshadowingService.get(novel_id, ref.id, include_deleted=include_deleted, session=session)
     if spec.identity == "_id" and not ObjectId.is_valid(ref.id):
-        raise DomainApiError("ASSISTANT_RESOURCE_INVALID", "资料 ID 不正确")
+        raise DomainApiError("ASSISTANT_RESOURCE_INVALID", "ID tài liệu không đúng")
     query = {spec.identity: ObjectId(ref.id) if spec.identity == "_id" else ref.id}
     if ref.resource_type == "novel":
         if ref.id != novel_id:
-            raise DomainApiError("ASSISTANT_RESOURCE_NOT_FOUND", "资料不属于当前小说", status_code=404)
+            raise DomainApiError("ASSISTANT_RESOURCE_NOT_FOUND", "Tài liệu không thuộc tiểu thuyết hiện tại", status_code=404)
     else:
         query["novel_id"] = ObjectId(novel_id)
     if not include_deleted:
         query["is_deleted"] = False
     doc = await BaseRepository(spec.collection).collection.find_one(query, session=session)
     if doc is None:
-        raise DomainApiError("ASSISTANT_RESOURCE_NOT_FOUND", "资料不存在、已回收或不属于当前小说", status_code=404)
+        raise DomainApiError("ASSISTANT_RESOURCE_NOT_FOUND", "Tài liệu không tồn tại, đã thu hồi hoặc không thuộc tiểu thuyết hiện tại", status_code=404)
     return doc
 
 
@@ -140,7 +140,7 @@ def field_value(content: dict, path: str) -> Any:
     value: Any = content
     for part in path.split("."):
         if not isinstance(value, dict) or part not in value:
-            raise DomainApiError("ASSISTANT_FIELD_UNKNOWN", f"资料没有字段：{path}")
+            raise DomainApiError("ASSISTANT_FIELD_UNKNOWN", f"Tài liệu không có trường:{path}")
         value = value[part]
     return value
 

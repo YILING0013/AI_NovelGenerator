@@ -139,7 +139,7 @@ async def _run_bounded_dependency_reconcile(
         or not isinstance(max_attempts, int)
         or max_attempts < 1
     ):
-        raise ValueError("max_attempts 必须为正整数")
+        raise ValueError("max_attempts phải là số nguyên dương")
 
     for attempt in range(1, max_attempts + 1):
         try:
@@ -148,7 +148,7 @@ async def _run_bounded_dependency_reconcile(
         except _DependencyReconcileCasMiss as exc:
             if attempt >= max_attempts:
                 raise _DependencyReconcileCasMiss(
-                    f"{label}连续 {max_attempts} 次重读仍发生版本冲突，请重试"
+                    f"{label}Liên tiếp {max_attempts} lần đọc lại vẫn xảy ra xung đột phiên bản, hãy thử lại"
                 ) from exc
             # 仅 CAS miss 进入下一轮；唯一约束和业务冲突不会被盲目重试。
             continue
@@ -359,7 +359,7 @@ async def _apply_dependent_availability(
                 session=session,
             )
         except (PyMongoDuplicateKeyError, BulkWriteError) as exc:
-            raise DuplicateKeyError("角色恢复后依赖关系或绑定发生有效语义冲突") from exc
+            raise DuplicateKeyError("Sau khi khôi phục nhân vật, quan hệ phụ thuộc hoặc liên kết xảy ra xung đột ngữ nghĩa hợp lệ") from exc
         if result.matched_count != 1:
             raise _DependencyReconcileCasMiss(
                 "角色依赖对象已被其他请求修改，请重新读取后重试"
@@ -457,7 +457,7 @@ def _snapshot_business_identity(snapshot: Mapping[str, Any]) -> dict[str, Any]:
         RuntimeError: 预镜像缺少小说 ID 或受支持的稳定业务 ID。
     """
     if snapshot.get("novel_id") is None:
-        raise RuntimeError("standalone 补偿缺少 novel_id，拒绝修改文档")
+        raise RuntimeError("Bù trừ standalone thiếu novel_id, từ chối sửa tài liệu")
     for business_key in (
         "relation_id",
         "binding_id",
@@ -469,7 +469,7 @@ def _snapshot_business_identity(snapshot: Mapping[str, Any]) -> dict[str, Any]:
                 "novel_id": snapshot["novel_id"],
                 business_key: snapshot[business_key],
             }
-    raise RuntimeError("standalone 补偿缺少可验证的稳定业务 ID，拒绝修改文档")
+    raise RuntimeError("Bù trừ standalone thiếu ID nghiệp vụ ổn định có thể kiểm chứng, từ chối sửa tài liệu")
 
 
 async def _restore_snapshots(
@@ -505,7 +505,7 @@ async def _restore_snapshots(
             current = await repository.collection.find_one(cas_query)
             if current is None:
                 raise RuntimeError(
-                    "standalone 更新补偿 CAS 失败：文档已被并发修改，未执行覆盖"
+                    "Bù trừ cập nhật standalone thất bại CAS: tài liệu đã bị sửa đổi đồng thời, không thực hiện ghi đè"
                 )
             # 清除本次写新增而预镜像不存在的公开字段，但始终保留当前内部 contribution counter。
             unset_fields = {
@@ -523,10 +523,10 @@ async def _restore_snapshots(
                     restore_update,
                 )
             except (PyMongoDuplicateKeyError, BulkWriteError) as exc:
-                raise RuntimeError("standalone 更新补偿发生唯一键冲突，未覆盖并发数据") from exc
+                raise RuntimeError("Bù trừ cập nhật standalone gặp xung đột khoá duy nhất, không ghi đè dữ liệu đồng thời") from exc
             if result.matched_count != 1:
                 raise RuntimeError(
-                    "standalone 更新补偿 CAS 失败：文档已被并发修改，未执行覆盖"
+                    "Bù trừ cập nhật standalone thất bại CAS: tài liệu đã bị sửa đổi đồng thời, không thực hiện ghi đè"
                 )
             continue
 
@@ -537,14 +537,14 @@ async def _restore_snapshots(
         )
         if conflict is not None:
             raise RuntimeError(
-                "standalone 硬删补偿冲突：文档身份或业务键已被并发重建，未执行覆盖"
+                "Xung đột bù trừ xoá cứng standalone: danh tính tài liệu hoặc khoá nghiệp vụ đã bị tái tạo đồng thời, không thực hiện ghi đè"
             )
         try:
             await repository.collection.insert_one(dict(snapshot))
         except (PyMongoDuplicateKeyError, BulkWriteError) as exc:
             # 预检与插入之间仍可能发生竞态，依赖唯一索引把竞态收敛为明确补偿失败。
             raise RuntimeError(
-                "standalone 硬删补偿插回时发生并发唯一键冲突，未执行覆盖"
+                "Bù trừ xoá cứng standalone gặp xung đột khoá duy nhất khi chèn lại, không thực hiện ghi đè"
             ) from exc
 
 
@@ -572,7 +572,7 @@ async def _delete_snapshots_exact(
             session=session,
         )
         if result.deleted_count != 1:
-            raise DuplicateKeyError("角色依赖对象已被其他请求修改，请刷新后重试")
+            raise DuplicateKeyError("Đối tượng phụ thuộc của nhân vật đã bị yêu cầu khác sửa đổi, hãy làm mới rồi thử lại")
         deleted_snapshots.append(_deleted_compensation_record(snapshot))
     return len(snapshots)
 
@@ -679,11 +679,10 @@ async def _compensate_character_write(
         if current is not None:
             await _reconcile_character_dependents(current)
             raise RuntimeError(
-                "standalone 角色主档补偿未完成：公开版本或删除态已推进；"
-                "已保留较新主档并按当前状态调和依赖"
+                "Bù trừ hồ sơ chính nhân vật standalone chưa hoàn tất: phiên bản công khai hoặc trạng thái xoá đã tiến triển; đã giữ hồ sơ mới hơn và điều hoà phụ thuộc theo trạng thái hiện tại"
             ) from master_exc
         raise RuntimeError(
-            "standalone 角色主档补偿未完成：原业务身份已不存在或被重建"
+            "Bù trừ hồ sơ chính nhân vật standalone chưa hoàn tất: danh tính nghiệp vụ gốc không còn hoặc đã bị tái tạo"
         ) from master_exc
 
     dependency_error: Exception | None = None
@@ -697,7 +696,7 @@ async def _compensate_character_write(
     await _reconcile_character_dependents(character_record.snapshot)
     if dependency_error is not None:
         raise RuntimeError(
-            "standalone 角色依赖预镜像补偿未完整命中；已按恢复后的主档调和最新依赖"
+            "Bù trừ pre-image phụ thuộc nhân vật standalone chưa khớp đầy đủ; đã điều hoà phụ thuộc mới nhất theo hồ sơ chính sau khi khôi phục"
         ) from dependency_error
 
 
@@ -722,9 +721,9 @@ async def _get_versioned_character(
         版本匹配的角色预镜像。
     """
     if isinstance(expected_version, bool) or not isinstance(expected_version, int):
-        raise ValueError("expected_version 必须为正整数")
+        raise ValueError("expected_version phải là số nguyên dương")
     if expected_version < 1:
-        raise ValueError("expected_version 必须大于等于 1")
+        raise ValueError("expected_version phải lớn hơn hoặc bằng 1")
     if deleted:
         character = await character_repo.get_deleted_character(
             novel_id,
@@ -740,7 +739,7 @@ async def _get_versioned_character(
     current_version = int(character["version"])
     if current_version != expected_version:
         raise DuplicateKeyError(
-            f"角色版本冲突：当前版本为 {current_version}，请求版本为 {expected_version}"
+            f"Xung đột phiên bản nhân vật: phiên bản hiện tại là {current_version}, phiên bản yêu cầu là {expected_version}"
         )
     return character
 
@@ -759,7 +758,7 @@ def _to_plain_dict(value: Any) -> dict[str, Any]:
     model_dump = getattr(value, "model_dump", None)
     if callable(model_dump):
         return dict(model_dump(exclude_unset=True))
-    raise TypeError("角色数据必须是映射或 Pydantic 模型")
+    raise TypeError("Dữ liệu nhân vật phải là mapping hoặc mô hình Pydantic")
 
 
 def _build_character_document(
@@ -841,7 +840,7 @@ class CharacterService:
         # 核心身份是创建时的一次性决策；显式 false 与省略默认值具有相同幂等语义。
         raw_core_flag = source.get("is_core_character", False)
         if not isinstance(raw_core_flag, bool):
-            raise ValueError("is_core_character 必须为布尔值")
+            raise ValueError("is_core_character phải là giá trị boolean")
         source["is_core_character"] = raw_core_flag
         key_hash = hash_idempotency_key(idempotency_key)
         # 沿用原创建的 exclude_unset 规范载荷，不改成功请求的摘要。
@@ -853,13 +852,13 @@ class CharacterService:
             if existing["creation_request_hash"] != request_hash:
                 raise GenerationDomainError(
                     "IDEMPOTENCY_KEY_REUSED",
-                    "同一 Idempotency-Key 已用于不同的角色创建请求",
+                    "Idempotency-Key này đã được dùng cho một yêu cầu tạo nhân vật khác",
                     status_code=409,
                 )
             return existing
         raise DomainApiError(
             "CHARACTER_FACT_CONTRACT_REQUIRED",
-            "新建人物需要先预览并确认人物资料的起点",
+            "Tạo nhân vật mới cần xem trước và xác nhận điểm khởi đầu của hồ sơ nhân vật trước",
             status_code=409,
         )
 
@@ -984,17 +983,17 @@ class CharacterService:
         source = _to_plain_dict(data)
         expected_version = source.pop("expected_version", None)
         if expected_version is None:
-            raise ValueError("角色更新必须提供 expected_version")
+            raise ValueError("Cập nhật nhân vật phải cung cấp expected_version")
         update_data = {
             key: value for key, value in source.items() if key in CHARACTER_EDITABLE_FIELDS
         }
         if not update_data:
-            raise ValueError("角色更新至少需要提供一个可编辑字段")
+            raise ValueError("Cập nhật nhân vật cần cung cấp ít nhất một trường có thể sửa")
 
         async def _update(session: AsyncClientSession | None) -> dict[str, Any]:
             """在同一写入单元更新角色并维护关系名称投影。"""
             if session is None or not session.in_transaction:
-                raise TransactionNotSupportedError("人物档案更新必须使用事务")
+                raise TransactionNotSupportedError("Cập nhật hồ sơ nhân vật phải dùng transaction")
             await novel_repo.get_novel_by_id(novel_id, session=session)
             current = await _get_versioned_character(
                 novel_id,
@@ -1013,7 +1012,7 @@ class CharacterService:
             except OperationFailure as exc:
                 if exc.code != 112 or not exc.has_error_label("TransientTransactionError"):
                     raise
-                raise DuplicateKeyError("角色版本已变化，请刷新后重试") from exc
+                raise DuplicateKeyError("Phiên bản nhân vật đã thay đổi, hãy làm mới rồi thử lại") from exc
             next_data = dict(update_data)
             name_changed = False
             if "name" in next_data:
@@ -1026,7 +1025,7 @@ class CharacterService:
                     session=session,
                 )
                 if existing is not None and existing.get("character_id") != character_id:
-                    raise DuplicateKeyError(f"同一小说下已存在活动角色: {display_name}")
+                    raise DuplicateKeyError(f"Đã có nhân vật đang hoạt động trong cùng tiểu thuyết: {display_name}")
                 next_data["name"] = display_name
                 next_data["normalized_name"] = normalized_name
                 name_changed = display_name != current.get("name")
@@ -1051,7 +1050,7 @@ class CharacterService:
                     session=session,
                 )
                 if updated is None:
-                    raise DuplicateKeyError("角色版本已变化，请刷新后重试")
+                    raise DuplicateKeyError("Phiên bản nhân vật đã thay đổi, hãy làm mới rồi thử lại")
                 character_record = _updated_compensation_record(current, updated)
                 if name_changed:
                     await _apply_character_name_projection(
@@ -1086,7 +1085,7 @@ class CharacterService:
                         )
                     except Exception as compensation_exc:
                         logger.exception("角色档案更新失败且预镜像补偿失败")
-                        raise RuntimeError("角色档案更新失败，且 standalone 补偿未完成") from compensation_exc
+                        raise RuntimeError("Cập nhật hồ sơ nhân vật thất bại và bù trừ standalone chưa hoàn tất") from compensation_exc
                 raise
 
         if session is not None:
@@ -1110,7 +1109,7 @@ class CharacterService:
             状态更新后的完整角色文档。
         """
         if status not in {"active", "inactive"}:
-            raise ValueError("角色 status 只能是 active 或 inactive")
+            raise ValueError("status của nhân vật chỉ có thể là active hoặc inactive")
 
         async def _update(session: AsyncClientSession | None) -> dict[str, Any]:
             """在同一写入单元切换角色及其依赖有效态。"""
@@ -1152,7 +1151,7 @@ class CharacterService:
                         session=session,
                     )
                     if updated is None:
-                        raise DuplicateKeyError("角色版本已变化，请刷新后重试")
+                        raise DuplicateKeyError("Phiên bản nhân vật đã thay đổi, hãy làm mới rồi thử lại")
                     character_record = _updated_compensation_record(current, updated)
                     available = status == "active"
                     await _apply_dependent_availability(
@@ -1209,7 +1208,7 @@ class CharacterService:
                             state_lock_releasable = False
                             logger.exception("角色状态切换失败且预镜像补偿失败")
                             raise RuntimeError(
-                                "角色状态切换失败，且 standalone 补偿未完成"
+                                "Chuyển trạng thái nhân vật thất bại và bù trừ standalone chưa hoàn tất"
                             ) from compensation_exc
                     raise
             finally:
@@ -1276,7 +1275,7 @@ class CharacterService:
                         session=session,
                     )
                     if deleted is None:
-                        raise DuplicateKeyError("角色版本已变化，请刷新后重试")
+                        raise DuplicateKeyError("Phiên bản nhân vật đã thay đổi, hãy làm mới rồi thử lại")
                     character_record = _updated_compensation_record(current, deleted)
                     await _apply_dependent_availability(
                         _character_relation_repo,
@@ -1340,7 +1339,7 @@ class CharacterService:
                             state_lock_releasable = False
                             logger.exception("角色软删除失败且预镜像补偿失败")
                             raise RuntimeError(
-                                "角色软删除失败，且 standalone 补偿未完成"
+                                "Xoá mềm nhân vật thất bại và bù trừ standalone chưa hoàn tất"
                             ) from compensation_exc
                     raise
             finally:
@@ -1391,7 +1390,7 @@ class CharacterService:
                 )
                 if existing is not None:
                     raise DuplicateKeyError(
-                        f"同一小说下已存在活动角色: {current.get('name', character_id)}"
+                        f"Đã có nhân vật đang hoạt động trong cùng tiểu thuyết: {current.get('name', character_id)}"
                     )
                 relation_snapshots, binding_snapshots = await _load_character_dependents(
                     novel_id,
@@ -1411,7 +1410,7 @@ class CharacterService:
                         session=session,
                     )
                     if restored is None:
-                        raise DuplicateKeyError("角色版本已变化，请刷新后重试")
+                        raise DuplicateKeyError("Phiên bản nhân vật đã thay đổi, hãy làm mới rồi thử lại")
                     character_record = _updated_compensation_record(current, restored)
                     available = restored.get("status", "active") == "active"
                     await _apply_dependent_availability(
@@ -1476,7 +1475,7 @@ class CharacterService:
                             state_lock_releasable = False
                             logger.exception("角色恢复失败且预镜像补偿失败")
                             raise RuntimeError(
-                                "角色恢复失败，且 standalone 补偿未完成"
+                                "Khôi phục nhân vật thất bại và bù trừ standalone chưa hoàn tất"
                             ) from compensation_exc
                     raise
             finally:
@@ -1540,7 +1539,7 @@ class CharacterService:
                         arc_ids = [str(arc["_id"]) for arc in referencing_arcs]
                         raise DomainApiError(
                             "ARC_CHARACTER_REFERENCE_PROTECTED",
-                            "角色仍被篇章引用，请先移除引用再永久删除",
+                            "Nhân vật vẫn được vòng truyện tham chiếu, hãy gỡ tham chiếu trước khi xoá vĩnh viễn",
                             status_code=409,
                             details={"arc_ids": arc_ids, "count": len(arc_ids)},
                         )
@@ -1556,7 +1555,7 @@ class CharacterService:
                         if references:
                             raise DomainApiError(
                                 f"{collection[:-1].upper()}_CHARACTER_REFERENCE_PROTECTED",
-                                "角色仍被场景或章节引用，请先移除引用再永久删除",
+                                "Nhân vật vẫn được cảnh hoặc chương tham chiếu, hãy gỡ tham chiếu trước khi xoá vĩnh viễn",
                                 status_code=409,
                                 details={f"{collection[:-1]}_ids": [str(item["_id"]) for item in references], "count": len(references)},
                             )
@@ -1574,7 +1573,7 @@ class CharacterService:
                     if state_references:
                         raise DomainApiError(
                             "CHARACTER_VOLUME_STATE_REFERENCE_PROTECTED",
-                            "角色仍有卷级状态记录，不能永久删除",
+                            "Nhân vật vẫn còn bản ghi trạng thái cấp quyển, không thể xoá vĩnh viễn",
                             status_code=409,
                             details={
                                 "state_ids": [
@@ -1596,7 +1595,7 @@ class CharacterService:
                     if pending_item_references:
                         raise DomainApiError(
                             "CHARACTER_ITEM_WRITE_CONFLICT",
-                            "物品写入正在使用该角色，请稍后重试",
+                            "Việc ghi vật phẩm đang dùng nhân vật này, vui lòng thử lại sau",
                             status_code=409,
                         )
                     referencing_items = await BaseRepository("items").find_many(
@@ -1612,7 +1611,7 @@ class CharacterService:
                         item_ids = [str(item["item_id"]) for item in referencing_items]
                         raise DomainApiError(
                             "CHARACTER_ITEM_REFERENCE_PROTECTED",
-                            "角色仍被正式物品引用，不能永久删除",
+                            "Nhân vật vẫn được vật phẩm chính thức tham chiếu, không thể xoá vĩnh viễn",
                             status_code=409,
                             details={"item_ids": item_ids, "count": len(item_ids)},
                         )
@@ -1641,7 +1640,7 @@ class CharacterService:
                         if focus_references:
                             raise DomainApiError(
                                 "CHARACTER_RELATION_STATE_REFERENCE_PROTECTED",
-                                "角色关系仍被卷级状态引用，不能随角色永久删除",
+                                "Quan hệ nhân vật vẫn được trạng thái cấp quyển tham chiếu, không thể xoá vĩnh viễn cùng nhân vật",
                                 status_code=409,
                                 details={
                                     "state_ids": [
@@ -1674,7 +1673,7 @@ class CharacterService:
                             session=session,
                         )
                         if deleted_character is None:
-                            raise DuplicateKeyError("角色版本已变化，请刷新后重试")
+                            raise DuplicateKeyError("Phiên bản nhân vật đã thay đổi, hãy làm mới rồi thử lại")
                         character_record = _deleted_compensation_record(current)
                         return {
                             "character_deleted": 1,
@@ -1698,7 +1697,7 @@ class CharacterService:
                                 state_lock_releasable = False
                                 logger.exception("角色硬删除失败且预镜像补偿失败")
                                 raise RuntimeError(
-                                    "角色硬删除失败，且 standalone 补偿未完成"
+                                    "Xoá cứng nhân vật thất bại và bù trừ standalone chưa hoàn tất"
                                 ) from compensation_exc
                         raise
                 finally:
@@ -1741,7 +1740,7 @@ class CharacterService:
             _to_plain_dict(result)
         ).model_dump(mode="json")
         if source.get("request_type") != "ai_confirmation":
-            raise ValueError("核心角色批量接口只接受严格 AI 确认请求")
+            raise ValueError("Giao diện hàng loạt nhân vật chính chỉ chấp nhận yêu cầu xác nhận AI nghiêm ngặt")
         candidate = dict(source.get("candidate") or {})
         selected_refs = list(source.get("selected_character_refs") or [])
         bindings_by_ref = {
@@ -1779,7 +1778,7 @@ class CharacterService:
             ):
                 raise GenerationDomainError(
                     "IDEMPOTENCY_KEY_REUSED",
-                    "同一 Idempotency-Key 已用于不同的核心角色确认请求",
+                    "Idempotency-Key này đã được dùng cho một yêu cầu xác nhận nhân vật chính khác",
                     status_code=409,
                 )
             characters_by_ref = {
@@ -1798,14 +1797,14 @@ class CharacterService:
                 or set(characters_by_ref) - set(selected_refs)
                 or set(bindings_by_local_ref) - set(selected_binding_refs)
             ):
-                raise DuplicateKeyError("核心角色确认批次 local ref 元数据冲突")
+                raise DuplicateKeyError("Xung đột metadata local ref của lô xác nhận nhân vật chính")
             for ref, binding in bindings_by_local_ref.items():
                 character = characters_by_ref.get(ref)
                 if (
                     character is None
                     or binding.get("character_id") != character.get("character_id")
                 ):
-                    raise DuplicateKeyError("核心角色确认批次绑定映射冲突")
+                    raise DuplicateKeyError("Xung đột ánh xạ liên kết của lô xác nhận nhân vật chính")
             return characters_by_ref, bindings_by_local_ref
 
         characters_by_ref, bindings_by_local_ref = await _load_existing(session)
@@ -1826,6 +1825,6 @@ class CharacterService:
         # 旧批次只写了一部分时不能续写或借原键改成人物事实确认。
         raise DomainApiError(
             "CHARACTER_FACT_CONTRACT_REQUIRED",
-            "新建人物需要先预览并确认人物资料的起点；旧批次未完整成功，不能继续写入",
+            "Tạo nhân vật mới cần xem trước và xác nhận điểm khởi đầu của hồ sơ nhân vật trước; lô cũ chưa thành công hoàn toàn, không thể tiếp tục ghi",
             status_code=409,
         )

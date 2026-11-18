@@ -33,7 +33,7 @@ def evaluate_item_facts(
         identity = str(ObjectId(original_id))
         if (ObjectId(record["novel_id"]) != item["novel_id"] or ObjectId(record["entity_id"]) != item["_id"]
                 or record["item_id"] != item["item_id"] or identity in identities):
-            raise DomainApiError("ITEM_FACT_RECORD_INVALID", "物品事实的身份或记录编号不一致，请检查记录", status_code=409)
+            raise DomainApiError("ITEM_FACT_RECORD_INVALID", "Danh tính hoặc số bản ghi của sự kiện vật phẩm không nhất quán, hãy kiểm tra lại bản ghi", status_code=409)
         identities.add(identity)
         source_checks[identity] = source_validity.get(original_id) is True
         if reference_validity.get(original_id) is not True:
@@ -59,7 +59,7 @@ def evaluate_item_facts(
         result = evaluate_fact_fields(frozenset({"item_state"}), normalized, position, directories,
                                       source_checks, unavailable_references=unavailable)
     except FactPositionConflictError as exc:
-        raise DomainApiError("ITEM_FACT_POSITION_CONFLICT", "同一位置有重复的物品状态，请明确替代原整组记录", status_code=409) from exc
+        raise DomainApiError("ITEM_FACT_POSITION_CONFLICT", "Cùng một vị trí có trạng thái vật phẩm bị trùng, hãy thay thế rõ ràng toàn bộ nhóm bản ghi gốc", status_code=409) from exc
     return ItemFactsAtPositionV1.model_validate({
         "entity_id": str(item["_id"]), "item_id": item["item_id"], "name": item["name"], "version": item["version"],
         "values": result["values"].get("item_state"), "unknown": result["unknown"].get("item_state"),

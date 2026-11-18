@@ -35,7 +35,7 @@ def validate_expected_version(value: Any) -> int:
         ValueError: 版本不是正整数。
     """
     if isinstance(value, bool) or not isinstance(value, int) or value < 1:
-        raise ValueError("expected_version 必须为大于等于 1 的整数")
+        raise ValueError("expected_version phải là số nguyên lớn hơn hoặc bằng 1")
     return value
 
 
@@ -54,7 +54,7 @@ def ensure_initial_version(document: Mapping[str, Any]) -> dict[str, Any]:
     prepared = dict(document)
     version = prepared.get("version", 1)
     if isinstance(version, bool) or not isinstance(version, int) or version != 1:
-        raise ValueError("新建正式聚合的初始 version 必须为 1")
+        raise ValueError("version khởi tạo của tài nguyên tổng hợp chính thức mới phải bằng 1")
     prepared["version"] = 1
     return prepared
 
@@ -88,7 +88,7 @@ def build_versioned_cas_filter(
         可直接用于 MongoDB 条件写入的查询字典。
     """
     if not identity:
-        raise ValueError("CAS identity 不能为空")
+        raise ValueError("CAS identity không được để trống")
     query = {**identity, "version": validate_expected_version(expected_version)}
     if is_deleted is not None:
         query["is_deleted"] = bool(is_deleted)
@@ -113,9 +113,9 @@ def build_versioned_cas_update(
         ValueError: 调用方尝试直接覆盖 version 或没有任何业务变化。
     """
     if "version" in update_fields:
-        raise ValueError("CAS 更新不得直接覆盖 version")
+        raise ValueError("Cập nhật CAS không được ghi đè trực tiếp version")
     if not update_fields and not unset_fields:
-        raise ValueError("CAS 更新至少需要一个业务字段变化")
+        raise ValueError("Cập nhật CAS cần ít nhất một trường nghiệp vụ thay đổi")
     update: dict[str, Any] = {
         "$set": {**update_fields, "updated_at": get_utc_now()},
         "$inc": {"version": 1},
@@ -183,9 +183,9 @@ def validate_versioned_batch(
     for item in items:
         business_id = str(item.get(id_field) or "").strip()
         if not business_id:
-            raise ValueError(f"批量项必须提供 {id_field}")
+            raise ValueError(f"Các mục trong lô phải cung cấp {id_field}")
         if business_id in seen:
-            raise ValueError(f"批量项不能重复使用 {id_field}: {business_id}")
+            raise ValueError(f"Các mục trong lô không được dùng trùng {id_field}: {business_id}")
         seen.add(business_id)
         normalized.append(
             (business_id, validate_expected_version(item.get("expected_version")))
@@ -281,7 +281,7 @@ def build_idempotency_fingerprint(raw_key: str, request: Any) -> IdempotencyFing
     """
     if IDEMPOTENCY_KEY_RE.fullmatch(raw_key or "") is None:
         raise ValueError(
-            "Idempotency-Key 必须为 16 到 128 位，只能包含 ASCII 字母、数字和 -_.:"
+            "Idempotency-Key phải từ 16 đến 128 ký tự, chỉ được chứa chữ ASCII, số và -_.:"
         )
     return IdempotencyFingerprint(
         key_hash=hashlib.sha256(raw_key.encode("ascii")).hexdigest(),
@@ -312,7 +312,7 @@ def resolve_idempotent_replay(
         return None
     if existing.get("creation_request_hash") != request_hash:
         raise IdempotencyConflictError(
-            f"同一 Idempotency-Key 已用于不同的{label}请求"
+            f"Cùng Idempotency-Key đã được dùng cho{label}Yêu cầu"
         )
     return dict(existing)
 

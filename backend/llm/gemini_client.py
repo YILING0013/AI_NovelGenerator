@@ -40,15 +40,15 @@ def build_gemini_generation_config(request: LLMRequest, model: str, *, interacti
         当前接口支持的生成参数，不含消息或凭据。
     """
     if request.thinking_mode or request.reasoning_mode or request.verbosity:
-        raise ValueError("Gemini 使用思考等级或思考预算，不支持当前选择的其他思考参数")
+        raise ValueError("Gemini dùng mức độ suy nghĩ hoặc ngân sách suy nghĩ, không hỗ trợ tham số suy nghĩ khác đang được chọn")
     if request.reasoning_effort is not None and request.thinking_budget is not None:
-        raise ValueError("Gemini 思考等级和思考预算不能同时设置")
+        raise ValueError("Không thể đặt đồng thời mức độ suy nghĩ và ngân sách suy nghĩ của Gemini")
     if request.reasoning_effort not in (None, "minimal", "low", "medium", "high"):
-        raise ValueError("Gemini 思考等级支持 minimal、low、medium、high；旧版关闭思考请使用预算 0")
+        raise ValueError("Mức độ suy nghĩ của Gemini hỗ trợ minimal, low, medium, high; để tắt suy nghĩ ở bản cũ, hãy dùng ngân sách 0")
     if request.reasoning_effort == "minimal" and re.search(r"gemini-(?:3\.[78]-flash|3(?:\.1)?-pro)", model):
-        raise ValueError("当前 Gemini 模型不支持 minimal，请选择 low 或更高等级")
+        raise ValueError("Mô hình Gemini hiện tại không hỗ trợ minimal, hãy chọn mức low hoặc cao hơn")
     if request.reasoning_effort == "medium" and "gemini-3-pro" in model:
-        raise ValueError("Gemini 3 Pro 支持 low 或 high 思考等级")
+        raise ValueError("Gemini 3 Pro hỗ trợ mức độ suy nghĩ low hoặc high")
     kwargs: dict[str, Any] = {}
     if not interactions and not re.search(r"gemini-3\.[5-9]", model):
         for field in ("temperature", "top_p", "presence_penalty", "frequency_penalty"):
@@ -60,18 +60,18 @@ def build_gemini_generation_config(request: LLMRequest, model: str, *, interacti
         kwargs["stop_sequences"] = request.stop
     if interactions:
         if request.thinking_budget is not None:
-            raise ValueError("Interactions 使用思考等级；如需旧模型的 token 预算，请选择 Generate Content 接口")
+            raise ValueError("Interactions dùng mức độ suy nghĩ; nếu cần ngân sách token cho mô hình cũ, hãy chọn giao diện Generate Content")
         if request.reasoning_effort is not None:
             kwargs["thinking_level"] = request.reasoning_effort
     else:
         thinking: dict[str, Any] = {}
         if request.reasoning_effort is not None:
             if "gemini-2.5" in model:
-                raise ValueError("Gemini 2.5 的 Generate Content 接口使用思考预算，请取消等级设置")
+                raise ValueError("Giao diện Generate Content của Gemini 2.5 dùng ngân sách suy nghĩ, hãy bỏ thiết đặt mức độ")
             thinking["thinking_level"] = request.reasoning_effort
         if request.thinking_budget is not None:
             if "gemini-2.5-pro" in model and request.thinking_budget != -1 and not 128 <= request.thinking_budget <= 32768:
-                raise ValueError("Gemini 2.5 Pro 思考预算应为 -1 或 128–32768，不能关闭思考")
+                raise ValueError("Ngân sách suy nghĩ của Gemini 2.5 Pro phải là -1 hoặc 128–32768, không thể tắt suy nghĩ")
             thinking["thinking_budget"] = request.thinking_budget
         if thinking:
             kwargs["thinking_config"] = thinking
@@ -201,9 +201,9 @@ class GeminiClient(BaseLLMClient):
                     if current.finish_reason is not None:
                         candidate.finish_reason = current.finish_reason
         if candidate is None or candidate.finish_reason is None:
-            raise LLMConnectionError("Gemini 响应流提前断开，请重试", provider=self.provider_name, model=model)
+            raise LLMConnectionError("Luồng phản hồi Gemini bị ngắt sớm, hãy thử lại", provider=self.provider_name, model=model)
         if candidate.finish_reason != types.FinishReason.STOP:
-            raise LLMResponseError(f"Gemini 回复未完成：{candidate.finish_reason}", provider=self.provider_name, model=model)
+            raise LLMResponseError(f"Phản hồi của Gemini chưa hoàn tất:{candidate.finish_reason}", provider=self.provider_name, model=model)
         candidate.content = types.Content(role="model", parts=parts)
         response.candidates = [candidate]
         return response
@@ -233,7 +233,7 @@ class GeminiClient(BaseLLMClient):
                 call.finish_reason = resp.candidates[0].finish_reason.name
                 call.usage = self._extract_usage(resp.usage_metadata)
                 raise LLMResponseError(
-                    "模型输出达到长度上限，内容未完成", provider=self.provider_name, model=model,
+                    "Đầu ra của mô hình đạt giới hạn độ dài, nội dung chưa hoàn tất", provider=self.provider_name, model=model,
                     partial_text=resp.text or "",
                 )
             result = LLMResponse(
@@ -285,7 +285,7 @@ class GeminiClient(BaseLLMClient):
                 call.finish_reason = resp.candidates[0].finish_reason.name
                 call.usage = self._extract_usage(resp.usage_metadata)
                 raise LLMResponseError(
-                    "模型输出达到长度上限，内容未完成", provider=self.provider_name, model=model,
+                    "Đầu ra của mô hình đạt giới hạn độ dài, nội dung chưa hoàn tất", provider=self.provider_name, model=model,
                     partial_text=resp.text or "",
                 )
             reject_duplicate_json_keys(resp.text or "")
@@ -296,9 +296,9 @@ class GeminiClient(BaseLLMClient):
             try:
                 parsed = schema.model_validate_json(text)
             except Exception as parse_exc:
-                log_parse_error(parse_exc, content=text, schema=schema, message="Gemini 结构化输出校验失败")
+                log_parse_error(parse_exc, content=text, schema=schema, message="Kiểm tra đầu ra có cấu trúc của Gemini thất bại")
                 error = LLMSchemaError(
-                    f"Gemini 返回内容无法解析为目标 Schema: {parse_exc}",
+                    f"Nội dung Gemini trả về không phân tích được thành Schema đích: {parse_exc}",
                     provider=self.provider_name,
                     model=model,
                 )
@@ -347,10 +347,10 @@ class GeminiClient(BaseLLMClient):
                             if clean_text:
                                 yield clean_text
                 if not call.finish_reason:
-                    raise LLMConnectionError("Gemini 响应流提前断开，请重试", provider=self.provider_name, model=model)
+                    raise LLMConnectionError("Luồng phản hồi Gemini bị ngắt sớm, hãy thử lại", provider=self.provider_name, model=model)
                 if call.finish_reason == "MAX_TOKENS":
                     raise LLMResponseError(
-                        "模型输出达到长度上限，内容未完成", provider=self.provider_name, model=model,
+                        "Đầu ra của mô hình đạt giới hạn độ dài, nội dung chưa hoàn tất", provider=self.provider_name, model=model,
                         partial_text="".join(call.chunks),
                     )
                 if request.json_output_schema is not None:
@@ -399,10 +399,10 @@ class GeminiClient(BaseLLMClient):
             response = await self._generate_content(stream=request.stream, model=model, contents=contents, config=config)
             observe_provider_response(response, self.config.resolved_api_mode)
             if not response.candidates or response.candidates[0].content is None:
-                raise ValueError("工具对话没有返回候选")
+                raise ValueError("Cuộc trò chuyện công cụ không trả về ứng viên")
             candidate = response.candidates[0]
             if candidate.finish_reason != types.FinishReason.STOP:
-                raise LLMResponseError(f"Gemini 工具回复未完成：{candidate.finish_reason}，请检查输出上限或输入", provider=self.provider_name, model=model)
+                raise LLMResponseError(f"Phản hồi công cụ của Gemini chưa hoàn tất:{candidate.finish_reason}, hãy kiểm tra giới hạn đầu ra hoặc đầu vào", provider=self.provider_name, model=model)
             contents.append(candidate.content)
             calls = [LLMToolCall(id=part.function_call.id, name=part.function_call.name,
                                  arguments=dict(part.function_call.args or {}))
@@ -468,7 +468,7 @@ class GeminiClient(BaseLLMClient):
                         function_call = part.function_call
                         break
                 if function_call is None:
-                    raise ValueError("模型未返回指定工具调用")
+                    raise ValueError("Mô hình không trả về lời gọi công cụ được chỉ định")
 
                 actual_args = dict(function_call.args or {})
                 self._validate_probe_arguments(actual_args, probe.expected_arguments)

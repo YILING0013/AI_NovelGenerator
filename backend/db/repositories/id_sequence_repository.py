@@ -45,11 +45,11 @@ class IdSequenceRepository(BaseRepository):
             按升序排列的业务 ID 列表。
         """
         if count < 0:
-            raise ValueError("ID 预留数量不能为负数")
+            raise ValueError("Số lượng ID dự phòng không được là số âm")
         if count == 0:
             return []
         if not entity_type.strip() or not prefix.strip():
-            raise ValueError("entity_type 和 prefix 不能为空")
+            raise ValueError("entity_type và prefix không được để trống")
 
         now = get_utc_now()
         # 单条 findOneAndUpdate 保证并发请求不会拿到重叠区间；回滚时允许保留空号。
@@ -68,7 +68,7 @@ class IdSequenceRepository(BaseRepository):
             session=session,
         )
         if not sequence:
-            raise RuntimeError("业务 ID 序列分配失败")
+            raise RuntimeError("Cấp phát chuỗi ID nghiệp vụ thất bại")
 
         last_value = int(sequence["value"])
         first_value = last_value - count + 1

@@ -60,7 +60,7 @@ def resolve_temporary(value: Any, identities: dict[str, str], *, reference: bool
     """
     if reference and isinstance(value, str) and value.startswith("new_"):
         if value not in identities:
-            raise DomainApiError("ASSISTANT_DEPENDENCY_MISSING", f"请先创建同组资料：{value}")
+            raise DomainApiError("ASSISTANT_DEPENDENCY_MISSING", f"Hãy tạo các tài liệu cùng nhóm trước:{value}")
         return identities[value]
     if isinstance(value, dict):
         return {key: resolve_temporary(item, identities, reference=key.endswith(("_id", "_ids")) or key in {"id", "ids"}) for key, item in value.items()}
@@ -84,19 +84,19 @@ def update_fields(kind: str, fields: dict, before: dict) -> dict:
     for path, value in fields.items():
         parts = path.split(".")
         if parts[0] not in allowed or any(part.startswith("$") or not part for part in parts):
-            raise DomainApiError("ASSISTANT_FIELD_FORBIDDEN", f"不能直接修改字段：{path}")
+            raise DomainApiError("ASSISTANT_FIELD_FORBIDDEN", f"Không thể sửa trực tiếp các trường:{path}")
         if len(parts) == 1:
             if any(other.startswith(path + ".") for other in fields):
-                raise DomainApiError("ASSISTANT_FIELD_OVERLAP", "请只提交完整字段或它的子字段，不要同时提交")
+                raise DomainApiError("ASSISTANT_FIELD_OVERLAP", "Vui lòng chỉ gửi toàn bộ trường hoặc trường con của nó, không gửi đồng thời cả hai")
             result[path] = value
             continue
         cursor = result.setdefault(parts[0], deepcopy(before.get(parts[0])))
         for part in parts[1:-1]:
             if not isinstance(cursor, dict) or part not in cursor:
-                raise DomainApiError("ASSISTANT_FIELD_UNKNOWN", f"资料没有字段：{path}")
+                raise DomainApiError("ASSISTANT_FIELD_UNKNOWN", f"Tài liệu không có trường:{path}")
             cursor = cursor[part]
         if not isinstance(cursor, dict) or parts[-1] not in cursor:
-            raise DomainApiError("ASSISTANT_FIELD_UNKNOWN", f"资料没有字段：{path}")
+            raise DomainApiError("ASSISTANT_FIELD_UNKNOWN", f"Tài liệu không có trường:{path}")
         cursor[parts[-1]] = value
     return result
 
@@ -115,24 +115,24 @@ async def execute_operation(novel_id: str, operation: ChangeOperation, *, identi
     """
     kind, action = operation.resource_type, operation.action
     if kind == "foreshadowing":
-        raise DomainApiError("FORESHADOWING_READ_ONLY", "助手只供读取伏笔，请由作者在伏笔工作台记录或修改")
+        raise DomainApiError("FORESHADOWING_READ_ONLY", "Trợ lý chỉ cho phép đọc chi tiết phục bút; tác giả hãy ghi hoặc sửa trong Bàn phục bút")
     identity = resolve_temporary(operation.id, identities, reference=True)
     parent = resolve_temporary(operation.parent_id, identities, reference=True)
     fields = resolve_temporary(operation.fields, identities)
     current = None
     if action not in {"create", "reorder"}:
         if not identity:
-            raise DomainApiError("ASSISTANT_TARGET_REQUIRED", "请选择要修改的资料")
+            raise DomainApiError("ASSISTANT_TARGET_REQUIRED", "Hãy chọn tài liệu cần sửa")
         current = await get_resource(novel_id, ResourceRef(resource_type=kind, id=identity), include_deleted=action == "restore", session=session)
     expected = current["version"] if current else None
     if action == "create":
         if not operation.temporary_id or identity:
-            raise DomainApiError("ASSISTANT_CREATE_INVALID", "新建资料需要唯一临时 ID，不能指定正式 ID")
+            raise DomainApiError("ASSISTANT_CREATE_INVALID", "Tạo hồ sơ mới cần ID tạm duy nhất, không được chỉ định ID chính thức")
         spec = RESOURCES[kind]
         if spec.create is None:
-            raise DomainApiError("ASSISTANT_CREATE_INVALID", "请在书架创建小说")
+            raise DomainApiError("ASSISTANT_CREATE_INVALID", "Hãy tạo tiểu thuyết trên giá sách")
         if set(fields) & INTERNAL_INPUTS:
-            raise DomainApiError("ASSISTANT_FIELD_FORBIDDEN", "新建资料不能指定版本或内部依据")
+            raise DomainApiError("ASSISTANT_FIELD_FORBIDDEN", "Tài liệu mới tạo không được chỉ định phiên bản hoặc căn cứ nội bộ")
         if kind.endswith("_volume_state"):
             entity_kind = kind.removesuffix("_volume_state")
             volume_id, entity_id = fields.pop("volume_id"), fields.pop(f"{entity_kind}_id")
@@ -148,7 +148,7 @@ async def execute_operation(novel_id: str, operation: ChangeOperation, *, identi
                 if not parent:
                     parent = novel_id if kind == "volume" else None
                 if parent is None:
-                    raise DomainApiError("ASSISTANT_PARENT_REQUIRED", "新建层级资料需要指定上级")
+                    raise DomainApiError("ASSISTANT_PARENT_REQUIRED", "Tạo mới tài liệu theo cấp bậc cần chỉ định mục cha")
                 await get_resource(novel_id, ResourceRef(resource_type=PARENT_KIND[kind], id=parent), session=session)
                 if kind == "volume":
                     result = await VolumeService.create_volume({**data, "novel_id": novel_id}, idempotency_key=key, session=session)
@@ -195,7 +195,7 @@ async def execute_operation(novel_id: str, operation: ChangeOperation, *, identi
         return [result]
     if action in {"delete", "restore"}:
         if fields:
-            raise DomainApiError("ASSISTANT_LIFECYCLE_INVALID", "回收或恢复不接受其它内容字段")
+            raise DomainApiError("ASSISTANT_LIFECYCLE_INVALID", "Thu hồi hoặc khôi phục không nhận các trường nội dung khác")
         if kind in HIERARCHY:
             result = await HIERARCHY[kind].set_deleted(identity, expected_version=expected, deleted=action == "delete", session=session)
         else:
@@ -208,7 +208,7 @@ async def execute_operation(novel_id: str, operation: ChangeOperation, *, identi
     if action == "status":
         field = STATUS_FIELD.get(kind)
         if field is None or set(fields) != {field}:
-            raise DomainApiError("ASSISTANT_STATUS_INVALID", f"当前资料只支持状态字段：{field}")
+            raise DomainApiError("ASSISTANT_STATUS_INVALID", f"Tài liệu hiện tại chỉ hỗ trợ các trường trạng thái:{field}")
         value = fields[field]
         if kind == "novel":
             result = await NovelService.update_status(novel_id, value, expected, session=session)
@@ -218,7 +218,7 @@ async def execute_operation(novel_id: str, operation: ChangeOperation, *, identi
             result = await ItemService.transition_item_status(novel_id, identity, value, expected_version=expected, session=session)
         elif field == "is_active":
             if not isinstance(value, bool):
-                raise DomainApiError("ASSISTANT_STATUS_INVALID", "启用状态必须为 true 或 false")
+                raise DomainApiError("ASSISTANT_STATUS_INVALID", "Trạng thái kích hoạt phải là true hoặc false")
             service, name = ENTITY_SERVICES[kind]
             result = await getattr(service, f"set_{name}_active")(novel_id, identity, expected_version=expected, is_active=value, session=session)
         else:
@@ -226,7 +226,7 @@ async def execute_operation(novel_id: str, operation: ChangeOperation, *, identi
         return [result]
     if action == "reorder":
         if kind not in REORDER_SERVICES or set(fields) != {"ids"} or not isinstance(fields["ids"], list) or not fields["ids"]:
-            raise DomainApiError("ASSISTANT_REORDER_INVALID", "请提供可排序资料的完整兄弟 ID 列表")
+            raise DomainApiError("ASSISTANT_REORDER_INVALID", "Hãy cung cấp danh sách ID anh em đầy đủ của tài liệu có thể sắp xếp")
         items = []
         for index, item_id in enumerate(fields["ids"]):
             document = await get_resource(novel_id, ResourceRef(resource_type=kind, id=item_id), session=session)
@@ -239,12 +239,12 @@ async def execute_operation(novel_id: str, operation: ChangeOperation, *, identi
         return await REORDER_SERVICES[kind](novel_id, items, session=session)
     if action == "preparation":
         if kind != "volume" or set(fields) - {"kind", "location_ids", "confirmed"} or fields.get("kind") not in {"factions", "characters", "locations"}:
-            raise DomainApiError("ASSISTANT_PREPARATION_INVALID", "请选择卷内势力、角色或地点准备阶段")
+            raise DomainApiError("ASSISTANT_PREPARATION_INVALID", "Hãy chọn giai đoạn chuẩn bị thế lực, nhân vật hoặc địa điểm trong quyển")
         if not isinstance(fields.get("confirmed", True), bool):
-            raise DomainApiError("ASSISTANT_PREPARATION_INVALID", "准备确认状态必须为 true 或 false")
+            raise DomainApiError("ASSISTANT_PREPARATION_INVALID", "Trạng thái sẵn sàng xác nhận phải là true hoặc false")
         if fields.get("confirmed") is False:
             return [await clear_preparation(novel_id, identity, fields["kind"], expected_version=expected, location_ids=fields.get("location_ids"), session=session)]
         request = VolumePreparationConfirmV1.model_validate({"expected_version": expected, **{k: v for k, v in fields.items() if k not in {"kind", "confirmed"}}})
         await confirm_preparation(novel_id, identity, fields["kind"], request, idempotency_key=key, session=session)
         return [await get_resource(novel_id, ResourceRef(resource_type=kind, id=identity), session=session)]
-    raise DomainApiError("ASSISTANT_OPERATION_INVALID", "不支持这项操作")
+    raise DomainApiError("ASSISTANT_OPERATION_INVALID", "Không hỗ trợ thao tác này")

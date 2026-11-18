@@ -35,14 +35,14 @@ FactFields = Annotated[list[CharacterFactField], Field(min_length=1, max_length=
 def _require_schema_one(value: object) -> int:
     """各新版合同只接受整数 1，不能以布尔真冒充版本。"""
     if type(value) is not int or value != 1:
-        raise ValueError("人物事实合同版本必须为整数 1")
+        raise ValueError("Phiên bản hợp đồng dữ kiện nhân vật phải là số nguyên 1")
     return value
 
 
 def _require_author_confirmation(value: object) -> bool:
     """作者确认必须是布尔真，拒绝整数和字符串强转。"""
     if value is not True:
-        raise ValueError("必须由作者明确确认")
+        raise ValueError("Phải được tác giả xác nhận rõ ràng")
     return True
 
 
@@ -50,16 +50,16 @@ def _fact_timestamp(value: object) -> datetime:
     """仅接受规范 UTC 毫秒时间或其完整 ISO 文本，保持冻结摘要稳定。"""
     if isinstance(value, str):
         if re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{6})?", value) is None:
-            raise ValueError("人物事实时间必须是完整的规范 UTC ISO 时间")
+            raise ValueError("Thời gian dữ kiện nhân vật phải là thời gian UTC ISO chuẩn hóa đầy đủ")
         parsed = datetime.fromisoformat(value)
         if parsed.isoformat() != value:
-            raise ValueError("人物事实时间不能改变冻结文本")
+            raise ValueError("Thời gian dữ kiện nhân vật không được làm thay đổi văn bản đã đóng băng")
         value = parsed
     if not isinstance(value, datetime) or value.microsecond % 1000:
-        raise ValueError("人物事实时间必须是 UTC 毫秒 datetime 或规范 ISO 文本")
+        raise ValueError("Thời gian dữ kiện nhân vật phải là datetime mili-giây UTC hoặc văn bản ISO chuẩn hóa")
     if value.tzinfo is not None:
         if value.utcoffset() != timedelta(0):
-            raise ValueError("人物事实时间必须使用 UTC")
+            raise ValueError("Thời gian dữ kiện nhân vật phải dùng UTC")
         value = value.replace(tzinfo=None)
     return value
 
@@ -103,7 +103,7 @@ class CharacterFactValuesV1(StrictRequestModel):
             仅包含严格已知值的输入模型。
         """
         if any(getattr(self, field) is None for field in self.model_fields_set):
-            raise ValueError("人物事实值不能为 null；未知状态须由读取依据明确表示")
+            raise ValueError("Giá trị dữ kiện nhân vật không được là null; trạng thái chưa rõ phải được căn cứ đọc thể hiện rõ ràng")
         return self
 
     @model_serializer(mode="wrap")
@@ -131,7 +131,7 @@ class CharacterFactPositionV1(StrictResponseModel):
         """核对书初、卷初和章节位置的目标类别。"""
         expected = "novel" if self.intent == "book_start" else "volume" if self.intent == "volume_start" else "chapter"
         if self.target_type != expected:
-            raise ValueError("故事开始时指向作品，本卷开始指向卷，章前后指向章节")
+            raise ValueError("Điểm mở đầu truyện trỏ tới tác phẩm, điểm mở đầu quyển trỏ tới quyển, trước/sau chương trỏ tới chương")
         return self
 
 
@@ -152,7 +152,7 @@ class CharacterFactReadPositionV1(StrictResponseModel):
                    {"volume_start", "replan", "append"} if self.target_type == "volume" else {"replan", "append"})
         depth = {"novel": 0, "volume": 1, "arc": 2, "scene": 3, "chapter": 4}[self.target_type]
         if self.intent not in allowed or len(self.order) != depth:
-            raise ValueError("读取操作或顺序深度与目标类别不一致")
+            raise ValueError("Thao tác đọc hoặc độ sâu thứ tự không nhất quán với loại đối tượng đích")
         return self
 
 
@@ -166,7 +166,7 @@ class CharacterFactAuthorSourceV1(StrictResponseModel):
     def require_note(self) -> "CharacterFactAuthorSourceV1":
         """说明不能只有空白，但保留作者实际书写格式。"""
         if not self.note.strip():
-            raise ValueError("请填写人工确认说明")
+            raise ValueError("Vui lòng điền mô tả xác nhận thủ công")
         return self
 
 
@@ -192,7 +192,7 @@ class CharacterFactBeforeV1(StrictResponseModel):
     def validate_partition(self) -> "CharacterFactBeforeV1":
         """同一字段只能是已知或未知之一。"""
         if self.values.model_fields_set & self.unknown.keys():
-            raise ValueError("同一人物字段不能同时已知和未知")
+            raise ValueError("Cùng một trường nhân vật không thể vừa đã biết vừa chưa rõ")
         return self
 
 
@@ -233,7 +233,7 @@ class CharacterFactProtectedSourceV1(StrictResponseModel):
     def validate_parent(self) -> "CharacterFactProtectedSourceV1":
         """只有小说没有父级。"""
         if (self.resource_type == "novel") != (self.parent_id is None):
-            raise ValueError("来源父级与层级不一致")
+            raise ValueError("Cha của nguồn không nhất quán với cấp bậc")
         return self
 
 
@@ -244,7 +244,7 @@ def _validate_protected_sources(novel_id: str, position: CharacterFactPositionV1
     if ([source.resource_type for source in sources] != kinds or sources[0].id != novel_id
             or sources[-1].id != position.target_id
             or any(source.parent_id != sources[index - 1].id for index, source in enumerate(sources) if index)):
-        raise ValueError("真正来源必须保存从本书到位置锚的完整父链")
+        raise ValueError("Nguồn thực sự phải lưu chuỗi cha đầy đủ từ cuốn sách tới neo vị trí")
 
 
 class CharacterFactRecordV1(StrictResponseModel):
@@ -281,43 +281,43 @@ class CharacterFactRecordV1(StrictResponseModel):
         if (not fields or fields != self.before.values.model_fields_set | self.before.unknown.keys()
                 or fields != self.previous.keys() or fields != self.validity.keys()
                 or not self.replaces.keys() <= fields or not self.resolves.keys() <= fields):
-            raise ValueError("记录前后值、前值依据及有效性的字段集合不一致")
+            raise ValueError("Tập trường lưu giá trị trước/sau, căn cứ giá trị trước và tính hiệu lực không nhất quán")
         if (any(self.previous[field] is None for field in self.before.values.model_fields_set)
                 or any(self.previous[field] is not None for field in self.before.unknown)):
-            raise ValueError("previous 只承载已知前值依据，未知前值必须为 null")
+            raise ValueError("previous chỉ mang căn cứ giá trị trước đã biết, giá trị trước chưa rõ phải là null")
         if self.operation == "create":
             if (self.before_version is not None or self.after_version != 1 or self.before.values.model_fields_set
                     or set(self.before.unknown.values()) != {"nonexistent"} or any(self.previous.values())
                     or self.replaces or self.resolves):
-                raise ValueError("新建起点必须使用真实版本 1 和不存在的 before")
+                raise ValueError("Điểm khởi tạo mới phải dùng phiên bản thật 1 và before không tồn tại")
         elif self.before_version is None or self.after_version != self.before_version + 1:
-            raise ValueError("已有实体一次确认只能增加一个真实版本")
+            raise ValueError("Với thực thể đã có, mỗi lần xác nhận chỉ được tăng một phiên bản thật")
         if self.operation in {"create", "establish", "correct_initial"} and self.kind != "start":
-            raise ValueError("起点命令不能保存成章后变化")
+            raise ValueError("Lệnh điểm khởi đầu không được lưu thành thay đổi sau chương")
         if self.operation == "change" and self.kind != "change":
-            raise ValueError("章后变化命令必须保存变化记录")
+            raise ValueError("Lệnh thay đổi sau chương phải lưu bản ghi thay đổi")
         if self.kind == "start" and self.source.kind != "author":
-            raise ValueError("人工起点必须使用作者说明")
+            raise ValueError("Điểm khởi đầu thủ công phải dùng mô tả của tác giả")
         if self.kind == "change" and (self.source.kind != "chapter" or self.position.intent != "chapter_after"):
-            raise ValueError("章后变化必须有章后位置和原文证据")
+            raise ValueError("Thay đổi sau chương phải có vị trí sau chương và bằng chứng nguyên văn")
         if self.source.kind == "chapter" and self.source.evidence.chapter_id != self.position.target_id:
-            raise ValueError("变化证据必须来自生效章节")
+            raise ValueError("Bằng chứng thay đổi phải đến từ chương đang hiệu lực")
         if self.position.intent == "book_start" and self.position.target_id != self.novel_id:
-            raise ValueError("书初锚必须属于当前小说")
+            raise ValueError("Neo đầu sách phải thuộc tiểu thuyết hiện tại")
         if self.operation == "correct_initial" and self.position.intent != "book_start":
-            raise ValueError("初始更正只能作用于书初")
+            raise ValueError("Hiệu chỉnh ban đầu chỉ được áp dụng cho phần đầu sách")
         if self.operation == "replace" and not self.replaces:
-            raise ValueError("替代命令必须明确原记录")
+            raise ValueError("Lệnh thay thế phải chỉ rõ bản ghi gốc")
         references = [*self.previous.values(), *self.replaces.values(),
                       *(identity for values in self.resolves.values() for identity in values)]
         if self.history_id in references:
-            raise ValueError("人物事实不能引用自己作为前值或处置对象")
+            raise ValueError("Dữ kiện nhân vật không được tự tham chiếu làm giá trị trước hoặc đối tượng xử lý")
         for field, values in self.resolves.items():
             if not values or len(values) != len(set(values)):
-                raise ValueError("解除失效必须列出不重复的原记录")
+                raise ValueError("Hủy vô hiệu phải liệt kê các bản ghi gốc không trùng lặp")
         for state in self.validity.values():
             if state.state == "replaced" and state.by_history_id == self.history_id:
-                raise ValueError("人物事实不能被自己替代")
+                raise ValueError("Dữ kiện nhân vật không được chính nó thay thế")
         return self
 
 
@@ -365,13 +365,13 @@ class CharacterFactSourceObservationV1(StrictResponseModel):
     def validate_observation(self) -> "CharacterFactSourceObservationV1":
         """缺失来源和无引文位置锚不能伪造正文或修订。"""
         if self.exists != (self.content_hash is not None and self.is_deleted is not None):
-            raise ValueError("章节存在状态与正文观察不一致")
+            raise ValueError("Trạng thái tồn tại của chương không nhất quán với quan sát văn bản chính")
         if not self.exists and (self.content_hash is not None or self.is_deleted is not None or self.parents_active):
-            raise ValueError("缺失章节不能带正文或活动父级")
+            raise ValueError("Chương bị thiếu không được mang văn bản chính hoặc cha đang hoạt động")
         if self.revision_id is None and (self.revision_version is not None or self.revision_hash is not None or self.revision_valid):
-            raise ValueError("无修订来源不能声明修订有效")
+            raise ValueError("Không có nguồn bản chỉnh sửa thì không được khai bản chỉnh sửa là hợp lệ")
         if self.revision_valid and (self.revision_hash is None or self.revision_version is None):
-            raise ValueError("有效修订必须保存其实际版本和正文摘要")
+            raise ValueError("Bản chỉnh sửa hợp lệ phải lưu phiên bản thực tế và tóm tắt văn bản chính")
         return self
 
 
@@ -392,16 +392,16 @@ class CharacterFactReadV1(StrictResponseModel):
     def validate_fingerprint(self) -> "CharacterFactReadV1":
         """摘要只核对原冻结内容，不查询今天的目录或来源。"""
         if len(self.character_ids) != len(set(self.character_ids)):
-            raise ValueError("人物读取选择不能重复")
+            raise ValueError("Lựa chọn đọc nhân vật không được trùng lặp")
         identities = {row.entity_id: row for row in self.identities}
         if (len(identities) != len(self.identities)
                 or len({row.character_id for row in self.identities}) != len(self.identities)
                 or any(row.character_id not in self.character_ids for row in self.identities)):
-            raise ValueError("读取身份必须是不重复的原业务选择")
+            raise ValueError("Định danh đọc phải là lựa chọn nghiệp vụ gốc duy nhất không trùng lặp")
         if len({row.history_id for row in self.history}) != len(self.history):
-            raise ValueError("读取记录观察不能重复")
+            raise ValueError("Quan sát bản ghi đọc không được trùng lặp")
         if canonical_request_hash(self.model_dump(exclude={"fingerprint"})) != self.fingerprint:
-            raise ValueError("人物读取摘要与冻结内容不一致")
+            raise ValueError("Tóm tắt đọc nhân vật không nhất quán với nội dung đã đóng băng")
         return self
 
 
@@ -423,16 +423,16 @@ class CharacterFactsAtPositionV1(StrictResponseModel):
         """已知、未知精确分区；作废不解除字段接管。"""
         known = self.values.model_fields_set
         if known & self.unknown.keys() or known | self.unknown.keys() != CHARACTER_FACT_FIELDS:
-            raise ValueError("读取必须明确每个人物字段已知或未知")
+            raise ValueError("Bản đọc phải nêu rõ từng trường nhân vật là đã biết hay chưa rõ")
         if (self.origins.keys() != known or self.blockers.keys() != {
             field for field, reason in self.unknown.items() if reason in {"voided", "needs_review", "unresolved_reference"}
         }):
-            raise ValueError("已知值须有来源，待复核不能带可用值")
+            raise ValueError("Giá trị đã biết phải có nguồn; mục chờ phúc tra không được mang giá trị khả dụng")
         if len(self.claimed_fields) != len(set(self.claimed_fields)) or not known <= set(self.claimed_fields):
-            raise ValueError("接管字段不重复且须包含全部已知字段")
+            raise ValueError("Các trường tiếp quản không trùng lặp và phải gồm toàn bộ trường đã biết")
         for field, identities in self.blockers.items():
             if self.unknown[field] not in {"voided", "needs_review", "unresolved_reference"} or not identities or len(identities) != len(set(identities)):
-                raise ValueError("待复核须明确不重复的阻断记录")
+                raise ValueError("Mục chờ phúc tra phải nêu rõ các bản ghi chặn không trùng lặp")
         return self
 
 
@@ -503,7 +503,7 @@ class CharacterFactNewTargetV1(StrictResponseModel):
     def require_actual_absence(cls, value: object) -> object:
         """新建预览必须明确确认目标和同名查询均为空。"""
         if isinstance(value, dict) and value.get("entity_exists") is not False:
-            raise ValueError("新建预览必须确认物理身份不存在")
+            raise ValueError("Bản xem trước tạo mới phải xác nhận định danh vật lý chưa tồn tại")
         return value
 
 
@@ -574,27 +574,27 @@ class CharacterFactPreviewInputV1(RootModel[Annotated[
             return self
         fields = set(value.fields)
         if len(fields) != len(value.fields):
-            raise ValueError("预览字段不能重复")
+            raise ValueError("Trường trong bản xem trước không được trùng lặp")
         if value.operation == "create":
             return self
         if not value.replaces.keys() <= fields or not value.resolves.keys() <= fields:
-            raise ValueError("处置对象必须属于所选字段")
+            raise ValueError("Đối tượng xử lý phải thuộc các trường đã chọn")
         if value.operation in {"establish", "correct_initial"} and value.kind != "start":
-            raise ValueError("起点命令必须预览起点")
+            raise ValueError("Lệnh điểm khởi đầu phải xem trước điểm khởi đầu")
         if value.operation == "change" and value.kind != "change":
-            raise ValueError("变化命令必须预览章后变化")
+            raise ValueError("Lệnh thay đổi phải xem trước thay đổi sau chương")
         if value.kind == "start" and value.source.kind != "author":
-            raise ValueError("人工起点需要作者说明")
+            raise ValueError("Điểm khởi đầu thủ công cần mô tả của tác giả")
         if value.kind == "change" and (value.source.kind != "chapter" or value.position.intent != "chapter_after"):
-            raise ValueError("变化预览需要章后位置和章节证据")
+            raise ValueError("Xem trước thay đổi cần vị trí sau chương và bằng chứng chương")
         if value.source.kind == "chapter" and value.source.evidence.chapter_id != value.position.target_id:
-            raise ValueError("章节证据必须属于生效位置")
+            raise ValueError("Bằng chứng chương phải thuộc vị trí đang hiệu lực")
         if value.operation == "correct_initial" and value.position.intent != "book_start":
-            raise ValueError("更正初始只能选择书初")
+            raise ValueError("Hiệu chỉnh ban đầu chỉ được chọn phần đầu sách")
         if value.operation == "replace" and not value.replaces:
-            raise ValueError("替代预览必须选定原记录")
+            raise ValueError("Xem trước thay thế phải chọn bản ghi gốc")
         if any(not identities or len(identities) != len(set(identities)) for identities in value.resolves.values()):
-            raise ValueError("解除失效必须列出不重复原记录")
+            raise ValueError("Hủy vô hiệu phải liệt kê các bản ghi gốc không trùng lặp")
         return self
 
 
@@ -609,7 +609,7 @@ class CharacterFactReferenceReadV1(StrictResponseModel):
     def validate_state_identity(self) -> "CharacterFactReferenceReadV1":
         """卷状态本身使用物理 ID，其引用和冻结身份必须相同。"""
         if self.reference.entity_type.endswith("_volume_state") and self.reference.entity_id != self.entity_id:
-            raise ValueError("卷状态引用必须与冻结物理身份一致")
+            raise ValueError("Tham chiếu trạng thái quyển phải nhất quán với định danh vật lý đã đóng băng")
         return self
 
 
@@ -730,16 +730,16 @@ class CharacterFactBasisV1(StrictResponseModel):
         fields = set(self.fields)
         if (len(fields) != len(self.fields) or fields != self.before.values.model_fields_set | self.before.unknown.keys()
                 or fields != self.previous.keys() or not self.replaces.keys() <= fields or not self.resolves.keys() <= fields):
-            raise ValueError("预览字段、前值和处置对象不一致")
+            raise ValueError("Trường xem trước, giá trị trước và đối tượng xử lý không nhất quán")
         if (any(self.previous[field] is None for field in self.before.values.model_fields_set)
                 or any(self.previous[field] is not None for field in self.before.unknown)):
-            raise ValueError("previous 只承载已知前值依据，未知前值必须为 null")
+            raise ValueError("previous chỉ mang căn cứ giá trị trước đã biết, giá trị trước chưa rõ phải là null")
         required_blockers = {field for field, reason in self.before.unknown.items()
                              if reason in {"voided", "needs_review", "unresolved_reference"}}
         if self.blockers.keys() != required_blockers or any(
             not identities or len(identities) != len(set(identities)) for identities in self.blockers.values()
         ):
-            raise ValueError("未知阻断必须逐字段保留不重复的原记录来源")
+            raise ValueError("Mục chặn chưa rõ phải giữ nguồn bản ghi gốc riêng cho từng trường, không trùng lặp")
         field_sources = {row.history_id: row for row in self.field_sources}
         source_ids = {identity for identity in self.previous.values() if identity is not None} | {
             identity for identities in self.blockers.values() for identity in identities
@@ -747,107 +747,107 @@ class CharacterFactBasisV1(StrictResponseModel):
         if len(field_sources) != len(self.field_sources) or field_sources.keys() != source_ids or any(
             row.novel_id != self.target.novel_id or row.entity_id != self.target.entity_id for row in self.field_sources
         ):
-            raise ValueError("字段来源必须精确冻结同人物前值及阻断记录")
+            raise ValueError("Nguồn trường phải đóng băng chính xác giá trị trước và các bản ghi chặn của cùng nhân vật")
         for field in fields:
             identities = ([self.previous[field]] if self.previous[field] is not None else []) + self.blockers.get(field, [])
             if any(field not in field_sources[identity].after.model_fields_set for identity in identities):
-                raise ValueError("字段来源记录必须包含对应字段")
+                raise ValueError("Bản ghi nguồn trường phải chứa đúng trường tương ứng")
             if self.previous[field] is not None and getattr(self.before.values, field) != getattr(field_sources[self.previous[field]].after, field):
-                raise ValueError("已知前值必须等于冻结来源字段值")
+                raise ValueError("Giá trị trước đã biết phải bằng giá trị trường của nguồn đã đóng băng")
         if (self.operation == "create") != (self.target.kind == "new"):
-            raise ValueError("新建与已有人物目标不能混用")
+            raise ValueError("Không được trộn mục tiêu nhân vật tạo mới và nhân vật đã có")
         if self.operation in {"create", "establish", "correct_initial"} and self.kind != "start":
-            raise ValueError("起点预览不能声明为章后变化")
+            raise ValueError("Xem trước điểm khởi đầu không được khai là thay đổi sau chương")
         if self.operation == "change" and self.kind != "change":
-            raise ValueError("变化命令必须预览章后变化")
+            raise ValueError("Lệnh thay đổi phải xem trước thay đổi sau chương")
         if self.operation == "create" and (self.before.values.model_fields_set
                 or set(self.before.unknown.values()) != {"nonexistent"} or any(self.previous.values())
                 or self.replaces or self.resolves or self.targets):
-            raise ValueError("新建预览不能伪造已经存在的前值或历史")
+            raise ValueError("Xem trước tạo mới không được giả mạo giá trị trước hoặc lịch sử đã tồn tại")
         if self.kind == "start" and self.source.kind != "author":
-            raise ValueError("起点预览必须是人工来源")
+            raise ValueError("Xem trước điểm khởi đầu phải có nguồn thủ công")
         if self.kind == "change" and (self.source.kind != "chapter" or self.position.intent != "chapter_after"):
-            raise ValueError("变化预览必须是有章后证据的变化")
+            raise ValueError("Xem trước thay đổi phải là thay đổi có bằng chứng sau chương")
         if self.position.intent == "book_start" and self.position.target_id != self.target.novel_id:
-            raise ValueError("书初预览必须属于目标小说")
+            raise ValueError("Xem trước đầu sách phải thuộc tiểu thuyết đích")
         if self.source.kind == "chapter" and self.source.evidence.chapter_id != self.position.target_id:
-            raise ValueError("预览引文必须来自生效章节")
+            raise ValueError("Trích dẫn trong bản xem trước phải đến từ chương đang hiệu lực")
         if self.operation == "correct_initial" and self.position.intent != "book_start":
-            raise ValueError("初始更正预览只能选择书初")
+            raise ValueError("Xem trước hiệu chỉnh ban đầu chỉ được chọn phần đầu sách")
         targets = {record.history_id: record for record in self.targets}
         if len(targets) != len(self.targets) or any(
             row.novel_id != self.target.novel_id or row.entity_id != self.target.entity_id for row in self.targets
         ):
-            raise ValueError("处置记录必须是不重复的同书同人物记录")
+            raise ValueError("Bản ghi xử lý phải là bản ghi duy nhất không trùng, cùng sách và cùng nhân vật")
         if self.operation == "void":
             if self.void_targets.keys() != fields or self.replaces or self.resolves:
-                raise ValueError("作废预览必须逐字段冻结唯一目标，不能混入替代或解除")
+                raise ValueError("Xem trước hủy bỏ phải đóng băng mục tiêu duy nhất cho từng trường, không được trộn thay thế hoặc hủy vô hiệu")
             for field, identity in self.void_targets.items():
                 row = targets.get(identity)
                 if (row is None or field not in row.after.model_fields_set or row.validity[field].state != "active"
                         or row.position != self.position or row.kind != self.kind or row.source != self.source):
-                    raise ValueError("作废目标必须是同位置、同类型及同来源的原活动字段")
+                    raise ValueError("Mục tiêu hủy bỏ phải là trường gốc đang hoạt động cùng vị trí, cùng loại và cùng nguồn")
         elif self.void_targets:
-            raise ValueError("非作废预览不能携带作废目标")
+            raise ValueError("Xem trước không phải hủy bỏ không được mang mục tiêu hủy bỏ")
         for field, identity in self.replaces.items():
             row = targets.get(identity)
             if (row is None or field not in row.after.model_fields_set or row.validity[field].state != "active"
                     or row.position != self.position or row.kind != self.kind):
-                raise ValueError("替代对象必须是该位置同类型的活动字段")
+                raise ValueError("Đối tượng thay thế phải là trường đang hoạt động cùng loại tại vị trí đó")
         for field, identities in self.resolves.items():
             if not identities or len(identities) != len(set(identities)) or any(
                 identity not in targets or field not in targets[identity].after.model_fields_set for identity in identities
             ):
-                raise ValueError("解除失效必须冻结对应字段的原记录")
+                raise ValueError("Hủy vô hiệu phải đóng băng bản ghi gốc của trường tương ứng")
         if self.operation == "replace" and not self.replaces:
-            raise ValueError("替代预览必须选择原记录")
+            raise ValueError("Xem trước thay thế phải chọn bản ghi gốc")
         if self.target.kind == "new":
             if self.legacy_sources:
-                raise ValueError("新建人物不能夹带旧主档或卷状态")
+                raise ValueError("Tạo nhân vật mới không được kèm hồ sơ chính cũ hay trạng thái quyển")
         else:
             if not self.legacy_sources or self.legacy_sources[0].kind != "profile":
-                raise ValueError("已有人物预览必须先冻结主档保存文字")
+                raise ValueError("Xem trước nhân vật đã có phải đóng băng trước văn bản lưu hồ sơ chính")
             profile = self.legacy_sources[0]
             if (ObjectId(profile.entity_id) != ObjectId(self.target.entity_id) or profile.character_id != self.target.character_id
                     or profile.version != self.target.version or not profile.raw.model_fields_set <= fields & CHARACTER_FACT_PROFILE_FIELDS):
-                raise ValueError("主档原文的身份、版本和字段必须等于所选人物")
+                raise ValueError("Định danh, phiên bản và trường của nguyên văn hồ sơ chính phải bằng đúng nhân vật đã chọn")
             situation_fields = fields & CHARACTER_FACT_SITUATION_FIELDS
             if not situation_fields and (profile.notes.model_fields_set or len(self.legacy_sources) != 1):
-                raise ValueError("未选择处境字段时不能夹带旧初始说明或卷状态")
+                raise ValueError("Khi chưa chọn trường bối cảnh thì không được kèm mô tả ban đầu cũ hay trạng thái quyển")
             state_raw_fields = (situation_fields - {"actual_goal"}) | ({"current_goal"} if "actual_goal" in fields else set())
             state_ids, volumes = [], {}
             for state in self.legacy_sources[1:]:
                 if (state.kind != "volume_state" or state.character_id != self.target.character_id
                         or not state.raw.model_fields_set <= state_raw_fields):
-                    raise ValueError("卷状态原文必须属于所选人物且只含所选处境字段")
+                    raise ValueError("Nguyên văn trạng thái quyển phải thuộc nhân vật đã chọn và chỉ chứa các trường bối cảnh đã chọn")
                 state_ids.append(ObjectId(state.state_id))
                 volume_id = ObjectId(state.volume_id)
                 if volume_id in volumes and volumes[volume_id] != state.volume:
-                    raise ValueError("同一卷在原预览中不能保存矛盾快照")
+                    raise ValueError("Cùng một quyển không được lưu snapshot mâu thuẫn trong bản xem trước gốc")
                 volumes[volume_id] = state.volume
             if state_ids != sorted(set(state_ids)):
-                raise ValueError("卷状态原文必须按不重复物理身份排序")
+                raise ValueError("Nguyên văn trạng thái quyển phải sắp xếp theo định danh vật lý không trùng lặp")
         reference_keys = [(ref.entity_type, ref.entity_id) for ref in self.references]
         observed_keys = [(read.reference.entity_type, read.reference.entity_id) for read in self.reference_reads]
         if (len(reference_keys) != len(set(reference_keys)) or len(observed_keys) != len(set(observed_keys))
                 or set(reference_keys) != set(observed_keys)):
-            raise ValueError("引用依据必须逐项冻结唯一实际身份和业务版本")
+            raise ValueError("Căn cứ tham chiếu phải đóng băng từng mục với định danh thực tế duy nhất và phiên bản nghiệp vụ")
         observations = {}
         for read in self.reads:
             if read.novel_id != self.target.novel_id:
-                raise ValueError("预览读取不能跨小说")
+                raise ValueError("Bản đọc xem trước không được vượt sang tiểu thuyết khác")
             if self.target.kind == "new":
                 if read.character_ids or read.identities or read.history:
-                    raise ValueError("新建预览必须冻结人物尚不存在的空读取")
+                    raise ValueError("Xem trước tạo mới phải đóng băng bản đọc trống khi nhân vật chưa tồn tại")
             else:
                 expected_identity = {"entity_id": self.target.entity_id, "character_id": self.target.character_id,
                                      "name": self.target.name, "is_deleted": False}
                 if read.character_ids != [self.target.character_id] or [row.model_dump() for row in read.identities] != [expected_identity]:
-                    raise ValueError("预览目标必须等于原读取的活动人物身份")
+                    raise ValueError("Mục tiêu xem trước phải bằng định danh nhân vật đang hoạt động của bản đọc gốc")
             for observation in read.history:
                 previous_observation = observations.setdefault(observation.history_id, observation)
                 if observation != previous_observation:
-                    raise ValueError("同一原读取记录不能保存矛盾观察")
+                    raise ValueError("Cùng một bản ghi đọc gốc không được lưu quan sát mâu thuẫn")
         snapshots = {}
         for row in [*self.targets, *self.field_sources]:
             previous_snapshot = snapshots.setdefault(row.history_id, row)
@@ -857,9 +857,9 @@ class CharacterFactBasisV1(StrictResponseModel):
                     or observation.validity != row.validity
                     or canonical_request_hash(immutable) != observation.immutable_fingerprint
                     or self.target.kind != "existing" or row.character_id != self.target.character_id):
-                raise ValueError("预览来源和处置快照必须精确绑定原读取的同人物记录观察")
+                raise ValueError("Nguồn xem trước và snapshot xử lý phải gắn chính xác với quan sát bản ghi cùng nhân vật của bản đọc gốc")
         if canonical_request_hash(self.model_dump(exclude={"fingerprint"}, exclude_unset=True)) != self.fingerprint:
-            raise ValueError("预览摘要与冻结内容不一致")
+            raise ValueError("Tóm tắt bản xem trước không nhất quán với nội dung đã đóng băng")
         return self
 
 
@@ -873,7 +873,7 @@ class CharacterFactPreviewV1(StrictResponseModel):
     def validate_values(self) -> "CharacterFactPreviewV1":
         """显示给作者的原值必须就是冻结依据里的原值。"""
         if self.values != self.basis.before:
-            raise ValueError("预览显示与冻结原值不一致")
+            raise ValueError("Giá trị hiển thị trong bản xem trước không nhất quán với giá trị gốc đã đóng băng")
         return self
 
 
@@ -919,19 +919,19 @@ class CharacterFactConfirmV1(RootModel[Annotated[
         command = self.root
         basis = command.basis
         if command.operation != basis.operation:
-            raise ValueError("确认动作与原预览不一致")
+            raise ValueError("Hành động xác nhận không nhất quán với bản xem trước gốc")
         if command.operation != "create" and command.expected_version != basis.target.version:
-            raise ValueError("确认版本与原预览不一致")
+            raise ValueError("Phiên bản xác nhận không nhất quán với bản xem trước gốc")
         if command.operation == "void":
             targets = {row.history_id: row for row in basis.targets}
             if command.targets != basis.void_targets:
-                raise ValueError("作废目标与原预览不一致")
+                raise ValueError("Mục tiêu hủy bỏ không nhất quán với bản xem trước gốc")
             for field, identity in command.targets.items():
                 row = targets.get(identity)
                 if row is None or field not in row.after.model_fields_set or row.validity[field].state != "active":
-                    raise ValueError("只能作废原预览中明确选定的活动字段")
+                    raise ValueError("Chỉ được hủy bỏ các trường đang hoạt động đã chọn rõ trong bản xem trước gốc")
         elif command.after.model_fields_set != set(basis.fields):
-            raise ValueError("确认值必须精确对应原预览字段")
+            raise ValueError("Giá trị xác nhận phải khớp chính xác với trường trong bản xem trước gốc")
         return self
 
 
@@ -964,20 +964,20 @@ class CharacterFactResultV1(StrictResponseModel):
         """只有原子新建从不存在变为版本一，作废不制造变化行。"""
         if self.operation == "create":
             if self.before_version is not None or self.after_version != 1:
-                raise ValueError("新建结果必须使用真实创建版本一")
+                raise ValueError("Kết quả tạo mới phải dùng phiên bản tạo thật bằng 1")
         elif self.before_version is None or self.after_version != self.before_version + 1:
-            raise ValueError("确认结果只能增加一个人物版本")
+            raise ValueError("Kết quả xác nhận chỉ được tăng một phiên bản nhân vật")
         if (self.operation == "void") != (self.record is None):
-            raise ValueError("只有作废结果没有新事实记录")
+            raise ValueError("Chỉ có kết quả hủy bỏ, không có bản ghi dữ kiện mới")
         if self.record is not None:
             for field in ("operation", "novel_id", "entity_id", "character_id", "character_name", "before_version", "after_version", "confirmed_at"):
                 if getattr(self.record, field) != getattr(self, field):
-                    raise ValueError("确认结果和新记录身份、版本或时间不一致")
+                    raise ValueError("Kết quả xác nhận không nhất quán với định danh, phiên bản hoặc thời gian của bản ghi mới")
             if any(state.state != "active" for state in self.record.validity.values()):
-                raise ValueError("首次成功记录的字段必须是当时 active 快照")
+                raise ValueError("Các trường của bản ghi thành công đầu tiên phải là snapshot active tại thời điểm đó")
         keys = [(row.history_id, row.field) for row in self.validity_changes]
         if len(keys) != len(set(keys)):
-            raise ValueError("同一记录字段不能在一个命令中重复处置")
+            raise ValueError("Không được xử lý trùng một trường của bản ghi trong cùng một lệnh")
         return self
 
 
@@ -1017,14 +1017,14 @@ class CharacterFactReceiptV1(StrictResponseModel):
                 or self.novel_id != self.request.novel_id or self.novel_id != basis.target.novel_id or self.novel_id != result.novel_id
                 or self.request.target_id != basis.target.entity_id or result.entity_id != basis.target.entity_id
                 or self.position != basis.position or self.source != basis.source or self.protected_sources != basis.protected_sources):
-            raise ValueError("人物事实回执的动作、身份或来源与原请求不一致")
+            raise ValueError("Hành động, định danh hoặc nguồn của biên nhận dữ kiện nhân vật không nhất quán với yêu cầu gốc")
         if canonical_request_hash(self.request.model_dump(exclude_unset=True)) != self.request_hash:
-            raise ValueError("人物事实回执请求摘要不一致")
+            raise ValueError("Tóm tắt yêu cầu của biên nhận dữ kiện nhân vật không nhất quán")
         if basis.target.kind == "existing" and (result.character_id != basis.target.character_id
                 or result.character_name != basis.target.name or result.before_version != basis.target.version):
-            raise ValueError("人物事实回执必须保存原目标和版本")
+            raise ValueError("Biên nhận dữ kiện nhân vật phải lưu mục tiêu và phiên bản gốc")
         if basis.target.kind == "new" and result.character_name != basis.target.candidate.name:
-            raise ValueError("新建结果名称必须来自原预览候选")
+            raise ValueError("Tên trong kết quả tạo mới phải đến từ ứng viên của bản xem trước gốc")
         if result.record is not None:
             record = result.record
             if (record.kind != basis.kind or record.position != basis.position or record.source != basis.source
@@ -1032,7 +1032,7 @@ class CharacterFactReceiptV1(StrictResponseModel):
                     or record.replaces != basis.replaces or record.resolves != basis.resolves
                     or record.protected_sources != basis.protected_sources
                     or record.after.model_dump(exclude_unset=True) != command.after.model_dump(exclude_unset=True)):
-                raise ValueError("确认记录必须与原预览及作者 after 一致")
+                raise ValueError("Bản ghi xác nhận phải nhất quán với bản xem trước gốc và after của tác giả")
             expected_changes = {(identity, field, "replaced", record.history_id) for field, identity in basis.replaces.items()}
         else:
             expected_changes = {(identity, field, "voided", self.idempotency_key_hash) for field, identity in command.targets.items()}
@@ -1042,7 +1042,7 @@ class CharacterFactReceiptV1(StrictResponseModel):
             for row in result.validity_changes
         }
         if actual_changes != expected_changes:
-            raise ValueError("回执逐字段有效性结果与原处置请求不一致")
+            raise ValueError("Kết quả hiệu lực theo từng trường trong biên nhận không nhất quán với yêu cầu xử lý gốc")
         return self
 
 
@@ -1056,11 +1056,11 @@ def validate_character_fact_receipt(document: dict) -> dict:
     """
     if (not isinstance(document.get("_id"), ObjectId) or not isinstance(document.get("novel_id"), ObjectId)
             or "receipt_id" in document):
-        raise ValueError("人物事实回执必须保存 BSON 身份")
+        raise ValueError("Biên nhận dữ kiện nhân vật phải lưu định danh BSON")
     if not isinstance(document.get("created_at"), datetime):
-        raise ValueError("人物事实回执创建时间必须保存为 BSON datetime")
+        raise ValueError("Thời gian tạo biên nhận dữ kiện nhân vật phải lưu dạng BSON datetime")
     if canonical_request_hash(document.get("request")) != document.get("request_hash"):
-        raise ValueError("人物事实回执摘要必须对应保存的原请求")
+        raise ValueError("Tóm tắt biên nhận dữ kiện nhân vật phải khớp với yêu cầu gốc đã lưu")
     payload = {**document, "receipt_id": str(document["_id"]), "novel_id": str(document["novel_id"])}
     del payload["_id"]
     CharacterFactReceiptV1.model_validate(payload)
@@ -1076,9 +1076,9 @@ def parse_character_fact_record(document: dict) -> dict:
         保留原文、日期和稀疏字段的严格记录字典。
     """
     if "history_id" in document or any(not isinstance(document.get(field), ObjectId) for field in ("_id", "novel_id", "entity_id")):
-        raise ValueError("人物事实记录必须保存唯一的 BSON 身份")
+        raise ValueError("Bản ghi dữ kiện nhân vật phải lưu định danh BSON duy nhất")
     if not isinstance(document.get("confirmed_at"), datetime):
-        raise ValueError("人物事实记录确认时间必须保存为 BSON datetime")
+        raise ValueError("Thời gian xác nhận bản ghi dữ kiện nhân vật phải lưu dạng BSON datetime")
     payload = {**document, "history_id": str(document["_id"]),
                "novel_id": str(document["novel_id"]), "entity_id": str(document["entity_id"])}
     del payload["_id"]
@@ -1110,5 +1110,5 @@ class CharacterFactQueryV1(StrictRequestModel):
     def validate_selection(self) -> "CharacterFactQueryV1":
         """保留空选择，拒绝重复人物，避免显示和读取依据数量不一致。"""
         if len(self.character_ids) != len(set(self.character_ids)):
-            raise ValueError("人物查询不能重复选择同一人物")
+            raise ValueError("Truy vấn nhân vật không được chọn trùng cùng một nhân vật")
         return self

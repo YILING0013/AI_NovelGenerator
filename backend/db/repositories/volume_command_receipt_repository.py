@@ -67,7 +67,7 @@ class VolumeCommandReceiptRepository(BaseRepository):
         try:
             result = await self.collection.insert_one(prepared, session=session)
         except PyMongoDuplicateKeyError as exc:
-            raise DuplicateKeyError("卷命令幂等键已被并发请求占用") from exc
+            raise DuplicateKeyError("Khóa idempotent của lệnh quyển đã bị yêu cầu đồng thời chiếm chỗ") from exc
         return {**prepared, "_id": result.inserted_id}
 
 volume_command_receipt_repo = VolumeCommandReceiptRepository()

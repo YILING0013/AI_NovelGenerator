@@ -24,10 +24,11 @@ class ProviderReferencedError(ValueError):
         self.references = references
         aliases = sorted({item["provider"] for item in references})
         names = list(dict.fromkeys(item["flow_name"] for item in references))
-        extra = f"等 {len(names)} 个方案" if len(names) > 3 else ""
+        extra = f"khoảng {len(names)} phương án" if len(names) > 3 else ""
         super().__init__(
-            f"Provider {', '.join(aliases)} 仍被任务方案「{'、'.join(names[:3])}」{extra}使用，"
-            "请先在这些方案中解除引用后再删除"
+            f"Provider {', '.join(aliases)} vẫn đang được các phương án tác vụ "
+            f"“{', '.join(names[:3])}”{extra} sử dụng, "
+            "hãy bỏ tham chiếu trong các phương án đó trước khi xóa"
         )
 
 

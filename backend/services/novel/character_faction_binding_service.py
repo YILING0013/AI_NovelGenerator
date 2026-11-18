@@ -105,7 +105,7 @@ async def _load_usable_binding_endpoint_signatures(
     ]
     if missing_characters or missing_factions:
         raise NotFoundError(
-            "角色—势力绑定端点不存在于当前小说: "
+            "Điểm cuối liên kết nhân vật—thế lực không tồn tại trong tiểu thuyết hiện tại: "
             f"characters={missing_characters}, factions={missing_factions}"
         )
     invalid_characters = [
@@ -124,7 +124,7 @@ async def _load_usable_binding_endpoint_signatures(
     ]
     if invalid_characters or invalid_factions:
         raise ValueError(
-            "角色—势力绑定端点当前不可用: "
+            "Điểm cuối liên kết nhân vật—thế lực hiện không khả dụng: "
             f"characters={invalid_characters}, factions={invalid_factions}"
         )
     character_signatures = {
@@ -177,7 +177,7 @@ async def _rollback_binding_endpoint_touches(
         except Exception as exc:  # 补偿必须继续尝试另一类端点，最后统一显式失败。
             failures.append(exc)
     if failures:
-        raise RuntimeError("绑定失败后的端点 guard 补偿未完整完成") from failures[0]
+        raise RuntimeError("Bù đắp guard điểm cuối sau lỗi liên kết chưa hoàn tất đầy đủ") from failures[0]
 
 
 async def _touch_binding_endpoint_signatures(
@@ -302,7 +302,7 @@ async def _rollback_failed_binding_write_unit(
     except Exception as exc:
         failures.append(exc)
     if failures:
-        raise RuntimeError(f"{label}失败，且 standalone 补偿未完整完成") from failures[0]
+        raise RuntimeError(f"{label}thất bại, và bù đắp standalone chưa hoàn tất đầy đủ") from failures[0]
 
 
 class CharacterFactionBindingService:
@@ -351,7 +351,7 @@ class CharacterFactionBindingService:
         ]
         if missing_characters or missing_factions:
             raise NotFoundError(
-                "角色—势力绑定端点不存在于当前小说: "
+                "Điểm cuối liên kết nhân vật—thế lực không tồn tại trong tiểu thuyết hiện tại: "
                 f"characters={missing_characters}, factions={missing_factions}"
             )
 
@@ -369,38 +369,38 @@ class CharacterFactionBindingService:
             loyalty_level = payload.get("loyalty_level")
 
             if not character_id or not faction_id:
-                errors.append(f"{label}: character_id 与 faction_id 均为必填")
+                errors.append(f"{label}: character_id và faction_id đều bắt buộc")
                 continue
             if membership_type not in INITIAL_MEMBERSHIP_TYPES:
-                errors.append(f"{label}: 初始 membership_type 仅允许 primary|secondary|covert")
+                errors.append(f"{label}: membership_type ban đầu chỉ cho phép primary|secondary|covert")
             if payload.get("is_active", True) is not True:
-                errors.append(f"{label}: 初始绑定的 is_active 必须为 true")
+                errors.append(f"{label}: is_active của liên kết ban đầu phải là true")
             if payload.get("joined_volume_id") is not None or payload.get("left_volume_id") is not None:
-                errors.append(f"{label}: 本轮全书级绑定不接受 joined/left volume ID")
+                errors.append(f"{label}: Liên kết cấp toàn sách của vòng này không chấp nhận joined/left volume ID")
             if loyalty_level is not None and (
                 isinstance(loyalty_level, bool)
                 or not isinstance(loyalty_level, int)
                 or not 1 <= loyalty_level <= 5
             ):
-                errors.append(f"{label}: loyalty_level 必须为空或为 1 至 5 的整数")
+                errors.append(f"{label}: loyalty_level phải để trống hoặc là số nguyên từ 1 đến 5")
 
             character = characters_by_id.get(character_id)
             if character is None:
-                errors.append(f"{label}: 角色 {character_id} 不存在于当前小说")
+                errors.append(f"{label}: nhân vật {character_id} không tồn tại trong tiểu thuyết hiện tại")
             elif character.get("status") != "active" or character.get("is_core_character") is not True:
-                errors.append(f"{label}: 角色 {character_id} 必须是 active 核心角色")
+                errors.append(f"{label}: nhân vật {character_id} phải là nhân vật cốt lõi active")
 
             faction = factions_by_id.get(faction_id)
             if faction is None:
-                errors.append(f"{label}: 势力 {faction_id} 不存在于当前小说")
+                errors.append(f"{label}: thế lực {faction_id} không tồn tại trong tiểu thuyết hiện tại")
             elif faction.get("level_type") != "core" or faction.get("active_status") != "active":
-                errors.append(f"{label}: 势力 {faction_id} 必须是 active 核心势力")
+                errors.append(f"{label}: thế lực {faction_id} phải là thế lực cốt lõi active")
 
             if membership_type in INITIAL_MEMBERSHIP_TYPES:
                 semantic = (character_id, faction_id, membership_type)
                 previous_label = semantic_owner.get(semantic)
                 if previous_label is not None:
-                    conflict_errors.append(f"{label}: 与 {previous_label} 构成重复活动绑定")
+                    conflict_errors.append(f"{label}: trùng với {previous_label} tạo thành liên kết đang hoạt động trùng lặp")
                 else:
                     semantic_owner[semantic] = label
                 semantic_bindings.append(semantic)
@@ -409,7 +409,7 @@ class CharacterFactionBindingService:
                 previous_primary = primary_owner.get(character_id)
                 if previous_primary is not None:
                     conflict_errors.append(
-                        f"{label}: 角色 {character_id} 已在 {previous_primary} 声明主归属"
+                        f"{label}: nhân vật {character_id} đã được {previous_primary} khai báo là thuộc tính chính"
                     )
                 else:
                     primary_owner[character_id] = label
@@ -421,7 +421,7 @@ class CharacterFactionBindingService:
         )
         for binding in existing_semantic:
             conflict_errors.append(
-                "活动绑定已存在: "
+                "Liên kết đang hoạt động đã tồn tại: "
                 f"{binding['character_id']}->{binding['faction_id']}({binding['membership_type']})"
             )
 
@@ -437,13 +437,13 @@ class CharacterFactionBindingService:
         )
         for binding in existing_primary:
             conflict_errors.append(
-                f"角色 {binding['character_id']} 已有活动主归属绑定 {binding['binding_id']}"
+                f"Nhân vật {binding['character_id']} đã có liên kết thuộc tính chính đang hoạt động {binding['binding_id']}"
             )
         if errors:
             return errors
         if conflict_errors:
             raise DuplicateKeyError(
-                "角色—势力绑定唯一性冲突: " + "; ".join(conflict_errors)
+                "Xung đột tính duy nhất của liên kết nhân vật—thế lực: " + "; ".join(conflict_errors)
             )
         return []
 
@@ -472,7 +472,7 @@ class CharacterFactionBindingService:
             session=session,
         )
         if errors:
-            raise ValueError("角色—势力绑定校验失败: " + "; ".join(errors))
+            raise ValueError("Liên kết nhân vật—thế lực không vượt qua kiểm tra: " + "; ".join(errors))
         endpoint_signatures = await _load_usable_binding_endpoint_signatures(
             novel_id,
             normalized_payloads,
@@ -545,7 +545,7 @@ class CharacterFactionBindingService:
                 session=session,
             )
             if current_signatures != endpoint_signatures:
-                raise DuplicateKeyError("角色—势力绑定创建期间端点已被并发修改，请重试")
+                raise DuplicateKeyError("Điểm cuối đã bị sửa đổi đồng thời trong lúc tạo liên kết nhân vật-thế lực, hãy thử lại")
         except Exception as exc:
             if session is None:
                 failures: list[Exception] = []
@@ -558,7 +558,7 @@ class CharacterFactionBindingService:
                             )
                         )
                         if compensated != len(created):
-                            raise RuntimeError("绑定精确补偿数量不完整")
+                            raise RuntimeError("Số lượng bù trừ chính xác của liên kết không đầy đủ")
                     except Exception as compensation_exc:
                         failures.append(compensation_exc)
                 try:
@@ -570,7 +570,7 @@ class CharacterFactionBindingService:
                     failures.append(compensation_exc)
                 if failures:
                     raise RuntimeError(
-                        "角色—势力绑定创建失败，且 standalone 补偿未完整完成"
+                        "Tạo liên kết nhân vật-thế lực thất bại và bù đắp standalone chưa hoàn tất đầy đủ"
                     ) from failures[0]
             raise
         return created
@@ -612,7 +612,7 @@ class CharacterFactionBindingService:
             if existing.get("creation_request_hash") != request_hash:
                 raise GenerationDomainError(
                     "IDEMPOTENCY_KEY_REUSED",
-                    "同一 Idempotency-Key 已用于不同的角色阵营绑定创建请求",
+                    "Cùng Idempotency-Key đã được dùng cho yêu cầu tạo liên kết nhân vật-thế lực khác",
                     status_code=409,
                 )
             return existing
@@ -627,8 +627,7 @@ class CharacterFactionBindingService:
                 return replay
             if source.get("membership_type") == "primary":
                 raise ValueError(
-                    "人工单条创建只允许 secondary 或 covert；"
-                    "主归属必须先创建既有绑定再使用 /primary 切换"
+                    "Tạo thủ công từng bản ghi chỉ cho phép secondary hoặc covert; thành viên chính phải tạo liên kết hiện hữu trước rồi dùng /primary để chuyển"
                 )
             source["creation_idempotency_key_hash"] = key_hash
             source["creation_request_hash"] = request_hash
@@ -702,15 +701,15 @@ class CharacterFactionBindingService:
         """
         await novel_repo.get_novel_by_id(novel_id, session=session)
         if membership_type is not None and membership_type not in INITIAL_MEMBERSHIP_TYPES:
-            raise ValueError(f"本轮不支持 membership_type={membership_type}")
+            raise ValueError(f"Vòng này không hỗ trợ membership_type={membership_type}")
         if character_id:
             character = await character_repo.get_character(novel_id, character_id, session=session)
             if character.get("status") != "active" or character.get("is_core_character") is not True:
-                raise ValueError(f"角色 {character_id} 必须是 active 核心角色")
+                raise ValueError(f"Nhân vật {character_id} phải là nhân vật cốt lõi active")
         if faction_id:
             faction = await faction_repo.get_faction(novel_id, faction_id, session=session)
             if faction.get("level_type") != "core" or faction.get("active_status") != "active":
-                raise ValueError(f"势力 {faction_id} 必须是 active 核心势力")
+                raise ValueError(f"Thế lực {faction_id} phải là thế lực cốt lõi active")
         return await character_faction_binding_repo.list_bindings(
             novel_id,
             character_id=character_id,
@@ -732,13 +731,13 @@ class CharacterFactionBindingService:
             无；版本不一致时抛出 409 领域冲突。
         """
         if isinstance(expected_version, bool) or not isinstance(expected_version, int):
-            raise ValueError("expected_version 必须为正整数")
+            raise ValueError("expected_version phải là số nguyên dương")
         if expected_version < 1:
-            raise ValueError("expected_version 必须大于等于 1")
+            raise ValueError("expected_version phải lớn hơn hoặc bằng 1")
         actual_version = int(binding["version"])
         if actual_version != expected_version:
             raise DuplicateKeyError(
-                f"角色—势力绑定 '{binding.get('binding_id')}' 版本冲突："
+                f"Liên kết nhân vật—thế lực '{binding.get('binding_id')}' 版本冲突："
                 f"expected={expected_version}, actual={actual_version}"
             )
 
@@ -824,7 +823,7 @@ class CharacterFactionBindingService:
         )
         if semantic_conflicts:
             raise DuplicateKeyError(
-                "角色—势力活动语义绑定已存在: "
+                "Liên kết ngữ nghĩa đang hoạt động nhân vật - thế lực đã tồn tại: "
                 f"{semantic_conflicts[0]['binding_id']}"
             )
         if membership_type == "primary":
@@ -838,7 +837,7 @@ class CharacterFactionBindingService:
             )
             if primary_conflicts:
                 raise DuplicateKeyError(
-                    f"角色 {character_id} 已有活动主归属绑定 "
+                    f"Nhân vật {character_id} đã có liên kết thuộc tính chính đang hoạt động "
                     f"{primary_conflicts[0]['binding_id']}"
                 )
 
@@ -862,7 +861,7 @@ class CharacterFactionBindingService:
             source = dict(payload)
         expected_version = source.pop("expected_version", None)
         if expected_version is None:
-            raise ValueError("绑定更新必须提供 expected_version")
+            raise ValueError("Cập nhật liên kết phải cung cấp expected_version")
 
         async def _update(session: AsyncClientSession | None) -> dict[str, Any]:
             """在一个写入单元内复核端点并执行绑定 CAS 更新。"""
@@ -882,16 +881,16 @@ class CharacterFactionBindingService:
                 if field in source
             }
             if not update_fields:
-                raise ValueError("绑定更新至少需要一个可修改字段")
+                raise ValueError("Cập nhật liên kết cần ít nhất một trường có thể sửa")
 
             current_type = str(current["membership_type"])
             next_type = str(
                 _normalize_scalar(update_fields.get("membership_type", current_type))
             )
             if next_type not in INITIAL_MEMBERSHIP_TYPES:
-                raise ValueError(f"不支持的 membership_type={next_type}")
+                raise ValueError(f"Không hỗ trợ membership_type={next_type}")
             if next_type != current_type and "primary" in {current_type, next_type}:
-                raise ValueError("primary 归属的进入或离开必须使用 /primary 接口")
+                raise ValueError("Việc chuyển vào hoặc rời trạng thái primary phải dùng giao diện /primary")
             if "membership_type" in update_fields:
                 update_fields["membership_type"] = next_type
             for field in ("role_title", "public_status", "notes"):
@@ -904,7 +903,7 @@ class CharacterFactionBindingService:
                 or not isinstance(loyalty_level, int)
                 or not 1 <= loyalty_level <= 5
             ):
-                raise ValueError("loyalty_level 必须为空或为 1 至 5 的整数")
+                raise ValueError("loyalty_level phải để trống hoặc là số nguyên từ 1 đến 5")
 
             character_blockers, faction_blockers = (
                 await CharacterFactionBindingService._current_blockers(
@@ -977,7 +976,7 @@ class CharacterFactionBindingService:
                     )
                     if current_signatures != endpoint_signatures:
                         raise DuplicateKeyError(
-                            "角色—势力绑定更新期间端点已被并发修改，请重试"
+                            "Điểm cuối đã bị sửa đổi đồng thời trong lúc cập nhật liên kết nhân vật-thế lực, hãy thử lại"
                         )
                 else:
                     after_blockers = (
@@ -989,7 +988,7 @@ class CharacterFactionBindingService:
                     )
                     if after_blockers != (character_blockers, faction_blockers):
                         raise DuplicateKeyError(
-                            "角色—势力绑定更新期间端点已被并发修改，请重试"
+                            "Điểm cuối đã bị sửa đổi đồng thời trong lúc cập nhật liên kết nhân vật-thế lực, hãy thử lại"
                         )
                 return written
             except Exception:
@@ -1060,7 +1059,7 @@ class CharacterFactionBindingService:
                 )
                 if primary_conflicts:
                     raise DuplicateKeyError(
-                        f"角色 {current['character_id']} 已有活动主归属绑定 "
+                        f"Nhân vật {current['character_id']} đã có liên kết thuộc tính chính đang hoạt động "
                         f"{primary_conflicts[0]['binding_id']}"
                     )
             validation_view = {
@@ -1117,7 +1116,7 @@ class CharacterFactionBindingService:
                     )
                     if current_signatures != endpoint_signatures:
                         raise DuplicateKeyError(
-                            "角色—势力绑定启停期间端点已被并发修改，请重试"
+                            "Điểm cuối đã bị sửa đổi đồng thời trong lúc bật/tắt liên kết nhân vật-thế lực, hãy thử lại"
                         )
                 else:
                     after_blockers = (
@@ -1129,7 +1128,7 @@ class CharacterFactionBindingService:
                     )
                     if after_blockers != (character_blockers, faction_blockers):
                         raise DuplicateKeyError(
-                            "角色—势力绑定启停期间端点已被并发修改，请重试"
+                            "Điểm cuối đã bị sửa đổi đồng thời trong lúc bật/tắt liên kết nhân vật-thế lực, hãy thử lại"
                         )
                 return written
             except Exception:
@@ -1168,10 +1167,10 @@ class CharacterFactionBindingService:
         source = _payload_to_dict(payload)
         expected_version = source.get("expected_version")
         if expected_version is None:
-            raise ValueError("主归属切换必须提供 expected_version")
+            raise ValueError("Chuyển thành viên chính phải cung cấp expected_version")
         replaced_expected_versions = source.get("replaced_expected_versions")
         if not isinstance(replaced_expected_versions, dict):
-            raise ValueError("replaced_expected_versions 必须为绑定版本映射")
+            raise ValueError("replaced_expected_versions phải là ánh xạ phiên bản liên kết")
         normalized_replaced_versions: dict[str, int] = {}
         for replaced_id, version in replaced_expected_versions.items():
             if (
@@ -1181,7 +1180,7 @@ class CharacterFactionBindingService:
                 or not isinstance(version, int)
                 or version < 1
             ):
-                raise ValueError("replaced_expected_versions 包含非法绑定 ID 或版本")
+                raise ValueError("replaced_expected_versions chứa ID liên kết hoặc phiên bản không hợp lệ")
             normalized_replaced_versions[replaced_id] = version
         source["replaced_expected_versions"] = normalized_replaced_versions
         key_hash = hash_idempotency_key(idempotency_key)
@@ -1209,7 +1208,7 @@ class CharacterFactionBindingService:
             if existing.get("primary_switch_request_hash") != request_hash:
                 raise GenerationDomainError(
                     "IDEMPOTENCY_KEY_REUSED",
-                    "同一 Idempotency-Key 已用于不同的主归属切换请求",
+                    "Cùng Idempotency-Key đã được dùng cho yêu cầu chuyển thành viên chính khác",
                     status_code=409,
                 )
             affected_ids = [
@@ -1252,7 +1251,7 @@ class CharacterFactionBindingService:
             )
             if character_blockers or faction_blockers:
                 raise ValueError(
-                    "主归属目标端点当前不可用: "
+                    "Điểm cuối quy thuộc chính hiện không khả dụng: "
                     f"characters={character_blockers}, factions={faction_blockers}"
                 )
 
@@ -1307,7 +1306,7 @@ class CharacterFactionBindingService:
                 ):
                     resumed_claims.append(primary)
                     continue
-                raise DuplicateKeyError("检测到尚未完成的主归属切换，请重试")
+                raise DuplicateKeyError("Phát hiện chuyển đổi quy thuộc chính chưa hoàn tất, hãy thử lại")
 
             replaced = [
                 primary
@@ -1329,7 +1328,7 @@ class CharacterFactionBindingService:
             )
             if normalized_replaced_versions != actual_replaced_versions:
                 raise DuplicateKeyError(
-                    "被替换主归属版本集合冲突："
+                    "Tập phiên bản quy thuộc chính bị thay thế xung đột: "
                     f"expected={normalized_replaced_versions}, "
                     f"actual={actual_replaced_versions}"
                 )
@@ -1340,7 +1339,7 @@ class CharacterFactionBindingService:
             for claimed in resumed_claims:
                 previous_state = claimed.get("replaced_by_primary_previous_state")
                 if not isinstance(previous_state, dict):
-                    raise DuplicateKeyError("未完成主归属切换缺少可补偿的旧状态")
+                    raise DuplicateKeyError("Chuyển đổi quy thuộc chính chưa hoàn tất không còn trạng thái cũ để bồi thường")
                 snapshot = {**claimed, **previous_state}
                 for internal_field in (
                     "replaced_by_primary_switch_key_hash",
@@ -1433,7 +1432,7 @@ class CharacterFactionBindingService:
                 )
                 if current_signatures != endpoint_signatures:
                     raise DuplicateKeyError(
-                        "主归属切换期间端点已被并发修改，请重试"
+                        "Điểm cuối bị sửa đổi đồng thời trong lúc chuyển đổi quy thuộc chính, hãy thử lại"
                     )
                 await character_faction_binding_repo.mark_primary_switch_claims_complete(
                     novel_id,
@@ -1543,7 +1542,7 @@ class CharacterFactionBindingService:
                 session=session,
             )
             if current.get("is_deleted") is not True:
-                raise NotFoundError(f"角色—势力绑定 '{binding_id}' 不在回收站")
+                raise NotFoundError(f"Liên kết nhân vật—thế lực '{binding_id}' không nằm trong thùng rác")
             CharacterFactionBindingService._ensure_expected_version(
                 current,
                 expected_version,
@@ -1575,7 +1574,7 @@ class CharacterFactionBindingService:
                 )
                 if primary_conflicts:
                     raise DuplicateKeyError(
-                        f"角色 {current['character_id']} 已有活动主归属绑定 "
+                        f"Nhân vật {current['character_id']} đã có liên kết thuộc tính chính đang hoạt động "
                         f"{primary_conflicts[0]['binding_id']}"
                     )
             validation_view = {
@@ -1629,7 +1628,7 @@ class CharacterFactionBindingService:
                     )
                     if current_signatures != endpoint_signatures:
                         raise DuplicateKeyError(
-                            "角色—势力绑定恢复期间端点已被并发修改，请重试"
+                            "Điểm cuối đã bị sửa đổi đồng thời trong lúc phục hồi liên kết nhân vật-thế lực, hãy thử lại"
                         )
                 else:
                     after_blockers = (
@@ -1641,7 +1640,7 @@ class CharacterFactionBindingService:
                     )
                     if after_blockers != (character_blockers, faction_blockers):
                         raise DuplicateKeyError(
-                            "角色—势力绑定恢复期间端点已被并发修改，请重试"
+                            "Điểm cuối đã bị sửa đổi đồng thời trong lúc phục hồi liên kết nhân vật-thế lực, hãy thử lại"
                         )
                 return restored
             except Exception:

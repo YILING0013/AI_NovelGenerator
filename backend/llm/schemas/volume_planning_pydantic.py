@@ -110,7 +110,7 @@ class VolumeOrderRangeV1(StrictRequestModel):
             通过起止边界校验的当前区间。
         """
         if self.end < self.start:
-            raise ValueError("target_order_range.end 不能小于 start")
+            raise ValueError("target_order_range.end không được nhỏ hơn start")
         return self
 
 
@@ -144,12 +144,12 @@ class VolumeSkeletonGenerateRequestV1(ReasoningOptions, StrictRequestModel):
         """
         if self.mode == "replan":
             if self.target_order_range is None:
-                raise ValueError("replan 必须提供 target_order_range")
+                raise ValueError("replan phải cung cấp target_order_range")
             if self.target_volume_count != (
                 self.target_order_range.end - self.target_order_range.start + 1
             ):
                 raise ValueError(
-                    "replan target_volume_count 必须等于 target_order_range 长度"
+                    "target_volume_count của replan phải bằng độ dài của target_order_range"
                 )
         return self
 
@@ -184,12 +184,12 @@ class VolumeSkeletonGenerationInputV1(ReasoningOptions, StrictRequestModel):
         """
         if self.mode == "replan":
             if self.target_order_range is None:
-                raise ValueError("replan 必须提供 target_order_range")
+                raise ValueError("replan phải cung cấp target_order_range")
             if self.target_volume_count != (
                 self.target_order_range.end - self.target_order_range.start + 1
             ):
                 raise ValueError(
-                    "replan target_volume_count 必须等于 target_order_range 长度"
+                    "target_volume_count của replan phải bằng độ dài của target_order_range"
                 )
         return self
 
@@ -218,9 +218,9 @@ class VolumeSkeletonCandidateV1(StrictRequestModel):
         """
         normalized = [normalize_volume_text(item) for item in self.planning.key_turning_points]
         if not normalized or any(not item for item in normalized):
-            raise ValueError("AI 卷骨架的 key_turning_points 必须包含 1..20 个非空转折")
+            raise ValueError("key_turning_points của khung quyển do AI tạo phải chứa 1..20 bước ngoặt không được để trống")
         if len(normalized) != len(set(normalized)):
-            raise ValueError("AI 卷骨架的 key_turning_points 必须规范唯一")
+            raise ValueError("key_turning_points của khung quyển do AI tạo phải duy nhất sau chuẩn hóa")
         return self
 
 
@@ -241,7 +241,7 @@ class VolumeSkeletonResultV1(StrictRequestModel):
         """
         refs = [item.candidate_ref for item in self.volumes]
         if len(refs) != len(set(refs)):
-            raise ValueError("candidate_ref 不能重复")
+            raise ValueError("candidate_ref không được trùng lặp")
         return self
 
 
@@ -267,7 +267,7 @@ class VolumeSkeletonBasisV1(CandidateBasisV1):
             or self.schema_version != VOLUME_SKELETON_RESULT_SCHEMA_VERSION
             or self.novel_id != self.generation_input.novel_id
         ):
-            raise ValueError("卷骨架 basis 契约不匹配")
+            raise ValueError("Hợp đồng basis của khung quyển không khớp")
         novel_refs = [
             source
             for source in self.source_refs
@@ -279,7 +279,7 @@ class VolumeSkeletonBasisV1(CandidateBasisV1):
             or novel_refs[0].id != self.novel_id
             or novel_refs[0].version != self.generation_input.novel_expected_version
         ):
-            raise ValueError("卷骨架 basis 必须包含当前小说的精确版本")
+            raise ValueError("basis của khung quyển phải chứa phiên bản chính xác của tiểu thuyết hiện tại")
         return self
 
 
@@ -312,7 +312,7 @@ class VolumeBulkPlanRequestV1(StrictRequestModel):
             or version < 1
             for key, version in value.items()
         ):
-            raise ValueError("expected_versions 必须使用非空资源键和正整数版本")
+            raise ValueError("expected_versions phải dùng khoá tài nguyên không trống và phiên bản là số nguyên dương")
         return value
 
     @model_validator(mode="after")
@@ -330,14 +330,14 @@ class VolumeBulkPlanRequestV1(StrictRequestModel):
             for source in self.basis.source_refs
         }
         if self.expected_versions != expected:
-            raise ValueError("expected_versions 必须精确匹配 basis.source_refs")
+            raise ValueError("expected_versions phải khớp chính xác với basis.source_refs")
         generation_input = self.basis.generation_input
         if generation_input.mode == "replan":
             target_range = generation_input.target_order_range
             if target_range is None or len(self.candidates) != (
                 target_range.end - target_range.start + 1
             ):
-                raise ValueError("replan 候选必须完整覆盖 target_order_range")
+                raise ValueError("Các ứng viên replan phải bao phủ đầy đủ target_order_range")
         return self
 
 
@@ -427,9 +427,9 @@ class VolumeLaunchPackageV1(StrictRequestModel):
         """
         normalized = [normalize_volume_text(item) for item in self.planning.key_turning_points]
         if not normalized or any(not item for item in normalized):
-            raise ValueError("启动包 key_turning_points 必须包含 1..20 个非空转折")
+            raise ValueError("key_turning_points của gói khởi động phải chứa 1..20 bước ngoặt không được để trống")
         if len(normalized) != len(set(normalized)):
-            raise ValueError("启动包 key_turning_points 必须规范唯一")
+            raise ValueError("key_turning_points của gói khởi động phải duy nhất sau chuẩn hóa")
         return self
 
 
@@ -461,14 +461,14 @@ class VolumeLaunchBasisV1(CandidateBasisV1):
             or self.schema_version != VOLUME_LAUNCH_RESULT_SCHEMA_VERSION
             or self.novel_id != self.generation_input.novel_id
         ):
-            raise ValueError("启动包 basis 契约不匹配")
+            raise ValueError("Hợp đồng basis của gói khởi động không khớp")
         novel_refs = [
             source
             for source in self.source_refs
             if source.resource_type == "novel"
         ]
         if len(novel_refs) != 1 or novel_refs[0].id != self.novel_id:
-            raise ValueError("启动包 basis 必须只包含当前小说来源")
+            raise ValueError("basis của gói khởi động chỉ được chứa nguồn của tiểu thuyết hiện tại")
         target_refs = [
             source
             for source in self.source_refs
@@ -480,7 +480,7 @@ class VolumeLaunchBasisV1(CandidateBasisV1):
             or target_refs[0].version
             != self.generation_input.volume_expected_version
         ):
-            raise ValueError("启动包 basis 必须包含目标卷的精确版本")
+            raise ValueError("basis của gói khởi động phải chứa phiên bản chính xác của quyển đích")
         return self
 
 
@@ -531,11 +531,11 @@ class VolumeLaunchConfirmV1(StrictRequestModel):
         """
         normalized = [normalize_volume_text(item) for item in self.planning.key_turning_points]
         if not normalized or any(not item for item in normalized):
-            raise ValueError("启动包 key_turning_points 必须包含 1..20 个非空转折")
+            raise ValueError("key_turning_points của gói khởi động phải chứa 1..20 bước ngoặt không được để trống")
         if len(normalized) != len(set(normalized)):
-            raise ValueError("启动包 key_turning_points 必须规范唯一")
+            raise ValueError("key_turning_points của gói khởi động phải duy nhất sau chuẩn hóa")
         if self.expected_version != self.basis.generation_input.volume_expected_version:
-            raise ValueError("expected_version 必须等于启动包 basis 中的目标卷版本")
+            raise ValueError("expected_version phải bằng phiên bản quyển đích trong basis của gói khởi động")
         return self
 
 

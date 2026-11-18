@@ -94,11 +94,11 @@ def _entry(token: str, binding: str) -> _SavedContinuation:
     _prune()
     entry = _continuations.get(token)
     if entry is None:
-        raise DomainApiError("AGENT_CONTINUATION_EXPIRED", "续跑记录已过期、已使用或服务已重启，请重新整理", status_code=409)
+        raise DomainApiError("AGENT_CONTINUATION_EXPIRED", "Bản ghi tiếp chạy đã hết hạn, đã dùng hoặc dịch vụ đã khởi động lại, hãy tổng hợp lại", status_code=409)
     if entry.binding != binding:
-        raise DomainApiError("AGENT_CONTINUATION_CHANGED", "流程、输入、位置或模型设置已变化，请重新整理", status_code=409)
+        raise DomainApiError("AGENT_CONTINUATION_CHANGED", "Luồng, đầu vào, vị trí hoặc cài đặt mô hình đã thay đổi, hãy tổng hợp lại", status_code=409)
     if entry.claimed:
-        raise DomainApiError("AGENT_CONTINUATION_BUSY", "这份资料正在续跑，请等待本次请求结束", status_code=409)
+        raise DomainApiError("AGENT_CONTINUATION_BUSY", "Tài liệu này đang được tiếp chạy, hãy chờ yêu cầu hiện tại kết thúc", status_code=409)
     return entry
 
 
@@ -128,7 +128,7 @@ def lookup_agent_continuation(continuation: AgentContinuation, *, binding: str, 
     with _lock:
         entry = _entry(continuation.token, binding)
         if entry.additional_rounds is not None and entry.additional_rounds != continuation.additional_rounds:
-            raise DomainApiError("AGENT_CONTINUATION_CHANGED", "中断后重试须沿用本次已选择的新增轮数", status_code=409)
+            raise DomainApiError("AGENT_CONTINUATION_CHANGED", "Khi thử lại sau gián đoạn phải dùng lại số vòng bổ sung đã chọn của lần này", status_code=409)
         if completed_nodes is not None:
             completed_nodes.update(deepcopy(entry.state.completed_nodes))
         return entry.state.instance_path
@@ -147,11 +147,11 @@ def claim_agent_continuation(continuation: AgentContinuation, *, binding: str, i
     with _lock:
         entry = _entry(continuation.token, binding)
         if entry.state.instance_path != instance_path:
-            raise DomainApiError("AGENT_CONTINUATION_CHANGED", "续跑节点与原整理节点不一致，请重新整理", status_code=409)
+            raise DomainApiError("AGENT_CONTINUATION_CHANGED", "Nút tiếp chạy không nhất quán với nút tổng hợp gốc, hãy tổng hợp lại", status_code=409)
         if entry.reason == "network" and continuation.additional_rounds != (entry.additional_rounds or 0):
-            raise DomainApiError("AGENT_CONTINUATION_CHANGED", "恢复连接不能增加整理轮数，请沿用原请求", status_code=409)
+            raise DomainApiError("AGENT_CONTINUATION_CHANGED", "Kết nối khôi phục không được tăng số vòng tổng hợp, hãy dùng lại yêu cầu gốc", status_code=409)
         if entry.reason == "budget" and continuation.additional_rounds == 0:
-            raise DomainApiError("AGENT_CONTINUATION_CHANGED", "整理次数已用完，请选择增加轮数", status_code=409)
+            raise DomainApiError("AGENT_CONTINUATION_CHANGED", "Đã dùng hết số lần tổng hợp, hãy chọn tăng số vòng", status_code=409)
         if entry.additional_rounds is None:
             entry.additional_rounds = continuation.additional_rounds
             agent = entry.state.agent if isinstance(entry.state, FlowContinuationState) else entry.state
@@ -159,7 +159,7 @@ def claim_agent_continuation(continuation: AgentContinuation, *, binding: str, i
                 agent.round_limit += continuation.additional_rounds
                 agent.call_limit += 3 * continuation.additional_rounds
         elif entry.additional_rounds != continuation.additional_rounds:
-            raise DomainApiError("AGENT_CONTINUATION_CHANGED", "中断后重试须沿用本次已选择的新增轮数", status_code=409)
+            raise DomainApiError("AGENT_CONTINUATION_CHANGED", "Khi thử lại sau gián đoạn phải dùng lại số vòng bổ sung đã chọn của lần này", status_code=409)
         entry.claimed = True
         entry.reason = "network"
         return entry.state
@@ -183,9 +183,9 @@ def update_agent_continuation(token: str, *, size: int, reason: str | None = Non
             entry.reason = reason
         details = {"agent_continuation": _public(token, entry)}
         if size > MAX_ENTRY_BYTES:
-            raise DomainApiError("AGENT_CONTINUATION_TOO_LARGE", "本轮资料超过恢复容量，已保留进度并暂停。请保留当前资料，放弃本轮后缩小范围重新生成", status_code=422, details=details)
+            raise DomainApiError("AGENT_CONTINUATION_TOO_LARGE", "Tài liệu của vòng này vượt dung lượng khôi phục, đã giữ lại tiến trình và tạm dừng. Hãy giữ tài liệu hiện tại, bỏ vòng này rồi thu hẹp phạm vi và tạo lại", status_code=422, details=details)
         if sum(value.size for value in _continuations.values()) > MAX_TOTAL_BYTES:
-            raise DomainApiError("AGENT_CONTINUATION_CAPACITY", "恢复记录占用已满，已保留本轮进度。请等待其他记录释放后恢复", status_code=503, details=details)
+            raise DomainApiError("AGENT_CONTINUATION_CAPACITY", "Kho chứa bản ghi khôi phục đã đầy, đã giữ lại tiến trình vòng này. Hãy chờ các bản ghi khác giải phóng rồi khôi phục", status_code=503, details=details)
         return _public(token, entry)
 
 
@@ -206,10 +206,10 @@ def save_agent_continuation(state: Any, *, binding: str, size: int, previous_tok
         _prune()
         previous = _continuations.get(previous_token) if previous_token else None
         if size > MAX_ENTRY_BYTES:
-            raise DomainApiError("AGENT_CONTINUATION_TOO_LARGE", "已整理资料超过续跑保存上限，请缩小资料范围后重新整理", status_code=422)
+            raise DomainApiError("AGENT_CONTINUATION_TOO_LARGE", "Tài liệu đã tổng hợp vượt giới hạn lưu khi tiếp chạy, hãy thu hẹp phạm vi tài liệu rồi tổng hợp lại", status_code=422)
         if (len(_continuations) - bool(previous) >= MAX_ENTRIES
                 or sum(entry.size for entry in _continuations.values()) - (previous.size if previous else 0) + size > MAX_TOTAL_BYTES):
-            raise DomainApiError("AGENT_CONTINUATION_CAPACITY", "当前保存的续跑记录已满，请稍后重新整理", status_code=503)
+            raise DomainApiError("AGENT_CONTINUATION_CAPACITY", "Bản ghi tiếp chạy đang lưu đã đầy, hãy tổng hợp lại sau một lúc", status_code=503)
         if previous_token:
             _continuations.pop(previous_token, None)
         token = secrets.token_urlsafe(32)

@@ -150,7 +150,7 @@ class CharacterGenerationService:
         if require_readiness and not factions:
             raise GenerationDomainError(
                 "CORE_FACTION_REQUIRED",
-                "生成核心角色前至少需要一个活动核心势力",
+                "Cần ít nhất một thế lực cốt lõi đang hoạt động trước khi sinh nhân vật cốt lõi",
                 status_code=422,
             )
         all_characters = await CharacterService.get_characters_by_novel(novel_id)
@@ -162,17 +162,17 @@ class CharacterGenerationService:
         if len(factions) > 100:
             raise GenerationDomainError(
                 "CHARACTER_GENERATION_INPUT_BUDGET_EXCEEDED",
-                "核心势力数量超过 100，无法在不截断事实的情况下生成角色",
+                "Số thế lực cốt lõi vượt 100, không thể sinh nhân vật mà không cắt ngắn sự thật",
             )
         if len(core_characters) > 200:
             raise GenerationDomainError(
                 "CHARACTER_GENERATION_INPUT_BUDGET_EXCEEDED",
-                "已有核心角色数量超过 200，无法在不截断事实的情况下继续生成",
+                "Số nhân vật cốt lõi hiện có vượt 200, không thể tiếp tục sinh mà không cắt ngắn sự thật",
             )
         if len(all_characters) > 1000:
             raise GenerationDomainError(
                 "CHARACTER_GENERATION_INPUT_BUDGET_EXCEEDED",
-                "已有正式角色数量超过 1000，无法在不截断名称占用事实的情况下继续生成",
+                "Số nhân vật chính thức hiện có đã vượt 1000, không thể tiếp tục sinh mà không cắt ngắn sự thật chiếm dụng tên",
             )
 
         novel_profile = _project(novel, NOVEL_PROFILE_FIELDS)
@@ -180,7 +180,7 @@ class CharacterGenerationService:
             if isinstance(value, str) and len(value) > 8000:
                 raise GenerationDomainError(
                     "CHARACTER_GENERATION_INPUT_BUDGET_EXCEEDED",
-                    f"小说字段 {field} 超过 8000 字符",
+                    f"Trường tiểu thuyết {field} vượt quá 8000 ký tự",
                 )
 
         faction_projections = [faction_design_content(item, FACTION_PROMPT_FIELDS) for item in factions]
@@ -193,7 +193,7 @@ class CharacterGenerationService:
             if len(canonical_json(projection)) > 2000:
                 raise GenerationDomainError(
                     "CHARACTER_GENERATION_INPUT_BUDGET_EXCEEDED",
-                    f"核心势力或角色摘要第 {index + 1} 项超过 2000 字符",
+                    f"Tóm tắt thế lực nòng cốt hoặc nhân vật thứ {index + 1} vượt quá 2000 ký tự",
                 )
 
         prompt_input = {
@@ -217,7 +217,7 @@ class CharacterGenerationService:
         if len(source_refs) > MAX_CANDIDATE_SOURCE_REFS:
             raise GenerationDomainError(
                 "CHARACTER_GENERATION_SOURCE_BUDGET_EXCEEDED",
-                "核心角色生成正式来源版本超过 2000 项，禁止静默截断",
+                "Phiên bản nguồn chính thức khi sinh nhân vật cốt lõi vượt 2000 mục, cấm cắt ngắn ngầm",
                 status_code=422,
             )
         return {
@@ -262,7 +262,7 @@ class CharacterGenerationService:
         if missing_ids:
             raise GenerationDomainError(
                 "CHARACTER_RELATION_ENDPOINT_INVALID",
-                f"角色不存在或不属于当前小说: {', '.join(missing_ids)}",
+                f"Nhân vật không tồn tại hoặc không thuộc tiểu thuyết hiện tại: {', '.join(missing_ids)}",
             )
         for character in characters:
             if (
@@ -271,7 +271,7 @@ class CharacterGenerationService:
             ):
                 raise GenerationDomainError(
                     "CHARACTER_RELATION_ENDPOINT_INVALID",
-                    f"角色 {character['character_id']} 必须是 active 核心角色",
+                    f"Nhân vật {character['character_id']} phải là nhân vật cốt lõi active",
                 )
 
         selected_ids = set(request.character_ids)
@@ -295,7 +295,7 @@ class CharacterGenerationService:
         if len(bindings) > 300 or len(relations) > 1000:
             raise GenerationDomainError(
                 "CHARACTER_RELATION_INPUT_BUDGET_EXCEEDED",
-                "角色绑定或既有活动关系超过工作流预算，禁止静默截断",
+                "Liên kết nhân vật hoặc quan hệ hoạt động hiện hữu vượt ngân sách luồng công tác, cấm cắt ngắn ngầm",
             )
 
         character_projections = [
@@ -314,7 +314,7 @@ class CharacterGenerationService:
             if len(canonical_json(projection)) > 2000:
                 raise GenerationDomainError(
                     "CHARACTER_RELATION_INPUT_BUDGET_EXCEEDED",
-                    f"角色或关系摘要第 {index + 1} 项超过 2000 字符",
+                    f"Tóm tắt nhân vật hoặc quan hệ thứ {index + 1} vượt quá 2000 ký tự",
                 )
 
         character_count = len(request.character_ids)
@@ -334,7 +334,7 @@ class CharacterGenerationService:
             if isinstance(value, str) and len(value) > 8000:
                 raise GenerationDomainError(
                     "CHARACTER_RELATION_INPUT_BUDGET_EXCEEDED",
-                    f"小说字段 {field} 超过 8000 字符",
+                    f"Trường tiểu thuyết {field} vượt quá 8000 ký tự",
                 )
 
         prompt_input = {
@@ -361,7 +361,7 @@ class CharacterGenerationService:
         if len(source_refs) > MAX_CANDIDATE_SOURCE_REFS:
             raise GenerationDomainError(
                 "CHARACTER_RELATION_SOURCE_BUDGET_EXCEEDED",
-                "角色关系生成正式来源版本超过 2000 项，禁止静默截断",
+                "Phiên bản nguồn chính thức khi sinh quan hệ nhân vật vượt 2000 mục, cấm cắt ngắn ngầm",
                 status_code=422,
             )
         return {
@@ -392,7 +392,7 @@ class CharacterGenerationService:
         errors: list[str] = []
         if request.character_count is not None and len(result.core_characters) != request.character_count:
             errors.append(
-                f"候选数量必须严格等于 {request.character_count}"
+                f"Số ứng viên phải bằng đúng {request.character_count}"
             )
         normalized_names = [
             normalize_character_name(item.name)[1]
@@ -409,7 +409,7 @@ class CharacterGenerationService:
                 binding.faction_id is not None
                 and binding.faction_id not in allowed_faction_ids
             ):
-                errors.append(f"势力 {binding.faction_id} 不在当前核心势力中")
+                errors.append(f"Thế lực {binding.faction_id} không nằm trong các thế lực nòng cốt hiện tại")
         if errors:
             raise GenerationDomainError(
                 "CHARACTER_GENERATION_OUTPUT_INVALID",
@@ -456,7 +456,7 @@ class CharacterGenerationService:
             missing = sorted(set(context["character_ids"]) - covered)
             if missing:
                 errors.append(
-                    f"以下角色未参与任何候选关系: {', '.join(missing)}"
+                    f"Các nhân vật sau không tham gia bất kỳ quan hệ ứng viên nào: {', '.join(missing)}"
                 )
         if errors:
             raise GenerationDomainError(

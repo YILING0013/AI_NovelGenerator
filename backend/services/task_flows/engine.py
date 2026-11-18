@@ -42,7 +42,7 @@ def render_template(template: str, inputs: Mapping[str, Any]) -> str:
     required = template_fields(template)
     missing = required - set(inputs)
     if missing:
-        raise FlowValidationError(f"模板缺少输入：{', '.join(sorted(missing))}")
+        raise FlowValidationError(f"Mẫu thiếu đầu vào:{', '.join(sorted(missing))}")
     values = {
         name: json.dumps(value, ensure_ascii=False, sort_keys=True) if isinstance(value, (dict, list)) else value
         for name, value in inputs.items()
@@ -124,7 +124,7 @@ async def execute_flow(
         while pending:
             node_id = next((name for name in pending if dependencies[name] <= states.keys()), None)
             if node_id is None:
-                raise FlowValidationError("流程无法继续，请检查节点依赖")
+                raise FlowValidationError("Luồng không thể tiếp tục, hãy kiểm tra phụ thuộc giữa các nút")
             pending.remove(node_id)
             node = nodes[node_id]
             path = f"{prefix}/{node.id}"
@@ -147,7 +147,7 @@ async def execute_flow(
                     continue
                 executions += 1
                 if executions > flow.max_node_executions:
-                    raise FlowValidationError(f"本次运行超过 {flow.max_node_executions} 个节点实例，请缩小批次")
+                    raise FlowValidationError(f"Lần chạy này vượt quá {flow.max_node_executions} phiên bản nút, hãy thu nhỏ lô")
                 node_inputs = {name: deepcopy(value) for name, value in node.values.items() if name in node.inputs}
                 used_edges = []
                 for edge in data_edges[node_id]:
@@ -160,7 +160,7 @@ async def execute_flow(
                         for part in edge.source_path:
                             value = value[int(part)] if isinstance(value, list) else value[part]
                     except (KeyError, IndexError, TypeError, ValueError) as exc:
-                        raise FlowValidationError(f"{node.label or node.id} 无法读取连线 {edge.id} 的字段路径") from exc
+                        raise FlowValidationError(f"{node.label or node.id} không đọc được đường nối {edge.id} để lấy đường dẫn trường") from exc
                     node_inputs[edge.target_port] = deepcopy(value)
                     if trace:
                         used_edges.append({"id": edge.id, "source_instance_path": f"{prefix}/{edge.source}",
@@ -173,7 +173,7 @@ async def execute_flow(
                 review_allowed = True
                 if node.config.get("candidate_check") and preview_node is None:
                     if candidate_check is None:
-                        raise FlowValidationError("当前任务没有提供候选检查能力")
+                        raise FlowValidationError("Tác vụ hiện tại không cung cấp khả năng kiểm tra ứng viên")
                     # 缓存和服务端续跑也必须用本次实际输入检查，不能只在模型回调中检查。
                     review_allowed = await candidate_check(node, node_inputs)
                 signature: dict[str, Any] = {
@@ -193,13 +193,13 @@ async def execute_flow(
                 old = trusted or cache.get(path)
                 cacheable = node.type not in {"input", "context", "agent", "condition", "subflow", "foreach", "output"}
                 if trusted is not None and cacheable and (trusted.node_id != node.id or trusted.input_fingerprint != fingerprint):
-                    raise DomainApiError("AGENT_CONTINUATION_CHANGED", f"已完成节点 {node.label or node.id} 的输入已变化，请重新整理", status_code=409)
+                    raise DomainApiError("AGENT_CONTINUATION_CHANGED", f"Nút đã hoàn thành {node.label or node.id} có đầu vào đã thay đổi, hãy tổng hợp lại", status_code=409)
                 if review_allowed and cacheable and old is not None and old.node_id == node.id and old.input_fingerprint == fingerprint:
                     outputs = validate_values(node.outputs, old.outputs, node.label or node.id,
                                               root=port_schema(node, output=True))
                     if node.config.get("review_evidence") and preview_node is None:
                         if review_evidence is None:
-                            raise FlowValidationError("当前任务没有提供审核原句核对能力")
+                            raise FlowValidationError("Công việc hiện tại không cung cấp khả năng đối chiếu câu gốc rà soát")
                         outputs = review_evidence(node, node_inputs, outputs)
                     results[node_id] = outputs
                     states[node_id] = "done"
@@ -224,7 +224,7 @@ async def execute_flow(
                     outputs = {key: deepcopy(value) for key, value in node.values.items() if key in node.outputs}
                 elif node.type == "context":
                     if context is None:
-                        raise FlowValidationError("当前任务没有提供资料读取能力")
+                        raise FlowValidationError("Tác vụ hiện tại không cung cấp khả năng đọc tài liệu")
                     outputs = await context(node, node_inputs)
                 elif node.type == "template":
                     output_port = node.config.get("output_port", next(iter(node.outputs), "text"))
@@ -237,7 +237,7 @@ async def execute_flow(
                 elif node.type in {"llm", "agent"}:
                     callback = agent if node.type == "agent" else llm
                     if callback is None:
-                        raise FlowValidationError("当前任务没有提供资料整理能力" if node.type == "agent" else "当前任务没有提供模型调用能力")
+                        raise FlowValidationError("Tác vụ hiện tại không cung cấp khả năng tổng hợp tài liệu" if node.type == "agent" else "Tác vụ hiện tại không cung cấp khả năng gọi mô hình")
                     outputs = None  # type: ignore[assignment]
                     async with aclosing(callback(node, node_inputs, path)) as events:
                         async for event in events:
@@ -249,7 +249,7 @@ async def execute_flow(
                             else:
                                 yield {"event": "progress", "data": {**data, **metadata, "state": "running"}}
                     if outputs is None:
-                        raise FlowValidationError(f"{node.label or node.id} 没有返回完成结果")
+                        raise FlowValidationError(f"{node.label or node.id} không trả về kết quả hoàn tất")
                 elif node.type == "condition":
                     selected_port = node.config.get("else_port", "else")
                     matched = False
@@ -266,7 +266,7 @@ async def execute_flow(
                                 else right in left
                             )
                         except TypeError as exc:
-                            raise FlowValidationError(f"{node.label or node.id} 的条件两侧无法比较") from exc
+                            raise FlowValidationError(f"{node.label or node.id} không thể so sánh hai vế của điều kiện") from exc
                         if match:
                             selected_port, matched = case["port"], True
                             break
@@ -278,9 +278,9 @@ async def execute_flow(
                     ordered = {name: node_inputs[name] for name in node.inputs if name in node_inputs}
                     if mode == "selected":
                         if not ordered:
-                            raise FlowValidationError(f"{node.label or node.id} 没有活动分支可以汇合")
+                            raise FlowValidationError(f"{node.label or node.id} không có nhánh đang hoạt động để hợp nhất")
                         if len(ordered) != 1:
-                            raise FlowValidationError(f"{node.label or node.id} 只能选择一个活动分支，请检查条件或改用全部汇合")
+                            raise FlowValidationError(f"{node.label or node.id} chỉ được chọn một nhánh hoạt động, hãy kiểm tra điều kiện hoặc chuyển sang hợp nhất tất cả")
                         value = next(iter(ordered.values()))
                     elif mode == "array":
                         value = list(ordered.values())
@@ -295,7 +295,7 @@ async def execute_flow(
                     items_name = node.config.get("items_input", "items")
                     items = node_inputs[items_name] if node.type == "foreach" else [None]
                     if node.type == "foreach" and len(items) > node.config.get("max_items", FOREACH_DEFAULT_MAX_ITEMS):
-                        raise FlowValidationError(f"{node.label or node.id} 本批共有 {len(items)} 项，超过 {node.config.get('max_items', FOREACH_DEFAULT_MAX_ITEMS)} 项上限")
+                        raise FlowValidationError(f"{node.label or node.id} của lô này có tổng cộng {len(items)} mục, vượt quá {node.config.get('max_items', FOREACH_DEFAULT_MAX_ITEMS)} mục tối đa")
                     for index, item in enumerate(items):
                         await asyncio.sleep(0)
                         child_start = dict(node_inputs)
@@ -314,7 +314,7 @@ async def execute_flow(
                                 else:
                                     yield event
                         if child_result is None:
-                            raise FlowValidationError(f"{node.label or node.id} 的子流程没有输出")
+                            raise FlowValidationError(f"{node.label or node.id} có luồng con không có đầu ra")
                         collection.append(child_result["outputs"])
                     current.update(node_id=node.id, instance_path=path)
                     if node.type == "foreach":
@@ -335,7 +335,7 @@ async def execute_flow(
                         raise
                 if node.config.get("review_evidence") and preview_node is None:
                     if review_evidence is None:
-                        raise FlowValidationError("当前任务没有提供审核原句核对能力")
+                        raise FlowValidationError("Công việc hiện tại không cung cấp khả năng đối chiếu câu gốc rà soát")
                     outputs = review_evidence(node, node_inputs, outputs)
                 results[node_id] = outputs
                 states[node_id] = "done"
@@ -352,7 +352,7 @@ async def execute_flow(
                     business_inputs = {name: node_inputs[source] for name, source in node.config.get("parameter_fields", {}).items() if source in node_inputs}
                     yield {"event": "_result", "data": {"outputs": outputs, "candidate": candidate, "business_inputs": business_inputs}}
         if states.get(output_node.id) != "done":
-            raise FlowValidationError("当前条件分支没有连接到任务结果")
+            raise FlowValidationError("Nhánh điều kiện hiện tại chưa được nối tới kết quả công việc")
 
     try:
         flow = validate_flow(flow)
@@ -367,7 +367,7 @@ async def execute_flow(
                 else:
                     yield event
         if result is None:
-            raise FlowValidationError("流程没有返回任务结果")
+            raise FlowValidationError("Luồng không trả về kết quả tác vụ")
         logger.info("[流程节点执行完成] flow_id=%s", flow.id)
         terminal_emitted = True
         yield {"event": "done", "data": {"result": {
@@ -388,7 +388,7 @@ async def execute_flow(
         with bind_log_context(flow_id=flow_id, **current):
             terminal_emitted = True
             yield {"event": "error", "data": {
-                **sse_error_payload(exc, fallback_message="节点运行失败"),
+                **sse_error_payload(exc, fallback_message="Thực thi nút thất bại"),
                 **current, "state": "failed",
                 "partial_outputs": completed,
             }}

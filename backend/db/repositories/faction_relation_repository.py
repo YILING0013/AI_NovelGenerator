@@ -56,9 +56,9 @@ class FactionRelationRepository(BaseRepository):
         )
         missing_fields = [field for field in required_fields if not data.get(field)]
         if missing_fields:
-            raise ValueError(f"阵营关系缺少必填字段: {', '.join(missing_fields)}")
+            raise ValueError(f"Quan hệ thế lực thiếu trường bắt buộc: {', '.join(missing_fields)}")
         if data["source_faction_id"] == data["target_faction_id"]:
-            raise ValueError("阵营关系不能指向自身")
+            raise ValueError("Quan hệ thế lực không được tự tham chiếu")
 
         prepared = dict(data)
         prepared.pop("_id", None)
@@ -102,7 +102,7 @@ class FactionRelationRepository(BaseRepository):
         prepared = [self._prepare_relation_document(document) for document in documents]
         relation_ids = [str(document["relation_id"]) for document in prepared]
         if len(relation_ids) != len(set(relation_ids)):
-            raise DuplicateKeyError("同一批次不能重复使用阵营关系 relation_id")
+            raise DuplicateKeyError("Cùng lô không được dùng lại relation_id của quan hệ thế lực")
         try:
             await self.insert_many(prepared, session=session)
             created = await self.get_relations_by_ids(
@@ -111,7 +111,7 @@ class FactionRelationRepository(BaseRepository):
                 session=session,
             )
             if len(created) != len(prepared):
-                raise RuntimeError("阵营关系批量写入后未能完整回读")
+                raise RuntimeError("Không đọc lại đầy đủ được sau khi ghi hàng loạt quan hệ phe")
             return created
         except (pymongo.errors.DuplicateKeyError, pymongo.errors.BulkWriteError) as exc:
             if session is None:
@@ -120,7 +120,7 @@ class FactionRelationRepository(BaseRepository):
                     prepared,
                     business_key_field="relation_id",
                 )
-            raise DuplicateKeyError("阵营关系业务 ID 或活动语义边已存在") from exc
+            raise DuplicateKeyError("ID nghiệp vụ quan hệ phe hoặc cạnh ngữ nghĩa đang hoạt động đã tồn tại") from exc
         except Exception:
             if session is None:
                 await delete_created_documents_cas(
@@ -387,10 +387,10 @@ class FactionRelationRepository(BaseRepository):
         )
         if current is None or bool(current.get("is_deleted")) is not require_deleted:
             state = "回收站中" if require_deleted else "未删除状态下"
-            raise NotFoundError(f"阵营关系 '{relation_id}' 在{state}不存在")
+            raise NotFoundError(f"Quan hệ thế lực '{relation_id}' tại{state}không tồn tại")
         actual_version = current["version"]
         raise VersionConflictError(
-            f"阵营关系 '{relation_id}' 版本冲突：expected={expected_version}, actual={actual_version}"
+            f"Quan hệ thế lực '{relation_id}' 版本冲突：expected={expected_version}, actual={actual_version}"
         )
 
     async def update_relation(
@@ -430,7 +430,7 @@ class FactionRelationRepository(BaseRepository):
                 session=session,
             )
         except pymongo.errors.DuplicateKeyError as exc:
-            raise DuplicateKeyError("阵营关系活动语义边已存在") from exc
+            raise DuplicateKeyError("Cạnh ngữ nghĩa đang hoạt động của quan hệ thế lực đã tồn tại") from exc
         if updated is None:
             await self._raise_cas_miss(
                 novel_id,
@@ -543,7 +543,7 @@ class FactionRelationRepository(BaseRepository):
                 session=session,
             )
         except pymongo.errors.DuplicateKeyError as exc:
-            raise DuplicateKeyError("阵营关系恢复后将与现有活动语义边冲突") from exc
+            raise DuplicateKeyError("Quan hệ phe sau khôi phục sẽ xung đột với cạnh ngữ nghĩa đang hoạt động hiện có") from exc
         if restored is None:
             await self._raise_cas_miss(
                 novel_id,

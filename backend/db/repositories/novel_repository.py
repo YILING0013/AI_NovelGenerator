@@ -37,7 +37,7 @@ class NovelRepository(BaseRepository):
         """
         prepared = ensure_initial_version(data)
         if not str(prepared.get("title") or "").strip():
-            raise ValueError("小说标题不能为空")
+            raise ValueError("Tiêu đề tiểu thuyết không được để trống")
         prepared.setdefault("genre", "unclassified")
         prepared.setdefault("tags", [])
         prepared.setdefault("status", "draft")
@@ -47,7 +47,7 @@ class NovelRepository(BaseRepository):
         try:
             return await self.insert_one(prepared, session=session)
         except PyMongoDuplicateKeyError as exc:
-            raise DuplicateKeyError("小说创建幂等键已被并发请求占用") from exc
+            raise DuplicateKeyError("Khóa idempotent tạo tiểu thuyết đã bị yêu cầu đồng thời chiếm chỗ") from exc
 
     async def find_by_creation_idempotency(
         self,
@@ -129,7 +129,7 @@ class NovelRepository(BaseRepository):
             session=session,
         )
         if novel is None:
-            raise NotFoundError(f"小说 {novel_id} 不存在")
+            raise NotFoundError(f"Tiểu thuyết {novel_id} không tồn tại")
         return novel
 
     async def update_versioned_novel(

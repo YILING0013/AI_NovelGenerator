@@ -75,7 +75,7 @@ def hash_idempotency_key(raw_key: str) -> str:
     if not IDEMPOTENCY_KEY_RE.fullmatch(raw_key or ""):
         raise GenerationDomainError(
             "INVALID_IDEMPOTENCY_KEY",
-            "Idempotency-Key 必须为 16 到 128 位，只能包含 ASCII 字母、数字和 -_.:",
+            "Idempotency-Key phải dài 16 đến 128 ký tự, chỉ được chứa chữ cái ASCII, chữ số và -_.:",
             status_code=422,
         )
     return hashlib.sha256(raw_key.encode("ascii")).hexdigest()

@@ -30,16 +30,16 @@ def raise_writing_http_error(exc: Exception) -> NoReturn:
         不返回，抛出公开 HTTP 异常。
     """
     if isinstance(exc, TransactionNotSupportedError):
-        raise api_http_exception(status_code=503, code="WRITING_TRANSACTION_REQUIRED", message="确认保存需要启用 MongoDB 事务并连接副本集") from exc
+        raise api_http_exception(status_code=503, code="WRITING_TRANSACTION_REQUIRED", message="Xác nhận lưu cần bật transaction MongoDB và kết nối replica set") from exc
     if isinstance(exc, ConnectionFailure):
-        raise api_http_exception(status_code=503, code="DATABASE_UNAVAILABLE", message="数据库连接暂时不可用，请保留候选并使用原请求重试") from exc
+        raise api_http_exception(status_code=503, code="DATABASE_UNAVAILABLE", message="Kết nối cơ sở dữ liệu tạm thời không khả dụng, hãy giữ ứng viên và thử lại bằng yêu cầu gốc") from exc
     if isinstance(exc, PyMongoError):
         if exc.has_error_label("UnknownTransactionCommitResult"):
-            raise api_http_exception(status_code=503, code="DATABASE_UNAVAILABLE", message="数据库暂时无法确认保存结果，请保留候选并使用原请求重试") from exc
+            raise api_http_exception(status_code=503, code="DATABASE_UNAVAILABLE", message="Cơ sở dữ liệu tạm thời không xác nhận được kết quả lưu, hãy giữ ứng viên và thử lại bằng yêu cầu gốc") from exc
         if exc.has_error_label("TransientTransactionError") or getattr(exc, "code", None) in {11000, 112}:
-            raise api_http_exception(status_code=409, code="WRITING_WRITE_CONFLICT", message="资料正在被修改，请保留候选并使用原请求重试") from exc
-        raise api_http_exception(status_code=503, code="DATABASE_UNAVAILABLE", message="数据库暂时不可用") from exc
-    status, code, message, fields, details = exception_to_error(exc, fallback_message="写作请求失败")
+            raise api_http_exception(status_code=409, code="WRITING_WRITE_CONFLICT", message="Tư liệu đang bị sửa đổi, hãy giữ ứng viên và thử lại bằng yêu cầu gốc") from exc
+        raise api_http_exception(status_code=503, code="DATABASE_UNAVAILABLE", message="Cơ sở dữ liệu tạm thời không khả dụng") from exc
+    status, code, message, fields, details = exception_to_error(exc, fallback_message="Yêu cầu viết thất bại")
     if isinstance(exc, VersionConflictError):
         code = "WRITING_VERSION_CONFLICT"
     elif isinstance(exc, IdempotencyConflictError):

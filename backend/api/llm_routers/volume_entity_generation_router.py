@@ -92,7 +92,7 @@ async def _confirm(task: str, novel_id: str, volume_id: str, request, key: str):
     try:
         return await confirm_volume_entities(task, novel_id, volume_id, request, idempotency_key=key)
     except PyMongoError as exc:
-        raise DomainApiError("DATABASE_UNAVAILABLE", "数据库暂时不可用，请保留候选后重试", status_code=503) from exc
+        raise DomainApiError("DATABASE_UNAVAILABLE", "Cơ sở dữ liệu tạm thời không khả dụng, hãy giữ ứng viên rồi thử lại", status_code=503) from exc
     except (NotFoundError, DuplicateKeyError, ValueError) as exc:
         status, code, message, fields, details = exception_to_error(exc)
         raise DomainApiError(code, message, status_code=status, field_errors=fields, details=details) from exc

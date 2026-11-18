@@ -73,7 +73,7 @@ class NovelAIFieldConfirmationRequestV1(StrictRequestModel):
             isinstance(version, bool) or version < 1
             for version in self.expected_versions.values()
         ):
-            raise ValueError("expected_versions 必须使用正整数版本")
+            raise ValueError("expected_versions phải dùng phiên bản là số nguyên dương")
         return self
 
 
@@ -105,12 +105,12 @@ class NovelUpdateRequestV1(StrictRequestModel):
         """要求每个 CAS 命令至少包含一个显式业务字段。"""
         fields = self.model_fields_set - {"request_type", "expected_version"}
         if not fields:
-            raise ValueError("小说更新至少需要一个业务字段")
+            raise ValueError("Cập nhật tiểu thuyết cần ít nhất một trường nghiệp vụ")
         for required_field in ("title", "genre", "tags"):
             if required_field in fields and getattr(self, required_field) is None:
-                raise ValueError(f"{required_field} 不能为 null")
+                raise ValueError(f"{required_field} không được là null")
         if self.tags is not None and len(self.tags) != len(set(self.tags)):
-            raise ValueError("tags 不能包含重复项")
+            raise ValueError("tags không được chứa mục trùng lặp")
         return self
 
 
@@ -281,7 +281,7 @@ def serialize_novel(document: dict[str, Any]) -> NovelResponseV1:
 def _novel_http_exception(exc: Exception) -> HTTPException:
     """把小说领域预期异常转换为公共 HTTP 错误协议。"""
     if isinstance(exc, TransactionNotSupportedError):
-        return api_http_exception(status_code=503, code="NOVEL_TRANSACTION_REQUIRED", message="永久删除章后记录需要启用 MongoDB 事务并连接副本集")
+        return api_http_exception(status_code=503, code="NOVEL_TRANSACTION_REQUIRED", message="Xóa vĩnh viễn bản ghi sau chương đòi hỏi bật transaction MongoDB và kết nối replica set")
     status, code, message, field_errors, details = exception_to_error(exc)
     return api_http_exception(
         status_code=status,
@@ -393,7 +393,7 @@ async def update_novel(
     try:
         if isinstance(req, NovelAIFieldConfirmationRequestV1):
             if not idempotency_key:
-                raise ValueError("AI 字段确认必须携带 Idempotency-Key")
+                raise ValueError("Xác nhận trường AI phải kèm Idempotency-Key")
             novel = await NovelService.confirm_ai_field(
                 novel_id,
                 req,
@@ -504,10 +504,10 @@ async def hard_delete(
         )
     except PyMongoError as exc:
         if exc.has_error_label("UnknownTransactionCommitResult"):
-            raise api_http_exception(status_code=503, code="NOVEL_DELETE_OUTCOME_UNKNOWN", message="删除结果暂时无法确认，请重新查看作品；作品已不存在也不能证明本次请求成功") from exc
+            raise api_http_exception(status_code=503, code="NOVEL_DELETE_OUTCOME_UNKNOWN", message="Tạm không xác nhận được kết quả xóa, hãy xem lại tác phẩm; việc tác phẩm không còn cũng không chứng minh yêu cầu lần này thành công") from exc
         if exc.has_error_label("TransientTransactionError") or getattr(exc, "code", None) == 112:
-            raise api_http_exception(status_code=409, code="NOVEL_WRITE_CONFLICT", message="作品正在被其他操作修改，请重新查看删除影响") from exc
-        raise api_http_exception(status_code=503, code="DATABASE_UNAVAILABLE", message="数据库暂时不可用，请保留原删除确认后重试") from exc
+            raise api_http_exception(status_code=409, code="NOVEL_WRITE_CONFLICT", message="Tác phẩm đang bị thao tác khác sửa đổi, hãy xem lại ảnh hưởng của việc xóa") from exc
+        raise api_http_exception(status_code=503, code="DATABASE_UNAVAILABLE", message="Database tạm không khả dụng, hãy giữ nguyên xác nhận xóa cũ rồi thử lại") from exc
     except _EXPECTED_NOVEL_ERRORS as exc:
         raise _novel_http_exception(exc) from exc
 

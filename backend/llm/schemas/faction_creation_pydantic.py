@@ -84,9 +84,9 @@ class FactionCreateRequestV1(BaseModel):
             core 无归属卷，volume/local 有归属卷的请求。
         """
         if self.level_type == "core" and self.volume_id is not None:
-            raise ValueError("core 势力不能设置 volume_id")
+            raise ValueError("Thế lực core không được đặt volume_id")
         if self.level_type in {"volume", "local"} and self.volume_id is None:
-            raise ValueError("volume/local 势力必须设置 volume_id")
+            raise ValueError("Thế lực volume/local phải đặt volume_id")
         return self
 
 

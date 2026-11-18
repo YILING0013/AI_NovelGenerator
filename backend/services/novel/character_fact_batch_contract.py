@@ -57,7 +57,7 @@ class CharacterBatchCandidateV1(StrictRequestModel):
     def require_actual_fields(self) -> "CharacterBatchCandidateV1":
         """不替缺失资料编造起点值。"""
         if not self.facts.model_fields_set:
-            raise ValueError("请至少保留一项实际填写的人物资料")
+            raise ValueError("Hãy giữ lại ít nhất một thông tin nhân vật đã thực sự điền")
         return self
 
 
@@ -72,7 +72,7 @@ class CharacterRelationBatchCandidateV1(StrictRequestModel):
     def require_actual_state(self) -> "CharacterRelationBatchCandidateV1":
         """没有关系状态时保留原稿，不补造文字。"""
         if "current_state" not in self.facts.model_fields_set:
-            raise ValueError("请填写这段关系开始时的状态")
+            raise ValueError("Hãy điền trạng thái lúc bắt đầu của quan hệ này")
         return self
 
 
@@ -89,7 +89,7 @@ class CharacterFactBatchCreateV1(StrictRequestModel):
         """重复引用无法准确恢复原请求，进入事务前即拒绝。"""
         refs = [row.candidate_ref for row in self.candidates]
         if len(refs) != len(set(refs)):
-            raise ValueError("人物候选引用不能重复")
+            raise ValueError("Tham chiếu ứng viên nhân vật không được trùng lặp")
         return self
 
 
@@ -106,7 +106,7 @@ class CharacterRelationFactBatchCreateV1(StrictRequestModel):
         """整批关系保留一一对应的身份。"""
         refs = [row.candidate_ref for row in self.candidates]
         if len(refs) != len(set(refs)):
-            raise ValueError("关系候选引用不能重复")
+            raise ValueError("Tham chiếu ứng viên quan hệ không được trùng lặp")
         return self
 
 

@@ -356,7 +356,7 @@ async function consumeSSE<T>(
 ): Promise<void> {
   const reader = response.body?.getReader();
   if (!reader) {
-    throw createSSEProtocolError("SSE 响应没有可读取的响应体");
+    throw createSSEProtocolError("Phản hồi SSE không có phần thân để đọc");
   }
 
   const decoder = new TextDecoder();
@@ -388,7 +388,7 @@ async function consumeSSE<T>(
       parsedData = JSON.parse(rawData) as T;
     } catch {
       throw createSSEProtocolError(
-        `SSE 事件 ${currentEventType} 的 data 不是合法 JSON`,
+        `data của sự kiện SSE ${currentEventType} không phải JSON hợp lệ`,
         { event: currentEventType, data: rawData },
       );
     }
@@ -454,8 +454,8 @@ async function consumeSSE<T>(
         chunk = await reader.read();
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") throw error;
-        if (pendingFrame || buffer.trim()) throw createSSEProtocolError("SSE 连接中断时仍有未结束的事件");
-        throw new ApiRequestError({ status: 502, code: "SSE_CONNECTION_LOST", message: "SSE 连接读取中断" });
+        if (pendingFrame || buffer.trim()) throw createSSEProtocolError("Kết nối SSE gián đoạn khi vẫn còn sự kiện chưa kết thúc");
+        throw new ApiRequestError({ status: 502, code: "SSE_CONNECTION_LOST", message: "Đang đọc kết nối SSE thì gián đoạn" });
       }
       const { done, value } = chunk;
       if (done) break;
@@ -470,7 +470,7 @@ async function consumeSSE<T>(
       buffer = "";
     }
     if (pendingFrame) {
-      throw createSSEProtocolError("SSE 事件必须以空行结束完整帧");
+      throw createSSEProtocolError("Mỗi sự kiện SSE phải kết thúc bằng một dòng trống");
     }
   } catch (error) {
     // 回调或协议校验失败后主动取消读取，避免浏览器继续消费已经无效的响应流。
@@ -491,7 +491,7 @@ async function consumeSSE<T>(
 function assertEventStreamResponse(response: Response): void {
   const contentType = response.headers.get("content-type")?.toLocaleLowerCase() ?? "";
   if (!contentType.includes("text/event-stream")) {
-    throw createSSEProtocolError("SSE 响应的 Content-Type 必须为 text/event-stream", {
+    throw createSSEProtocolError("Content-Type của phản hồi SSE phải là text/event-stream", {
       content_type: contentType || null,
     });
   }
@@ -762,7 +762,7 @@ export async function apiPostSSE(
           return;
         }
         if (!allowedEvents.has(event)) {
-          throw createSSEProtocolError(`SSE 收到未声明的业务事件: ${event}`, {
+          throw createSSEProtocolError(`SSE nhận được sự kiện nghiệp vụ chưa khai báo: ${event}`, {
             event,
             data: eventData,
           });
@@ -770,8 +770,8 @@ export async function apiPostSSE(
         if (terminalEvent) {
           throw createSSEProtocolError(
             TERMINAL_POST_SSE_EVENTS.has(event)
-              ? `SSE 收到重复终态: ${event}`
-              : `SSE 在终态 ${terminalEvent} 之后仍收到业务事件: ${event}`,
+              ? `SSE nhận trạng thái kết thúc trùng lặp: ${event}`
+              : `SSE vẫn nhận sự kiện nghiệp vụ sau trạng thái kết thúc ${terminalEvent}: ${event}`,
             { event, terminal_event: terminalEvent, data: eventData },
           );
         }
@@ -797,6 +797,6 @@ export async function apiPostSSE(
   }
 
   if (!staleRequest && terminalEvent === null) {
-    throw createSSEProtocolError("SSE 连接在收到 done 或 error 终态前关闭");
+    throw createSSEProtocolError("Kết nối SSE đóng trước khi nhận trạng thái kết thúc done hoặc error");
   }
 }

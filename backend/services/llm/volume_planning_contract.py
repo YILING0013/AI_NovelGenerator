@@ -137,26 +137,26 @@ def validate_volume_skeleton_candidate_set(
     )
     ordered = sorted(candidates, key=lambda item: int(item["order_index"]))
     if require_generated_count and len(ordered) != normalized_input.target_volume_count:
-        raise ValueError("模型卷数量必须严格等于 target_volume_count")
+        raise ValueError("Số quyển mô hình trả về phải bằng chính xác target_volume_count")
     orders = [int(item["order_index"]) for item in ordered]
     if orders != list(range(orders[0], orders[0] + len(orders))):
-        raise ValueError("候选卷 order_index 必须连续")
+        raise ValueError("order_index của các quyển ứng viên phải liên tục")
     titles = [normalize_volume_text(str(item["title"])) for item in ordered]
     if any(not title for title in titles) or len(titles) != len(set(titles)):
-        raise ValueError("候选卷标题必须规范唯一")
+        raise ValueError("Tiêu đề quyển ứng viên phải được chuẩn hóa và duy nhất")
     if sum(int(item["planning"]["target_chapter_count"]) for item in ordered) != (
         normalized_input.total_chapter_budget
     ):
-        raise ValueError("候选卷章节预算总和不匹配")
+        raise ValueError("Tổng ngân sách chương của các quyển ứng viên không khớp")
     if sum(int(item["planning"]["target_word_count"]) for item in ordered) != (
         normalized_input.total_word_budget
     ):
-        raise ValueError("候选卷字数预算总和不匹配")
+        raise ValueError("Tổng ngân sách số chữ của các quyển ứng viên không khớp")
     for previous, current in zip(ordered, ordered[1:]):
         if normalize_volume_text(str(previous["planning"]["end_state"])) != (
             normalize_volume_text(str(current["planning"]["start_state"]))
         ):
-            raise ValueError("上一卷结尾与下一卷开头未衔接，请重新生成或修改两卷衔接处")
+            raise ValueError("Đoạn kết của quyển trước và phần mở đầu của quyển sau chưa nối tiếp, hãy tạo lại hoặc sửa chỗ giao tiếp giữa hai quyển")
 
 
 __all__ = [

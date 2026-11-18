@@ -212,7 +212,7 @@ def _raise_if_has_child_factions(children: Sequence[Mapping[str, Any]]) -> None:
     child_ids = [str(child["faction_id"]) for child in children]
     raise DomainApiError(
         "FACTION_CHILD_REFERENCE_PROTECTED",
-        "势力仍有直接子势力，不能停用或删除",
+        "Thế lực còn có thế lực con trực tiếp, không thể vô hiệu hoặc xóa",
         status_code=409,
         details={"child_ids": child_ids, "count": len(child_ids)},
     )
@@ -228,9 +228,9 @@ def _validate_expected_faction_version(expected_version: Any) -> int:
         大于等于 1 的严格整数版本。
     """
     if isinstance(expected_version, bool) or not isinstance(expected_version, int):
-        raise ValueError("expected_version 必须为正整数")
+        raise ValueError("expected_version phải là số nguyên dương")
     if expected_version < 1:
-        raise ValueError("expected_version 必须大于等于 1")
+        raise ValueError("expected_version phải lớn hơn hoặc bằng 1")
     return expected_version
 
 
@@ -271,7 +271,7 @@ async def _get_versioned_faction(
     if current_version != normalized_version:
         raise DuplicateKeyError(
             "势力版本冲突："
-            f"当前版本为 {current_version}，请求版本为 {normalized_version}"
+            f"当前版本为 {current_version}, phiên bản yêu cầu là {normalized_version}"
         )
     return faction
 
@@ -312,9 +312,9 @@ async def _cas_update_faction_snapshot(
             session=session,
         )
     except (PyMongoDuplicateKeyError, BulkWriteError) as exc:
-        raise DuplicateKeyError("势力更新与现有业务约束冲突") from exc
+        raise DuplicateKeyError("Cập nhật thế lực xung đột với ràng buộc nghiệp vụ hiện có") from exc
     if updated is None:
-        raise DuplicateKeyError("势力已被其他请求修改，请刷新后重试")
+        raise DuplicateKeyError("Thế lực đã bị yêu cầu khác sửa đổi, hãy làm mới rồi thử lại")
     return updated
 
 
@@ -388,7 +388,7 @@ async def _apply_faction_relation_changes(
                 session=session,
             )
         except (PyMongoDuplicateKeyError, BulkWriteError) as exc:
-            raise DuplicateKeyError("势力恢复后阵营关系发生活动语义冲突") from exc
+            raise DuplicateKeyError("Quan hệ phe xảy ra xung đột ngữ nghĩa đang hoạt động sau khi khôi phục thế lực") from exc
         if result.matched_count != 1:
             raise _DependencyReconcileCasMiss(
                 "阵营关系已被其他请求修改，请重新读取后重试"
@@ -464,7 +464,7 @@ async def _apply_faction_binding_availability(
                 session=session,
             )
         except (PyMongoDuplicateKeyError, BulkWriteError) as exc:
-            raise DuplicateKeyError("势力恢复后角色—势力绑定发生活动唯一冲突") from exc
+            raise DuplicateKeyError("Sau khi phục hồi thế lực, liên kết nhân vật-thế lực xảy ra xung đột duy nhất khi đang hoạt động") from exc
         if result.matched_count != 1:
             raise _DependencyReconcileCasMiss(
                 "角色—势力绑定已被其他请求修改，请重新读取后重试"
@@ -523,12 +523,12 @@ async def _validate_faction_binding_unblock(
             str(binding["membership_type"]),
         )
         if semantic in semantic_candidates:
-            raise DuplicateKeyError("势力恢复后角色—势力绑定语义重复")
+            raise DuplicateKeyError("Liên kết nhân vật - thế lực trùng ngữ nghĩa sau khi khôi phục thế lực")
         semantic_candidates[semantic] = str(binding["binding_id"])
         if binding.get("membership_type") == "primary":
             character_id = str(binding["character_id"])
             if character_id in primary_candidates:
-                raise DuplicateKeyError("势力恢复后同一角色出现多个主归属")
+                raise DuplicateKeyError("Cùng một nhân vật xuất hiện nhiều quy thuộc chính sau khi khôi phục thế lực")
             primary_candidates[character_id] = str(binding["binding_id"])
 
     semantic_conflicts = await character_faction_binding_repo.find_active_semantic_bindings(
@@ -537,14 +537,14 @@ async def _validate_faction_binding_unblock(
         session=session,
     )
     if semantic_conflicts:
-        raise DuplicateKeyError("势力恢复会与现有活动角色—势力绑定语义冲突")
+        raise DuplicateKeyError("Phục hồi thế lực sẽ xung đột ngữ nghĩa với liên kết nhân vật-thế lực đang hoạt động hiện hữu")
     primary_conflicts = await character_faction_binding_repo.find_active_primary_bindings(
         novel_id,
         list(primary_candidates),
         session=session,
     )
     if primary_conflicts:
-        raise DuplicateKeyError("势力恢复会导致同一角色存在多个活动主归属")
+        raise DuplicateKeyError("Phục hồi thế lực sẽ khiến cùng nhân vật có nhiều thành viên chính đang hoạt động")
     return len(semantic_candidates)
 
 
@@ -637,11 +637,10 @@ async def _compensate_faction_write(
         if current is not None:
             await _reconcile_faction_dependents(current)
             raise RuntimeError(
-                "standalone 势力主档补偿未完成：公开版本或删除态已推进；"
-                "已保留较新主档并按当前状态调和依赖"
+                "Bù đắp hồ sơ chính thế lực standalone chưa hoàn tất: phiên bản công khai hoặc trạng thái xóa đã tiến triển; đã giữ hồ sơ chính mới hơn và điều hòa các phụ thuộc theo trạng thái hiện tại"
             ) from master_exc
         raise RuntimeError(
-            "standalone 势力主档补偿未完成：原业务身份已不存在或被重建"
+            "Bù đắp hồ sơ chính thế lực standalone chưa hoàn tất: định danh nghiệp vụ gốc không còn tồn tại hoặc đã được tạo lại"
         ) from master_exc
 
     dependency_error: Exception | None = None
@@ -654,7 +653,7 @@ async def _compensate_faction_write(
     await _reconcile_faction_dependents(faction_record.snapshot)
     if dependency_error is not None:
         raise RuntimeError(
-            "standalone 势力依赖预镜像补偿未完整命中；已按恢复后的主档调和最新依赖"
+            "Bù đắp phụ thuộc hồ sơ chính thế lực standalone chưa áp dụng đầy đủ; đã điều hòa các phụ thuộc mới nhất theo hồ sơ chính đã khôi phục"
         ) from dependency_error
 
 
@@ -684,17 +683,17 @@ class FactionService:
             LLMSchemaError: 数量、名称或关系引用不满足要求时抛出。
         """
         if req.faction_count is not None and len(result.core_factions) != req.faction_count:
-            raise LLMSchemaError(f"core_factions 数量必须等于 {req.faction_count}")
+            raise LLMSchemaError(f"Số lượng core_factions phải bằng {req.faction_count}")
 
         try:
             generated_name_pairs = [
                 normalize_faction_name(item.name) for item in result.core_factions
             ]
         except (TypeError, ValueError) as exc:
-            raise LLMSchemaError(f"生成核心势力名称不合法: {exc}") from exc
+            raise LLMSchemaError(f"Tên thế lực nòng cốt được sinh ra không hợp lệ: {exc}") from exc
         generated_name_keys = [normalized_name for _, normalized_name in generated_name_pairs]
         if len(generated_name_keys) != len(set(generated_name_keys)):
-            raise LLMSchemaError("生成核心势力名称经规范化后不能重复")
+            raise LLMSchemaError("Tên thế lực cốt lõi được sinh ra không được trùng sau chuẩn hóa")
         generated_refs = {item.faction_ref for item in result.core_factions}
         existing_name_pairs = {
             normalize_faction_name(str(item.get("name") or ""))
@@ -709,7 +708,7 @@ class FactionService:
         ]
         if overlap:
             raise LLMSchemaError(
-                f"生成阵营不得与已有阵营重名: {', '.join(sorted(overlap))}"
+                f"Phe được sinh ra không được trùng tên với phe đã có: {', '.join(sorted(overlap))}"
             )
 
         existing_ids = {
@@ -731,16 +730,16 @@ class FactionService:
                 if endpoint.kind == "existing"
             }
             if not candidate_refs <= generated_refs or not formal_ids <= existing_ids:
-                raise LLMSchemaError("阵营关系端点必须引用本次 faction_ref 或已有 faction_id")
+                raise LLMSchemaError("Điểm cuối quan hệ thế lực phải tham chiếu faction_ref của lần này hoặc faction_id đã có")
             if not candidate_refs:
-                raise LLMSchemaError("新增关系至少有一个端点属于本次生成阵营")
+                raise LLMSchemaError("Quan hệ mới phải có ít nhất một điểm cuối thuộc phe được sinh lần này")
             connected_generated_refs.update(candidate_refs)
 
         independent_count = len(generated_refs - connected_generated_refs)
         if independent_count != req.independent_faction_count:
             raise LLMSchemaError(
-                "本批不建立直接关系的势力数量与请求不一致: "
-                f"期望 {req.independent_faction_count}，实际 {independent_count}"
+                "Số thế lực không tạo quan hệ trực tiếp trong lô này lệch với yêu cầu: "
+                f"kỳ vọng {req.independent_faction_count}, thực tế {independent_count}"
             )
         return result
 
@@ -794,19 +793,19 @@ class FactionService:
             if endpoint.get("kind") == "candidate":
                 faction_ref = str(endpoint.get("faction_ref") or "")
                 if faction_ref not in faction_ref_map:
-                    raise ValueError("关系引用了未选择或不存在的新势力")
+                    raise ValueError("Quan hệ tham chiếu thế lực mới chưa được chọn hoặc không tồn tại")
                 return faction_ref_map[faction_ref], True
             if endpoint.get("kind") == "existing":
                 faction_id = str(endpoint.get("faction_id") or "")
                 if faction_id not in existing_faction_ids:
-                    raise ValueError(f"关系引用的已有势力不存在或已变化: {faction_id}")
+                    raise ValueError(f"Thế lực hiện có được quan hệ tham chiếu không tồn tại hoặc đã thay đổi: {faction_id}")
                 return faction_id, False
-            raise ValueError("阵营关系端点类型不合法")
+            raise ValueError("Loại đầu điểm của quan hệ thế lực không hợp lệ")
 
         source_id, source_is_new = _resolve(data.get("source") or {})
         target_id, target_is_new = _resolve(data.get("target") or {})
         if not source_is_new and not target_is_new:
-            raise ValueError("新增关系至少需要连接一个本次生成的核心阵营")
+            raise ValueError("Quan hệ mới phải kết nối ít nhất một thế lực cốt lõi được sinh trong lần này")
 
         payload = {
             "source_faction_id": source_id,
@@ -859,7 +858,7 @@ class FactionService:
             query["faction_id"] = {"$ne": exclude_faction_id}
         existing = await faction_repo.find_one(query, session=session)
         if existing:
-            raise DuplicateKeyError(f"同一小说同一势力层级下已存在同名阵营: {name}")
+            raise DuplicateKeyError(f"Đã tồn tại thế lực trùng tên trong cùng cấp thế lực thuộc cùng tiểu thuyết: {name}")
 
     @staticmethod
     async def _validate_scope_and_parent(
@@ -885,38 +884,38 @@ class FactionService:
             可直接持久化的归属卷 ObjectId；core 返回 None。
         """
         if level_type not in {"core", "volume", "local"}:
-            raise ValueError("level_type 仅允许 core、volume 或 local")
+            raise ValueError("level_type chỉ cho phép core, volume hoặc local")
         owned_volume_id = None
         if level_type == "core":
             if volume_id is not None:
-                raise ValueError("core 势力不能设置 volume_id")
+                raise ValueError("Thế lực core không được đặt volume_id")
         else:
             if volume_id is None:
-                raise ValueError("volume/local 势力必须设置 volume_id")
+                raise ValueError("Thế lực volume/local phải đặt volume_id")
             volume = await volume_repo.get_volume_by_id(
                 volume_id,
                 session=session,
             )
             if volume.get("novel_id") != to_object_id(novel_id):
-                raise NotFoundError("归属卷不存在、已删除或不属于当前小说")
+                raise NotFoundError("Quyển quy thuộc không tồn tại, đã bị xóa hoặc không thuộc tiểu thuyết hiện tại")
             owned_volume_id = volume["_id"]
 
         if parent_faction_id is None:
             return owned_volume_id
         if faction_id is not None and parent_faction_id == faction_id:
-            raise ValueError("父势力不能指向自身")
+            raise ValueError("Thế lực cha không được tự tham chiếu")
         parent = await faction_repo.get_faction(
             novel_id,
             parent_faction_id,
             session=session,
         )
         if parent["active_status"] != "active":
-            raise NotFoundError("父势力不存在、已删除或已停用")
+            raise NotFoundError("Thế lực cha không tồn tại, đã bị xóa hoặc đã bị ngưng dùng")
         parent_level = parent["level_type"]
         parent_volume_id = parent.get("volume_id")
         if level_type == "core":
             if parent_level != "core" or parent_volume_id is not None:
-                raise ValueError("core 势力只能挂在 core 父势力下")
+                raise ValueError("Thế lực core chỉ có thể gắn dưới thế lực cha core")
             valid_parent_scope = True
         elif level_type != "core" and parent_level == "core" and parent_volume_id is None:
             valid_parent_scope = True
@@ -931,8 +930,8 @@ class FactionService:
             valid_parent_scope = False
         if not valid_parent_scope:
             if level_type == "core":
-                raise ValueError("core 势力只能挂在 core 父势力下")
-            raise ValueError("volume/local 势力只能挂 core 或同归属卷父势力")
+                raise ValueError("Thế lực core chỉ có thể gắn dưới thế lực cha core")
+            raise ValueError("Thế lực volume/local chỉ có thể gắn dưới thế lực cha core hoặc thế lực cha cùng quyển")
 
         if faction_id is not None:
             visited: set[str] = set()
@@ -940,11 +939,11 @@ class FactionService:
             while cursor.get("parent_faction_id") is not None:
                 cursor_id = str(cursor.get("faction_id") or "")
                 if cursor_id in visited:
-                    raise ValueError("现有父势力链已经成环，不能继续重挂")
+                    raise ValueError("Chuỗi cha thế lực hiện có đã tạo vòng lặp, không thể treo lại tiếp")
                 visited.add(cursor_id)
                 next_parent_id = str(cursor["parent_faction_id"])
                 if next_parent_id == faction_id:
-                    raise ValueError("父势力不能是当前势力的下级")
+                    raise ValueError("Thế lực cha không được là mục con của thế lực hiện tại")
                 cursor = await faction_repo.get_faction(
                     novel_id,
                     next_parent_id,
@@ -1020,7 +1019,7 @@ class FactionService:
             if existing.get("creation_request_hash") != request_hash:
                 raise GenerationDomainError(
                     "IDEMPOTENCY_KEY_REUSED",
-                    "同一 Idempotency-Key 已用于不同的势力创建请求",
+                    "Cùng Idempotency-Key đã được dùng cho yêu cầu tạo thế lực khác",
                     status_code=409,
                 )
             return existing
@@ -1028,7 +1027,7 @@ class FactionService:
         replay = await _find_replay(session)
         if replay is not None:
             return replay
-        raise GenerationDomainError("FACTION_FACT_REQUIRED", "新势力请先选择剧情起点并确认资料；旧请求没有成功记录，原稿应保留", status_code=409)
+        raise GenerationDomainError("FACTION_FACT_REQUIRED", "Thế lực mới hãy chọn điểm khởi đầu cốt truyện và xác nhận hồ sơ trước; yêu cầu cũ không có bản ghi thành công, bản thảo gốc phải được giữ lại", status_code=409)
 
     @staticmethod
     async def bulk_create_core_factions_with_relations(novel_id: str, data: Any, *, idempotency_key: str, session: AsyncClientSession | None=None) -> Dict[str, Any]:
@@ -1067,7 +1066,7 @@ class FactionService:
             for faction in selected_factions
         ]
         if len(selected_name_keys) != len(set(selected_name_keys)):
-            raise ValueError("所选核心势力名称经规范化后不能重复")
+            raise ValueError("Tên thế lực cốt lõi đã chọn không được trùng sau chuẩn hóa")
         key_hash = hash_idempotency_key(idempotency_key)
         request_hash = checksum({"novel_id": novel_id, "request": source})
 
@@ -1093,7 +1092,7 @@ class FactionService:
             ):
                 raise GenerationDomainError(
                     "IDEMPOTENCY_KEY_REUSED",
-                    "同一 Idempotency-Key 已用于不同的核心势力确认请求",
+                    "Cùng Idempotency-Key đã được dùng cho yêu cầu xác nhận thế lực cốt lõi khác",
                     status_code=409,
                 )
             factions_by_ref = {
@@ -1112,7 +1111,7 @@ class FactionService:
                 or set(factions_by_ref) - set(selected_faction_refs)
                 or set(relations_by_ref) - set(selected_relation_refs)
             ):
-                raise DuplicateKeyError("核心势力确认批次本地 ref 元数据冲突")
+                raise DuplicateKeyError("Xung đột metadata local ref của lô xác nhận thế lực cốt lõi")
             return factions_by_ref, relations_by_ref
 
         def _build_result(
@@ -1148,7 +1147,7 @@ class FactionService:
         factions_by_ref, relations_by_ref = await _load_existing(session)
         if set(factions_by_ref) == set(selected_faction_refs) and set(relations_by_ref) == set(selected_relation_refs):
             return _build_result(factions_by_ref, relations_by_ref)
-        raise GenerationDomainError("FACTION_FACT_REQUIRED", "旧批次没有完整成功记录；请保留原请求，新批次需先确认剧情起点", status_code=409)
+        raise GenerationDomainError("FACTION_FACT_REQUIRED", "Lô cũ không có bản ghi thành công đầy đủ; hãy giữ yêu cầu gốc, lô mới cần xác định điểm khởi đầu cốt truyện trước", status_code=409)
 
     @staticmethod
     async def get_factions_by_novel(novel_id: str) -> List[Dict[str, Any]]:
@@ -1189,7 +1188,7 @@ class FactionService:
             阵营文档列表。
         """
         if level_type not in {"core", "volume", "local"}:
-            raise ValueError("level_type 仅允许 core、volume 或 local")
+            raise ValueError("level_type chỉ cho phép core, volume hoặc local")
         await novel_repo.get_novel_by_id(novel_id)
         return await faction_repo.get_factions_by_level_type(novel_id, level_type)
 
@@ -1209,7 +1208,7 @@ class FactionService:
         """
         await novel_repo.get_novel_by_id(novel_id)
         if level_type is not None and level_type not in {"core", "volume", "local"}:
-            raise ValueError("level_type 仅允许 core、volume 或 local")
+            raise ValueError("level_type chỉ cho phép core, volume hoặc local")
         return await faction_repo.get_deleted_factions_by_level_type(novel_id, level_type)
 
     @staticmethod
@@ -1253,17 +1252,17 @@ class FactionService:
         attempted_identity_changes = sorted(forbidden_fields & source.keys())
         if attempted_identity_changes:
             raise ValueError(
-                "阶段 1 势力更新不得修改身份或层级字段: "
+                "Cập nhật thế lực giai đoạn 1 không được sửa trường định danh hoặc cấp bậc: "
                 + ", ".join(attempted_identity_changes)
             )
         unknown_fields = sorted(source.keys() - FACTION_EDITABLE_FIELDS)
         if unknown_fields:
-            raise ValueError("势力更新包含未登记字段: " + ", ".join(unknown_fields))
+            raise ValueError("Cập nhật thế lực chứa các trường chưa được đăng ký: " + ", ".join(unknown_fields))
         filtered_update = {
             key: value for key, value in source.items() if key in FACTION_EDITABLE_FIELDS
         }
         if not filtered_update:
-            raise ValueError("势力更新至少需要一个可修改字段")
+            raise ValueError("Cập nhật thế lực cần ít nhất một trường có thể sửa")
         if "name" in filtered_update:
             display_name, normalized_name = normalize_faction_name(
                 filtered_update["name"]
@@ -1289,14 +1288,14 @@ class FactionService:
         if "extra" in filtered_update and filtered_update["extra"] is None:
             filtered_update["extra"] = {}
         if "is_public" in filtered_update and filtered_update["is_public"] is None:
-            raise ValueError("is_public 不能为 null")
+            raise ValueError("is_public không được là null")
         if "sort_order" in filtered_update and filtered_update["sort_order"] is None:
-            raise ValueError("sort_order 不能为 null")
+            raise ValueError("sort_order không được là null")
         if "active_status" in filtered_update and filtered_update["active_status"] not in {
             "active",
             "inactive",
         }:
-            raise ValueError("active_status 仅允许 active 或 inactive")
+            raise ValueError("active_status chỉ cho phép active hoặc inactive")
 
         async def _update(session: AsyncClientSession | None) -> Dict[str, Any]:
             """在同一个写入单元内更新阵营及其关系、绑定派生状态。"""
@@ -1484,7 +1483,7 @@ class FactionService:
                             state_lock_releasable = False
                             logger.exception("势力更新失败且预镜像补偿失败")
                             raise RuntimeError(
-                                "势力更新失败，且 standalone 补偿未完成"
+                                "Cập nhật thế lực thất bại và bù đắp standalone chưa hoàn tất"
                             ) from compensation_exc
                     raise
             finally:
@@ -1525,13 +1524,13 @@ class FactionService:
                 not isinstance(faction_id, str)
                 or re.fullmatch(FACTION_BUSINESS_ID_PATTERN, faction_id) is None
             ):
-                raise ValueError("排序 items 包含非法 faction_id")
+                raise ValueError("items sắp xếp chứa faction_id không hợp lệ")
             if (
                 isinstance(sort_order, bool)
                 or not isinstance(sort_order, int)
                 or sort_order < 0
             ):
-                raise ValueError("sort_order 必须为非负整数")
+                raise ValueError("sort_order phải là số nguyên không âm")
             normalized_items.append(
                 {
                     "faction_id": faction_id,
@@ -1541,10 +1540,10 @@ class FactionService:
             )
         requested_ids = [str(item["faction_id"]) for item in normalized_items]
         if len(requested_ids) != len(set(requested_ids)):
-            raise DuplicateKeyError("排序 items 不能重复 faction_id")
+            raise DuplicateKeyError("items sắp xếp không được trùng faction_id")
         requested_orders = [int(item["sort_order"]) for item in normalized_items]
         if len(requested_orders) != len(set(requested_orders)):
-            raise DuplicateKeyError("活动核心势力 sort_order 必须互不重复")
+            raise DuplicateKeyError("sort_order của các thế lực cốt lõi đang hoạt động phải đôi một khác nhau")
 
         async def _update(
             session: AsyncClientSession | None,
@@ -1560,7 +1559,7 @@ class FactionService:
             }
             if set(requested_ids) != set(current_by_id):
                 raise DuplicateKeyError(
-                    "排序请求必须覆盖当前全部活动核心势力："
+                    "Yêu cầu sắp xếp phải bao phủ toàn bộ thế lực lõi đang hoạt động:"
                     f"expected={sorted(current_by_id)}, actual={sorted(requested_ids)}"
                 )
             for item in normalized_items:
@@ -1571,7 +1570,7 @@ class FactionService:
                 actual_version = int(current_by_id[faction_id]["version"])
                 if expected_version != actual_version:
                     raise DuplicateKeyError(
-                        f"势力 '{faction_id}' 版本冲突："
+                        f"Thế lực '{faction_id}' 版本冲突："
                         f"expected={expected_version}, actual={actual_version}"
                     )
 
@@ -1621,7 +1620,7 @@ class FactionService:
                 }
                 if actual_after != expected_after:
                     raise DuplicateKeyError(
-                        "势力排序期间活动核心集合已并发变化，请刷新后重试"
+                        "Tập thế lực cốt lõi đang hoạt động đã thay đổi đồng thời trong lúc sắp xếp, hãy làm mới rồi thử lại"
                     )
                 return [updated_by_id[faction_id] for faction_id in requested_ids]
             except Exception:
@@ -1630,7 +1629,7 @@ class FactionService:
                         await _restore_snapshots(faction_repo, records)
                     except Exception as compensation_exc:
                         raise RuntimeError(
-                            "势力排序失败，且 standalone 补偿未完成"
+                            "Sắp xếp thế lực thất bại và bù đắp standalone chưa hoàn tất"
                         ) from compensation_exc
                 raise
 
@@ -1781,7 +1780,7 @@ class FactionService:
                             state_lock_releasable = False
                             logger.exception("势力软删除失败且预镜像补偿失败")
                             raise RuntimeError(
-                                "势力软删除失败，且 standalone 补偿未完成"
+                                "Xóa mềm thế lực thất bại và bù đắp standalone chưa hoàn tất"
                             ) from compensation_exc
                     raise
             finally:
@@ -1842,7 +1841,7 @@ class FactionService:
                 if "user" not in deletion_sources:
                     raise DomainApiError(
                         "FACTION_USER_SOURCE_MISSING",
-                        "势力没有可恢复的用户删除来源",
+                        "Thế lực không có nguồn xóa do người dùng tạo để khôi phục",
                         status_code=409,
                     )
                 remaining_sources = [
@@ -1974,7 +1973,7 @@ class FactionService:
                             state_lock_releasable = False
                             logger.exception("势力恢复失败且预镜像补偿失败")
                             raise RuntimeError(
-                                "势力恢复失败，且 standalone 补偿未完成"
+                                "Phục hồi thế lực thất bại và bù đắp standalone chưa hoàn tất"
                             ) from compensation_exc
                     raise
             finally:
@@ -2027,7 +2026,7 @@ class FactionService:
                     # 待提交地点不是公开事实，只阻断删除而不返回其数量或业务 ID。
                     raise DomainApiError(
                         "FACTION_LOCATION_WRITE_CONFLICT",
-                        "地点写入正在使用该势力，请稍后重试",
+                        "Việc ghi địa điểm đang sử dụng thế lực này, hãy thử lại sau",
                         status_code=409,
                     )
                 referencing_locations = await BaseRepository("locations").find_many(
@@ -2045,7 +2044,7 @@ class FactionService:
                     ]
                     raise DomainApiError(
                         "FACTION_LOCATION_REFERENCE_PROTECTED",
-                        "势力仍被正式地点引用，不能永久删除",
+                        "Thế lực vẫn được địa điểm chính thức tham chiếu, không thể xóa vĩnh viễn",
                         status_code=409,
                         details={
                             "location_ids": location_ids,
@@ -2076,7 +2075,7 @@ class FactionService:
                         arc_ids = [str(arc["_id"]) for arc in referencing_arcs]
                         raise DomainApiError(
                             "ARC_FACTION_REFERENCE_PROTECTED",
-                            "势力仍被篇章引用，请先移除引用再永久删除",
+                            "Thế lực vẫn bị vòng truyện tham chiếu, hãy gỡ tham chiếu trước rồi xóa vĩnh viễn",
                             status_code=409,
                             details={"arc_ids": arc_ids, "count": len(arc_ids)},
                         )
@@ -2087,7 +2086,7 @@ class FactionService:
                     if referencing_scenes:
                         raise DomainApiError(
                             "SCENE_FACTION_REFERENCE_PROTECTED",
-                            "势力仍被场景引用，请先移除引用再永久删除",
+                            "Thế lực vẫn bị cảnh tham chiếu, hãy gỡ tham chiếu trước rồi xóa vĩnh viễn",
                             status_code=409,
                             details={"scene_ids": [str(item["_id"]) for item in referencing_scenes], "count": len(referencing_scenes)},
                         )
@@ -2105,7 +2104,7 @@ class FactionService:
                     if state_references:
                         raise DomainApiError(
                             "FACTION_VOLUME_STATE_REFERENCE_PROTECTED",
-                            "势力仍有卷级状态，不能永久删除",
+                            "Thế lực vẫn còn trạng thái cấp quyển, không thể xóa vĩnh viễn",
                             status_code=409,
                             details={
                                 "state_ids": [
@@ -2125,7 +2124,7 @@ class FactionService:
                     if pending_item_references:
                         raise DomainApiError(
                             "FACTION_ITEM_WRITE_CONFLICT",
-                            "物品写入正在使用该势力，请稍后重试",
+                            "Việc ghi vật phẩm đang sử dụng thế lực này, hãy thử lại sau",
                             status_code=409,
                         )
                     referencing_items = await BaseRepository("items").find_many(
@@ -2141,7 +2140,7 @@ class FactionService:
                         item_ids = [str(item["item_id"]) for item in referencing_items]
                         raise DomainApiError(
                             "FACTION_ITEM_REFERENCE_PROTECTED",
-                            "势力仍被正式物品引用，不能永久删除",
+                            "Thế lực vẫn được vật phẩm chính thức tham chiếu, không thể xóa vĩnh viễn",
                             status_code=409,
                             details={"item_ids": item_ids, "count": len(item_ids)},
                         )
@@ -2192,7 +2191,7 @@ class FactionService:
                             session=session,
                         )
                         if delete_result.deleted_count != 1:
-                            raise DuplicateKeyError("势力已被其他请求修改，请刷新后重试")
+                            raise DuplicateKeyError("Thế lực đã bị yêu cầu khác sửa đổi, hãy làm mới rồi thử lại")
                         faction_record = _deleted_compensation_record(deleted_faction)
                         stats = {
                             "faction_deleted": 1,
@@ -2219,7 +2218,7 @@ class FactionService:
                                 state_lock_releasable = False
                                 logger.exception("势力硬删除失败且预镜像补偿失败")
                                 raise RuntimeError(
-                                    "势力硬删除失败，且 standalone 补偿未完成"
+                                    "Xóa cứng thế lực thất bại và bù đắp standalone chưa hoàn tất"
                                 ) from compensation_exc
                         raise
                 finally:

@@ -31,10 +31,10 @@ async def _validate_generation(novel_id, generation, *, session):
     if (basis.novel_id != novel_id or inputs.novel_id != novel_id
             or basis.workflow != "create_factions_by_ai" or basis.step != "create_core_factions"
             or basis.schema_id != "faction.core_generation.result" or basis.schema_version != 2):
-        raise DomainApiError("FACTION_BATCH_SOURCE_CHANGED", "这批结果不属于当前作品或操作", status_code=409)
+        raise DomainApiError("FACTION_BATCH_SOURCE_CHANGED", "Kết quả của lô này không thuộc tác phẩm hoặc thao tác hiện tại", status_code=409)
     novel = await BaseRepository("novels").collection.find_one({"_id": ObjectId(novel_id), "is_deleted": False}, session=session)
     if novel is None:
-        raise DomainApiError("NOVEL_NOT_FOUND", "作品不存在或已回收", status_code=404)
+        raise DomainApiError("NOVEL_NOT_FOUND", "Tác phẩm không tồn tại hoặc đã vào thùng rác", status_code=404)
     query = {"novel_id": ObjectId(novel_id), "is_deleted": False}
     factions = await BaseRepository("factions").collection.find(
         {**query, "level_type": "core", "active_status": "active"}, session=session,
@@ -48,15 +48,15 @@ async def _validate_generation(novel_id, generation, *, session):
     try:
         fingerprint = compute_core_factions_input_fingerprint(inputs.model_dump(mode="json"), refs, flow_snapshot=basis.flow_snapshot)
     except (KeyError, ValueError) as exc:
-        raise DomainApiError("FACTION_BATCH_SOURCE_CHANGED", "生成所用方案已变化，请保留这批编辑内容", status_code=409) from exc
+        raise DomainApiError("FACTION_BATCH_SOURCE_CHANGED", "Phương án dùng để sinh đã thay đổi, hãy giữ lại nội dung chỉnh sửa của lô này", status_code=409) from exc
     ordered = lambda rows: sorted((row.resource_type, row.id, row.version) for row in rows)
     if fingerprint != basis.input_fingerprint or ordered(refs) != ordered(basis.source_refs):
-        raise DomainApiError("FACTION_BATCH_SOURCE_CHANGED", "生成所用资料已变化，请保留这批编辑内容", status_code=409)
+        raise DomainApiError("FACTION_BATCH_SOURCE_CHANGED", "Tài liệu dùng để sinh đã thay đổi, hãy giữ lại nội dung chỉnh sửa của lô này", status_code=409)
     execution = basis.flow_snapshot["execution"]
     # 核心势力生成沿用已发布的未定位设计合同；作者在采用时才明确新势力起点。
     # 不能要求本来没有执行的位置读取，也不能把旧裸候选补签为当前合同。
     if execution.get("faction_design_contract") != "unlocated_faction_profile_v1" or not isinstance(execution.get("faction_fact_reads"), list):
-        raise DomainApiError("FACTION_FACT_CONTRACT_REQUIRED", "原候选缺少完整设计资料依据，请保留候选并重新生成", status_code=409)
+        raise DomainApiError("FACTION_FACT_CONTRACT_REQUIRED", "Ứng viên gốc thiếu căn cứ tài liệu thiết kế đầy đủ, hãy giữ ứng viên và sinh lại", status_code=409)
     reads = [read for name in ("character_fact_reads", "character_relation_fact_reads", "item_fact_reads", "faction_fact_reads") for read in execution.get(name, [])]
     await revalidate_position_fact_reads(reads, session=session, protect=True)
     if execution.get("agent_reads"):
@@ -85,12 +85,12 @@ async def create_faction_fact_batch(novel_id: str, data, *, idempotency_key: str
 
     async def save(current_session):
         if current_session is None or not current_session.in_transaction:
-            raise RuntimeError("势力整批采用必须使用同一事务")
+            raise RuntimeError("Việc áp dụng toàn bộ lô thế lực phải dùng cùng một transaction")
         receipts = BaseRepository("faction_creation_batch_receipts").collection
         receipt = await receipts.find_one({"_id": receipt_id}, session=current_session)
         if receipt is not None:
             if receipt["request_hash"] != fingerprint.request_hash or receipt["idempotency_key_hash"] != fingerprint.key_hash:
-                raise DomainApiError("FACTION_BATCH_IDEMPOTENCY_CONFLICT", "这次保存请求已用于其他内容，请保留原请求", status_code=409)
+                raise DomainApiError("FACTION_BATCH_IDEMPOTENCY_CONFLICT", "Yêu cầu lưu lần này đã dùng cho nội dung khác, hãy giữ nguyên yêu cầu gốc", status_code=409)
             return FactionFactBatchResultV1.model_validate_json(json.dumps(receipt["result"], ensure_ascii=False)).model_dump(mode="json")
         existing_ids = await _validate_generation(novel_id, request.generation, session=current_session)
         if existing_ids is None:
@@ -131,5 +131,5 @@ async def create_faction_fact_batch(novel_id: str, data, *, idempotency_key: str
         return await run_mongo_write_unit(save, "create_faction_fact_batch", require_transaction=True)
     except OperationFailure as exc:
         if exc.code == 112 and exc.has_error_label("TransientTransactionError") and not exc.has_error_label("UnknownTransactionCommitResult"):
-            raise DomainApiError("FACTION_BATCH_SAVE_RETRY", "另一处也在保存，请重试这批保存；已填写的内容会保留", status_code=503) from exc
+            raise DomainApiError("FACTION_BATCH_SAVE_RETRY", "Một nơi khác cũng đang lưu, hãy thử lại việc lưu lô này; nội dung đã điền sẽ được giữ", status_code=503) from exc
         raise

@@ -75,11 +75,11 @@ class WorldRuleCreateV1(BaseModel):
             作用域组合有效的原创建请求。
         """
         if self.scope_type == "global" and self.scope_entity_ids:
-            raise ValueError("global 作用域不能携带实体 ID")
+            raise ValueError("Phạm vi global không được mang theo ID thực thể")
         if self.scope_type != "global" and not self.scope_entity_ids:
-            raise ValueError(f"{self.scope_type} 作用域至少需要一个实体 ID")
+            raise ValueError(f"{self.scope_type} phạm vi cần ít nhất một ID thực thể")
         if len(self.scope_entity_ids) != len(set(self.scope_entity_ids)):
-            raise ValueError("scope_entity_ids 不能包含重复 ID")
+            raise ValueError("scope_entity_ids không được chứa ID trùng lặp")
         return self
 
 
@@ -117,19 +117,19 @@ class WorldRuleUpdateV1(BaseModel):
         """
         content_fields = self.model_fields_set - {"expected_version"}
         if not content_fields:
-            raise ValueError("世界规则更新至少需要一个可修改字段")
+            raise ValueError("Cập nhật quy tắc thế giới cần ít nhất một trường có thể sửa")
         for field in content_fields:
             if getattr(self, field) is None:
-                raise ValueError(f"{field} 不能显式设为 null")
+                raise ValueError(f"{field} không được đặt tường minh thành null")
         if "scope_entity_ids" in content_fields:
             ids = self.scope_entity_ids or []
             if len(ids) != len(set(ids)):
-                raise ValueError("scope_entity_ids 不能包含重复 ID")
+                raise ValueError("scope_entity_ids không được chứa ID trùng lặp")
         if {"scope_type", "scope_entity_ids"}.issubset(content_fields):
             if self.scope_type == "global" and self.scope_entity_ids:
-                raise ValueError("global 作用域不能携带实体 ID")
+                raise ValueError("Phạm vi global không được mang theo ID thực thể")
             if self.scope_type != "global" and not self.scope_entity_ids:
-                raise ValueError(f"{self.scope_type} 作用域至少需要一个实体 ID")
+                raise ValueError(f"{self.scope_type} phạm vi cần ít nhất một ID thực thể")
         return self
 
 
@@ -271,7 +271,7 @@ def _raise_world_rule_database_error(exc: Exception) -> NoReturn:
     raise api_http_exception(
         status_code=503,
         code="DATABASE_UNAVAILABLE",
-        message="世界规则数据库暂时不可用，请稍后重试",
+        message="Cơ sở dữ liệu quy tắc thế giới tạm thời không khả dụng, vui lòng thử lại sau",
     ) from exc
 
 

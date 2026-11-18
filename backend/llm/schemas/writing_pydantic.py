@@ -63,13 +63,13 @@ class WritingGenerateInputV1(StrictRequestModel):
         """规划只追加，正文必须绑定已读章节版本。"""
         if self.target_type == "chapter":
             if self.expected_version is None:
-                raise ValueError("生成正文必须提供当前章版本")
+                raise ValueError("Khi tạo nội dung chính phải cung cấp phiên bản chương hiện tại")
         elif self.expected_version is not None:
-            raise ValueError("追加规划不接受旧父级版本")
+            raise ValueError("Quy hoạch bổ sung không nhận phiên bản cha cũ")
         if (self.chapter_context_version is not None or self.chapter_selection_complete) and self.target_type != "chapter":
-            raise ValueError("本章资料模式只能用于章节正文")
+            raise ValueError("Chế độ tư liệu chương này chỉ dùng cho nội dung chính của chương")
         if self.chapter_selection_complete and self.chapter_context_version != 1:
-            raise ValueError("最终选择必须绑定本章资料模式")
+            raise ValueError("Lựa chọn cuối phải gắn với chế độ tư liệu chương này")
         return self
 
 
@@ -89,7 +89,7 @@ class ChapterContentResultV1(StrictRequestModel):
     def require_text(self) -> "ChapterContentResultV1":
         """拒绝没有实际文字的正文候选。"""
         if not self.content.strip():
-            raise ValueError("正文不能为空白")
+            raise ValueError("Nội dung chính không được để trống")
         return self
 
 

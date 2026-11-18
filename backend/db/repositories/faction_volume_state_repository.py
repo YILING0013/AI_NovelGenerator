@@ -75,7 +75,7 @@ class FactionVolumeStateRepository(BaseRepository):
             await self.collection.insert_one(document, session=session)
         except (PyMongoDuplicateKeyError, BulkWriteError) as exc:
             raise DuplicateKeyError(
-                "同一势力同一卷已有活动状态，或幂等键发生冲突"
+                "Cùng thế lực cùng quyển đã có trạng thái hoạt động, hoặc xung đột khóa idempotent"
             ) from exc
         return document
 
@@ -126,7 +126,7 @@ class FactionVolumeStateRepository(BaseRepository):
             await self.collection.insert_many(prepared, ordered=True, session=session)
         except (PyMongoDuplicateKeyError, BulkWriteError) as exc:
             raise DuplicateKeyError(
-                "初始化目标已有势力卷状态，或幂等键发生冲突"
+                "Mục tiêu khởi tạo đã có trạng thái quyển của thế lực, hoặc xung đột khóa idempotent"
             ) from exc
         return prepared
 
@@ -184,7 +184,7 @@ class FactionVolumeStateRepository(BaseRepository):
             session=session,
         )
         if state is None:
-            raise NotFoundError(f"势力卷状态 {state_id} 不存在于小说 {novel_id}")
+            raise NotFoundError(f"Trạng thái quyển của thế lực {state_id} không tồn tại trong tiểu thuyết {novel_id}")
         return state
 
     async def find_active_by_pair(
@@ -423,7 +423,7 @@ class FactionVolumeStateRepository(BaseRepository):
                 session=session,
             )
         except (PyMongoDuplicateKeyError, BulkWriteError) as exc:
-            raise DuplicateKeyError("势力卷状态唯一约束发生冲突") from exc
+            raise DuplicateKeyError("Ràng buộc duy nhất về trạng thái quyển của thế lực bị xung đột") from exc
 
     async def restore_snapshot(
         self,
@@ -585,7 +585,7 @@ class FactionVolumeStateInitializationReceiptRepository(BaseRepository):
         try:
             await self.collection.insert_one(document, session=session)
         except PyMongoDuplicateKeyError as exc:
-            raise DuplicateKeyError("初始化幂等回执已被并发请求发布") from exc
+            raise DuplicateKeyError("Biên nhận idempotent khởi tạo đã được yêu cầu đồng thời công bố") from exc
         return document
 
 

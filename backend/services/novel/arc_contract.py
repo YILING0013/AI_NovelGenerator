@@ -40,7 +40,7 @@ class ArcPlanningV1(StrictRequestModel):
         """
         entity_type = "world_rule" if info.field_name == "rule_ids" else info.field_name.removesuffix("_ids")
         if any(not is_business_id(entity_type, item) for item in value):
-            raise ValueError(f"{info.field_name} 必须填写对应实体的业务 ID")
+            raise ValueError(f"{info.field_name} phải là ID nghiệp vụ của thực thể tương ứng")
         return value
 
 
@@ -74,10 +74,10 @@ class ArcUpdateV1(StrictRequestModel):
         """
         fields = self.model_fields_set - {"expected_version"}
         if not fields:
-            raise ValueError("篇章更新至少需要一个内容字段")
+            raise ValueError("Cập nhật vòng truyện cần ít nhất một trường nội dung")
         for field in fields:
             if getattr(self, field) is None:
-                raise ValueError(f"{field} 不能设为 null")
+                raise ValueError(f"{field} không được đặt thành null")
         return self
 
 

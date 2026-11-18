@@ -50,7 +50,7 @@ class CharacterRepository(BaseRepository):
         if not prepared.get("character_id"):
             raise ValueError("character_id is required")
         if not str(prepared.get("name") or "").strip():
-            raise ValueError("角色名称不能为空")
+            raise ValueError("Tên nhân vật không được để trống")
         if not str(prepared.get("normalized_name") or "").strip():
             # 所有写入必须经过领域规范化，避免旁路调用再次制造无法建立唯一索引的数据。
             raise ValueError("normalized_name is required")
@@ -61,7 +61,7 @@ class CharacterRepository(BaseRepository):
         try:
             return await self.insert_one(prepared, session=session)
         except (PyMongoDuplicateKeyError, BulkWriteError) as exc:
-            raise DuplicateKeyError("同一小说下角色 ID 或活动角色名称已存在") from exc
+            raise DuplicateKeyError("ID nhân vật hoặc tên nhân vật đang hoạt động đã tồn tại trong cùng tiểu thuyết") from exc
 
     async def create_characters(
         self,
@@ -81,12 +81,12 @@ class CharacterRepository(BaseRepository):
         for document in documents:
             prepared = ensure_initial_version(document)
             if not prepared.get("novel_id") or not prepared.get("character_id"):
-                raise ValueError("批量角色文档缺少 novel_id 或 character_id")
+                raise ValueError("Tài liệu nhân vật hàng loạt thiếu novel_id hoặc character_id")
             if not str(prepared.get("name") or "").strip():
-                raise ValueError("批量角色文档缺少有效 name")
+                raise ValueError("Tài liệu nhân vật hàng loạt thiếu name hợp lệ")
             if not str(prepared.get("normalized_name") or "").strip():
                 # 批量生成链路与单条写入使用同一规范键不变量。
-                raise ValueError("批量角色文档缺少 normalized_name")
+                raise ValueError("Tài liệu nhân vật hàng loạt thiếu normalized_name")
             # 预分配 Mongo _id，使 standalone 的部分写入也能精确补偿而不依赖业务批次字段。
             prepared.setdefault("_id", ObjectId())
             prepared["novel_id"] = to_object_id(prepared["novel_id"])
@@ -104,7 +104,7 @@ class CharacterRepository(BaseRepository):
                     business_key_field="character_id",
                     expected_dependency_guard_revision=0,
                 )
-            raise DuplicateKeyError("同一小说下角色 ID 或活动角色名称已存在") from exc
+            raise DuplicateKeyError("ID nhân vật hoặc tên nhân vật đang hoạt động đã tồn tại trong cùng tiểu thuyết") from exc
         except Exception:
             if session is None:
                 await delete_created_documents_cas(
@@ -143,7 +143,7 @@ class CharacterRepository(BaseRepository):
             session=session,
         )
         if character is None:
-            raise NotFoundError(f"角色 {character_id} 不存在于小说 {novel_id}")
+            raise NotFoundError(f"Nhân vật {character_id} không tồn tại trong tiểu thuyết {novel_id}")
         return character
 
     async def find_by_creation_idempotency(
@@ -293,7 +293,7 @@ class CharacterRepository(BaseRepository):
             session=session,
         )
         if character is None:
-            raise NotFoundError(f"角色 {character_id} 不存在于小说 {novel_id} 的回收站")
+            raise NotFoundError(f"Nhân vật {character_id} không tồn tại trong tiểu thuyết {novel_id} (thùng rác)")
         return character
 
     async def get_characters_by_ids(
@@ -460,7 +460,7 @@ class CharacterRepository(BaseRepository):
         }
         filtered = {key: value for key, value in update_data.items() if key in allowed_fields}
         if not filtered:
-            raise ValueError("角色更新缺少可写字段")
+            raise ValueError("Cập nhật nhân vật thiếu trường có thể ghi")
 
         now = get_utc_now()
         query = {
@@ -483,7 +483,7 @@ class CharacterRepository(BaseRepository):
                 session=session,
             )
         except (PyMongoDuplicateKeyError, BulkWriteError) as exc:
-            raise DuplicateKeyError("同一小说下已存在同名活动角色") from exc
+            raise DuplicateKeyError("Đã có nhân vật đang hoạt động trùng tên trong cùng tiểu thuyết") from exc
 
     async def update_character_status(
         self,
@@ -604,7 +604,7 @@ class CharacterRepository(BaseRepository):
                 session=session,
             )
         except (PyMongoDuplicateKeyError, BulkWriteError) as exc:
-            raise DuplicateKeyError("同一小说下已存在同名活动角色，无法恢复") from exc
+            raise DuplicateKeyError("Đã có nhân vật đang hoạt động trùng tên trong cùng tiểu thuyết, không thể khôi phục") from exc
 
     async def hard_delete_character(
         self,

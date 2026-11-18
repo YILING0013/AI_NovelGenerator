@@ -70,7 +70,7 @@ def _translate_character_error(exc: Exception) -> HTTPException:
         return api_http_exception(
             status_code=503,
             code="CHARACTER_TRANSACTION_REQUIRED",
-            message="更新人物资料需要启用 MongoDB 事务并连接副本集",
+            message="Cập nhật hồ sơ nhân vật cần bật transaction MongoDB và kết nối replica set",
         )
     if isinstance(exc, ValidationError):
         field_errors: dict[str, list[str]] = {}
@@ -85,7 +85,7 @@ def _translate_character_error(exc: Exception) -> HTTPException:
             status_code=422,
             detail={
                 "code": "REQUEST_VALIDATION_FAILED",
-                "message": "请求字段校验失败",
+                "message": "Kiểm tra trường yêu cầu thất bại",
                 "field_errors": field_errors,
             },
         )
@@ -210,7 +210,7 @@ async def get_characters_by_novel(novel_id: str) -> dict[str, list[CharacterResp
         raise api_http_exception(
             status_code=503,
             code="DATABASE_UNAVAILABLE",
-            message="角色数据库暂时不可用，请稍后重试",
+            message="Cơ sở dữ liệu nhân vật tạm thời không khả dụng, vui lòng thử lại sau",
         ) from exc
 
 

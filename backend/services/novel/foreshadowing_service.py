@@ -52,7 +52,7 @@ async def protect_foreshadowing_sources(guards: dict[tuple[str, str], dict], *, 
         # $inc 能从缺失字段开始；旧章没有 dependency_guard_revision，不能用实体主档的护栏。
         result = await BaseRepository(collection_name).collection.update_one(query, {"$inc": {"writing_guard_revision": 1}}, session=session)
         if result.matched_count != 1:
-            raise VersionConflictError("伏笔引用或所属小说已变化，请保留稿件后重试")
+            raise VersionConflictError("Tham chiếu chi tiết phục bút hoặc tiểu thuyết thuộc về đã thay đổi, hãy giữ bản thảo rồi thử lại")
 
 
 async def count_foreshadowing_references(novel_id: ObjectId, kind: str, identity: ObjectId, *, session: AsyncClientSession | None = None) -> int:
@@ -94,12 +94,12 @@ async def _bind_evidence(value: ForeshadowingEvidenceInputV1 | None, novel_id: s
         **{name: chapter[name] for name in ("volume_id", "arc_id", "scene_id")},
     }, session=session)
     if revision is None:
-        raise DomainApiError("FORESHADOWING_REVISION_NOT_FOUND", "所选章节版本没有已保存修订，请选择历史中实际存在的版本", status_code=404)
+        raise DomainApiError("FORESHADOWING_REVISION_NOT_FOUND", "Phiên bản chương đã chọn không có bản chỉnh sửa đã lưu, hãy chọn phiên bản thực sự có trong lịch sử", status_code=404)
     content = revision["content"]
     if content[value.start:value.start + len(value.quote)] != value.quote:
-        raise DomainApiError("FORESHADOWING_QUOTE_MISMATCH", "原文片段与所选修订的位置不一致，请重新选择片段", field_errors={"quote": "片段不匹配"})
+        raise DomainApiError("FORESHADOWING_QUOTE_MISMATCH", "Vị trí đoạn văn bản gốc không khớp với bản chỉnh sửa đã chọn, hãy chọn lại đoạn", field_errors={"quote": "片段不匹配"})
     if hashlib.sha256(content.encode("utf-8")).hexdigest() != revision["content_hash"]:
-        raise DomainApiError("FORESHADOWING_REVISION_INVALID", "所选修订的正文校验失败", status_code=409)
+        raise DomainApiError("FORESHADOWING_REVISION_INVALID", "Xác thực nội dung chính của bản chỉnh sửa đã chọn thất bại", status_code=409)
     guards.update({(COLLECTIONS[kind], str(row["_id"])): row for kind, row in chain})
     return {**value.model_dump(), "chapter_id": str(chapter["_id"]), "revision_id": str(revision["_id"]), "content_hash": revision["content_hash"]}
 
@@ -140,7 +140,7 @@ class ForeshadowingService:
             existing = await creation_receipt_repo.collection.find_one({"novel_id": novel["_id"], "idempotency_key_hash": fingerprint.key_hash}, session=session)
             if existing is not None:
                 if existing["request_hash"] != fingerprint.request_hash:
-                    raise IdempotencyConflictError("同一创建键已用于不同伏笔，请保留原稿并使用新键")
+                    raise IdempotencyConflictError("Cùng một khóa tạo đã dùng cho chi tiết phục bút khác, hãy giữ bản thảo gốc và dùng khóa mới")
                 return deepcopy(existing["result"])
             guards = {("novels", novel_id): novel}
             await _validate_positions(fields, novel_id, guards, session=session)
@@ -172,7 +172,7 @@ class ForeshadowingService:
         await novel_repo.get_novel_by_id(novel_id, include_deleted=include_deleted, session=session)
         document = await foreshadowing_repo.find_one({"novel_id": to_object_id(novel_id), "foreshadowing_id": identity}, include_deleted=include_deleted, session=session)
         if document is None:
-            raise NotFoundError("伏笔不存在于当前小说或已回收")
+            raise NotFoundError("Chi tiết phục bút không tồn tại trong tiểu thuyết hiện tại hoặc đã được thu hồi")
         return await _with_review(document, session=session)
 
     @staticmethod
@@ -193,7 +193,7 @@ class ForeshadowingService:
         """
         await novel_repo.get_novel_by_id(novel_id, include_deleted=deleted or include_deleted_novel, session=session)
         if (position_kind is None) != (position_id is None):
-            raise ValueError("位置类别和位置 ID 必须一起提供")
+            raise ValueError("Loại vị trí và ID vị trí phải được cung cấp cùng nhau")
         query = {"novel_id": to_object_id(novel_id), "is_deleted": deleted}
         if status is not None:
             query["status"] = status
@@ -223,7 +223,7 @@ class ForeshadowingService:
         async def save(session):
             current = await ForeshadowingService.get(novel_id, identity, session=session)
             if current["version"] != expected:
-                raise VersionConflictError("伏笔版本已变化，请保留原稿并刷新后比较")
+                raise VersionConflictError("Phiên bản chi tiết phục bút đã thay đổi, hãy giữ bản thảo gốc, làm mới rồi so sánh")
             guards = {("novels", novel_id): await novel_repo.get_novel_by_id(novel_id, session=session)}
             for name in ("planting_position", "resolution_position"):
                 if fields.get(name) is not None:
@@ -234,7 +234,7 @@ class ForeshadowingService:
             await protect_foreshadowing_sources(guards, session=session)
             changed = await update_versioned_document(foreshadowing_repo.collection, {"_id": current["_id"], "novel_id": current["novel_id"]}, expected, fields, is_deleted=False, session=session)
             if changed is None:
-                raise VersionConflictError("伏笔在保存期间已变化，请保留原稿")
+                raise VersionConflictError("Chi tiết phục bút đã thay đổi trong lúc lưu, hãy giữ bản thảo gốc")
             return await _with_review(changed, session=session)
         return await run_mongo_write_unit(save, "update_foreshadowing", require_transaction=True)
 
@@ -253,9 +253,9 @@ class ForeshadowingService:
         async def save(session):
             current = await ForeshadowingService.get(novel_id, identity, session=session)
             if current["version"] != model.expected_version:
-                raise VersionConflictError("伏笔版本已变化，请保留记录后刷新")
+                raise VersionConflictError("Phiên bản chi tiết phục bút đã thay đổi, hãy giữ bản ghi rồi làm mới")
             if model.status not in STATUS_TRANSITIONS[current["status"]]:
-                raise DomainApiError("FORESHADOWING_STATUS_CONFLICT", "不能直接跳到目标状态，请先确认埋设记录", status_code=409)
+                raise DomainApiError("FORESHADOWING_STATUS_CONFLICT", "Không được nhảy thẳng tới trạng thái đích, hãy xác nhận bản ghi cài cắm trước", status_code=409)
             guards = {("novels", novel_id): await novel_repo.get_novel_by_id(novel_id, session=session)}
             fields = {"status": model.status}
             for name in ("planted_evidence", "resolved_evidence"):
@@ -263,13 +263,13 @@ class ForeshadowingService:
                     fields[name] = await _bind_evidence(getattr(model, name), novel_id, guards, session=session)
             resulting = {**current, **fields}
             if (model.status in {"planted", "resolved"} and resulting["planted_evidence"] is None) or (model.status == "resolved" and resulting["resolved_evidence"] is None):
-                raise DomainApiError("FORESHADOWING_EVIDENCE_REQUIRED", "埋设需要章节证据，回收需要同时保留埋设和回收证据")
+                raise DomainApiError("FORESHADOWING_EVIDENCE_REQUIRED", "Cài cắm cần bằng chứng theo chương; thu hồi cần giữ cả bằng chứng cài cắm và thu hồi")
             if all(current[name] == value for name, value in fields.items()):
                 return current
             await protect_foreshadowing_sources(guards, session=session)
             changed = await update_versioned_document(foreshadowing_repo.collection, {"_id": current["_id"], "novel_id": current["novel_id"]}, model.expected_version, fields, is_deleted=False, session=session)
             if changed is None:
-                raise VersionConflictError("伏笔在记录期间已变化，请保留原稿")
+                raise VersionConflictError("Chi tiết phục bút đã thay đổi trong lúc ghi nhận, hãy giữ bản thảo gốc")
             return await _with_review(changed, session=session)
         return await run_mongo_write_unit(save, "record_foreshadowing", require_transaction=True)
 
@@ -289,7 +289,7 @@ class ForeshadowingService:
         async def save(session):
             current = await ForeshadowingService.get(novel_id, identity, include_deleted=True, session=session)
             if current["version"] != expected or current["is_deleted"] == deleted:
-                raise VersionConflictError("伏笔版本或回收状态已变化，请刷新后重试")
+                raise VersionConflictError("Phiên bản hoặc trạng thái thu hồi của chi tiết phục bút đã thay đổi, hãy làm mới rồi thử lại")
             novel = await novel_repo.get_novel_by_id(novel_id, include_deleted=deleted, session=session)
             guards = {("novels", novel_id): novel}
             if not deleted:
@@ -299,11 +299,11 @@ class ForeshadowingService:
                         evidence = ForeshadowingEvidenceInputV1.model_validate({key: current[name][key] for key in ForeshadowingEvidenceInputV1.model_fields})
                         bound = await _bind_evidence(evidence, novel_id, guards, session=session)
                         if bound != current[name]:
-                            raise VersionConflictError("伏笔证据修订不一致，不能恢复")
+                            raise VersionConflictError("Bản chỉnh sửa bằng chứng phục bút không khớp, không thể khôi phục")
             await protect_foreshadowing_sources(guards, session=session)
             changed = await update_versioned_document(foreshadowing_repo.collection, {"_id": current["_id"], "novel_id": current["novel_id"]}, expected, {"is_deleted": deleted, "deleted_at": get_utc_now() if deleted else None}, is_deleted=not deleted, session=session)
             if changed is None:
-                raise VersionConflictError("伏笔回收状态在保存期间已变化")
+                raise VersionConflictError("Trạng thái thu hồi chi tiết phục bút đã thay đổi trong lúc lưu")
             return await _with_review(changed, session=session)
         return await run_mongo_write_unit(save, "change_foreshadowing_deleted", require_transaction=True)
 
@@ -322,10 +322,10 @@ class ForeshadowingService:
         async def remove(session):
             current = await ForeshadowingService.get(novel_id, identity, include_deleted=True, session=session)
             if current["version"] != expected or not current["is_deleted"]:
-                raise VersionConflictError("请先回收伏笔，并使用已读版本永久删除")
+                raise VersionConflictError("Hãy thu hồi chi tiết phục bút trước, và dùng phiên bản đã đọc để xóa vĩnh viễn")
             novel = await novel_repo.get_novel_by_id(novel_id, include_deleted=True, session=session)
             await protect_foreshadowing_sources({("novels", novel_id): novel}, session=session)
             result = await foreshadowing_repo.collection.delete_one({"_id": current["_id"], "novel_id": current["novel_id"], "version": expected, "is_deleted": True}, session=session)
             if result.deleted_count != 1:
-                raise VersionConflictError("伏笔在删除期间已变化")
+                raise VersionConflictError("Chi tiết phục bút đã thay đổi trong lúc xóa")
         await run_mongo_write_unit(remove, "hard_delete_foreshadowing", require_transaction=True)

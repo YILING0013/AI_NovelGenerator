@@ -64,9 +64,9 @@ async def read_and_encode_cover(upload: UploadFile) -> EncodedCoverAsset:
         chunks.append(chunk)
         total += len(chunk)
         if total > MAX_COVER_BYTES:
-            raise ValueError("封面文件不能超过 2 MiB")
+            raise ValueError("Tệp ảnh bìa không được vượt quá 2 MiB")
     if total == 0:
-        raise ValueError("封面文件不能为空")
+        raise ValueError("Tệp ảnh bìa không được để trống")
 
     return await asyncio.to_thread(_encode_cover, b"".join(chunks))
 
@@ -89,9 +89,9 @@ def _encode_cover(content: bytes) -> EncodedCoverAsset:
             ) as source:
                 image_format = str(source.format or "").upper()
                 if image_format not in _FORMAT_TO_EXTENSION:
-                    raise ValueError("封面仅支持 JPEG、PNG 或 WebP")
+                    raise ValueError("Ảnh bìa chỉ hỗ trợ JPEG, PNG hoặc WebP")
                 if int(getattr(source, "n_frames", 1)) != 1:
-                    raise ValueError("封面必须是单帧图片")
+                    raise ValueError("Ảnh bìa phải là ảnh đơn khung hình")
                 width, height = source.size
                 if (
                     width < 1
@@ -99,7 +99,7 @@ def _encode_cover(content: bytes) -> EncodedCoverAsset:
                     or width > MAX_COVER_DIMENSION
                     or height > MAX_COVER_DIMENSION
                 ):
-                    raise ValueError("封面宽高必须位于 1 到 4096 像素之间")
+                    raise ValueError("Chiều rộng và chiều cao ảnh bìa phải nằm trong khoảng 1 đến 4096 pixel")
                 source.load()
 
                 # 在移除 EXIF 前先把方向写入像素，否则手机竖图会在重编码后发生旋转。
@@ -126,14 +126,14 @@ def _encode_cover(content: bytes) -> EncodedCoverAsset:
             sanitized.save(output, format="WEBP", quality=90, method=6)
         encoded = output.getvalue()
     except (Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
-        raise ValueError("封面解码像素数量超过安全限制") from exc
+        raise ValueError("Số pixel sau giải mã của ảnh bìa vượt giới hạn an toàn") from exc
     except UnidentifiedImageError as exc:
-        raise ValueError("无法识别封面图片格式") from exc
+        raise ValueError("Không nhận dạng được định dạng ảnh của ảnh bìa") from exc
     except (OSError, SyntaxError) as exc:
-        raise ValueError("封面图片损坏或无法完整解码") from exc
+        raise ValueError("Ảnh bìa bị hỏng hoặc không thể giải mã trọn vẹn") from exc
 
     if len(encoded) > MAX_COVER_BYTES:
-        raise ValueError("封面重新编码后不能超过 2 MiB")
+        raise ValueError("Ảnh bìa sau khi mã hóa lại không được vượt quá 2 MiB")
     digest = hashlib.sha256(encoded).hexdigest()
     return EncodedCoverAsset(
         content=encoded,

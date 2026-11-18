@@ -85,13 +85,13 @@ def author_guidance(run: dict, answer_ids: list[str], *, meanings: list[dict] | 
     """
     answers = run.get("answers", [])[:len(answer_ids)]
     if [answer["id"] for answer in answers] != answer_ids:
-        raise DomainApiError("ASSISTANT_CREATION_REQUEST_EXPIRED", "原问题回答记录不完整，请保留原稿并核对", status_code=409)
+        raise DomainApiError("ASSISTANT_CREATION_REQUEST_EXPIRED", "Bản ghi trả lời câu hỏi gốc không đầy đủ, hãy giữ nguyên bản gốc và kiểm tra lại", status_code=409)
     message = run["request"]["message"]
     message += "".join("\n\n作者补充：\n" + answer["message"] for answer in answers)
     if meanings is not None:
         reviewed = WritingAnswerReview(answers=meanings).answers
         if [item.answer_id for item in reviewed] != answer_ids:
-            raise DomainApiError("ASSISTANT_WRITING_ANSWER_NEEDS_DETAIL", "请说明希望怎样修改当前位置；目前的简短回答还不能安全确定创作要求")
+            raise DomainApiError("ASSISTANT_WRITING_ANSWER_NEEDS_DETAIL", "Hãy cho biết bạn muốn sửa vị trí hiện tại như thế nào; câu trả lời ngắn hiện tại chưa đủ để xác định an toàn yêu cầu sáng tác")
         explanations = []
         for index, item in enumerate(reviewed):
             if item.supported and item.actions and item.resolved_by_answer_id is None:
@@ -101,9 +101,9 @@ def author_guidance(run: dict, answer_ids: list[str], *, meanings: list[dict] | 
                 later = reviewed[at] if at > index else None
                 # 只允许引用确实在后的、已核实的回答；旧歧义不能互相引用或夹带动作蒙混通过。
                 if item.supported or item.actions or not later or not later.supported or not later.actions or later.resolved_by_answer_id is not None:
-                    raise DomainApiError("ASSISTANT_WRITING_ANSWER_NEEDS_DETAIL", "请说明希望怎样修改当前位置；目前的简短回答还不能安全确定创作要求")
-                explanation = f"这次简答已由第{at + 1}次作者补充明确，请按那条作者原文理解。"
-            explanations.append(f"第{index + 1}次补充：" + explanation)
+                    raise DomainApiError("ASSISTANT_WRITING_ANSWER_NEEDS_DETAIL", "Hãy cho biết bạn muốn sửa vị trí hiện tại như thế nào; câu trả lời ngắn hiện tại chưa đủ để xác định an toàn yêu cầu sáng tác")
+                explanation = f"Phản hồi ngắn này đã được tác giả làm rõ ở phần bổ sung thứ{at + 1}: hãy hiểu theo đúng nguyên văn tác giả của phần bổ sung đó."
+            explanations.append(f"Phần tác giả bổ sung thứ{index + 1}:" + explanation)
         message += "\n\n已结合原问题和当前位置核对的回答含义：\n" + "\n".join(explanations)
     return message
 
@@ -141,7 +141,7 @@ async def validate_creation(change: dict, *, session=None) -> None:
                 or policy.get("author_request") != "\n".join([run["request"]["message"], *(answer["message"] for answer in answers)])
                 or policy.get("position") != position or not position["target_id"]
                 or context.get("generation_request_hash") != canonical_request_hash(request)):
-            raise DomainApiError("ASSISTANT_CREATION_REQUEST_EXPIRED", "这批候选缺少原作者要求或明确起点，请保留原稿并另发请求；已保存回执仍可重放", status_code=409)
+            raise DomainApiError("ASSISTANT_CREATION_REQUEST_EXPIRED", "Đợt ứng viên này thiếu yêu cầu gốc của tác giả hoặc điểm khởi đầu rõ ràng; hãy giữ bản gốc và gửi yêu cầu khác, biên nhận đã lưu vẫn có thể phát lại", status_code=409)
         if change.get("candidate"):
             field, keys = {"create_characters_by_ai": ("core_characters", ("character_ref",)),
                            "create_character_relations_by_ai": ("relations", ("relation_ref", "source_character_id", "target_character_id")),
@@ -150,7 +150,7 @@ async def validate_creation(change: dict, *, session=None) -> None:
                            "create_factions_by_ai": ("core_factions", ("faction_ref",))}[task]
             original = change["envelope"]["candidate"][field]
             if [tuple(row.get(key) for key in keys) for row in change["candidate"][field]] != [tuple(row.get(key) for key in keys) for row in original]:
-                raise DomainApiError("ASSISTANT_CHANGE_SCOPE", "这批人物或关系的对应位置已变化，请保留原稿并另发请求", status_code=409)
+                raise DomainApiError("ASSISTANT_CHANGE_SCOPE", "Vị trí tương ứng của các nhân vật hoặc quan hệ trong đợt này đã thay đổi, hãy giữ bản gốc và gửi yêu cầu khác", status_code=409)
         return
     if (context.get("contract_version") != 1 or context.get("semantics") != "position_writing"
             or not run or run.get("creation_contract_version") != 1
@@ -164,7 +164,7 @@ async def validate_creation(change: dict, *, session=None) -> None:
             or context.get("message_hash") != canonical_request_hash(author_guidance(run, context.get("author_answer_ids", []), meanings=context.get("author_answer_meanings")))
             or context.get("target") != run["request"].get("writing_target")
             or context.get("generation_request_hash") != canonical_request_hash(request)):
-        raise DomainApiError("ASSISTANT_CREATION_REQUEST_EXPIRED", "旧候选或续跑缺少可靠的创作来源，请保留记录并另发新请求；已保存回执仍可重放", status_code=409)
+        raise DomainApiError("ASSISTANT_CREATION_REQUEST_EXPIRED", "Ứng viên cũ hoặc phiên chạy tiếp thiếu nguồn sáng tác đáng tin cậy; hãy giữ bản ghi và gửi yêu cầu mới, biên nhận đã lưu vẫn có thể phát lại", status_code=409)
 
 
 def describe_generation(task: str, flow_ref: FlowRef | None = None) -> dict:
@@ -177,11 +177,11 @@ def describe_generation(task: str, flow_ref: FlowRef | None = None) -> dict:
         开始表单 Schema、默认值、原结果 Schema 及位置要求。
     """
     if task not in GENERATION_KINDS:
-        raise DomainApiError("ASSISTANT_TASK_UNKNOWN", "此处不支持该生成任务")
+        raise DomainApiError("ASSISTANT_TASK_UNKNOWN", "Nơi này không hỗ trợ tác vụ sinh này")
     store = flow_store()
     flow = store.get(flow_ref.id, flow_ref.revision) if flow_ref else store.get_default(task)
     if flow.task != task:
-        raise DomainApiError("ASSISTANT_FLOW_MISMATCH", "所选方案不属于这个任务")
+        raise DomainApiError("ASSISTANT_FLOW_MISMATCH", "Phương án đã chọn không thuộc tác vụ này")
     start = next(node for node in flow.nodes if node.type == "input")
     return {"task": task, "label": TASKS[task].label, "flow_ref": {"id": flow.id, "revision": flow.revision},
             "flow_name": flow.name, "inputs": port_schema(start, output=True), "defaults": start.values,
@@ -223,7 +223,7 @@ async def run_generation(novel_id: str, session_id: str, run_id: str, *, task: s
         if existing["status"] in {"draft", "reviewed"}:
             return existing
         if existing.get("apply_attempt", {}).get("revision") != existing["revision"] or existing.get("apply_attempt", {}).get("outcome") not in {"not_sent", "not_committed"}:
-            raise DomainApiError("ASSISTANT_SAVE_UNKNOWN", "原保存结果仍待核对，请先恢复原请求，不能重新生成", status_code=409)
+            raise DomainApiError("ASSISTANT_SAVE_UNKNOWN", "Kết quả đã lưu gốc vẫn chờ rà soát; hãy khôi phục yêu cầu gốc trước, không được tạo lại", status_code=409)
         task = existing["generation_task"]
         flow_ref = FlowRef.model_validate(existing["generation_request"]["flow_ref"])
         if task in CONTENT_TASKS:
@@ -235,12 +235,12 @@ async def run_generation(novel_id: str, session_id: str, run_id: str, *, task: s
     if task in FACT_GENERATION_CONTRACTS and not existing:
         run = await BaseRepository("assistant_runs").collection.find_one({"_id": ObjectId(run_id), "novel_id": ObjectId(novel_id)})
         if not run or run.get("creation_contract_version") != 1 or canonical_request_hash(run["request"]) != run.get("request_hash"):
-            raise DomainApiError("ASSISTANT_CREATION_REQUEST_EXPIRED", "此轮缺少原作者要求，请由作者另发新请求", status_code=409)
+            raise DomainApiError("ASSISTANT_CREATION_REQUEST_EXPIRED", "Lượt này thiếu yêu cầu gốc của tác giả, hãy để tác giả gửi yêu cầu mới", status_code=409)
         if task not in {"create_characters_for_volume_by_ai", "create_factions_for_volume_by_ai"} and target is not None and target.model_dump() != {"resource_type": "novel", "id": novel_id}:
-            raise DomainApiError("ASSISTANT_FACT_POSITION_REQUIRED", "全书核心人物、关系和势力从书初建立；其它起点请使用明确位置的事实工具", status_code=409)
+            raise DomainApiError("ASSISTANT_FACT_POSITION_REQUIRED", "Nhân vật, quan hệ và thế lực cốt lõi cấp toàn sách được thiết lập từ đầu sách; với điểm khởi đầu khác, hãy dùng công cụ sự kiện ở vị trí cụ thể", status_code=409)
         author_request = "\n".join([run["request"]["message"], *(answer["message"] for answer in run.get("answers", []))])
         if len(author_request) > 2000:
-            raise DomainApiError("ASSISTANT_FACT_SOURCE_REQUIRED", "请作者用不超过 2000 字说明这批要求，助手不会代写或截断原文", status_code=409)
+            raise DomainApiError("ASSISTANT_FACT_SOURCE_REQUIRED", "Hãy để tác giả mô tả đợt yêu cầu này trong tối đa 2000 chữ; trợ lý sẽ không viết hộ hay cắt xén nguyên văn", status_code=409)
         inputs = {**inputs, "user_guidance": author_request}
         generation_policy = {"contract": FACT_GENERATION_CONTRACTS[task], "author_request": author_request,
                              "author_answers": deepcopy(run.get("answers", [])), "author_location": deepcopy(run["request"].get("location")),
@@ -249,21 +249,21 @@ async def run_generation(novel_id: str, session_id: str, run_id: str, *, task: s
         # 外层模型读过全书，只有发送时固定的作者原话可以成为子任务自由文本。
         run = await BaseRepository("assistant_runs").collection.find_one({"_id": ObjectId(run_id), "novel_id": ObjectId(novel_id)})
         if not run or run.get("creation_contract_version") != 1 or canonical_request_hash(run["request"]) != run.get("request_hash"):
-            raise DomainApiError("ASSISTANT_CREATION_REQUEST_EXPIRED", "此轮缺少创作来源，请由作者另发新请求", status_code=409)
+            raise DomainApiError("ASSISTANT_CREATION_REQUEST_EXPIRED", "Lượt này thiếu nguồn sáng tác, hãy để tác giả gửi yêu cầu mới", status_code=409)
         selected = run["request"].get("writing_target")
         if not selected:
-            raise DomainApiError("ASSISTANT_WRITING_TARGET_REQUIRED", "请由作者在发送消息时明确选择按位置创作目标")
+            raise DomainApiError("ASSISTANT_WRITING_TARGET_REQUIRED", "Hãy để tác giả chọn rõ mục tiêu sáng tác theo vị trí ngay khi gửi tin nhắn")
         if target is None or target.model_dump() != selected:
-            raise DomainApiError("ASSISTANT_WRITING_TARGET_MISMATCH", "生成目标必须与作者本轮明确选择的位置一致")
+            raise DomainApiError("ASSISTANT_WRITING_TARGET_MISMATCH", "Mục tiêu sinh phải nhất quán với vị trí tác giả đã chọn rõ trong lượt này")
         answer_ids = [answer["id"] for answer in run.get("answers", [])]
         message = author_guidance(run, answer_ids)
         if len(message) > 5000:
-            raise DomainApiError("ASSISTANT_WRITING_MESSAGE_TOO_LONG", "按位置创作的作者要求最多 5000 字；请保留原文并缩短后另发，助手不会代为截断")
+            raise DomainApiError("ASSISTANT_WRITING_MESSAGE_TOO_LONG", "Yêu cầu của tác giả khi sáng tác theo vị trí tối đa 5000 chữ; hãy giữ nguyên văn, rút ngắn rồi gửi lại, trợ lý sẽ không tự cắt")
         allowed = {"count_mode", "count", "target_word_count", "search_scope"} if task in WRITING_TASKS else set()
         selected_inputs = {field: value for field, value in inputs.items() if field in allowed}
         properties = description["inputs"].get("properties", {})
         if set(properties) - allowed - {"user_guidance", "search_text"}:
-            raise DomainApiError("ASSISTANT_WRITING_FLOW_INPUTS", "这个方案包含额外开始字段，请从原创作入口明确填写后运行")
+            raise DomainApiError("ASSISTANT_WRITING_FLOW_INPUTS", "Phương án này chứa trường bắt đầu bổ sung; hãy điền rõ rồi chạy từ lối vào sáng tác gốc")
         inputs = {**selected_inputs, "user_guidance": message}
         if "search_text" in properties:
             inputs["search_text"] = ""
@@ -277,20 +277,20 @@ async def run_generation(novel_id: str, session_id: str, run_id: str, *, task: s
         if task in CONTENT_TASKS:
             required = PLOT_TASKS.get(task) or WRITING_TASKS[task][0]
             if target.resource_type != required:
-                raise DomainApiError("ASSISTANT_TASK_TARGET", f"此任务需要 {required} 位置")
+                raise DomainApiError("ASSISTANT_TASK_TARGET", f"Tác vụ này cần {required} vị trí")
             scope.update(target_type=required, target_id=target.id)
             if task in PLOT_TASKS or task == "write_chapter_by_ai":
                 scope["expected_version"] = document["version"]
         elif task in {"plan_volume_launch_by_ai", "create_locations_for_volume_by_ai", "create_characters_for_volume_by_ai", "create_factions_for_volume_by_ai"}:
             if target.resource_type != "volume":
-                raise DomainApiError("ASSISTANT_TASK_TARGET", "此任务需要卷位置")
+                raise DomainApiError("ASSISTANT_TASK_TARGET", "Tác vụ này cần vị trí quyển")
             scope.update(volume_id=target.id, volume_expected_version=document["version"])
     if task in CONTENT_TASKS or task in {"plan_volume_launch_by_ai", "create_locations_for_volume_by_ai", "create_characters_for_volume_by_ai", "create_factions_for_volume_by_ai"}:
         if target is None:
-            raise DomainApiError("ASSISTANT_TASK_TARGET", "请选择原任务所在的卷、篇章、场景或章节")
+            raise DomainApiError("ASSISTANT_TASK_TARGET", "Hãy chọn quyển, vòng truyện, cảnh hoặc chương chứa tác vụ gốc")
     if task == "rewrite_novel_field_by_ai":
         if not target_field:
-            raise DomainApiError("ASSISTANT_TASK_TARGET", "请选择要改写的小说字段")
+            raise DomainApiError("ASSISTANT_TASK_TARGET", "Hãy chọn trường tiểu thuyết cần viết lại")
         scope["target_field"] = target_field
     if task in CONTENT_TASKS:
         from backend.services.task_flows.book_tools import normalize_agent_scope
@@ -303,7 +303,7 @@ async def run_generation(novel_id: str, session_id: str, run_id: str, *, task: s
             "version": 1, "intent": "book_start", "target_type": "novel", "target_id": novel_id}
         selected_position = next((answer["selected_position"] for answer in reversed(run.get("answers", [])) if answer.get("selected_position")), None)
         if selected_position and selected_position != position:
-            raise DomainApiError("ASSISTANT_FACT_POSITION_REQUIRED", "这批资料的起点与作者已经选择的位置不一致，请保留选择并核对", status_code=409)
+            raise DomainApiError("ASSISTANT_FACT_POSITION_REQUIRED", "Điểm khởi đầu của đợt tài liệu này không nhất quán với vị trí tác giả đã chọn; hãy giữ lựa chọn và kiểm tra lại", status_code=409)
         generation_policy["position"] = position
     answer_review_usage = None
     if task in CONTENT_TASKS and not existing and answer_ids:
@@ -328,7 +328,7 @@ async def run_generation(novel_id: str, session_id: str, run_id: str, *, task: s
         meanings = interpretation.model_dump(mode="json")["answers"]
         message = author_guidance(run, answer_ids, meanings=meanings)
         if len(message) > 5000:
-            raise DomainApiError("ASSISTANT_WRITING_MESSAGE_TOO_LONG", "按位置创作的作者要求最多 5000 字；请保留原文并缩短后另发，助手不会代为截断")
+            raise DomainApiError("ASSISTANT_WRITING_MESSAGE_TOO_LONG", "Yêu cầu của tác giả khi sáng tác theo vị trí tối đa 5000 chữ; hãy giữ nguyên văn, rút ngắn rồi gửi lại, trợ lý sẽ không tự cắt")
         inputs["user_guidance"] = message
         creation_context.update(author_dialogue_version=2, author_answer_meanings=meanings,
                                 author_answers_hash=canonical_request_hash(run["answers"]), message_hash=canonical_request_hash(message))
@@ -344,7 +344,7 @@ async def run_generation(novel_id: str, session_id: str, run_id: str, *, task: s
         request = GraphRunRequest.model_validate(existing["generation_request"])
         continuation = existing.get("child_continuation")
         if existing.get("child_paused") and not additional_rounds:
-            raise DomainApiError("ASSISTANT_CHILD_PAUSED", "原任务已暂停，请由作者明确继续", status_code=409)
+            raise DomainApiError("ASSISTANT_CHILD_PAUSED", "Tác vụ gốc đã tạm dừng, hãy để tác giả ra lệnh tiếp tục rõ ràng", status_code=409)
         if continuation:
             from backend.services.task_flows.agent_continuation import AgentContinuation
             prior = request.agent_continuation
@@ -378,7 +378,7 @@ async def run_generation(novel_id: str, session_id: str, run_id: str, *, task: s
             policy = existing.get("generation_policy") if existing else generation_policy
             if task == "create_characters_for_volume_by_ai" and (not policy or policy["contract"] != CHARACTER_PLAN_CONTRACT
                     or envelope.get("contract") != CHARACTER_PLAN_CONTRACT):
-                raise DomainApiError("CHARACTER_CANDIDATE_CONTRACT_REQUIRED", "旧人物生成请求请保留原稿，并用新合同重新生成", status_code=409)
+                raise DomainApiError("CHARACTER_CANDIDATE_CONTRACT_REQUIRED", "Với yêu cầu sinh nhân vật cũ, hãy giữ bản gốc và tạo lại bằng hợp đồng mới", status_code=409)
             if task == "create_factions_for_volume_by_ai" and policy and policy["contract"] == "participation_plan_v1":
                 from backend.llm.schemas.faction_volume_state_pydantic import FactionVolumePlanFieldsV1
                 for row in candidate["factions"]:
@@ -396,7 +396,7 @@ async def run_generation(novel_id: str, session_id: str, run_id: str, *, task: s
                     ref = ResourceRef(resource_type=value["resource_type"], id=value["id"])
                     content = public_content(ref.resource_type, await get_resource(novel_id, ref))
                     if content["version"] != value["version"]:
-                        raise DomainApiError("ASSISTANT_SOURCE_CHANGED", "原任务完成时资料已修改，请重新生成", status_code=409)
+                        raise DomainApiError("ASSISTANT_SOURCE_CHANGED", "Tài liệu đã bị sửa khi tác vụ gốc hoàn thành, hãy tạo lại", status_code=409)
                     sources.append({**ref.model_dump(), "version": content["version"], "fingerprint": content_fingerprint(content)})
                     if ref == target or (task == "rewrite_novel_field_by_ai" and ref.resource_type == "novel"):
                         before[f"{ref.resource_type}:{ref.id}"] = content
@@ -458,7 +458,7 @@ async def confirm_generation(change: dict, *, session) -> dict:
     task, novel_id = change["generation_task"], str(change["novel_id"])
     character_contract = change["envelope"].get("contract") if task == "create_characters_for_volume_by_ai" else None
     if character_contract not in (None, CHARACTER_PLAN_CONTRACT):
-        raise DomainApiError("CHARACTER_CANDIDATE_CONTRACT_REQUIRED", "人物候选合同不受支持，请保留原稿", status_code=409)
+        raise DomainApiError("CHARACTER_CANDIDATE_CONTRACT_REQUIRED", "Hợp đồng ứng viên nhân vật không được hỗ trợ, hãy giữ bản gốc", status_code=409)
     character_result = VolumeCharactersInitialFactsResultV1 if character_contract == CHARACTER_PLAN_CONTRACT else VolumeCharactersPlanResultV1
     result_model = {"create_characters_for_volume_by_ai": character_result, "create_factions_for_volume_by_ai": VolumeFactionsPlanResultV1}.get(task, TASKS[task].result_model)
     candidate = result_model.model_validate(change["candidate"]).model_dump(mode="json", exclude_unset=task == "create_factions_for_volume_by_ai")

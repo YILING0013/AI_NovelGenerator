@@ -57,7 +57,7 @@ def resolve_format_review_provider(config: LLMConfig | None = None) -> str:
 
     raise DomainApiError(
         "FORMAT_REVIEW_PROVIDER_UNAVAILABLE",
-        "无可用的结构化格式审校 Provider，请检查设置",
+        "Không có Provider thẩm định định dạng đầu ra có cấu trúc, hãy kiểm tra cài đặt",
         status_code=503,
     )
 
@@ -79,7 +79,7 @@ async def validate_and_fix_format(
     # 空结果没有可修正的内容，不能交给审校模型重新编造。
     if not raw_text.strip():
         raise DomainApiError(
-            "LLM_RESULT_EMPTY", "上游未返回生成结果，请重试或更换模型服务", status_code=502,
+            "LLM_RESULT_EMPTY", "upstream không trả về kết quả sinh, hãy thử lại hoặc đổi dịch vụ mô hình", status_code=502,
         )
 
     # 先尝试直接解析
@@ -87,7 +87,7 @@ async def validate_and_fix_format(
     try:
         return schema.model_validate_json(raw_text)
     except (ValidationError, ValueError) as parse_err:
-        log_parse_error(parse_err, content=raw_text, schema=schema, message=f"{step_label} 响应格式校验失败，准备格式审校")
+        log_parse_error(parse_err, content=raw_text, schema=schema, message=f"{step_label} kiểm tra định dạng phản hồi thất bại, chuẩn bị thẩm định định dạng")
 
     # 直接使用当前通用配置，不保存跨请求审校绑定或任务级重试状态。
     reviewer_provider = resolve_format_review_provider()
@@ -103,5 +103,5 @@ async def validate_and_fix_format(
     try:
         return schema.model_validate(reviewed)
     except (ValidationError, ValueError) as exc:
-        log_parse_error(exc, content=reviewed.model_dump(), schema=schema, message=f"{step_label} 格式审校输出校验失败")
-        raise LLMSchemaError("格式审校结果仍不符合目标 Schema") from exc
+        log_parse_error(exc, content=reviewed.model_dump(), schema=schema, message=f"{step_label} kiểm tra đầu ra thẩm định định dạng thất bại")
+        raise LLMSchemaError("Kết quả thẩm định định dạng vẫn không khớp Schema mục tiêu") from exc

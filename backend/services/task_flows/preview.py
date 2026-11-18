@@ -122,22 +122,22 @@ def _apply_overrides(ports: dict[str, Any], instance: str, overrides: list[dict[
             continue
         name, path = override["port"], override.get("path", [])
         if name not in ports:
-            raise DomainApiError("TASK_FLOW_PREVIEW_VALUE_INVALID", "临时示例的端口不存在", details={"port": name, "path": path})
+            raise DomainApiError("TASK_FLOW_PREVIEW_VALUE_INVALID", "Cổng của ví dụ tạm thời không tồn tại", details={"port": name, "path": path})
         field = ports[name]
         content = json.loads(field["value"]) if field.get("json_encoded") else field["value"]
         try:
             current = _read(content, path)
         except (KeyError, IndexError, TypeError, ValueError) as exc:
-            raise DomainApiError("TASK_FLOW_PREVIEW_VALUE_INVALID", "临时示例的字段路径不存在", details={"port": name, "path": path}) from exc
+            raise DomainApiError("TASK_FLOW_PREVIEW_VALUE_INVALID", "Đường dẫn trường của ví dụ tạm thời không tồn tại", details={"port": name, "path": path}) from exc
         ancestors = [item for item in field["origins"] if path[:len(item["path"])] == item["path"]]
         origin = max(ancestors, key=lambda item: len(item["path"]))
         protected_children = any((not item["editable"] or item["source_instance_path"] != instance or item["source_port"] != name)
                                  and item["path"][:len(path)] == path and len(item["path"]) > len(path) for item in field["origins"])
         empty_demo = current is None or current == []
         if origin["editable"] and (origin["source_instance_path"] != instance or origin["source_port"] != name):
-            raise DomainApiError("TASK_FLOW_PREVIEW_READ_ONLY", "请在此字段的源节点修改示例", details={"port": name, "path": path})
+            raise DomainApiError("TASK_FLOW_PREVIEW_READ_ONLY", "Hãy sửa ví dụ tại nút nguồn của trường này", details={"port": name, "path": path})
         if (not origin["editable"] or protected_children) and not empty_demo:
-            raise DomainApiError("TASK_FLOW_PREVIEW_READ_ONLY", "此字段包含只读内容，请修改可编辑的示例字段", details={"port": name, "path": path})
+            raise DomainApiError("TASK_FLOW_PREVIEW_READ_ONLY", "Trường này chứa nội dung chỉ đọc, hãy sửa trường ví dụ có thể chỉnh sửa", details={"port": name, "path": path})
         if field.get("json_encoded"):
             shape = _example_shape(current)
             try:
@@ -331,7 +331,7 @@ async def preview_task_flow(definition: dict[str, Any], scope: dict[str, Any],
             elif config.type == "claude":
                 actual = build_claude_parameters(request, config)
                 if native and config.structured_output_mode == "tool_call":
-                    response_format = {"tools": [{"name": "structured_output", "description": f"按照 {schema_model.__name__} 结构输出结果",
+                    response_format = {"tools": [{"name": "structured_output", "description": f"Hãy xuất kết quả theo {schema_model.__name__} (đầu ra có cấu trúc)",
                                                    "input_schema": schema_model.model_json_schema()}],
                                        "tool_choice": {"type": "tool", "name": "structured_output"}}
                 else:
@@ -500,7 +500,7 @@ async def preview_task_flow(definition: dict[str, Any], scope: dict[str, Any],
                         attempts += 1
                         sample = example_value(schema["items"], root, name=name, index=index)
                     if sample in initial[name]:
-                        raise FlowValidationError(f"{name} 无法自动补齐不同的示例，请临时填写")
+                        raise FlowValidationError(f"{name} không thể tự bổ sung ví dụ khác, hãy tạm thời tự điền")
                     initial[name].append(sample)
             else:
                 initial[name] = deepcopy(root_input.values[name] if name in root_input.values else example_value(schema, root, name=name))

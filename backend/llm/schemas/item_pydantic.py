@@ -71,11 +71,11 @@ def _validate_unique_texts(
     """校验物品内容中需要规范唯一的字符串数组。"""
     normalized_aliases = [normalize_item_text(item) for item in aliases]
     if any(not item for item in normalized_aliases):
-        raise ValueError("aliases 不能包含空白项")
+        raise ValueError("aliases không được chứa phần tử trống")
     if len(normalized_aliases) != len(set(normalized_aliases)):
-        raise ValueError("aliases 必须规范唯一")
+        raise ValueError("aliases phải chuẩn hóa và duy nhất")
     if normalize_item_text(name) in set(normalized_aliases):
-        raise ValueError("aliases 不能重复正式名称")
+        raise ValueError("aliases không được trùng với tên chính thức")
     for field, values in (
         ("abilities", abilities),
         ("limitations", limitations),
@@ -84,9 +84,9 @@ def _validate_unique_texts(
     ):
         normalized = [normalize_item_text(item) for item in values]
         if any(not item for item in normalized):
-            raise ValueError(f"{field} 不能包含空白项")
+            raise ValueError(f"{field} không được chứa mục trống")
         if len(normalized) != len(set(normalized)):
-            raise ValueError(f"{field} 不能包含重复项")
+            raise ValueError(f"{field} không được chứa mục trùng lặp")
 
 
 class ItemCreateV1(StrictRequestModel):
@@ -122,7 +122,7 @@ class ItemCreateV1(StrictRequestModel):
         if self.lifecycle_status == "held" and not (
             self.owner_character_id or self.controlling_faction_id
         ):
-            raise ValueError("held 物品必须具有角色所有者或控制势力")
+            raise ValueError("Vật phẩm held phải có chủ sở hữu là nhân vật hoặc thế lực kiểm soát")
         if self.lifecycle_status in {"destroyed", "consumed"} and any(
             (
                 self.owner_character_id,
@@ -130,7 +130,7 @@ class ItemCreateV1(StrictRequestModel):
                 self.current_location_id,
             )
         ):
-            raise ValueError("destroyed/consumed 物品不能保留当前归属或地点")
+            raise ValueError("Vật phẩm destroyed/consumed không được giữ chủ sở hữu hoặc địa điểm hiện tại")
         return self
 
 
@@ -198,7 +198,7 @@ class ItemCandidateV1(StrictRequestModel):
         if self.lifecycle_status == "held" and not (
             self.owner_character_id or self.controlling_faction_id
         ):
-            raise ValueError("held 物品必须具有角色所有者或控制势力")
+            raise ValueError("Vật phẩm held phải có chủ sở hữu là nhân vật hoặc thế lực kiểm soát")
         if self.lifecycle_status in {"destroyed", "consumed"} and any(
             (
                 self.owner_character_id,
@@ -206,7 +206,7 @@ class ItemCandidateV1(StrictRequestModel):
                 self.current_location_id,
             )
         ):
-            raise ValueError("destroyed/consumed 物品不能保留当前归属或地点")
+            raise ValueError("Vật phẩm destroyed/consumed không được giữ chủ sở hữu hoặc địa điểm hiện tại")
         return self
 
 
@@ -220,7 +220,7 @@ class ItemsResultV1(StrictRequestModel):
         """拒绝一批候选使用重复的临时引用。"""
         refs = [item.candidate_ref for item in self.items]
         if len(refs) != len(set(refs)):
-            raise ValueError("candidate_ref 不能重复")
+            raise ValueError("candidate_ref không được trùng lặp")
         return self
 
 
@@ -239,14 +239,14 @@ class ItemsBasisV1(CandidateBasisV1):
             or self.schema_version != ITEMS_RESULT_SCHEMA_VERSION
             or self.novel_id != self.generation_input.novel_id
         ):
-            raise ValueError("物品 basis 契约不匹配")
+            raise ValueError("Hợp đồng basis của vật phẩm không khớp")
         novel_sources = [
             source
             for source in self.source_refs
             if source.resource_type == "novel" and source.id == self.novel_id
         ]
         if len(novel_sources) != 1:
-            raise ValueError("物品 basis 必须精确包含当前小说来源")
+            raise ValueError("basis của vật phẩm phải bao gồm chính xác nguồn của tiểu thuyết hiện tại")
         return self
 
 
@@ -283,7 +283,7 @@ class ItemBulkGeneratedRequestV1(StrictRequestModel):
             or version < 1
             for key, version in value.items()
         ):
-            raise ValueError("expected_versions 必须使用非空资源键和正整数版本")
+            raise ValueError("expected_versions phải dùng khóa tài nguyên không rỗng và phiên bản là số nguyên dương")
         return value
 
     @model_validator(mode="after")
@@ -294,10 +294,10 @@ class ItemBulkGeneratedRequestV1(StrictRequestModel):
             for source in self.basis.source_refs
         }
         if self.expected_versions != expected:
-            raise ValueError("expected_versions 必须精确匹配 basis.source_refs")
+            raise ValueError("expected_versions phải khớp chính xác basis.source_refs")
         refs = [item.candidate_ref for item in self.candidates]
         if len(refs) != len(set(refs)):
-            raise ValueError("candidate_ref 不能重复")
+            raise ValueError("candidate_ref không được trùng lặp")
         return self
 
 
@@ -325,7 +325,7 @@ class ItemUpdateV1(StrictRequestModel):
         """拒绝空更新以及除三个引用外的显式 null。"""
         fields = self.model_fields_set - {"expected_version"}
         if not fields:
-            raise ValueError("物品更新至少需要一个业务字段")
+            raise ValueError("Cập nhật vật phẩm cần ít nhất một trường nghiệp vụ")
         reference_fields = {
             "owner_character_id",
             "controlling_faction_id",
@@ -333,7 +333,7 @@ class ItemUpdateV1(StrictRequestModel):
         }
         for field in fields - reference_fields:
             if getattr(self, field) is None:
-                raise ValueError(f"{field} 不能显式设为 null")
+                raise ValueError(f"{field} không được đặt tường minh thành null")
         return self
 
 
@@ -356,9 +356,9 @@ class ItemReorderRequestV1(StrictRequestModel):
         ids = [item.item_id for item in self.items]
         orders = [item.order_index for item in self.items]
         if len(ids) != len(set(ids)):
-            raise ValueError("重排 item_id 不能重复")
+            raise ValueError("item_id sắp xếp lại không được trùng lặp")
         if sorted(orders) != list(range(1, len(orders) + 1)):
-            raise ValueError("重排 order_index 必须完整连续为 1..N")
+            raise ValueError("order_index khi sắp xếp phải liên tục đầy đủ 1..N")
         return self
 
 
@@ -401,7 +401,7 @@ class ItemReadV1(StrictResponseModel):
         if self.lifecycle_status == "held" and not (
             self.owner_character_id or self.controlling_faction_id
         ):
-            raise ValueError("held 物品必须具有角色所有者或控制势力")
+            raise ValueError("Vật phẩm held phải có chủ sở hữu là nhân vật hoặc thế lực kiểm soát")
         if self.lifecycle_status in {"destroyed", "consumed"} and any(
             (
                 self.owner_character_id,
@@ -409,7 +409,7 @@ class ItemReadV1(StrictResponseModel):
                 self.current_location_id,
             )
         ):
-            raise ValueError("destroyed/consumed 物品不能保留当前归属或地点")
+            raise ValueError("Vật phẩm destroyed/consumed không được giữ chủ sở hữu hoặc địa điểm hiện tại")
         return self
 
 

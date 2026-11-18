@@ -64,12 +64,12 @@ async def _replay(novel_id, fingerprint, *, expected_operation: str, session, ex
     if receipt is None:
         return None
     if receipt["request_hash"] != fingerprint.request_hash:
-        raise IdempotencyConflictError("同一确认键已用于不同内容，请保留原请求")
+        raise IdempotencyConflictError("Cùng khóa xác nhận đã dùng cho nội dung khác, hãy giữ nguyên yêu cầu ban đầu")
     request = receipt.get("request")
     if (not isinstance(request, Mapping)
             or receipt.get("operation") != expected_operation
             or request.get("operation") != expected_operation):
-        raise DomainApiError("CHAPTER_RECORD_RECEIPT_INVALID", "原确认回执的命令类型不一致，请保留原请求并检查回执", status_code=409)
+        raise DomainApiError("CHAPTER_RECORD_RECEIPT_INVALID", "Loại lệnh của biên nhận xác nhận gốc không nhất quán, hãy giữ yêu cầu gốc và kiểm tra biên nhận", status_code=409)
     marked = "schema_id" in receipt or "schema_version" in receipt
     if expected_receipt_schema is not None or marked:
         from backend.services.novel.item_fact_contract import validate_item_fact_receipt
@@ -84,11 +84,11 @@ async def _replay(novel_id, fingerprint, *, expected_operation: str, session, ex
         if (expected_receipt_schema not in validators
                 or receipt.get("schema_id") != expected_receipt_schema
                 or type(receipt.get("schema_version")) is not int or receipt["schema_version"] != 1):
-            raise DomainApiError("CHAPTER_RECORD_RECEIPT_INVALID", "原确认回执的格式不受支持，请保留原请求并检查回执", status_code=409)
+            raise DomainApiError("CHAPTER_RECORD_RECEIPT_INVALID", "Định dạng của biên nhận xác nhận gốc không được hỗ trợ, hãy giữ yêu cầu gốc và kiểm tra biên nhận", status_code=409)
         try:
             return validators[expected_receipt_schema](receipt)
         except ValueError as exc:
-            raise DomainApiError("CHAPTER_RECORD_RECEIPT_INVALID", "原事实回执的内容不一致，请保留原请求并检查回执", status_code=409) from exc
+            raise DomainApiError("CHAPTER_RECORD_RECEIPT_INVALID", "Nội dung biên nhận sự thật gốc không nhất quán, hãy giữ yêu cầu gốc và kiểm tra biên nhận", status_code=409) from exc
     legacy_results = {
         "confirm_event": ChapterEventReadV1,
         "confirm_report": ChapterReportReadV1,
@@ -100,11 +100,11 @@ async def _replay(novel_id, fingerprint, *, expected_operation: str, session, ex
     }
     result_model = legacy_results.get(expected_operation)
     if result_model is None:
-        raise DomainApiError("CHAPTER_RECORD_RECEIPT_INVALID", "原确认回执的命令类型不受支持，请保留原请求并检查回执", status_code=409)
+        raise DomainApiError("CHAPTER_RECORD_RECEIPT_INVALID", "Loại lệnh của biên nhận xác nhận gốc không được hỗ trợ, hãy giữ yêu cầu gốc và kiểm tra biên nhận", status_code=409)
     try:
         result_model.model_validate(receipt.get("result"))
     except ValidationError as exc:
-        raise DomainApiError("CHAPTER_RECORD_RECEIPT_INVALID", "原确认回执的结果格式不正确，请保留原请求并检查回执", status_code=409) from exc
+        raise DomainApiError("CHAPTER_RECORD_RECEIPT_INVALID", "Định dạng kết quả của biên nhận xác nhận gốc không đúng, hãy giữ yêu cầu gốc và kiểm tra biên nhận", status_code=409) from exc
     # 只检查已存合同；不按当前实体、来源或作废状态重算原成功响应。
     return deepcopy(receipt["result"])
 
@@ -143,7 +143,7 @@ async def _read_record(document, kind, *, session=None):
         "_id": document["chapter_id"], "novel_id": document["novel_id"],
     }, session=session)
     if chapter is None:
-        raise DomainApiError("CHAPTER_RECORD_SOURCE_MISSING", "记录的来源章节缺失，请检查数据完整性", status_code=409)
+        raise DomainApiError("CHAPTER_RECORD_SOURCE_MISSING", "Chương nguồn của bản ghi bị thiếu, hãy kiểm tra tính toàn vẹn dữ liệu", status_code=409)
     needs_review = hashlib.sha256(chapter["content"].encode("utf-8")).hexdigest() != document["evidence"]["content_hash"]
     return serialize_chapter_record({**document, "needs_review": needs_review}, kind)
 
@@ -170,7 +170,7 @@ class ChapterRecordService:
                 "_id": to_object_id(chapter_id), "novel_id": novel["_id"],
             }, session=session)
             if chapter is None:
-                raise NotFoundError("来源章节不存在于当前小说")
+                raise NotFoundError("Chương nguồn không tồn tại trong tiểu thuyết hiện tại")
             deleted_sources = ["novel"] if novel["is_deleted"] else []
             # 每一级都用章中保存的完整归属核对；回收不会解除同书和父级检查。
             parents = {"novel_id": novel["_id"]}
@@ -180,7 +180,7 @@ class ChapterRecordService:
                     "_id": identity, **parents,
                 }, session=session)
                 if parent is None:
-                    raise NotFoundError(f"来源{label}不存在或不属于当前章节的父级")
+                    raise NotFoundError(f"Nguồn{label}không tồn tại hoặc không thuộc cấp cha của chương hiện tại")
                 if parent["is_deleted"]:
                     deleted_sources.append(kind)
                 parents[f"{kind}_id"] = identity
@@ -190,9 +190,9 @@ class ChapterRecordService:
                 "chapter_id": chapter["_id"], "version": revision_version, **parents,
             }, session=session)
             if revision is None:
-                raise NotFoundError("来源修订不存在或不属于当前章节")
+                raise NotFoundError("Bản chỉnh sửa nguồn không tồn tại hoặc không thuộc chương hiện tại")
             if hashlib.sha256(revision["content"].encode("utf-8")).hexdigest() != revision["content_hash"]:
-                raise DomainApiError("CHAPTER_RECORD_REVISION_INVALID", "所选修订的正文校验失败", status_code=409)
+                raise DomainApiError("CHAPTER_RECORD_REVISION_INVALID", "Nội dung chính của bản chỉnh sửa được chọn không vượt qua kiểm tra", status_code=409)
             return {"revision": serialize_chapter_revision(revision), "deleted_sources": deleted_sources}
 
         return await run_mongo_write_unit(read, "get_chapter_record_source_revision", require_transaction=True)
@@ -233,11 +233,11 @@ class ChapterRecordService:
                     "novel_id": chapter["novel_id"], identity_field: identity, "is_deleted": False,
                 }, session=session)
                 if entity is None:
-                    raise DomainApiError("CHAPTER_RECORD_ENTITY_NOT_FOUND", "相关实体不存在于本书或已回收", status_code=404)
+                    raise DomainApiError("CHAPTER_RECORD_ENTITY_NOT_FOUND", "Thực thể liên quan không tồn tại trong cuốn sách này hoặc đã bị chuyển vào thùng rác", status_code=404)
                 source["guards"][collection, str(entity["_id"])] = entity
             head = chapter.get("chapter_report_head", {"report_version": 0, "report_id": None})
             if kind == "report" and head["report_version"] != fields["expected_report_version"]:
-                raise VersionConflictError("章末报告已有新版本，请保留稿件并读取最新报告")
+                raise VersionConflictError("Báo cáo cuối chương đã có phiên bản mới, hãy giữ bản thảo và đọc báo cáo mới nhất")
             await protect_chapter_record_sources(source["guards"], session=session)
             now = get_utc_now()
             now = now.replace(tzinfo=None, microsecond=now.microsecond // 1000 * 1000)
@@ -255,7 +255,7 @@ class ChapterRecordService:
                     "version": chapter["version"], "is_deleted": False, "chapter_report_head": head_filter,
                 }, {"$set": {"chapter_report_head": {"report_version": document["report_version"], "report_id": document["_id"]}}}, session=session)
                 if changed.matched_count != 1:
-                    raise VersionConflictError("章末报告在保存期间已变化，请读取最新报告")
+                    raise VersionConflictError("Báo cáo cuối chương đã thay đổi trong lúc lưu, hãy đọc báo cáo mới nhất")
             await BaseRepository(RECORD_KINDS[kind]).collection.insert_one(document, session=session)
             result = serialize_chapter_record({**document, "needs_review": source["needs_review"]}, kind)
             await _save_receipt(request, fingerprint, document, result, session=session)
@@ -288,14 +288,14 @@ class ChapterRecordService:
                 return replay
             source = await load_chapter_record_source_in_session(novel_id, fields["evidence"], session=session)
             if source["needs_review"]:
-                raise DomainApiError("CHAPTER_RECORD_SOURCE_OUTDATED", "来源正文已经变化，请选择当前正文的修订再确认状态", status_code=409)
+                raise DomainApiError("CHAPTER_RECORD_SOURCE_OUTDATED", "Văn bản nguồn đã thay đổi, hãy chọn bản chỉnh sửa của văn bản hiện tại rồi xác nhận trạng thái", status_code=409)
             chapter = source["guards"]["chapters", fields["evidence"]["chapter_id"]]
             before = await BaseRepository("character_volume_states").collection.find_one({
                 "_id": to_object_id(fields["state_id"]), "novel_id": chapter["novel_id"],
                 "volume_id": chapter["volume_id"], "is_deleted": False,
             }, session=session)
             if before is None:
-                raise NotFoundError("人物卷状态不存在、已回收或不属于来源章节所在卷")
+                raise NotFoundError("Trạng thái quyển của nhân vật không tồn tại, đã bị thu hồi hoặc không thuộc quyển của chương nguồn")
             # 来源先参加写冲突保护；原实体服务随后才取得小说锁和复核作者版本。
             await protect_chapter_record_sources(source["guards"], session=session)
             after = await CharacterVolumeStateService.update_state(novel_id, fields["state_id"], {
@@ -356,7 +356,7 @@ class ChapterRecordService:
             await ensure_item_fields_unmanaged(novel_id, [fields["item_id"]], session=session)
             source = await load_chapter_record_source_in_session(novel_id, fields["evidence"], session=session)
             if source["needs_review"]:
-                raise DomainApiError("CHAPTER_RECORD_SOURCE_OUTDATED", "来源正文已经变化，请选择当前正文的修订再确认持有人", status_code=409)
+                raise DomainApiError("CHAPTER_RECORD_SOURCE_OUTDATED", "Văn bản nguồn đã thay đổi, hãy chọn bản chỉnh sửa của văn bản hiện tại rồi xác nhận người nắm giữ", status_code=409)
             chapter = source["guards"]["chapters", fields["evidence"]["chapter_id"]]
             fixed = ChapterItemOwnerCheckInputV1.model_validate({
                 "novel_id": novel_id,
@@ -376,16 +376,16 @@ class ChapterRecordService:
                     or (basis.step, basis.schema_id, basis.schema_version) != (spec.step, spec.schema_id, spec.schema_version)
                     or snapshot["scope"] != fixed_input or snapshot["business_input"] != fixed_input
                     or basis.source_refs != refs):
-                raise DomainApiError("CANDIDATE_BASIS_CONFLICT", "物品、持有人方向或来源版本已变化，请重新检查", status_code=409)
+                raise DomainApiError("CANDIDATE_BASIS_CONFLICT", "Vật phẩm, chiều người nắm giữ hoặc phiên bản nguồn đã thay đổi, hãy kiểm tra lại", status_code=409)
             reads = snapshot["execution"].get("source_refs_by_node")
             if not isinstance(reads, dict) or reads.get("preflight") != ref_values or any(value != ref_values for value in reads.values()):
-                raise DomainApiError("CANDIDATE_BASIS_CONFLICT", "检查依据缺少完整的物品和持有人版本，请重新检查", status_code=409)
+                raise DomainApiError("CANDIDATE_BASIS_CONFLICT", "Căn cứ kiểm tra thiếu phiên bản đầy đủ của vật phẩm và người nắm giữ, hãy kiểm tra lại", status_code=409)
             try:
                 current_fingerprint = compute_flow_candidate_fingerprint(CHAPTER_ITEM_OWNER_CHECK_TASK, fixed, refs, snapshot)
             except (KeyError, ValueError) as exc:
-                raise DomainApiError("CANDIDATE_BASIS_CONFLICT", "原检查流程或输入已不匹配，请重新检查", status_code=409) from exc
+                raise DomainApiError("CANDIDATE_BASIS_CONFLICT", "Luồng kiểm tra gốc hoặc đầu vào không còn khớp, hãy kiểm tra lại", status_code=409) from exc
             if current_fingerprint != basis.input_fingerprint:
-                raise DomainApiError("CANDIDATE_FINGERPRINT_CONFLICT", "检查依据已变化，请重新检查", status_code=409)
+                raise DomainApiError("CANDIDATE_FINGERPRINT_CONFLICT", "Căn cứ kiểm tra đã thay đổi, hãy kiểm tra lại", status_code=409)
 
             await protect_chapter_record_sources(source["guards"], session=session)
             before = sources["item"]
@@ -454,7 +454,7 @@ class ChapterRecordService:
                 return replay
             raise DomainApiError(
                 "CHARACTER_RELATION_FACT_REQUIRED",
-                "没有找到旧关系确认的成功回执，请保留原请求；新状态请从关系事实中确认",
+                "Không tìm thấy biên nhận thành công của xác nhận quan hệ cũ, hãy giữ yêu cầu gốc; với trạng thái mới, hãy xác nhận từ sự thật quan hệ",
                 status_code=409,
             )
 
@@ -486,9 +486,9 @@ class ChapterRecordService:
             collection = BaseRepository(RECORD_KINDS[kind]).collection
             current = await collection.find_one({"_id": to_object_id(identity), "novel_id": novel["_id"]}, session=session)
             if current is None:
-                raise NotFoundError("章后记录不存在于当前小说")
+                raise NotFoundError("Bản ghi sau chương không tồn tại trong tiểu thuyết hiện tại")
             if current["voided_at"] is not None:
-                raise VersionConflictError("记录已经作废，请读取当前记录")
+                raise VersionConflictError("Bản ghi đã bị hủy hiệu lực, hãy đọc bản ghi hiện tại")
             await protect_chapter_record_sources({("novels", novel_id): novel}, session=session)
             now = get_utc_now()
             now = now.replace(tzinfo=None, microsecond=now.microsecond // 1000 * 1000)
@@ -496,7 +496,7 @@ class ChapterRecordService:
                 "$set": {"voided_at": now, "void_reason": fields["reason"]},
             }, session=session)
             if changed.matched_count != 1:
-                raise VersionConflictError("记录在作废期间已变化，请读取当前记录")
+                raise VersionConflictError("Bản ghi đã thay đổi trong khi hủy bỏ, hãy đọc bản ghi hiện hành")
             document = {**current, "voided_at": now, "void_reason": fields["reason"]}
             result = await _read_record(document, kind, session=session)
             await _save_receipt(request, fingerprint, document, result, session=session)
@@ -522,7 +522,7 @@ class ChapterRecordService:
             query.update(schema_id={"$exists": False}, schema_version={"$exists": False})
         document = await BaseRepository(RECORD_KINDS[kind]).collection.find_one(query)
         if document is None:
-            raise NotFoundError("章后记录不存在于当前小说")
+            raise NotFoundError("Bản ghi sau chương không tồn tại trong tiểu thuyết hiện tại")
         return await _read_record(document, kind)
 
     @staticmethod
@@ -569,7 +569,7 @@ class ChapterRecordService:
         novel = await novel_repo.get_novel_by_id(novel_id, include_deleted=True)
         chapter = await BaseRepository("chapters").collection.find_one({"_id": to_object_id(chapter_id), "novel_id": novel["_id"]})
         if chapter is None:
-            raise NotFoundError("章节不存在于当前小说")
+            raise NotFoundError("Chương không tồn tại trong tiểu thuyết hiện tại")
         head = chapter.get("chapter_report_head", {"report_version": 0, "report_id": None})
         report = None
         if head["report_id"] is not None:
@@ -577,7 +577,7 @@ class ChapterRecordService:
                 "_id": head["report_id"], "novel_id": novel["_id"], "chapter_id": chapter["_id"], "report_version": head["report_version"],
             })
             if document is None:
-                raise DomainApiError("CHAPTER_REPORT_HEAD_INVALID", "章末报告版本链缺失，请检查数据完整性", status_code=409)
+                raise DomainApiError("CHAPTER_REPORT_HEAD_INVALID", "Chuỗi phiên bản báo cáo cuối chương bị thiếu, hãy kiểm tra tính toàn vẹn dữ liệu", status_code=409)
             if document["voided_at"] is None:
                 report = await _read_record(document, "report")
         return {"chapter_id": str(chapter["_id"]), "report_version": head["report_version"],

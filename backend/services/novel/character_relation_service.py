@@ -161,7 +161,7 @@ async def _load_character_endpoint_signatures(
                 session=session,
             )
         except NotFoundError as exc:
-            raise NotFoundError(f"角色端点 {character_id} 不存在于当前小说") from exc
+            raise NotFoundError(f"Đầu điểm nhân vật {character_id} không tồn tại trong tiểu thuyết hiện tại") from exc
     invalid = [
         character_id
         for character_id, character in by_id.items()
@@ -172,7 +172,7 @@ async def _load_character_endpoint_signatures(
         )
     ]
     if invalid:
-        raise ValueError("角色关系端点当前不可用: " + ", ".join(invalid))
+        raise ValueError("Đầu điểm quan hệ nhân vật hiện không khả dụng: " + ", ".join(invalid))
     return {
         character_id: _character_endpoint_signature(by_id[character_id])
         for character_id in character_ids
@@ -250,7 +250,7 @@ class CharacterRelationService:
         actual_version = int(relation["version"])
         if actual_version != expected_version:
             raise VersionConflictError(
-                f"角色关系 '{relation.get('relation_id')}' 版本冲突："
+                f"Quan hệ nhân vật '{relation.get('relation_id')}' 版本冲突："
                 f"expected={expected_version}, actual={actual_version}"
             )
 
@@ -301,7 +301,7 @@ class CharacterRelationService:
         missing_endpoint_ids = sorted(endpoint_ids - set(characters_by_id))
         if missing_endpoint_ids:
             raise NotFoundError(
-                "角色关系端点不存在于当前小说: " + ", ".join(missing_endpoint_ids)
+                "Điểm cuối quan hệ nhân vật không tồn tại trong tiểu thuyết hiện tại: " + ", ".join(missing_endpoint_ids)
             )
 
         errors: list[str] = []
@@ -318,19 +318,19 @@ class CharacterRelationService:
             intensity = payload.get("intensity")
 
             if not source_id or not target_id:
-                errors.append(f"{label}: source_character_id 与 target_character_id 均为必填")
+                errors.append(f"{label}: source_character_id và target_character_id đều bắt buộc")
                 continue
             if source_id == target_id:
-                errors.append(f"{label}: 角色关系不允许自引用 {source_id}")
+                errors.append(f"{label}: quan hệ nhân vật không được tự tham chiếu {source_id}")
             if source_id not in selected_ids or target_id not in selected_ids:
-                errors.append(f"{label}: 关系端点必须来自本次锁定的角色白名单")
+                errors.append(f"{label}: điểm cuối quan hệ phải đến từ danh sách trắng nhân vật đã khóa trong lần này")
             if relation_type not in RELATION_TYPES:
-                errors.append(f"{label}: 不支持的 relation_type={relation_type}")
+                errors.append(f"{label}: không hỗ trợ relation_type={relation_type}")
             if isinstance(intensity, bool) or not isinstance(intensity, int) or not 1 <= intensity <= 5:
-                errors.append(f"{label}: intensity 必须为 1 至 5 的整数")
+                errors.append(f"{label}: intensity phải là số nguyên từ 1 đến 5")
             candidate_is_active = payload.get("is_active", True) is True
             if require_active and not candidate_is_active:
-                errors.append(f"{label}: 新生成关系的 is_active 必须为 true")
+                errors.append(f"{label}: is_active của quan hệ mới sinh phải là true")
             for field_name in (
                 "current_state",
                 "core_conflict",
@@ -340,17 +340,17 @@ class CharacterRelationService:
             ):
                 text_value = payload.get(field_name)
                 if not isinstance(text_value, str) or not 1 <= len(text_value.strip()) <= 2000:
-                    errors.append(f"{label}: {field_name} 必须为 1 至 2000 字符的非空文本")
+                    errors.append(f"{label}: {field_name} phải là văn bản không trống từ 1 đến 2000 ký tự")
 
             for endpoint_id in (source_id, target_id):
                 character = characters_by_id.get(endpoint_id)
                 if character is None:
-                    errors.append(f"{label}: 角色端点 {endpoint_id} 不存在于当前小说")
+                    errors.append(f"{label}: đầu điểm nhân vật {endpoint_id} không tồn tại trong tiểu thuyết hiện tại")
                     continue
                 if character.get("status") != "active" or character.get("is_deleted") is True:
-                    errors.append(f"{label}: 角色端点 {endpoint_id} 必须是 active 未删除角色")
+                    errors.append(f"{label}: đầu điểm nhân vật {endpoint_id} phải là nhân vật active chưa bị xóa")
                 elif require_core_endpoints and character.get("is_core_character") is not True:
-                    errors.append(f"{label}: 角色端点 {endpoint_id} 必须是 active 核心角色")
+                    errors.append(f"{label}: đầu điểm nhân vật {endpoint_id} phải là nhân vật cốt lõi active")
 
             if (
                 relation_type in RELATION_TYPES
@@ -368,7 +368,7 @@ class CharacterRelationService:
                 semantic = (normalized_source, normalized_target, relation_type)
                 previous_label = semantic_owner.get(semantic)
                 if previous_label is not None:
-                    message = f"{label}: 与 {previous_label} 构成重复语义关系"
+                    message = f"{label}: trùng với {previous_label} tạo thành quan hệ ngữ nghĩa trùng lặp"
                     errors.append(message)
                     conflict_errors.append(message)
                 else:
@@ -393,12 +393,12 @@ class CharacterRelationService:
         for label, semantic in zip(semantic_labels, candidate_semantics):
             conflicting_relation_id = existing_semantics.get(semantic)
             if conflicting_relation_id:
-                message = f"{label}: 与既有活动关系 {conflicting_relation_id} 语义重复"
+                message = f"{label}: đã có quan hệ đang hoạt động {conflicting_relation_id} trùng lặp về ngữ nghĩa"
                 errors.append(message)
                 conflict_errors.append(message)
 
         if raise_on_conflict and conflict_errors:
-            raise DuplicateKeyError("角色关系语义冲突: " + "; ".join(conflict_errors))
+            raise DuplicateKeyError("Xung đột ngữ nghĩa của quan hệ nhân vật: " + "; ".join(conflict_errors))
         return errors
 
     @staticmethod
@@ -433,10 +433,10 @@ class CharacterRelationService:
             for index, candidate in enumerate(normalized_candidates, start=1):
                 candidate["relation_ref"] = f"relation_{index:03d}"
         if not normalized_candidates:
-            raise ValueError("至少需要一条角色关系")
+            raise ValueError("Cần ít nhất một quan hệ nhân vật")
         relation_refs = [str(candidate["relation_ref"]) for candidate in normalized_candidates]
         if len(relation_refs) != len(set(relation_refs)):
-            raise ValueError("角色关系 local ref 不能重复")
+            raise ValueError("local ref của quan hệ nhân vật không được trùng lặp")
 
         key_hash = hash_idempotency_key(idempotency_key)
         request_hash = checksum({"novel_id": novel_id, "request": source})
@@ -447,23 +447,23 @@ class CharacterRelationService:
         if any(item.get("batch_request_hash") != request_hash for item in existing):
             raise GenerationDomainError(
                 "IDEMPOTENCY_KEY_REUSED",
-                "同一 Idempotency-Key 已用于不同的角色关系批量请求",
+                "Cùng Idempotency-Key đã được dùng cho yêu cầu hàng loạt quan hệ nhân vật khác",
                 status_code=409,
             )
         by_ref = {str(item.get("batch_local_ref")): item for item in existing if item.get("batch_local_ref")}
         if len(by_ref) != len(existing):
-            raise DuplicateKeyError("角色关系批次 local ref 元数据冲突")
+            raise DuplicateKeyError("Xung đột metadata local ref của lô quan hệ nhân vật")
         if set(by_ref) - set(relation_refs):
             raise GenerationDomainError(
                 "IDEMPOTENCY_KEY_REUSED",
-                "同一 Idempotency-Key 的既有角色关系映射与当前请求不一致",
+                "Mapping quan hệ nhân vật đã có của cùng Idempotency-Key không nhất quán với yêu cầu hiện tại",
                 status_code=409,
             )
         if set(by_ref) != set(relation_refs):
             # 部分行可能来自旧中断，也可能是成功后被硬删，不能补建或猜测整批成功。
             raise DomainApiError(
                 "CHARACTER_RELATION_FACT_REQUIRED",
-                "旧批次没有完整成功记录，请保留原请求；新关系请逐条设置明确起点后确认",
+                "Lô cũ không có bản ghi thành công đầy đủ; hãy giữ yêu cầu gốc, quan hệ mới hãy xác nhận từng bản sau khi đặt điểm khởi đầu rõ ràng",
                 status_code=409,
             )
         return {
@@ -496,13 +496,13 @@ class CharacterRelationService:
             if existing.get("creation_request_hash") != request_hash:
                 raise GenerationDomainError(
                     "IDEMPOTENCY_KEY_REUSED",
-                    "同一 Idempotency-Key 已用于不同的角色关系创建请求",
+                    "Cùng Idempotency-Key đã được dùng cho yêu cầu tạo quan hệ nhân vật khác",
                     status_code=409,
                 )
             return existing
         raise DomainApiError(
             "CHARACTER_RELATION_FACT_REQUIRED",
-            "没有找到旧创建的成功记录，请保留原请求；新关系请设置明确起点后确认",
+            "Không tìm thấy bản ghi thành công của thao tác tạo cũ, hãy giữ yêu cầu gốc; với quan hệ mới, hãy đặt điểm khởi đầu rõ ràng rồi xác nhận",
             status_code=409,
         )
 
@@ -548,7 +548,7 @@ class CharacterRelationService:
         """
         await novel_repo.get_novel_by_id(novel_id, session=session)
         if relation_type is not None and relation_type not in RELATION_TYPES:
-            raise ValueError(f"不支持的 relation_type={relation_type}")
+            raise ValueError(f"relation_type không được hỗ trợ={relation_type}")
         if character_id:
             # 查询过滤只校验端点属于当前小说；非核心或暂时停用角色的历史关系仍可读取。
             await character_repo.get_character(novel_id, character_id, session=session)
@@ -586,9 +586,9 @@ class CharacterRelationService:
         source_id = str(relation["source_character_id"])
         target_id = str(relation["target_character_id"])
         if source_id == target_id:
-            raise ValueError("角色关系不能指向自身")
+            raise ValueError("Quan hệ nhân vật không được tự tham chiếu")
         if relation_type not in RELATION_TYPES:
-            raise ValueError(f"不支持的 relation_type={relation_type}")
+            raise ValueError(f"relation_type không được hỗ trợ={relation_type}")
         for endpoint_id in (source_id, target_id):
             try:
                 character = await character_repo.get_character(
@@ -598,12 +598,12 @@ class CharacterRelationService:
                     session=session,
                 )
             except NotFoundError as exc:
-                raise ValueError(f"角色端点 {endpoint_id} 不存在于当前小说") from exc
+                raise ValueError(f"Đầu điểm nhân vật {endpoint_id} không tồn tại trong tiểu thuyết hiện tại") from exc
             if require_active_endpoints and (
                 character.get("is_deleted") is True
                 or character.get("status") != "active"
             ):
-                raise ValueError(f"角色端点 {endpoint_id} 当前不可用，关系无法启用")
+                raise ValueError(f"Đầu điểm nhân vật {endpoint_id} hiện không khả dụng, không thể bật quan hệ")
 
         normalized = normalize_relation_endpoints(source_id, target_id, relation_type)
         if should_be_active:
@@ -615,7 +615,7 @@ class CharacterRelationService:
             )
             if conflicts:
                 raise DuplicateKeyError(
-                    f"角色关系与既有活动关系 {conflicts[0]['relation_id']} 语义重复"
+                    f"Quan hệ nhân vật và quan hệ đang hoạt động {conflicts[0]['relation_id']} trùng lặp về ngữ nghĩa"
                 )
         return normalized
 
@@ -712,13 +712,13 @@ class CharacterRelationService:
                 )
                 if current_signatures != endpoint_signatures:
                     raise DuplicateKeyError(
-                        "角色关系更新期间端点已被并发修改，请重试"
+                        "Điểm cuối đã bị sửa đổi đồng thời trong lúc cập nhật quan hệ nhân vật, hãy thử lại"
                     )
             return written
 
         if session is not None:
             if not session.in_transaction:
-                raise RuntimeError("旧关系原文保存必须在调用方事务内执行")
+                raise RuntimeError("Lưu bản gốc của quan hệ cũ phải được thực hiện trong giao dịch của bên gọi")
             return await _update(session)
 
         return await run_mongo_write_unit(_update, "update_character_relation", require_transaction=True)
@@ -774,7 +774,7 @@ class CharacterRelationService:
 
         if session is not None:
             if not session.in_transaction:
-                raise RuntimeError("关系设计保存必须在调用方事务内执行")
+                raise RuntimeError("Lưu thiết kế quan hệ phải được thực hiện trong giao dịch của bên gọi")
             return await _update(session)
         return await run_mongo_write_unit(_update, "update_character_relation_design", require_transaction=True)
 
@@ -808,7 +808,7 @@ class CharacterRelationService:
                     session=session,
                 )
             except NotFoundError as exc:
-                raise ValueError(f"角色端点 {character_id} 已被彻底删除") from exc
+                raise ValueError(f"Đầu điểm nhân vật {character_id} đã bị xóa vĩnh viễn") from exc
             if (
                 character.get("is_deleted") is True
                 or character.get("status") != "active"
@@ -856,7 +856,7 @@ class CharacterRelationService:
             if is_active:
                 if blockers:
                     raise ValueError(
-                        "角色关系仍受失效端点阻断，无法启用: " + ", ".join(blockers)
+                        "Quan hệ nhân vật vẫn bị điểm cuối vô hiệu phong tỏa, không thể bật: " + ", ".join(blockers)
                     )
                 await CharacterRelationService._validate_persisted_relation(
                     novel_id,
@@ -905,7 +905,7 @@ class CharacterRelationService:
                     )
                     if current_signatures != endpoint_signatures:
                         raise DuplicateKeyError(
-                            "角色关系启用期间端点已被并发修改，请重试"
+                            "Điểm cuối đã bị sửa đổi đồng thời trong lúc kích hoạt quan hệ nhân vật, hãy thử lại"
                         )
                 return written
             except Exception:
@@ -914,7 +914,7 @@ class CharacterRelationService:
                         await _compensate_character_relation_update(current, written)
                     except Exception as compensation_exc:
                         raise RuntimeError(
-                            "角色关系启停失败，且 standalone 补偿未完成"
+                            "Bật/tắt quan hệ nhân vật thất bại và bù đắp standalone chưa hoàn tất"
                         ) from compensation_exc
                 if session is None and guard_touches:
                     await rollback_dependency_endpoint_guards(
@@ -1037,7 +1037,7 @@ class CharacterRelationService:
                 session=session,
             )
             if not current.get("is_deleted"):
-                raise NotFoundError(f"角色关系 '{relation_id}' 不在回收站")
+                raise NotFoundError(f"Quan hệ nhân vật '{relation_id}' không nằm trong thùng rác")
             CharacterRelationService._ensure_expected_version(current, expected_version)
             endpoint_ids = [
                 str(current["source_character_id"]),
@@ -1087,7 +1087,7 @@ class CharacterRelationService:
                 )
                 if current_signatures != endpoint_signatures:
                     raise DuplicateKeyError(
-                        "角色关系恢复期间端点已被并发修改，请重试"
+                        "Điểm cuối đã bị sửa đổi đồng thời trong lúc phục hồi quan hệ nhân vật, hãy thử lại"
                     )
                 return restored
             except Exception:
@@ -1096,7 +1096,7 @@ class CharacterRelationService:
                         await _compensate_character_relation_update(current, restored)
                     except Exception as compensation_exc:
                         raise RuntimeError(
-                            "角色关系恢复失败，且 standalone 补偿未完成"
+                            "Phục hồi quan hệ nhân vật thất bại và bù đắp standalone chưa hoàn tất"
                         ) from compensation_exc
                 if session is None and guard_touches:
                     await rollback_dependency_endpoint_guards(
@@ -1147,7 +1147,7 @@ class CharacterRelationService:
                 if references:
                     raise DomainApiError(
                         "CHARACTER_RELATION_STATE_REFERENCE_PROTECTED",
-                        "角色关系仍被卷级状态引用，不能永久删除",
+                        "Quan hệ nhân vật vẫn được trạng thái cấp quyển tham chiếu, không thể xóa vĩnh viễn",
                         status_code=409,
                         details={
                             "state_ids": [

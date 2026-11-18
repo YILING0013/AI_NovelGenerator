@@ -73,11 +73,11 @@ def _validate_unique_texts(
     """
     normalized_aliases = [normalize_location_text(item) for item in aliases]
     if any(not item for item in normalized_aliases):
-        raise ValueError("aliases 不能包含空白项")
+        raise ValueError("aliases không được chứa phần tử trống")
     if len(normalized_aliases) != len(set(normalized_aliases)):
-        raise ValueError("aliases 必须规范唯一")
+        raise ValueError("aliases phải chuẩn hóa và duy nhất")
     if normalize_location_text(name) in set(normalized_aliases):
-        raise ValueError("aliases 不能重复正式名称")
+        raise ValueError("aliases không được trùng với tên chính thức")
     for field, values in (
         ("rules_and_constraints", rules_and_constraints),
         ("applicable_rule_ids", applicable_rule_ids),
@@ -89,7 +89,7 @@ def _validate_unique_texts(
             for item in values
         ]
         if len(normalized) != len(set(normalized)):
-            raise ValueError(f"{field} 不能包含重复项")
+            raise ValueError(f"{field} không được chứa mục trùng lặp")
 
 
 class LocationCreateV1(StrictRequestModel):
@@ -174,10 +174,10 @@ class LocationUpdateV1(StrictRequestModel):
         """
         fields = self.model_fields_set - {"expected_version"}
         if not fields:
-            raise ValueError("地点更新至少需要一个业务字段")
+            raise ValueError("Cập nhật địa điểm cần ít nhất một trường nghiệp vụ")
         for field in fields - {"parent_location_id"}:
             if getattr(self, field) is None:
-                raise ValueError(f"{field} 不能显式设为 null")
+                raise ValueError(f"{field} không được đặt tường minh thành null")
         return self
 
 
@@ -208,9 +208,9 @@ class LocationReorderRequestV1(StrictRequestModel):
         ids = [item.location_id for item in self.items]
         orders = [item.order_index for item in self.items]
         if len(ids) != len(set(ids)):
-            raise ValueError("重排 location_id 不能重复")
+            raise ValueError("location_id sắp xếp lại không được trùng lặp")
         if sorted(orders) != list(range(1, len(orders) + 1)):
-            raise ValueError("重排 order_index 必须完整连续为 1..N")
+            raise ValueError("order_index khi sắp xếp phải liên tục đầy đủ 1..N")
         return self
 
 
@@ -248,11 +248,11 @@ class VolumeLocationsGenerateRequestV1(ReasoningOptions, StrictRequestModel):
             既有地点选择唯一的当前请求。
         """
         if self.selection_mode == "manual" and self.location_count == 0:
-            raise ValueError("手动生成地点数量必须至少为 1")
+            raise ValueError("Số lượng địa điểm sinh thủ công phải ít nhất là 1")
         if len(self.selected_existing_location_ids) != len(
             set(self.selected_existing_location_ids)
         ):
-            raise ValueError("selected_existing_location_ids 不能重复")
+            raise ValueError("selected_existing_location_ids không được trùng lặp")
         return self
 
 
@@ -285,11 +285,11 @@ class VolumeLocationsGenerationInputV1(ReasoningOptions, StrictRequestModel):
             既有地点选择唯一的当前输入。
         """
         if self.selection_mode == "manual" and self.location_count == 0:
-            raise ValueError("手动生成地点数量必须至少为 1")
+            raise ValueError("Số lượng địa điểm sinh thủ công phải ít nhất là 1")
         if len(self.selected_existing_location_ids) != len(
             set(self.selected_existing_location_ids)
         ):
-            raise ValueError("selected_existing_location_ids 不能重复")
+            raise ValueError("selected_existing_location_ids không được trùng lặp")
         return self
 
 
@@ -327,7 +327,7 @@ class GeneratedLocationCandidateV1(StrictRequestModel):
             return None
         normalized = value.strip()
         if not normalized:
-            raise ValueError("candidate_ref 不能只包含空白")
+            raise ValueError("candidate_ref không được chỉ chứa khoảng trắng")
         return normalized
 
     @model_validator(mode="after")
@@ -341,9 +341,9 @@ class GeneratedLocationCandidateV1(StrictRequestModel):
             父级与数组组合合法的当前候选。
         """
         if self.parent_location_ref is not None and self.parent_location_id is not None:
-            raise ValueError("parent_location_ref 与 parent_location_id 只能提供一个")
+            raise ValueError("Chỉ được cung cấp một trong parent_location_ref hoặc parent_location_id")
         if self.parent_location_ref == self.candidate_ref:
-            raise ValueError("地点候选不能把自身作为父级")
+            raise ValueError("Địa điểm ứng viên không được lấy chính nó làm cấp cha")
         _validate_unique_texts(
             self.name,
             self.aliases,
@@ -377,12 +377,12 @@ class VolumeLocationsResultV1(StrictRequestModel):
         seen: set[str] = set()
         for candidate in self.locations:
             if candidate.candidate_ref in seen:
-                raise ValueError("candidate_ref 不能重复")
+                raise ValueError("candidate_ref không được trùng lặp")
             if (
                 candidate.parent_location_ref is not None
                 and candidate.parent_location_ref not in seen
             ):
-                raise ValueError("parent_location_ref 只能引用本批中排在前面的候选")
+                raise ValueError("parent_location_ref chỉ được tham chiếu ứng viên đứng trước trong lô này")
             seen.add(candidate.candidate_ref)
         return self
 
@@ -410,7 +410,7 @@ class VolumeLocationsBasisV1(CandidateBasisV1):
             or self.schema_version != VOLUME_LOCATIONS_RESULT_SCHEMA_VERSION
             or self.novel_id != self.generation_input.novel_id
         ):
-            raise ValueError("单卷地点 basis 契约不匹配")
+            raise ValueError("Hợp đồng basis của địa điểm theo từng quyển không khớp")
         novel_refs = [
             source
             for source in self.source_refs
@@ -423,13 +423,13 @@ class VolumeLocationsBasisV1(CandidateBasisV1):
             and source.id == self.generation_input.volume_id
         ]
         if len(novel_refs) != 1:
-            raise ValueError("单卷地点 basis 必须精确包含当前小说来源")
+            raise ValueError("basis địa điểm đơn quyển phải bao gồm chính xác nguồn của tiểu thuyết hiện tại")
         if (
             len(target_refs) != 1
             or (self.generation_input.selection_mode != "auto" and target_refs[0].version
             != self.generation_input.volume_expected_version)
         ):
-            raise ValueError("单卷地点 basis 必须包含目标卷的精确版本")
+            raise ValueError("basis địa điểm đơn quyển phải chứa phiên bản chính xác của quyển đích")
         location_source_ids = {
             source.id
             for source in self.source_refs
@@ -438,7 +438,7 @@ class VolumeLocationsBasisV1(CandidateBasisV1):
         if not set(self.generation_input.selected_existing_location_ids).issubset(
             location_source_ids
         ):
-            raise ValueError("单卷地点 basis 缺少已选择的既有地点来源")
+            raise ValueError("basis địa điểm đơn quyển thiếu nguồn địa điểm hiện có đã được chọn")
         return self
 
 
@@ -482,7 +482,7 @@ class LocationBulkGeneratedRequestV1(StrictRequestModel):
             or version < 1
             for key, version in value.items()
         ):
-            raise ValueError("expected_versions 必须使用非空资源键和正整数版本")
+            raise ValueError("expected_versions phải dùng khóa tài nguyên không rỗng và phiên bản là số nguyên dương")
         return value
 
     @model_validator(mode="after")
@@ -496,22 +496,22 @@ class LocationBulkGeneratedRequestV1(StrictRequestModel):
             可交给 Location Service 的严格确认请求。
         """
         if not self.candidates and self.basis.generation_input.selection_mode != "auto":
-            raise ValueError("手动生成确认至少需要一个地点候选")
+            raise ValueError("Xác nhận sinh thủ công cần ít nhất một ứng viên địa điểm")
         expected = {
             f"{source.resource_type}:{source.id}": source.version
             for source in self.basis.source_refs
         }
         if self.expected_versions != expected:
-            raise ValueError("expected_versions 必须精确匹配 basis.source_refs")
+            raise ValueError("expected_versions phải khớp chính xác basis.source_refs")
         seen: set[str] = set()
         for candidate in self.candidates:
             if candidate.candidate_ref in seen:
-                raise ValueError("candidate_ref 不能重复")
+                raise ValueError("candidate_ref không được trùng lặp")
             if (
                 candidate.parent_location_ref is not None
                 and candidate.parent_location_ref not in seen
             ):
-                raise ValueError("parent_location_ref 只能引用本批中排在前面的候选")
+                raise ValueError("parent_location_ref chỉ được tham chiếu ứng viên đứng trước trong lô này")
             seen.add(candidate.candidate_ref)
         return self
 

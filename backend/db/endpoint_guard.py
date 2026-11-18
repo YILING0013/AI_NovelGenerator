@@ -64,7 +64,7 @@ async def touch_dependency_endpoint_guards(
             for query in queries
         ], ordered=True, session=session)
         if result.matched_count != len(queries):
-            raise DuplicateKeyError("依赖写入期间端点已被并发修改，请重试")
+            raise DuplicateKeyError("Điểm cuối đã bị chỉnh sửa song song trong lúc ghi phụ thuộc, hãy thử lại")
         return [DependencyGuardContribution(endpoint_id=query["_id"]) for query in queries]
 
     contributions: list[DependencyGuardContribution] = []
@@ -83,7 +83,7 @@ async def touch_dependency_endpoint_guards(
                 session=session,
             )
             if result.matched_count != 1:
-                raise DuplicateKeyError("依赖写入期间端点已被并发修改，请重试")
+                raise DuplicateKeyError("Điểm cuối đã bị chỉnh sửa song song trong lúc ghi phụ thuộc, hãy thử lại")
             contributions.append(DependencyGuardContribution(endpoint_id=query["_id"]))
     except Exception:
         # standalone 中途失败时逐贡献减回；事务模式由事务整体回滚。
@@ -131,6 +131,6 @@ async def rollback_dependency_endpoint_guards(
         )
         if result.matched_count != 1:
             raise RuntimeError(
-                "依赖写入失败后的 guard 贡献无法安全减回"
+                "Không thể giảm lại an toàn phần đóng góp guard sau khi ghi phụ thuộc thất bại"
             )
         contribution.rolled_back = True

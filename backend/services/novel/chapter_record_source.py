@@ -46,27 +46,27 @@ async def load_chapter_record_source_in_session(
         旧修订可以核验成功，needs_review 只说明当前正文已变化。
     """
     if session is None or not session.in_transaction:
-        raise RuntimeError("章节记录来源核验必须在调用方事务内执行")
+        raise RuntimeError("Xác minh nguồn bản ghi chương phải thực hiện trong transaction của bên gọi")
     source = ChapterRecordEvidenceV1.model_validate(evidence)
     chain = await load_writing_parents(novel_id, "chapter", source.chapter_id, session=session)
     novel, chapter = chain[0][1], chain[-1][1]
     if "hard_delete_claim" in novel:
-        raise DomainApiError("CHAPTER_RECORD_PARENT_BUSY", "小说正在永久删除，不能使用章节来源", status_code=409)
+        raise DomainApiError("CHAPTER_RECORD_PARENT_BUSY", "Tiểu thuyết đang bị xoá vĩnh viễn, không thể dùng nguồn chương", status_code=409)
     revision = await BaseRepository("chapter_revisions").collection.find_one({
         "_id": ObjectId(source.revision_id), "chapter_id": chapter["_id"],
         "version": source.version,
         **{name: chapter[name] for name in ("novel_id", "volume_id", "arc_id", "scene_id")},
     }, session=session)
     if revision is None:
-        raise DomainApiError("CHAPTER_RECORD_REVISION_NOT_FOUND", "所选修订不存在或不属于当前章节，请重新选择历史版本", status_code=404)
+        raise DomainApiError("CHAPTER_RECORD_REVISION_NOT_FOUND", "Bản chỉnh sửa đã chọn không tồn tại hoặc không thuộc chương hiện tại, hãy chọn lại phiên bản lịch sử", status_code=404)
     content = revision["content"]
     content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
     if content_hash != revision["content_hash"]:
-        raise DomainApiError("CHAPTER_RECORD_REVISION_INVALID", "所选修订的正文校验失败", status_code=409)
+        raise DomainApiError("CHAPTER_RECORD_REVISION_INVALID", "Kiểm tra nội dung văn bản của bản chỉnh sửa đã chọn thất bại", status_code=409)
     if source.content_hash != content_hash:
-        raise DomainApiError("CHAPTER_RECORD_SOURCE_CHANGED", "正文 hash 与所选修订不一致，请重新读取历史版本", status_code=409)
+        raise DomainApiError("CHAPTER_RECORD_SOURCE_CHANGED", "hash nội dung không khớp với bản chỉnh sửa đã chọn, hãy đọc lại phiên bản lịch sử", status_code=409)
     if content[source.start:source.start + len(source.quote)] != source.quote:
-        raise DomainApiError("CHAPTER_RECORD_QUOTE_MISMATCH", "原文片段与所选修订的位置不一致，请重新选择片段", field_errors={"evidence.quote": "片段不匹配"})
+        raise DomainApiError("CHAPTER_RECORD_QUOTE_MISMATCH", "Vị trí của đoạn văn bản gốc và bản chỉnh sửa đã chọn không nhất quán, hãy chọn lại đoạn", field_errors={"evidence.quote": "片段不匹配"})
     bound = source.model_dump()
     bound.update(chapter_id=str(chapter["_id"]), revision_id=str(revision["_id"]), content_hash=content_hash)
     return {
@@ -92,7 +92,7 @@ async def protect_chapter_record_sources(guards: dict, *, session: AsyncClientSe
             query.update(hard_delete_claim={"$exists": False}, location_write_lock_token=None, item_write_lock_token=None, state_write_lock_token=None)
         result = await BaseRepository(name).collection.update_one(query, {"$inc": {"writing_guard_revision": 1}}, session=session)
         if result.matched_count != 1:
-            raise VersionConflictError("章节来源、相关实体或小说已变化，请保留原稿后重试")
+            raise VersionConflictError("Nguồn chương, thực thể liên quan hoặc tiểu thuyết đã thay đổi, hãy giữ nguyên bản thảo rồi thử lại")
 
 
 async def count_chapter_record_references(novel_id: ObjectId, kind: str, identity: ObjectId, *, session: AsyncClientSession | None = None) -> int:

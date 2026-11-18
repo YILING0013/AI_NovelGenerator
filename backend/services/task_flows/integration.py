@@ -115,7 +115,7 @@ def prepare_flow(task: str, request: GraphRunRequest, scope: dict[str, Any], *, 
         allowed_scope = CHAPTER_WORLD_RULES_CHECK_SCOPE_FIELDS
     unknown_scope = set(run.scope) - allowed_scope
     if unknown_scope:
-        raise DomainApiError("TASK_FLOW_SCOPE_INVALID", "操作位置包含未声明字段", field_errors={key: "不属于原页面的操作位置" for key in unknown_scope})
+        raise DomainApiError("TASK_FLOW_SCOPE_INVALID", "Vị trí thao tác chứa trường không được khai báo", field_errors={key: "不属于原页面的操作位置" for key in unknown_scope})
     run.scope.update(scope)
     if task in AGENT_TASKS:
         from .book_tools import normalize_agent_scope
@@ -125,7 +125,7 @@ def prepare_flow(task: str, request: GraphRunRequest, scope: dict[str, Any], *, 
         try:
             run.scope = ChapterCheckInputV1.model_validate(run.scope).model_dump(mode="json")
         except ValidationError as exc:
-            raise DomainApiError("CHAPTER_CHECK_INPUT_INVALID", "请选择有效的章修订和人物卷状态版本", status_code=422,
+            raise DomainApiError("CHAPTER_CHECK_INPUT_INVALID", "Hãy chọn bản chỉnh sửa chương và phiên bản trạng thái quyển nhân vật hợp lệ", status_code=422,
                                  details={"errors": exc.errors(include_input=False, include_url=False)}) from exc
     if task in {CHAPTER_ITEM_OWNER_CHECK_TASK, CHAPTER_ITEM_OWNER_FACTS_CHECK_TASK}:
         try:
@@ -135,7 +135,7 @@ def prepare_flow(task: str, request: GraphRunRequest, scope: dict[str, Any], *, 
             for field in ("chapter_id", "revision_id"):
                 run.scope["source"][field] = run.scope["source"][field].lower()
         except ValidationError as exc:
-            raise DomainApiError("CHAPTER_ITEM_OWNER_CHECK_INPUT_INVALID", "请选择有效章修订、物品版本和不同的持有人", status_code=422,
+            raise DomainApiError("CHAPTER_ITEM_OWNER_CHECK_INPUT_INVALID", "Hãy chọn bản chỉnh sửa chương, phiên bản vật phẩm hợp lệ và người giữ khác nhau", status_code=422,
                                  details={"errors": exc.errors(include_input=False, include_url=False)}) from exc
     if task in {CHAPTER_CHARACTER_RELATION_STATE_CHECK_TASK, CHAPTER_CHARACTER_RELATION_FACTS_CHECK_TASK}:
         try:
@@ -144,7 +144,7 @@ def prepare_flow(task: str, request: GraphRunRequest, scope: dict[str, Any], *, 
             for field in ("chapter_id", "revision_id"):
                 run.scope["source"][field] = run.scope["source"][field].lower()
         except ValidationError as exc:
-            raise DomainApiError("CHAPTER_RELATION_STATE_CHECK_INPUT_INVALID", "请选择有效章修订、人物关系和原版本", status_code=422,
+            raise DomainApiError("CHAPTER_RELATION_STATE_CHECK_INPUT_INVALID", "Hãy chọn bản chỉnh sửa chương, quan hệ nhân vật và phiên bản gốc hợp lệ", status_code=422,
                                  details={"errors": exc.errors(include_input=False, include_url=False)}) from exc
     if task == CHAPTER_WORLD_RULES_CHECK_TASK:
         try:
@@ -153,50 +153,50 @@ def prepare_flow(task: str, request: GraphRunRequest, scope: dict[str, Any], *, 
             for field in ("chapter_id", "revision_id"):
                 run.scope["source"][field] = run.scope["source"][field].lower()
         except ValidationError as exc:
-            raise DomainApiError("CHAPTER_WORLD_RULES_CHECK_INPUT_INVALID", "请选择有效章修订和一至五条不重复的世界规则及原版本", status_code=422,
+            raise DomainApiError("CHAPTER_WORLD_RULES_CHECK_INPUT_INVALID", "Hãy chọn bản chỉnh sửa chương hợp lệ cùng một đến năm quy tắc thế giới không trùng lặp và phiên bản gốc của chúng", status_code=422,
                                  details={"errors": exc.errors(include_input=False, include_url=False)}) from exc
     if run.repair is not None and task not in REPAIRABLE_TASKS:
-        raise DomainApiError("TASK_FLOW_REPAIR_UNSUPPORTED", "当前任务不支持响应修复")
+        raise DomainApiError("TASK_FLOW_REPAIR_UNSUPPORTED", "Nhiệm vụ hiện tại không hỗ trợ sửa phản hồi")
     if (run.repair is not None and task == "create_volume_skeleton_by_ai"
             and run.repair.flow_snapshot.execution.get("relation_design_contract") != "unlocated_relation_profile_v1"):
         # 在创建 SSE 响应前拒绝旧合同，流式页面也能收到明确的 409。
-        raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "旧修复请求未区分关系设计与未定位状态，请保留草稿并重新生成", status_code=409)
+        raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "Yêu cầu sửa cũ không phân biệt được thiết kế quan hệ và trạng thái chưa xác định vị trí, hãy giữ bản nháp và tạo lại", status_code=409)
     if run.agent_continuation is not None and (task not in AGENT_TASKS or run.repair is not None):
-        raise DomainApiError("AGENT_CONTINUATION_UNSUPPORTED", "当前任务或响应修复不能续跑资料整理")
+        raise DomainApiError("AGENT_CONTINUATION_UNSUPPORTED", "Nhiệm vụ hoặc bản sửa phản hồi hiện tại không thể tiếp tục chạy việc tổng hợp tài liệu")
     if (run.repair is not None and task in FACTION_DESIGN_TASKS
             and run.repair.flow_snapshot.execution.get("faction_design_contract") != "unlocated_faction_profile_v1"):
-        raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "旧修复请求未区分势力设计与未定位资料，请保留草稿并重新生成", status_code=409)
+        raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "Yêu cầu sửa cũ không phân biệt được thiết kế thế lực và tài liệu chưa xác định vị trí, hãy giữ bản nháp và tạo lại", status_code=409)
     store = task_flow_store.flow_store()
     try:
         flow = store.get(run.flow_ref.id, run.flow_ref.revision) if run.flow_ref else store.get_default(task)
     except KeyError as exc:
-        raise DomainApiError("TASK_FLOW_NOT_FOUND", "所选流程修订不存在", status_code=404) from exc
+        raise DomainApiError("TASK_FLOW_NOT_FOUND", "Bản chỉnh sửa luồng đã chọn không tồn tại", status_code=404) from exc
     if flow.task != task:
-        raise DomainApiError("TASK_FLOW_TASK_MISMATCH", "所选方案不属于当前任务")
+        raise DomainApiError("TASK_FLOW_TASK_MISMATCH", "Phương án đã chọn không thuộc nhiệm vụ hiện tại")
     try:
         model_config = get_llm_config()
     except (ValueError, RuntimeError) as exc:
-        raise DomainApiError("LLM_PROVIDER_UNAVAILABLE", "模型配置无法读取，请检查设置", status_code=503) from exc
+        raise DomainApiError("LLM_PROVIDER_UNAVAILABLE", "Không đọc được cấu hình mô hình, hãy kiểm tra phần Cài đặt", status_code=503) from exc
     try:
         flow = validate_task_definition(flow)
         require_prepared_generation(flow)
         chapter_version = next((node.config.get("chapter_context_version") for node in flow.nodes if node.type == "agent" and node.config.get("chapter_context_version")), None)
         if run.scope.get("chapter_context_version") not in {None, chapter_version} or run.scope.get("chapter_selection_complete"):
-            raise DomainApiError("TASK_FLOW_SCOPE_INVALID", "本章资料模式由所选方案固定，最终选择须由本次整理完成", status_code=422)
+            raise DomainApiError("TASK_FLOW_SCOPE_INVALID", "Kiểu tài liệu của chương này đã cố định theo phương án đã chọn, lựa chọn cuối cùng phải hoàn tất trong lần tổng hợp này", status_code=422)
         if chapter_version:
             run.scope["chapter_context_version"] = chapter_version
         start = next(node for node in flow.nodes if node.type == "input")
         values = {**start.values, **run.flow_inputs}
         missing = {key: "请填写此项" for key, schema in start.outputs.items() if schema.get("required", "default" not in schema) and key not in values and "default" not in schema}
         if missing:
-            raise DomainApiError("TASK_FLOW_INPUT_INVALID", "开始表单有未填写的字段", field_errors=missing)
+            raise DomainApiError("TASK_FLOW_INPUT_INVALID", "Biểu mẫu bắt đầu còn trường chưa điền", field_errors=missing)
         run.flow_inputs = validate_values(start.outputs, values, start.label or start.id, root=port_schema(start, output=True))
         unknown_parameters = set(run.generation_params) - GENERATION_FIELDS
         if unknown_parameters:
-            raise DomainApiError("TASK_FLOW_PARAMETERS_INVALID", "生成参数包含未声明字段", field_errors={key: "未知生成参数" for key in unknown_parameters})
+            raise DomainApiError("TASK_FLOW_PARAMETERS_INVALID", "Tham số tạo chứa trường không được khai báo", field_errors={key: "未知生成参数" for key in unknown_parameters})
         models = FlowModels(flow, model_config, run.generation_params, bool(stream and run.use_stream), repairing=run.repair is not None)
     except (FlowValidationError, ValidationError) as exc:
-        raise DomainApiError("TASK_FLOW_INVALID", "流程或开始输入有误", details={"errors": [str(exc)]}) from exc
+        raise DomainApiError("TASK_FLOW_INVALID", "Luồng hoặc đầu vào bắt đầu không đúng", details={"errors": [str(exc)]}) from exc
     run.flow_ref = FlowRef(id=flow.id, revision=flow.revision)
     return flow, run, models
 
@@ -243,24 +243,24 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
             execution["relation_design_contract"] = "unlocated_relation_profile_v1"
         if run.repair is not None:
             if task in AGENT_TASKS | {"plan_volume_launch_by_ai"} and run.repair.flow_snapshot.execution.get("reading_contract") != "position_v1":
-                raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "旧修复请求未保存按位置读取依据，请保留草稿并重新生成", status_code=409)
+                raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "Yêu cầu sửa cũ chưa lưu căn cứ đọc theo vị trí, hãy giữ bản nháp và tạo lại", status_code=409)
             execution = deepcopy(run.repair.flow_snapshot.execution)
             if task == "create_characters_for_volume_by_ai" and execution.get("character_candidate_contract") != CHARACTER_PLAN_CONTRACT:
-                raise DomainApiError("CHARACTER_CANDIDATE_CONTRACT_REQUIRED", "旧人物候选请保留原稿，使用新版方案重新生成", status_code=409)
+                raise DomainApiError("CHARACTER_CANDIDATE_CONTRACT_REQUIRED", "Ứng viên nhân vật cũ, hãy giữ bản gốc và dùng phương án phiên bản mới để tạo lại", status_code=409)
             if task == "create_factions_for_volume_by_ai" and execution.get("faction_candidate_contract") != "explicit_faction_values_v1":
-                raise DomainApiError("FACTION_CANDIDATE_CONTRACT_REQUIRED", "旧候选无法区分明确事实与默认值，请保留草稿并重新生成", status_code=409)
+                raise DomainApiError("FACTION_CANDIDATE_CONTRACT_REQUIRED", "Ứng viên cũ không phân biệt được sự thật rõ ràng và giá trị mặc định, hãy giữ bản nháp và tạo lại", status_code=409)
             if task in AGENT_TASKS | {"plan_volume_launch_by_ai"} and (execution.get("faction_reading_contract") != "faction_facts_v1"
                                         or "faction_fact_reads" not in execution):
-                raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "旧修复请求没有势力事实读取依据，请保留草稿并重新生成", status_code=409)
+                raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "Yêu cầu sửa cũ không có căn cứ đọc sự thật thế lực, hãy giữ bản nháp và tạo lại", status_code=409)
             if task in AGENT_TASKS and (execution.get("item_reading_contract") != "item_facts_v1"
                                        or "item_fact_reads" not in execution):
-                raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "旧修复请求没有物品事实读取依据，请保留草稿并重新生成", status_code=409)
+                raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "Yêu cầu sửa cũ không có căn cứ đọc sự thật vật phẩm, hãy giữ bản nháp và tạo lại", status_code=409)
             if task in AGENT_TASKS | {"plan_volume_launch_by_ai"} and (execution.get("relation_reading_contract") != "character_relation_facts_v1"
                                         or "character_relation_fact_reads" not in execution):
-                raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "旧修复请求没有关系事实读取依据，请保留草稿并重新生成", status_code=409)
+                raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "Yêu cầu sửa cũ không có căn cứ đọc sự thật quan hệ, hãy giữ bản nháp và tạo lại", status_code=409)
             if (task in AGENT_TASKS | {CHAPTER_CHECK_TASK, "plan_volume_launch_by_ai", "create_volume_skeleton_by_ai"}
                     and "character_fact_reads" not in execution):
-                raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "旧修复请求没有人物事实读取依据，请保留草稿并重新生成", status_code=409)
+                raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "Yêu cầu sửa cũ không có căn cứ đọc sự thật nhân vật, hãy giữ bản nháp và tạo lại", status_code=409)
             execution["repair_models"] = models.snapshot
 
         def remember_fact_reads(reads: list[dict[str, Any]]) -> None:
@@ -270,18 +270,18 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
                     execution["character_fact_reads"].append(deepcopy(read))
                 elif read.get("kind") == "character_relation_facts":
                     if "character_relation_fact_reads" not in execution:
-                        raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "旧请求没有关系事实读取依据，请保留草稿并重新生成", status_code=409)
+                        raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "Yêu cầu cũ không có căn cứ đọc sự thật quan hệ, hãy giữ bản nháp và tạo lại", status_code=409)
                     execution["character_relation_fact_reads"].append(deepcopy(read))
                 elif read.get("kind") == "item_facts":
                     if "item_fact_reads" not in execution:
-                        raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "旧请求没有物品事实读取依据，请保留草稿并重新生成", status_code=409)
+                        raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "Yêu cầu cũ không có căn cứ đọc sự thật vật phẩm, hãy giữ bản nháp và tạo lại", status_code=409)
                     execution["item_fact_reads"].append(deepcopy(read))
                 elif read.get("kind") == "faction_facts":
                     if "faction_fact_reads" not in execution:
-                        raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "旧请求没有势力事实读取依据，请保留草稿并重新生成", status_code=409)
+                        raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "Yêu cầu cũ không có căn cứ đọc sự thật thế lực, hãy giữ bản nháp và tạo lại", status_code=409)
                     execution["faction_fact_reads"].append(deepcopy(read))
                 else:
-                    raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "事实读取种类不受支持，请保留草稿并重新读取", status_code=409)
+                    raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "Loại đọc sự thật không được hỗ trợ, hãy giữ bản nháp và đọc lại", status_code=409)
         context_count = 0
         writing_contexts = []
         prepared = None
@@ -342,7 +342,7 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
             for record in execution.get("writing_reads", []):
                 reread = await load_task_context(task, record["parameters"], record.get("scope", run.scope), run.generation_params)
                 if reread.data["context_basis"] != record["basis"]:
-                    raise DomainApiError("WRITING_SOURCE_CHANGED", "生成期间规划、前文或查询结果已变化", status_code=409)
+                    raise DomainApiError("WRITING_SOURCE_CHANGED", "Kế hoạch, văn bản trước đó hoặc kết quả truy vấn đã thay đổi trong khi tạo", status_code=409)
             from backend.services.novel.writing_context import revalidate_position_fact_reads
             await revalidate_position_fact_reads([*execution.get("character_fact_reads", []),
                                                   *execution.get("character_relation_fact_reads", []),
@@ -353,15 +353,15 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
                     reread = await load_task_context(task, parameters, read_scope, run.generation_params)
                     if task == CHAPTER_CHARACTER_RELATION_FACTS_CHECK_TASK and reread.data["fact_reads"] != previous.data["fact_reads"]:
                         # 重读已经发现事实变化时，不能只看主档版本后仍发送原值。
-                        raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "检查期间章前关系事实已变化，请保留草稿并重新检查", status_code=409)
+                        raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "Sự thật quan hệ trước chương đã thay đổi trong khi kiểm tra, hãy giữ bản nháp và kiểm tra lại", status_code=409)
                     if task == CHAPTER_ITEM_OWNER_FACTS_CHECK_TASK and reread.data["fact_reads"] != previous.data["fact_reads"]:
-                        raise DomainApiError("ITEM_FACT_CONTEXT_CHANGED", "检查期间章前物品状态已变化，请保留草稿并重新检查", status_code=409)
+                        raise DomainApiError("ITEM_FACT_CONTEXT_CHANGED", "Trạng thái vật phẩm trước chương đã thay đổi trong khi kiểm tra, hãy giữ bản nháp và kiểm tra lại", status_code=409)
                     old = [ref.model_dump(mode="json") if hasattr(ref, "model_dump") else ref for ref in previous.data["source_refs"]]
                     current = [ref.model_dump(mode="json") if hasattr(ref, "model_dump") else ref for ref in reread.data["source_refs"]]
                     changed = (reread.data["content_fingerprint"] != previous.data["content_fingerprint"]
                                if getattr(previous.generation_input, "selection_mode", "manual") == "auto" else current != old)
                     if changed:
-                        raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "整理资料期间来源已变化，请重新生成", status_code=409)
+                        raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "Nguồn đã thay đổi trong khi tổng hợp tài liệu, hãy tạo lại", status_code=409)
             agent_reads = [*execution["agent_reads"], *(additional_agent_reads or [])]
             if agent_reads:
                 from .book_tools import replay_book_reads
@@ -377,7 +377,7 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
             parameters, context_scope = prepared_task_parameters(task, parameters, run.scope, parameters.get("prepared_context"))
             loaded = await load_task_context(task, parameters, context_scope, run.generation_params)
             if task == CHAPTER_WORLD_RULES_CHECK_TASK and loaded.data["rules"] != initial.data["rules"]:
-                raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "检查期间所选规则已变化，请重新读取后检查", status_code=409)
+                raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "Quy tắc đã chọn đã thay đổi trong khi kiểm tra, hãy đọc lại rồi kiểm tra", status_code=409)
             if node is review_context_node:
                 review_context = loaded
             if node is conflict_context_node:
@@ -391,7 +391,7 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
                 remember_fact_reads([read for read in loaded.data["context_basis"]["reads"]
                                      if read["kind"] in {"character_facts", "character_relation_facts", "item_facts", "faction_facts"}])
                 if context_count > 19:
-                    raise DomainApiError("WRITING_CONTEXT_LIMIT", "单次任务最多读取 19 次资料，请减少重复节点", status_code=422)
+                    raise DomainApiError("WRITING_CONTEXT_LIMIT", "Một nhiệm vụ chỉ đọc tài liệu tối đa 19 lần, hãy giảm các nút trùng lặp", status_code=422)
                 execution["writing_reads"].append({"parameters": parameters, "basis": loaded.data["context_basis"], "scope": context_scope})
                 writing_contexts.append(loaded.data)
             else:
@@ -414,7 +414,7 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
             parameters, scope = prepared_task_parameters(task, parameters, run.scope, inputs["prepared_context"])
             request = TASKS[task].request_model.model_validate({**parameters, **scope})
             if request != loaded.request or inputs["writing_context"] != loaded.ports["writing_context"]:
-                raise FlowValidationError("候选检查的参数或资料与实际读取不一致")
+                raise FlowValidationError("Tham số hoặc tài liệu kiểm tra ứng viên không nhất quán với nội dung đã đọc thực tế")
             candidate = {name: inputs[port] for name, port in output.config["candidate_fields"].items()}
             try:
                 await validate_task_result(task, candidate, loaded)
@@ -445,7 +445,7 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
             if instance in resumed_nodes or (run.agent_continuation is not None and not continuation_used and continuation is None):
                 saved = resumed_nodes.get(instance)
                 if saved is None or saved.get("agent_input_hash") != canonical_hash(inputs):
-                    raise DomainApiError("AGENT_CONTINUATION_CHANGED", "前序资料节点或输入已变化，请重新整理", status_code=409)
+                    raise DomainApiError("AGENT_CONTINUATION_CHANGED", "Nút tài liệu trước đó hoặc đầu vào đã thay đổi, hãy tổng hợp lại", status_code=409)
                 from .book_tools import replay_book_reads
                 await replay_book_reads(run.scope, saved["agent_reads"])
                 execution["agent_reads"].extend(deepcopy(saved["agent_reads"]))
@@ -471,7 +471,7 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
                             prepared = report
                             execution["prepared_context"] = prepared
                         if task in WRITING_TASKS and report.get("missing_required"):
-                            raise DomainApiError("WRITING_MATERIAL_MISSING", "请先补齐本次剧情必需的资料", status_code=409,
+                            raise DomainApiError("WRITING_MATERIAL_MISSING", "Hãy bổ sung đủ tài liệu cần thiết cho diễn biến lần này trước", status_code=409,
                                                  details={"missing": report["missing_required"], "prepared_context": report})
                     yield event
             completed_nodes[instance] = {"agent_input_hash": canonical_hash(inputs),
@@ -484,14 +484,14 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
         async def generate(node: Node, inputs: dict[str, Any], instance: str) -> AsyncIterator[dict[str, Any]]:
             if run.agent_continuation is not None and not continuation_used:
                 # 原本完成的模型节点由服务端结果恢复；不能在续跑前偷偷重跑付费步骤。
-                raise DomainApiError("AGENT_CONTINUATION_CHANGED", "原整理节点之前出现了需要重新生成的步骤，请重新整理", status_code=409)
+                raise DomainApiError("AGENT_CONTINUATION_CHANGED", "Đã xuất hiện bước cần tạo lại trước nút tổng hợp gốc, hãy tổng hợp lại", status_code=409)
             if flow_state is not None:
                 fingerprint = canonical_hash({"node": node.model_dump(mode="json"), "inputs": inputs, "execution": execution})
                 if flow_state.model_call is None:
                     flow_state.model_call = {"instance_path": instance, "input_fingerprint": fingerprint}
                 elif (flow_state.model_call["instance_path"] != instance
                       or flow_state.model_call["input_fingerprint"] != fingerprint):
-                    raise DomainApiError("AGENT_CONTINUATION_CHANGED", "未完成模型节点的输入或来源已变化，请重新生成", status_code=409)
+                    raise DomainApiError("AGENT_CONTINUATION_CHANGED", "Đầu vào hoặc nguồn của nút mô hình chưa hoàn tất đã thay đổi, hãy tạo lại", status_code=409)
                 models.recovery_state, models.recovery_token = flow_state, flow_token
             async with aclosing(models.execute(node, inputs, instance)) as events:
                 async for event in events:
@@ -517,16 +517,16 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
                 snapshot.flow_ref != run.flow_ref or snapshot.definition_hash != flow_fingerprint(flow)
                 or snapshot.flow_inputs != run.flow_inputs or snapshot.scope != run.scope
             ):
-                raise DomainApiError("TASK_FLOW_REPAIR_INPUT_CHANGED", "修复输入与原生成流程不一致，请重新生成", status_code=409)
+                raise DomainApiError("TASK_FLOW_REPAIR_INPUT_CHANGED", "Đầu vào sửa không nhất quán với luồng tạo gốc, hãy tạo lại", status_code=409)
             context = await load_task_context(task, repair.business_inputs, run.scope, run.generation_params)
             business_input = context.generation_input.model_dump(mode="json", exclude=TRANSPORT_FIELDS)
             if business_input != snapshot.business_input:
-                raise DomainApiError("TASK_FLOW_REPAIR_INPUT_CHANGED", "修复输入与原业务参数不一致，请重新生成", status_code=409)
+                raise DomainApiError("TASK_FLOW_REPAIR_INPUT_CHANGED", "Đầu vào sửa không nhất quán với tham số nghiệp vụ gốc, hãy tạo lại", status_code=409)
             source_values = [ref.model_dump(mode="json") if hasattr(ref, "model_dump") else ref for ref in context.data["source_refs"]]
             current_sources = {(ref["resource_type"], ref["id"]): ref["version"] for ref in source_values}
             original_sources = {(ref.resource_type, ref.id): ref.version for ref in repair.source_refs}
             if current_sources != original_sources:
-                raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "生成依据已修改，请重新生成", status_code=409)
+                raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "Căn cứ tạo đã bị sửa đổi, hãy tạo lại", status_code=409)
             context_records.append((repair.business_inputs, run.scope, context))
             try:
                 await validate_task_result(task, repair.candidate, context)
@@ -535,7 +535,7 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
                 if problem is None:
                     raise
             else:
-                raise DomainApiError("TASK_FLOW_REPAIR_NOT_NEEDED", "响应已通过校验，无须调用 AI 修复")
+                raise DomainApiError("TASK_FLOW_REPAIR_NOT_NEEDED", "Phản hồi đã vượt qua xác thực, không cần gọi AI để sửa")
 
             metadata = {"node_id": "repair_response", "instance_path": f"{flow.id}/repair_response", "label": "repair_response"}
             yield {"event": "step", "data": {**metadata, "state": "running"}}
@@ -629,7 +629,7 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
                         yield event
                         continue
                     if run.agent_continuation is not None and not continuation_used:
-                        raise DomainApiError("AGENT_CONTINUATION_NODE_MISSING", "本次流程没有到达原资料整理节点，请重新整理", status_code=409)
+                        raise DomainApiError("AGENT_CONTINUATION_NODE_MISSING", "Luồng lần này chưa đi tới nút tổng hợp tài liệu gốc, hãy tổng hợp lại", status_code=409)
                     final = event["data"]["result"]
                     context = None
                     if task != "create_novel_by_ai":
@@ -642,12 +642,12 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
                         business_input["cached_nodes"] = []
                         business_input["use_stream"] = run.use_stream
                     if task == CHAPTER_WORLD_RULES_CHECK_TASK and context.data["rules"] != initial.data["rules"]:
-                        raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "检查期间所选规则已变化，请重新读取后检查", status_code=409)
+                        raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "Quy tắc đã chọn đã thay đổi trong khi kiểm tra, hãy đọc lại rồi kiểm tra", status_code=409)
                     if task == CHAPTER_CHARACTER_RELATION_FACTS_CHECK_TASK and context.data["fact_reads"] != initial.data["fact_reads"]:
                         # 来源短暂改变后恢复，也不能把末端新读到的事实贴到原检查依据上。
-                        raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "检查期间章前关系事实已变化，请保留草稿并重新检查", status_code=409)
+                        raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "Sự thật quan hệ trước chương đã thay đổi trong khi kiểm tra, hãy giữ bản nháp và kiểm tra lại", status_code=409)
                     if task == CHAPTER_ITEM_OWNER_FACTS_CHECK_TASK and context.data["fact_reads"] != initial.data["fact_reads"]:
-                        raise DomainApiError("ITEM_FACT_CONTEXT_CHANGED", "检查期间章前物品状态已变化，请保留草稿并重新检查", status_code=409)
+                        raise DomainApiError("ITEM_FACT_CONTEXT_CHANGED", "Trạng thái vật phẩm trước chương đã thay đổi trong khi kiểm tra, hãy giữ bản nháp và kiểm tra lại", status_code=409)
                     refs = context.data["source_refs"] if context else []
                     automatic_preparation = bool(context and task in AGENT_TASKS - CONTENT_TASKS and getattr(context.generation_input, "selection_mode", "manual") == "auto")
                     source_values = [ref.model_dump(mode="json") if hasattr(ref, "model_dump") else ref for ref in refs]
@@ -660,16 +660,16 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
                     else:
                         final_versions = {(ref["resource_type"], ref["id"]): ref["version"] for ref in source_values}
                         if run.repair is not None and final_versions != {(ref.resource_type, ref.id): ref.version for ref in run.repair.source_refs}:
-                            raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "修复期间资料已修改，请重新生成", status_code=409)
+                            raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "Tài liệu đã bị sửa đổi trong khi sửa, hãy tạo lại", status_code=409)
                         for sources in ([] if prepared is not None and task not in {CHAPTER_ITEM_OWNER_CHECK_TASK, CHAPTER_ITEM_OWNER_FACTS_CHECK_TASK, CHAPTER_CHARACTER_RELATION_STATE_CHECK_TASK, CHAPTER_CHARACTER_RELATION_FACTS_CHECK_TASK, CHAPTER_WORLD_RULES_CHECK_TASK} else execution["source_refs_by_node"].values()):
                             if (task in VOLUME_ENTITY_TASKS or task in {CHAPTER_ITEM_OWNER_CHECK_TASK, CHAPTER_ITEM_OWNER_FACTS_CHECK_TASK, CHAPTER_CHARACTER_RELATION_STATE_CHECK_TASK, CHAPTER_CHARACTER_RELATION_FACTS_CHECK_TASK, CHAPTER_WORLD_RULES_CHECK_TASK}) and final_versions != {(source["resource_type"], source["id"]): source["version"] for source in sources}:
-                                raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "生成期间档案或卷状态已新增、删除或修改，请重新生成", status_code=409)
+                                raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "Hồ sơ hoặc trạng thái quyển đã được thêm, xoá hoặc sửa trong khi tạo, hãy tạo lại", status_code=409)
                             for source in sources:
                                 identity = (source["resource_type"], source["id"])
                                 if identity not in final_versions:
-                                    raise DomainApiError("TASK_FLOW_RESULT_SCOPE_MISMATCH", "结果节点的业务参数没有包含流程读取的资料，请检查参数连线")
+                                    raise DomainApiError("TASK_FLOW_RESULT_SCOPE_MISMATCH", "Tham số nghiệp vụ của nút kết quả chưa chứa tài liệu mà luồng đã đọc, hãy kiểm tra đường nối tham số")
                                 if final_versions[identity] != source["version"]:
-                                    raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "生成期间资料已修改，请重新生成", status_code=409)
+                                    raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "Tài liệu đã bị sửa đổi trong khi tạo, hãy tạo lại", status_code=409)
                     if task in PLOT_TASKS:
                         if conflict_node is not None:
                             # 原资料和工具读取已经重查；缓存、续跑及可编辑错误都从同一处核对原句。
@@ -753,7 +753,7 @@ async def task_flow_events(task: str, flow: Flow, run: GraphRunRequest, models: 
             raise
         except Exception as exc:
             terminal_emitted = True
-            data = sse_error_payload(exc, fallback_message="流程执行失败")
+            data = sse_error_payload(exc, fallback_message="Thực thi luồng thất bại")
             if flow_state is not None and flow_token is not None:
                 data.setdefault("details", {})["agent_continuation"] = release_agent_continuation(flow_token, size=flow_state.size())
                 flow_token = None
@@ -786,7 +786,7 @@ async def generate_task_flow(task: str, request: GraphRunRequest, *, scope: dict
         try:
             faction_request = TASKS[task].request_model.model_validate({key: value for key, value in {**parameters, **run.scope}.items() if key in TASKS[task].request_model.model_fields})
         except ValidationError as exc:
-            raise DomainApiError("FACTION_INPUT_INVALID", "请先选择已保存的作品，并填写有效的势力数量", status_code=422) from exc
+            raise DomainApiError("FACTION_INPUT_INVALID", "Hãy chọn tác phẩm đã lưu trước, đồng thời nhập số lượng thế lực hợp lệ", status_code=422) from exc
         factions = await faction_repo.get_active_core_factions(faction_request.novel_id)
         # 单个势力没有关系对象是正常起步；固定后的实际输入也进入候选依据。
         # 已有节点或修复请求保留原输入，不能给旧模型结果换一套要求。
@@ -801,7 +801,7 @@ async def generate_task_flow(task: str, request: GraphRunRequest, *, scope: dict
         try:
             preflight = await load_task_context(task, parameters, run.scope, run.generation_params)
         except ValidationError as exc:
-            raise DomainApiError("VOLUME_ENTITY_INPUT_INVALID", "请选择当前卷版本和有效的档案数量", status_code=422) from exc
+            raise DomainApiError("VOLUME_ENTITY_INPUT_INVALID", "Hãy chọn phiên bản quyển hiện tại và số lượng hồ sơ hợp lệ", status_code=422) from exc
     if task in CONTENT_TASKS:
         # 图可以改线或删掉 context；付费调用前仍必须通过当前位置检查。
         parameters = {key: value for key, value in run.flow_inputs.items() if key in TASKS[task].request_model.model_fields and key not in WRITING_SCOPE_FIELDS | {"novel_id"}}
@@ -820,8 +820,8 @@ async def generate_task_flow(task: str, request: GraphRunRequest, *, scope: dict
                 return event["data"]["result"]
             if event["event"] == "error":
                 data = event["data"]
-                error = DomainApiError(data.get("code", "TASK_FLOW_FAILED"), data.get("message", "流程执行失败"), status_code=data.get("status_code", 502), field_errors=data.get("field_errors"), details={**data.get("details", {}), "node_id": data.get("node_id"), "instance_path": data.get("instance_path"), "partial_outputs": data.get("partial_outputs", {})})
+                error = DomainApiError(data.get("code", "TASK_FLOW_FAILED"), data.get("message", "Thực thi luồng thất bại"), status_code=data.get("status_code", 502), field_errors=data.get("field_errors"), details={**data.get("details", {}), "node_id": data.get("node_id"), "instance_path": data.get("instance_path"), "partial_outputs": data.get("partial_outputs", {})})
                 # 原异常已在 error 事件生成前记录，HTTP 边界只需补充失败位置。
                 error._log_recorded = True
                 raise error
-    raise DomainApiError("TASK_FLOW_RESULT_MISSING", "流程没有返回候选", status_code=502)
+    raise DomainApiError("TASK_FLOW_RESULT_MISSING", "Luồng không trả về ứng viên nào", status_code=502)

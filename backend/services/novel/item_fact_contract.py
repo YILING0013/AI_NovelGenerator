@@ -56,11 +56,11 @@ class ItemFactValuesV1(StrictResponseModel):
             完整且合法的物品状态。
         """
         if self.lifecycle_status == "held" and self.owner_character_id is None and self.controlling_faction_id is None:
-            raise ValueError("held 物品必须有持有人或控制势力")
+            raise ValueError("vật phẩm held phải có chủ sở hữu hoặc thế lực kiểm soát")
         if self.lifecycle_status in {"destroyed", "consumed"} and any(value is not None for value in (
             self.owner_character_id, self.controlling_faction_id, self.current_location_id,
         )):
-            raise ValueError("destroyed/consumed 物品不能保留持有人、控制势力或地点")
+            raise ValueError("vật phẩm destroyed/consumed không được giữ chủ sở hữu, thế lực kiểm soát hoặc địa điểm")
         return self
 
 
@@ -84,7 +84,7 @@ class ItemFactBeforeV1(StrictResponseModel):
             没有部分值或重复状态的物品组。
         """
         if (self.values is None) == (self.unknown is None):
-            raise ValueError("物品四字段必须整组已知或整组未知")
+            raise ValueError("Bốn trường của vật phẩm phải biết đầy đủ cả nhóm hoặc không biết cả nhóm")
         return self
 
 
@@ -130,39 +130,39 @@ class ItemFactRecordV1(StrictResponseModel):
                 or ObjectId(sources[-1].id) != ObjectId(self.position.target_id)
                 or any(ObjectId(row.parent_id) != ObjectId(sources[index - 1].id)
                        for index, row in enumerate(sources) if index)):
-            raise ValueError("物品事实必须保存从本书到位置锚的完整父链")
+            raise ValueError("Dữ kiện vật phẩm phải lưu chuỗi cha đầy đủ từ cuốn sách này đến neo vị trí")
         if (self.before.values is None) != (self.previous is None):
-            raise ValueError("物品已知前值须有整组来源，未知前值的 previous 必须为 null")
+            raise ValueError("Giá trị trước đã biết của vật phẩm phải có nguồn cho cả nhóm; previous của giá trị trước chưa biết phải là null")
         if self.operation == "create":
             if (self.before_version is not None or self.after_version != 1
                     or self.before.unknown != "nonexistent" or self.replaces is not None or self.resolves):
-                raise ValueError("新建物品起点必须使用真实版本一和不存在的前值")
+                raise ValueError("Điểm khởi đầu vật phẩm tạo mới phải dùng phiên bản thật số một và giá trị trước không tồn tại")
         else:
             if self.before_version is None or self.after_version != self.before_version + 1:
-                raise ValueError("已有物品一次确认只能增加一个真实版本")
+                raise ValueError("Với vật phẩm đã có, mỗi lần xác nhận chỉ được tăng một phiên bản thật")
             if self.before.unknown == "nonexistent":
-                raise ValueError("已有物品不能声明目标不存在")
+                raise ValueError("Vật phẩm đã có không được khai báo đích không tồn tại")
         if self.operation in {"create", "establish", "correct_initial"} and self.kind != "start":
-            raise ValueError("物品起点命令必须保存人工起点")
+            raise ValueError("Lệnh điểm khởi đầu vật phẩm phải lưu điểm khởi đầu thủ công")
         if self.operation == "change" and self.kind != "change":
-            raise ValueError("物品变化命令必须保存章后变化")
+            raise ValueError("Lệnh thay đổi vật phẩm phải lưu thay đổi sau chương")
         if self.kind == "start" and self.source.kind != "author":
-            raise ValueError("物品人工起点必须使用作者说明")
+            raise ValueError("Điểm khởi đầu thủ công của vật phẩm phải dùng ghi chú của tác giả")
         if self.kind == "change" and (self.source.kind != "chapter" or self.position.intent != "chapter_after"):
-            raise ValueError("物品章后变化必须有章后位置和原文证据")
+            raise ValueError("Thay đổi sau chương của vật phẩm phải có vị trí sau chương và bằng chứng văn bản gốc")
         if self.source.kind == "chapter" and ObjectId(self.source.evidence.chapter_id) != ObjectId(self.position.target_id):
-            raise ValueError("物品变化证据必须来自生效章节")
+            raise ValueError("Bằng chứng thay đổi vật phẩm phải đến từ chương đã hiệu lực")
         if self.operation == "correct_initial" and self.position.intent != "book_start":
-            raise ValueError("物品初始更正只能作用于书初")
+            raise ValueError("Hiệu chỉnh khởi tạo vật phẩm chỉ áp dụng cho bản ghi đầu sách")
         if self.operation == "replace" and self.replaces is None:
-            raise ValueError("物品替代必须明确原整组记录")
+            raise ValueError("Thay thế vật phẩm phải chỉ rõ cả nhóm bản ghi gốc")
         if any(ObjectId(identity) == ObjectId(self.history_id)
                for identity in [self.previous, self.replaces, *self.resolves] if identity is not None):
-            raise ValueError("物品事实不能引用自己作为前值或处置对象")
+            raise ValueError("Dữ kiện vật phẩm không được tham chiếu chính nó làm giá trị trước hoặc đối tượng xử lý")
         if len(self.resolves) != len({ObjectId(identity) for identity in self.resolves}):
-            raise ValueError("解除物品事实失效不能重复指定原记录")
+            raise ValueError("Gỡ hết hiệu lực dữ kiện vật phẩm không được chỉ định lặp bản ghi gốc")
         if self.validity.state == "replaced" and ObjectId(self.validity.by_history_id) == ObjectId(self.history_id):
-            raise ValueError("物品事实不能被自己替代")
+            raise ValueError("Dữ kiện vật phẩm không được thay thế bởi chính nó")
         return self
 
 
@@ -187,12 +187,12 @@ class ItemFactsAtPositionV1(ItemFactBeforeV1):
             来源、阻断与整组已知或未知状态相符的结果。
         """
         if (self.values is None) != (self.origin is None):
-            raise ValueError("物品已知值必须有唯一整组来源")
+            raise ValueError("Giá trị đã biết của vật phẩm phải có một nguồn duy nhất cho cả nhóm")
         blocked = self.unknown in {"voided", "needs_review", "unresolved_reference"}
         if bool(self.blockers) != blocked or len(self.blockers) != len({ObjectId(identity) for identity in self.blockers}):
-            raise ValueError("物品待复核或作废须列出不重复的阻断记录")
+            raise ValueError("Vật phẩm chờ xem xét lại hoặc vô hiệu hoá phải liệt kê các bản ghi chặn không trùng lặp")
         if self.unknown == "nonexistent" or self.claimed != (self.unknown != "unclaimed"):
-            raise ValueError("现存物品的认领状态必须与整组读取结果一致")
+            raise ValueError("Trạng thái được thừa nhận của vật phẩm hiện có phải nhất quán với kết quả đọc của cả nhóm")
         return self
 
 
@@ -227,14 +227,14 @@ class ItemFactReferenceV1(StrictResponseModel):
             通过核验的当前模型。
         """
         if not is_business_id(self.resource_type, self.business_id):
-            raise ValueError("物品引用类别与业务 ID 不一致")
+            raise ValueError("Loại tham chiếu vật phẩm không nhất quán với ID nghiệp vụ")
         if self.entity_id is None:
             if any(value is not None for value in (self.version, self.is_deleted, self.status)) or self.available:
-                raise ValueError("缺失引用不能携带实体状态")
+                raise ValueError("Tham chiếu bị thiếu không được mang trạng thái thực thể")
         elif self.version is None or self.is_deleted is None or self.status is None:
-            raise ValueError("存在的引用必须冻结完整身份和状态")
+            raise ValueError("Tham chiếu đã tồn tại phải đóng băng đầy đủ danh tính và trạng thái")
         if self.available and (self.is_deleted or self.status != "active"):
-            raise ValueError("可用引用必须未回收且活动")
+            raise ValueError("Tham chiếu khả dụng phải chưa bị thu hồi và đang hoạt động")
         return self
 
 
@@ -273,51 +273,51 @@ class ItemFactReadV1(StrictResponseModel):
         if (len(self.item_ids) != len(set(self.item_ids)) or len(identities) != len(self.identities)
                 or not identities.keys() <= set(self.item_ids)
                 or len({ObjectId(row.entity_id) for row in self.identities}) != len(self.identities)):
-            raise ValueError("物品读取身份必须对应不重复的原选择")
+            raise ValueError("Danh tính đọc vật phẩm phải tương ứng với các lựa chọn gốc không trùng lặp")
         if len({ObjectId(row.history_id) for row in self.records}) != len(self.records):
-            raise ValueError("物品读取不能重复历史身份")
+            raise ValueError("Đọc vật phẩm không được lặp lại danh tính lịch sử")
         for row in self.records:
             target = identities.get(row.item_id)
             if (target is None or ObjectId(row.entity_id) != ObjectId(target.entity_id)
                     or ObjectId(row.novel_id) != ObjectId(self.novel_id) or row.after_version > target.version):
-                raise ValueError("物品记录与原物理身份、小说或版本不一致")
+                raise ValueError("Bản ghi vật phẩm không nhất quán với danh tính vật lý, tiểu thuyết hoặc phiên bản gốc")
         directory = {(row.resource_type, ObjectId(row.id)): row for row in self.directory}
         parents = {"volume": "novel", "arc": "volume", "scene": "arc", "chapter": "scene"}
         if len(directory) != len(self.directory):
-            raise ValueError("物品读取目录不能重复")
+            raise ValueError("Thư mục đọc vật phẩm không được trùng lặp")
         for row in self.directory:
             kind = parents[row.resource_type]
             if (kind == "novel" and ObjectId(row.parent_id) != ObjectId(self.novel_id)
                     or kind != "novel" and (kind, ObjectId(row.parent_id)) not in directory):
-                raise ValueError("物品读取目录必须是同书完整父链")
+                raise ValueError("Thư mục đọc vật phẩm phải là chuỗi cha đầy đủ trong cùng cuốn sách")
         if self.position.target_type == "novel":
             if ObjectId(self.position.target_id) != ObjectId(self.novel_id):
-                raise ValueError("书初必须指向当前小说")
+                raise ValueError("Bản ghi đầu sách phải chỉ tiểu thuyết hiện tại")
         else:
             row = directory.get((self.position.target_type, ObjectId(self.position.target_id)))
             if row is None:
-                raise ValueError("物品读取锚必须存在于冻结目录")
+                raise ValueError("Neo đọc vật phẩm phải tồn tại trong thư mục đã đóng băng")
             order = [row.order_index]
             while row.resource_type != "volume":
                 row = directory[parents[row.resource_type], ObjectId(row.parent_id)]
                 order.append(row.order_index)
             if list(reversed(order)) != self.position.order:
-                raise ValueError("物品读取顺序必须来自完整目录")
+                raise ValueError("Thứ tự đọc vật phẩm phải đến từ thư mục đầy đủ")
         expected_refs = {(kind, getattr(values, field)) for record in self.records
                          for values in (record.before.values, record.after) if values is not None
                          for kind, field in (("character", "owner_character_id"), ("faction", "controlling_faction_id"),
                                              ("location", "current_location_id")) if getattr(values, field) is not None}
         if (len({(r.resource_type, r.business_id) for r in self.references}) != len(self.references)
                 or {(r.resource_type, r.business_id) for r in self.references} != expected_refs):
-            raise ValueError("物品引用观察必须完整覆盖记录的前后值")
+            raise ValueError("Quan sát tham chiếu vật phẩm phải bao phủ đầy đủ giá trị trước và sau của bản ghi")
         expected_sources = {(ObjectId(r.source.evidence.chapter_id), ObjectId(r.source.evidence.revision_id))
                             for r in self.records if r.source.kind == "chapter"}
         if (any(s.revision_id is None for s in self.sources)
                 or len({(ObjectId(s.chapter_id), ObjectId(s.revision_id)) for s in self.sources}) != len(self.sources)
                 or {(ObjectId(s.chapter_id), ObjectId(s.revision_id)) for s in self.sources} != expected_sources):
-            raise ValueError("物品正文观察必须完整覆盖原记录来源")
+            raise ValueError("Quan sát nội dung vật phẩm phải bao phủ đầy đủ nguồn của bản ghi gốc")
         if canonical_request_hash(self.model_dump(exclude={"fingerprint"})) != self.fingerprint:
-            raise ValueError("物品读取摘要与冻结内容不一致")
+            raise ValueError("Tóm tắt đọc vật phẩm không nhất quán với nội dung đã đóng băng")
         return self
 
 
@@ -347,7 +347,7 @@ class ItemFactCreateDataV1(StrictResponseModel):
         """
         ItemCreateV1.model_validate(self.model_dump())
         if not all(getattr(self, key).strip() for key in ("name", "item_type", "description")):
-            raise ValueError("物品名称、类型和描述不能空白")
+            raise ValueError("Tên, loại và mô tả vật phẩm không được để trống")
         return self
 
 
@@ -425,15 +425,15 @@ def _validate_item_operation(operation, kind, position, source, replaces, resolv
             or (operation == "change" and kind != "change")
             or (kind == "start" and source.kind != "author")
             or (kind == "change" and (position.intent != "chapter_after" or source.kind != "chapter"))):
-        raise ValueError("物品起点必须有作者说明，章后变化必须有原章证据")
+        raise ValueError("Điểm khởi đầu vật phẩm phải có ghi chú của tác giả, thay đổi sau chương phải có bằng chứng của chương gốc")
     if source.kind == "chapter" and ObjectId(source.evidence.chapter_id) != ObjectId(position.target_id):
-        raise ValueError("物品变化证据必须来自生效章节")
+        raise ValueError("Bằng chứng thay đổi vật phẩm phải đến từ chương đã hiệu lực")
     if operation == "correct_initial" and position.intent != "book_start":
-        raise ValueError("更正初始只能作用于书初")
+        raise ValueError("Hiệu chỉnh khởi tạo chỉ áp dụng cho bản ghi đầu sách")
     if operation == "replace" and replaces is None:
-        raise ValueError("替代必须明确原整组记录")
+        raise ValueError("Thay thế phải chỉ rõ cả nhóm bản ghi gốc")
     if len(resolves) != len({ObjectId(value) for value in resolves}):
-        raise ValueError("解除失效不能重复选择原记录")
+        raise ValueError("Gỡ hết hiệu lực không được chọn lặp bản ghi gốc")
 
 
 class ItemFactPreviewInputV1(RootModel[Annotated[
@@ -491,69 +491,69 @@ class ItemFactBasisV1(StrictResponseModel):
         _validate_item_operation(self.operation, self.kind, self.position, self.source, self.replaces, self.resolves)
         _validate_protected_sources(target.novel_id, self.position, self.protected_sources)
         if (self.operation == "create") != (target.kind == "new") or ObjectId(read.novel_id) != ObjectId(target.novel_id):
-            raise ValueError("物品预览动作与小说、目标类别不一致")
+            raise ValueError("Hành động xem trước vật phẩm không nhất quán với tiểu thuyết và loại đích")
         if (self.operation == "void") != (self.reference_selection is None):
-            raise ValueError("物品保存预览必须明确三类引用选择，作废不选择新引用")
+            raise ValueError("Xem trước lưu vật phẩm phải chọn rõ ba loại tham chiếu; vô hiệu hoá không chọn tham chiếu mới")
         expected_refs = {(kind, getattr(values, field)) for values in (self.legacy_values, self.reference_selection)
                          if values is not None
                          for kind, field in (("character", "owner_character_id"), ("faction", "controlling_faction_id"),
                                              ("location", "current_location_id")) if getattr(values, field) is not None}
         references = {(row.resource_type, row.business_id): row for row in self.preview_references}
         if len(references) != len(self.preview_references) or references.keys() != expected_refs:
-            raise ValueError("物品预览必须完整核对旧字段和本次选择的引用")
+            raise ValueError("Bản xem trước vật phẩm phải đối chiếu đầy đủ các trường cũ và các tham chiếu đã chọn lần này")
         for row in read.references:
             if (row.resource_type, row.business_id) in references and references[row.resource_type, row.business_id] != row:
-                raise ValueError("物品预览和历史读取必须使用同一份引用资料")
+                raise ValueError("Bản xem trước vật phẩm và lần đọc lịch sử phải dùng cùng một bộ tài liệu tham chiếu")
         if (self.before.values is None) != (self.previous is None):
-            raise ValueError("物品已知前值必须有唯一原记录")
+            raise ValueError("Giá trị trước đã biết của vật phẩm phải có một bản ghi gốc duy nhất")
         if (bool(self.blockers) != (self.before.unknown in {"voided", "needs_review", "unresolved_reference"})
                 or len(self.blockers) != len({ObjectId(v) for v in self.blockers})):
-            raise ValueError("物品阻断记录必须与整组未知原因一致")
+            raise ValueError("Bản ghi chặn vật phẩm phải nhất quán với lý do không biết của cả nhóm")
         records = {ObjectId(r.history_id): r for r in read.records}
         if target.kind == "new":
             if (self.before.unknown != "nonexistent" or read.item_ids or read.identities or read.records
                     or self.legacy_values is not None or self.replaces is not None or self.resolves):
-                raise ValueError("新物品必须保存不存在的原依据")
+                raise ValueError("Vật phẩm mới phải lưu căn cứ gốc không tồn tại")
         elif (read.item_ids != [target.item_id] or len(read.identities) != 1 or target.is_deleted
               or read.identities[0].model_dump() != target.model_dump(exclude={"kind", "novel_id"})
               or self.legacy_values is None or self.before.unknown == "nonexistent"):
-            raise ValueError("物品预览必须绑定原活动物品、版本与旧值")
+            raise ValueError("Bản xem trước vật phẩm phải liên kết với vật phẩm hoạt động gốc, phiên bản và giá trị cũ")
         if self.previous is not None:
             previous = records.get(ObjectId(self.previous))
             if previous is None or previous.validity.state != "active" or previous.after != self.before.values:
-                raise ValueError("物品前值必须等于活动来源的完整后值")
+                raise ValueError("Giá trị trước của vật phẩm phải bằng toàn bộ giá trị sau của nguồn đang hoạt động")
         if any(ObjectId(v) not in records for v in self.blockers):
-            raise ValueError("物品阻断记录必须出自原读取")
+            raise ValueError("Bản ghi chặn vật phẩm phải xuất phát từ lần đọc gốc")
         if not {ObjectId(v) for v in self.resolves} <= {ObjectId(v) for v in self.blockers}:
-            raise ValueError("只能明确解除本次列出的物品阻断")
+            raise ValueError("Chỉ được giải toả rõ ràng các bản chặn vật phẩm đã liệt kê lần này")
         if self.operation == "void":
             if self.void_target is None or self.replaces is not None or self.resolves:
-                raise ValueError("作废必须只选择原整组记录")
+                raise ValueError("Vô hiệu hoá chỉ được chọn cả nhóm bản ghi gốc")
         elif self.void_target is not None:
-            raise ValueError("非作废命令不能带作废目标")
+            raise ValueError("Lệnh không vô hiệu hoá không được kèm đích vô hiệu hoá")
         for identity in (self.replaces, self.void_target):
             if identity is None:
                 continue
             row = records.get(ObjectId(identity))
             if row is None or row.validity.state != "active" or row.kind != self.kind or row.position != self.position:
-                raise ValueError("替代或作废必须是同位置同类型的活动整组记录")
+                raise ValueError("Thay thế hoặc vô hiệu hoá phải là cả nhóm bản ghi hoạt động cùng vị trí và cùng loại")
             if self.operation == "void" and (row.source != self.source or row.protected_sources != self.protected_sources):
-                raise ValueError("作废必须保留原来源")
+                raise ValueError("Vô hiệu hoá phải giữ nguyên nguồn gốc")
         intent = "chapter_before" if self.kind == "change" and self.operation != "void" else self.position.intent
         missing_anchor = (self.operation == "void" and self.position.target_type in {"chapter", "volume"}
                           and not any(r.resource_type == self.position.target_type and ObjectId(r.id) == ObjectId(self.position.target_id) for r in read.directory)
                           and read.position.intent == "book_start")
         if not missing_anchor and (read.position.intent != intent or read.position.target_type != self.position.target_type
                                    or ObjectId(read.position.target_id) != ObjectId(self.position.target_id)):
-            raise ValueError("物品预览必须读取原起点或章前位置")
+            raise ValueError("Bản xem trước vật phẩm phải đọc điểm khởi đầu gốc hoặc vị trí trước chương")
         if self.position.target_type in {"chapter", "volume"} and not missing_anchor:
             directory = {(r.resource_type, ObjectId(r.id)): r for r in read.directory}
             if any((ref.resource_type, ObjectId(ref.id)) not in directory
                    or ObjectId(directory[ref.resource_type, ObjectId(ref.id)].parent_id) != ObjectId(ref.parent_id)
                    for ref in self.protected_sources[1:]):
-                raise ValueError("物品预览来源父链必须等于原读取目录")
+                raise ValueError("Chuỗi cha của nguồn xem trước vật phẩm phải bằng thư mục đọc gốc")
         if canonical_request_hash(self.model_dump(exclude={"fingerprint"})) != self.fingerprint:
-            raise ValueError("物品预览摘要与原冻结内容不一致")
+            raise ValueError("Tóm tắt xem trước vật phẩm không khớp với nội dung đã đóng băng gốc")
         return self
 
 
@@ -573,7 +573,7 @@ class ItemFactPreviewV1(StrictResponseModel):
             通过核验的当前模型。
         """
         if self.values != self.basis.before:
-            raise ValueError("物品显示前值与冻结依据不一致")
+            raise ValueError("Giá trị trước hiển thị của vật phẩm không khớp với căn cứ đã đóng băng")
         return self
 
 
@@ -623,18 +623,18 @@ class ItemFactConfirmV1(RootModel[Annotated[
         """
         command, basis = self.root, self.root.basis
         if command.operation != basis.operation:
-            raise ValueError("物品确认动作与预览不一致")
+            raise ValueError("Hành động xác nhận vật phẩm không khớp với bản xem trước")
         if command.operation != "create" and command.expected_version != basis.target.version:
-            raise ValueError("物品确认版本与预览不一致")
+            raise ValueError("Phiên bản xác nhận vật phẩm không khớp với bản xem trước")
         if command.operation == "void" and command.history_id != basis.void_target:
-            raise ValueError("物品作废对象与预览不一致")
+            raise ValueError("Đối tượng vô hiệu hoá vật phẩm không khớp với bản xem trước")
         if command.operation != "void":
             checked = {(row.resource_type, row.business_id) for row in [*basis.read.references, *basis.preview_references]}
             for kind, field in (("character", "owner_character_id"), ("faction", "controlling_faction_id"),
                                 ("location", "current_location_id")):
                 identity = getattr(command.after, field)
                 if identity is not None and (kind, identity) not in checked:
-                    raise ValueError("这次选择的物品引用未在原预览核对，请保留草稿并重新预览")
+                    raise ValueError("Tham chiếu vật phẩm đã chọn lần này chưa được đối chiếu trong bản xem trước gốc, hãy giữ bản nháp và xem trước lại")
         return self
 
 
@@ -672,17 +672,17 @@ class ItemFactResultV1(StrictResponseModel):
         """
         if self.operation == "create":
             if self.before_version is not None or self.after_version != 1:
-                raise ValueError("新物品必须使用真实版本一")
+                raise ValueError("Vật phẩm mới phải dùng phiên bản thật số một")
         elif self.before_version is None or self.after_version != self.before_version + 1:
-            raise ValueError("物品确认只能增加一个版本")
+            raise ValueError("Xác nhận vật phẩm chỉ được tăng một phiên bản")
         if (self.operation == "void") != (self.record is None):
-            raise ValueError("只有作废不新增物品事实行")
+            raise ValueError("Chỉ vô hiệu hoá, không thêm dòng dữ kiện vật phẩm")
         if self.record is not None:
             for key in ("novel_id", "entity_id", "item_id", "item_name", "operation", "before_version", "after_version", "confirmed_at"):
                 if getattr(self, key) != getattr(self.record, key):
-                    raise ValueError("物品首次结果与记录身份、动作或版本不一致")
+                    raise ValueError("Kết quả đầu tiên của vật phẩm không nhất quán với danh tính, hành động hoặc phiên bản bản ghi")
             if self.record.validity.state != "active":
-                raise ValueError("首次成功记录必须为 active")
+                raise ValueError("Bản ghi thành công đầu tiên phải là active")
         return self
 
 
@@ -728,27 +728,27 @@ class ItemFactReceiptV1(StrictResponseModel):
                 or ObjectId(self.request.target_id) != ObjectId(target.entity_id) or ObjectId(result.entity_id) != ObjectId(target.entity_id)
                 or self.position != basis.position or self.source != basis.source or self.protected_sources != basis.protected_sources
                 or self.created_at != result.confirmed_at):
-            raise ValueError("物品回执身份、动作、时间或来源不一致")
+            raise ValueError("Danh tính, hành động, thời gian hoặc nguồn của biên nhận vật phẩm không nhất quán")
         if canonical_request_hash(self.request.model_dump()) != self.request_hash:
-            raise ValueError("物品回执摘要与原请求不一致")
+            raise ValueError("Tóm tắt biên nhận vật phẩm không khớp với yêu cầu gốc")
         if target.kind == "existing":
             if (result.item_id != target.item_id or result.before_version != target.version or result.item_name != target.name):
-                raise ValueError("物品回执必须保留原目标身份和版本")
+                raise ValueError("Biên nhận vật phẩm phải giữ danh tính và phiên bản đích gốc")
         elif result.item_name != target.candidate.name:
-            raise ValueError("新物品结果必须保留原名称")
+            raise ValueError("Kết quả vật phẩm mới phải giữ tên gốc")
         if result.record is not None:
             record = result.record
             if any(getattr(record, key) != getattr(basis, key) for key in (
                 "kind", "position", "source", "before", "previous", "replaces", "resolves", "protected_sources",
             )) or record.after != command.after:
-                raise ValueError("新物品记录必须精确对应原依据与作者后值")
+                raise ValueError("Bản ghi vật phẩm mới phải khớp chính xác với căn cứ gốc và giá trị sau của tác giả")
             expected = ([] if basis.replaces is None else [{"history_id": basis.replaces, "before": {"state": "active"},
                         "after": {"state": "replaced", "by_history_id": record.history_id}}])
         else:
             expected = [{"history_id": command.history_id, "before": {"state": "active"},
                          "after": {"state": "voided", "by_receipt_key_hash": self.idempotency_key_hash}}]
         if [row.model_dump() for row in result.validity_changes] != expected:
-            raise ValueError("物品回执处置必须精确等于原替代或作废请求")
+            raise ValueError("Xử lý biên nhận vật phẩm phải bằng chính xác yêu cầu thay thế hoặc vô hiệu hoá gốc")
         return self
 
 
@@ -761,9 +761,9 @@ def parse_item_fact_record(document: dict) -> dict:
         严格记录，顶层三个物理身份转为字符串。
     """
     if "history_id" in document or any(not isinstance(document.get(k), ObjectId) for k in ("_id", "novel_id", "entity_id")):
-        raise ValueError("物品事实必须保存唯一 BSON 身份")
+        raise ValueError("Dữ kiện vật phẩm phải lưu danh tính BSON duy nhất")
     if not isinstance(document.get("confirmed_at"), datetime):
-        raise ValueError("物品事实时间必须是 BSON datetime")
+        raise ValueError("Thời gian của dữ kiện vật phẩm phải là BSON datetime")
     payload = {**document, "history_id": str(document["_id"]), "novel_id": str(document["novel_id"]), "entity_id": str(document["entity_id"])}
     del payload["_id"]
     return ItemFactRecordV1.model_validate(payload).model_dump()
@@ -793,9 +793,9 @@ def validate_item_fact_receipt(document: dict) -> dict:
     """
     if ("receipt_id" in document or not isinstance(document.get("_id"), ObjectId)
             or not isinstance(document.get("novel_id"), ObjectId) or not isinstance(document.get("created_at"), datetime)):
-        raise ValueError("物品回执必须保存唯一 BSON 身份和时间")
+        raise ValueError("Biên nhận vật phẩm phải lưu danh tính BSON và thời gian duy nhất")
     if canonical_request_hash(document.get("request")) != document.get("request_hash"):
-        raise ValueError("物品回执摘要必须对应保存的原请求")
+        raise ValueError("Tóm tắt biên nhận vật phẩm phải tương ứng với yêu cầu gốc đã lưu")
     payload = {**document, "receipt_id": str(document["_id"]), "novel_id": str(document["novel_id"])}
     del payload["_id"]
     ItemFactReceiptV1.model_validate(payload)

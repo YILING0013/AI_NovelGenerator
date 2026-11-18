@@ -28,10 +28,10 @@ async def prepare_database(client, database_name: str) -> None:
     db = client[database_name]
     marker = await db["_app_metadata"].find_one({"_id": "storage_format"})
     if marker is not None and (type(marker.get("version")) is not int or marker["version"] != DATABASE_FORMAT_VERSION):
-        raise MigrationError("数据库格式不受此版本支持，请使用对应程序，不能降级启动。")
+        raise MigrationError("Định dạng cơ sở dữ liệu không được phiên bản này hỗ trợ, hãy dùng chương trình tương ứng, không được khởi động theo kiểu hạ cấp.")
     hello = await client.admin.command("hello")
     if not (hello.get("setName") or hello.get("msg") == "isdbgrid") or hello.get("logicalSessionTimeoutMinutes") is None:
-        raise MigrationError("MongoDB 必须支持事务，请在设置中填写可用的副本集连接。")
+        raise MigrationError("MongoDB phải hỗ trợ transaction, hãy nhập chuỗi kết nối replica set khả dụng trong phần Cài đặt.")
     # 真正发出事务内读取，不能只靠 hello 推测权限和可用性。
     async with client.start_session() as session:
         async with await session.start_transaction():
@@ -40,11 +40,11 @@ async def prepare_database(client, database_name: str) -> None:
         # 当前 Dev 的小说始终具有 version。旧 old 分支不能靠建索引变成新版。
         incompatible = await db["novels"].find_one({"$or": [{"version": {"$exists": False}}, {"version": {"$not": {"$gte": 1}}}]}, {"_id": 1})
         if incompatible:
-            raise MigrationError("这个库含无法识别的旧小说格式，请保留原库并使用独立新库。")
+            raise MigrationError("Thư viện dữ liệu này chứa định dạng tiểu thuyết cũ không nhận dạng được, hãy giữ nguyên thư viện cũ và dùng một thư viện mới riêng biệt.")
     await init_all_indexes(db)
     # 仅登记当前基线，不虚构逐记录升级；失败时原小说完全保留。
     if marker is None:
         await db["_app_metadata"].update_one({"_id": "storage_format"}, {"$setOnInsert": {"version": DATABASE_FORMAT_VERSION}}, upsert=True)
     current = await db["_app_metadata"].find_one({"_id": "storage_format"})
     if (type(current.get("version")) is not int or current["version"] != DATABASE_FORMAT_VERSION):
-        raise MigrationError("数据库版本在检查期间改变，请关闭其他实例后重试。")
+        raise MigrationError("Phiên bản cơ sở dữ liệu đã thay đổi trong lúc kiểm tra, hãy đóng các instance khác rồi thử lại.")

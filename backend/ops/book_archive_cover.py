@@ -38,15 +38,15 @@ def validate_covers_directory(covers_dir: str | Path) -> Path:
         ArchiveCoverError: 目录缺失、不可访问或是链接。
     """
     if not str(covers_dir).strip():
-        raise ArchiveCoverError("INVALID_INPUT", "target_covers_dir", "必须明确指定封面目录")
+        raise ArchiveCoverError("INVALID_INPUT", "target_covers_dir", "Phải chỉ định rõ thư mục ảnh bìa")
     try:
         directory = Path(covers_dir).absolute()
         observed = directory.lstat()
     except (OSError, ValueError):
-        raise ArchiveCoverError("INVALID_INPUT", "target_covers_dir", "封面目录无效、缺失或不可访问") from None
+        raise ArchiveCoverError("INVALID_INPUT", "target_covers_dir", "Thư mục ảnh bìa không hợp lệ, thiếu hoặc không truy cập được") from None
     if (not stat.S_ISDIR(observed.st_mode) or stat.S_ISLNK(observed.st_mode)
             or getattr(observed, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
-        raise ArchiveCoverError("INVALID_INPUT", "target_covers_dir", "封面目录必须是现有普通目录，不能是链接")
+        raise ArchiveCoverError("INVALID_INPUT", "target_covers_dir", "Thư mục ảnh bìa phải là thư mục thường hiện có, không được là liên kết")
     return directory
 
 
@@ -55,14 +55,14 @@ def _verify_file(content: bytes, path: Path) -> None:
     try:
         before = path.lstat()
     except FileNotFoundError:
-        raise ArchiveCoverError("COVER_MISSING", "target_cover", "目标封面缺失") from None
+        raise ArchiveCoverError("COVER_MISSING", "target_cover", "Thiếu ảnh bìa đích") from None
     except OSError:
-        raise ArchiveCoverError("COVER_CONFLICT", "target_cover", "无法检查目标封面") from None
+        raise ArchiveCoverError("COVER_CONFLICT", "target_cover", "Không kiểm tra được ảnh bìa đích") from None
     try:
         if (not stat.S_ISREG(before.st_mode) or stat.S_ISLNK(before.st_mode)
                 or getattr(before, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
                 or before.st_size != len(content)):
-            raise ArchiveCoverError("COVER_CONFLICT", "target_cover", "目标封面不是大小相同的普通文件")
+            raise ArchiveCoverError("COVER_CONFLICT", "target_cover", "Ảnh bìa đích không phải tệp thường có cùng kích thước")
         flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
         with os.fdopen(os.open(path, flags), "rb") as stream:
             opened = os.fstat(stream.fileno())
@@ -70,15 +70,15 @@ def _verify_file(content: bytes, path: Path) -> None:
             if (not stat.S_ISREG(opened.st_mode) or not os.path.samestat(before, opened)
                     or not os.path.samestat(opened, current) or stat.S_ISLNK(current.st_mode)
                     or getattr(current, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
-                raise ArchiveCoverError("COVER_CONFLICT", "target_cover", "目标封面在打开时被替换")
+                raise ArchiveCoverError("COVER_CONFLICT", "target_cover", "Ảnh bìa đích bị thay thế khi đang mở")
             actual = stream.read(len(content) + 1)
             after = path.lstat()
             if (not os.path.samestat(opened, after) or not stat.S_ISREG(after.st_mode)
                     or getattr(after, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
                     or actual != content):
-                raise ArchiveCoverError("COVER_CONFLICT", "target_cover", "目标封面内容不同或读取时被替换")
+                raise ArchiveCoverError("COVER_CONFLICT", "target_cover", "Nội dung ảnh bìa đích khác đi hoặc bị thay thế khi đang đọc")
     except OSError:
-        raise ArchiveCoverError("COVER_CONFLICT", "target_cover", "无法完整读取目标封面") from None
+        raise ArchiveCoverError("COVER_CONFLICT", "target_cover", "Không đọc trọn vẹn được ảnh bìa đích") from None
 
 
 def verify_cover(content: bytes | None, entry: dict | None, *, covers_dir: str | Path) -> None:
@@ -164,8 +164,8 @@ def publish_cover(content: bytes | None, entry: dict | None, *, covers_dir: str 
                 if (staging_stat is None or not os.path.samestat(staging_stat, current)
                         or not stat.S_ISREG(current.st_mode)
                         or getattr(current, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
-                    raise ArchiveCoverError("COVER_CLEANUP_FAILED", "cover_staging_cleanup", "临时文件已被替换，未清理该文件", cover_state=state)
+                    raise ArchiveCoverError("COVER_CLEANUP_FAILED", "cover_staging_cleanup", "Tệp tạm đã bị thay thế, chưa dọn tệp này", cover_state=state)
                 # 无论数据库是否提交，都只删本次确切临时文件，绝不删最终封面。
                 staging.unlink()
             except OSError:
-                raise ArchiveCoverError("COVER_CLEANUP_FAILED", "cover_staging_cleanup", "封面临时文件清理失败，最终封面保持原状", cover_state=state) from None
+                raise ArchiveCoverError("COVER_CLEANUP_FAILED", "cover_staging_cleanup", "Việc dọn tệp tạm ảnh bìa thất bại, ảnh bìa cuối cùng giữ nguyên hiện trạng", cover_state=state) from None

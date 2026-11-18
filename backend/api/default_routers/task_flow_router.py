@@ -48,8 +48,8 @@ def _error(exc: Exception) -> DomainApiError:
     if isinstance(exc, FlowConflictError):
         return DomainApiError("TASK_FLOW_VERSION_CONFLICT", str(exc), status_code=409)
     if isinstance(exc, KeyError):
-        return DomainApiError("TASK_FLOW_NOT_FOUND", "任务或方案修订不存在", status_code=404)
-    return DomainApiError("TASK_FLOW_INVALID", "流程定义有误", details={"errors": [str(exc)]})
+        return DomainApiError("TASK_FLOW_NOT_FOUND", "Tác vụ hoặc bản chỉnh sửa phương án không tồn tại", status_code=404)
+    return DomainApiError("TASK_FLOW_INVALID", "Định nghĩa luồng có lỗi", details={"errors": [str(exc)]})
 
 
 @router.get("/tasks")
@@ -133,7 +133,7 @@ async def create_task_flow(request: CreateFlow):
         else:
             flow = task_flow_store.flow_store().get_default(request.task)
         if flow.task != request.task:
-            raise ValueError("复制来源必须属于当前任务")
+            raise ValueError("Nguồn sao chép phải thuộc tác vụ hiện tại")
         validate_task_definition(flow)
         return task_flow_store.flow_store().save(flow.model_copy(update={"id": f"flow_{uuid4().hex}", "name": request.name, "revision": 1}, deep=True), 0)
     except (KeyError, ValueError) as exc:
@@ -198,7 +198,7 @@ async def save_task_flow(flow_id: str, request: SaveFlow):
     """
     try:
         if flow_id != request.definition.id:
-            raise ValueError("路径和定义中的方案 ID 不一致")
+            raise ValueError("ID phương án trong đường dẫn và trong định nghĩa không nhất quán")
         validate_task_definition(request.definition)
         return task_flow_store.flow_store().save(request.definition, request.expected_revision)
     except (KeyError, ValueError) as exc:

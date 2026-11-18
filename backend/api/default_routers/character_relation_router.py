@@ -114,7 +114,7 @@ async def bulk_append_character_relations(
             ]
             if len(semantic_keys) != len(set(semantic_keys)):
                 raise DuplicateKeyError(
-                    "relations 中不能包含重复或反向重复的同类型语义边"
+                    "relations không được chứa cạnh ngữ nghĩa cùng loại bị trùng lặp hoặc trùng ngược chiều"
                 )
         result = await CharacterRelationService.bulk_append_relations(
             novel_id,

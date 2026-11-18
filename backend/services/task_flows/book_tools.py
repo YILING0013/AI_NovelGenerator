@@ -54,7 +54,7 @@ class DirectoryArgs(AgentModel):
     """目录固定在当前小说内，只能指定层级和页码。"""
 
     resource_type: Literal["volume", "arc", "scene", "chapter"]
-    ids: list[ObjectIdString] | None = Field(default=None, min_length=1, max_length=20, description="可选：按最多20个本书层级ID读取详细规划与剧情；不填则分页浏览目录。")
+    ids: list[ObjectIdString] | None = Field(default=None, min_length=1, max_length=20, description="Tùy chọn: đọc kế hoạch chi tiết và cốt truyện theo tối đa 20 ID phân cấp của sách này; để trống thì duyệt mục lục theo trang.")
     offset: int = Field(default=0, ge=0, le=10000)
     limit: int = Field(default=20, ge=1, le=50)
 
@@ -190,22 +190,22 @@ class BookTools:
             collection = "foreshadowings"
         elif kind == "character":
             if facts is None:
-                raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "人物资料缺少明确位置的读取结果，请重新读取", status_code=409)
+                raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "Kết quả đọc tư liệu nhân vật thiếu vị trí xác định, hãy đọc lại", status_code=409)
             value = character_position_content(document, facts)
             collection = RESOURCE_COLLECTIONS[kind]
         elif kind == "faction":
             if facts is None:
-                raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "势力资料缺少明确位置的读取结果，请重新读取", status_code=409)
+                raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "Kết quả đọc tư liệu thế lực thiếu vị trí xác định, hãy đọc lại", status_code=409)
             value = faction_position_content(document, facts)
             collection = "factions"
         elif kind == "character_relation":
             if facts is None:
-                raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "关系资料缺少明确位置的读取结果，请重新读取", status_code=409)
+                raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "Kết quả đọc tư liệu quan hệ thiếu vị trí xác định, hãy đọc lại", status_code=409)
             value = character_relation_position_content(document, facts)
             collection = "character_relations"
         elif kind == "item":
             if facts is None:
-                raise DomainApiError("ITEM_FACT_CONTEXT_CHANGED", "物品资料缺少明确位置的读取结果，请重新读取", status_code=409)
+                raise DomainApiError("ITEM_FACT_CONTEXT_CHANGED", "Kết quả đọc tư liệu vật phẩm thiếu vị trí xác định, hãy đọc lại", status_code=409)
             value = item_position_content(document, facts)
             collection = "items"
         elif kind == "faction_relation":
@@ -230,7 +230,7 @@ class BookTools:
             可提供给模型的资料及明确的分页/截断信息。
         """
         if name not in BOOK_TOOL_MODELS:
-            raise DomainApiError("AGENT_TOOL_UNKNOWN", "资料整理请求了未开放的工具", status_code=422)
+            raise DomainApiError("AGENT_TOOL_UNKNOWN", "Việc tổng hợp tư liệu đã yêu cầu công cụ chưa được mở", status_code=422)
         if name == "get_scope" and self.chapter_local:
             arguments = {**arguments, "view": "chapter_local_v1"}
         model = EmptyToolArgs if name == "get_scope" and not self.chapter_local else BOOK_TOOL_MODELS[name][0]
@@ -247,7 +247,7 @@ class BookTools:
             for kind in ("volume", "arc", "scene", "chapter"):
                 documents = await BaseRepository(COLLECTIONS[kind]).collection.find({"novel_id": novel_id, "is_deleted": False}, {"content": 0}, session=self.session).limit(10001).to_list(length=10001)
                 if len(documents) > 10000:
-                    raise DomainApiError("AGENT_DIRECTORY_TOO_LARGE", "本书目录超过读取上限", status_code=422)
+                    raise DomainApiError("AGENT_DIRECTORY_TOO_LARGE", "Mục lục của sách này vượt giới hạn đọc", status_code=422)
                 directories[kind] = {document["_id"]: document for document in documents}
             position = resolve_writing_position(self.scope, directories)
         if name == "get_scope":
@@ -255,7 +255,7 @@ class BookTools:
             parent_kind = PARENTS[target_kind]
             siblings = await BaseRepository(COLLECTIONS[target_kind]).collection.find({"novel_id": novel_id, f"{parent_kind}_id": target[f"{parent_kind}_id"], "is_deleted": False}, {"content": 0}, session=self.session).sort([("order_index", 1), ("_id", 1)]).limit(10001).to_list(length=10001)
             if len(siblings) > 10000:
-                raise DomainApiError("AGENT_DIRECTORY_TOO_LARGE", "当前同级目录超过读取上限", status_code=422)
+                raise DomainApiError("AGENT_DIRECTORY_TOO_LARGE", "Mục lục cùng cấp hiện tại vượt giới hạn đọc", status_code=422)
             sibling_index = next(index for index, document in enumerate(siblings) if document["_id"] == target["_id"])
             neighbors = {"previous": self._remember(target_kind, siblings[sibling_index - 1]) if sibling_index else None,
                          "next": self._remember(target_kind, siblings[sibling_index + 1]) if sibling_index + 1 < len(siblings) else None}
@@ -264,28 +264,28 @@ class BookTools:
             if child_kind:
                 documents = await BaseRepository(COLLECTIONS[child_kind]).collection.find({"novel_id": novel_id, f"{target_kind}_id": target["_id"], "is_deleted": False}, {"content": 0}, session=self.session).sort([("order_index", 1), ("_id", 1)]).limit(10001).to_list(length=10001)
                 if len(documents) > 10000:
-                    raise DomainApiError("AGENT_DIRECTORY_TOO_LARGE", "已有下级超过读取上限", status_code=422)
+                    raise DomainApiError("AGENT_DIRECTORY_TOO_LARGE", "Các mục cấp dưới hiện có vượt giới hạn đọc", status_code=422)
                 children = [self._remember(child_kind, document) for document in documents]
             output = {"target": self.scope, "plan": plans, "neighbors": neighbors, "existing_children": children}
             if args.get("view") == "chapter_local_v1":
                 if target_kind != "chapter" or self.scope["reading_intent"] != "chapter_before":
-                    raise ValueError("本章资料只能用于章前写作")
+                    raise ValueError("Tư liệu chương này chỉ dùng cho việc viết trước chương")
                 output.update(chapter_scope_content(plans, neighbors))
                 if selection := args.get("parent_field"):
                     kind, identity, field = selection["resource_type"], selection["id"], selection["field"]
                     document = next((doc for part, doc in self.chain[:-1] if part == kind and str(doc["_id"]) == identity), None)
                     if document is None or field not in CHAPTER_PARENT_FIELDS[kind]:
-                        raise ValueError("只能补读本书真实父链中允许的原文字段")
+                        raise ValueError("Chỉ được đọc bổ sung các trường văn bản gốc được phép trong chuỗi cha thực tế của sách này")
                     value = self._remember(kind, document)
                     for key in field.split("."):
                         value = value.get(key) if isinstance(value, dict) else None
                     if not isinstance(value, str) or not value.strip():
-                        raise ValueError("该祖先字段没有可读取的原文，请核对缺项")
+                        raise ValueError("Trường tổ tiên này không có văn bản gốc để đọc, hãy kiểm tra mục còn thiếu")
                     original = {**selection, "version": document["version"], "text": value}
                     self.parent_fields[(kind, identity, field)] = original
                     output["parent_field"] = original
             elif args.get("parent_field"):
-                raise ValueError("祖先字段补读需要本章资料模式")
+                raise ValueError("Đọc bổ sung trường tổ tiên cần chế độ tư liệu của chương này")
         elif name == "list_directory":
             kind = args["resource_type"]
             query = {"novel_id": novel_id, "is_deleted": False}
@@ -311,7 +311,7 @@ class BookTools:
             else:
                 documents = await BaseRepository(collection).collection.find(query, session=self.session).sort([(id_field, 1), ("_id", 1)]).limit(10001).to_list(length=10001)
                 if len(documents) > 10000:
-                    raise DomainApiError("AGENT_DIRECTORY_TOO_LARGE", "该类实体超过检索上限", status_code=422)
+                    raise DomainApiError("AGENT_DIRECTORY_TOO_LARGE", "Thực thể loại này vượt giới hạn truy xuất", status_code=422)
             facts = {}
             if kind == "character":
                 from backend.services.novel.character_fact_service import read_character_facts
@@ -322,7 +322,7 @@ class BookTools:
                 position = fact_result["position"]
                 facts = {row["character_id"]: row for row in fact_result["characters"]}
                 if any(row[id_field] not in facts for row in documents):
-                    raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "人物在读取期间已变化，请重新读取", status_code=409)
+                    raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "Nhân vật đã thay đổi trong khi đọc, hãy đọc lại", status_code=409)
             elif kind == "faction":
                 from backend.services.novel.faction_fact_service import read_faction_facts
                 selected_ids = args["ids"] if name == "read_entity" else [row[id_field] for row in documents]
@@ -331,13 +331,13 @@ class BookTools:
                 position = fact_result["position"]
                 facts = {row["faction_id"]: row for row in fact_result["factions"]}
                 if any(row[id_field] not in facts for row in documents):
-                    raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "势力在读取期间已变化，请重新读取", status_code=409)
+                    raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "Thế lực đã thay đổi trong khi đọc, hãy đọc lại", status_code=409)
             elif kind == "item":
                 selected_ids = args["ids"] if name == "read_entity" else [row[id_field] for row in documents]
                 facts, item_reads, position = await read_item_context(str(novel_id), selected_ids, self.scope, session=self.session)
                 fact_reads.extend(item_reads)
                 if any(row[id_field] not in facts for row in documents):
-                    raise DomainApiError("ITEM_FACT_CONTEXT_CHANGED", "物品在读取期间已变化，请重新读取", status_code=409)
+                    raise DomainApiError("ITEM_FACT_CONTEXT_CHANGED", "Vật phẩm đã thay đổi trong khi đọc, hãy đọc lại", status_code=409)
             if name == "read_entity":
                 output = {"items": [self._remember(kind, document, detail=True, facts=facts.get(document[id_field])) for document in documents]}
             else:
@@ -357,7 +357,7 @@ class BookTools:
             missing_ids = [identity for identity in args["ids"] if (kind, identity) not in self.selected_entities]
             if missing_ids:
                 raise DomainApiError(
-                    "AGENT_REFERENCE_UNREAD", "请先读取这些实体的详情，再读取卷状态", status_code=422,
+                    "AGENT_REFERENCE_UNREAD", "Hãy đọc chi tiết các thực thể này trước, rồi đọc trạng thái quyển", status_code=422,
                     details={"resource_type": kind, "missing_ids": missing_ids, "next_tool": "read_entity"},
                 )
             state_kind = f"{kind}_volume_state"
@@ -372,7 +372,7 @@ class BookTools:
             if kind == "character":
                 relation_docs = await BaseRepository("character_relations").collection.find(query, session=self.session).sort([("relation_id", 1), ("_id", 1)]).limit(10001).to_list(length=10001)
                 if len(relation_docs) > 10000:
-                    raise DomainApiError("AGENT_DIRECTORY_TOO_LARGE", "相关关系超过读取上限，请缩小人物范围", status_code=422)
+                    raise DomainApiError("AGENT_DIRECTORY_TOO_LARGE", "Các quan hệ liên quan vượt giới hạn đọc, hãy thu hẹp phạm vi nhân vật", status_code=422)
                 # 原人物范围与分页留在 BookRead；事实读取覆盖整个关系集合，空查询也不能丢失。
                 relation_facts, relation_reads, position = await read_character_relation_context(
                     str(novel_id), [row["relation_id"] for row in relation_docs], self.scope, session=self.session)
@@ -496,10 +496,10 @@ class BookTools:
                 before = {identity: tuple(document.get(field) for field in order_fields) for identity, document in original.items()}
                 after = {document["_id"]: tuple(document.get(field) for field in order_fields) for document in current}
                 if before != after:
-                    raise DomainApiError("AGENT_SCOPE_CHANGED", "读取期间目录位置已变化，请重新整理", status_code=409)
+                    raise DomainApiError("AGENT_SCOPE_CHANGED", "Vị trí mục lục đã thay đổi trong khi đọc, hãy tổng hợp lại", status_code=409)
             output["position"] = position
         if len(json.dumps(output, ensure_ascii=False)) > 200000:
-            raise DomainApiError("AGENT_TOOL_RESULT_TOO_LARGE", "资料结果过长，请缩小页数或读取范围", status_code=422)
+            raise DomainApiError("AGENT_TOOL_RESULT_TOO_LARGE", "Kết quả tư liệu quá dài, hãy giảm số trang hoặc phạm vi đọc", status_code=422)
         self.reads.extend(fact_reads)
         self.reads.append(BookReadV1(tool=name, arguments=args, scope=self.scope, fingerprint=canonical_request_hash(output)).model_dump(mode="json"))
         return output
@@ -515,7 +515,7 @@ def select_chapter_sources(report: Any, material: dict[str, Any]) -> dict[str, A
         已核对的祖先原文、前文和关系；缺项交回原整理恢复流程。
     """
     if report.chapter_sources is None:
-        raise ValueError("请明确填写本章采用的原文、前文和关系，未采用的列表填空")
+        raise ValueError("Hãy điền rõ văn bản gốc, phần trước và quan hệ mà chương này áp dụng; để trống những danh sách không áp dụng")
     chosen = report.chapter_sources
     excerpts = []
     for ref in chosen.parent_excerpts:
@@ -524,22 +524,22 @@ def select_chapter_sources(report: Any, material: dict[str, Any]) -> dict[str, A
                        (ref.resource_type, ref.id, ref.field, ref.version)), None)
         if (source is None or not ref.quote.strip() or ref.end <= ref.start or ref.end > len(source["text"])
                 or source["text"][ref.start:ref.end] != ref.quote):
-            raise ValueError("采用原文必须是实际补读的同版本祖先字段中有效的一段连续原文")
+            raise ValueError("Văn bản gốc áp dụng phải là một đoạn liên tục hợp lệ trong các trường tổ tiên cùng phiên bản đã thực sự đọc bổ sung")
         value = ref.model_dump(mode="json")
         if value not in excerpts:
             excerpts.append(value)
     previous = material.get("previous_text", [])
     relations = {value["id"]: value for value in material.get("relations", [])}
     if set(chosen.previous_chapter_ids) - {value["id"] for value in previous} or set(chosen.relation_ids) - relations.keys():
-        raise ValueError("采用的前文或关系尚未实际读到，请先补读")
+        raise ValueError("Phần trước hoặc quan hệ được áp dụng chưa thực sự đọc, hãy đọc bổ sung trước")
     for identity in chosen.relation_ids:
         relation = relations[identity]
         kind = {"character_relation": "character", "faction_relation": "faction"}.get(relation.get("resource_type"))
         if kind is None:
-            raise ValueError("采用的关系类型不受支持，请核对实际读取来源")
+            raise ValueError("Loại quan hệ áp dụng không được hỗ trợ, hãy kiểm tra nguồn đã thực sự đọc")
         selected = set(getattr(report.selected_entities, f"{kind}_ids"))
         if not selected.intersection({relation.get(f"source_{kind}_id"), relation.get(f"target_{kind}_id")}):
-            raise ValueError("采用的关系至少一端应属于本章采用的对应人物或势力")
+            raise ValueError("Quan hệ áp dụng phải có ít nhất một đầu thuộc nhân vật hoặc thế lực tương ứng mà chương này áp dụng")
     return {"parent_excerpts": excerpts,
             "previous_text": [value for identity in dict.fromkeys(chosen.previous_chapter_ids) for value in previous if value["id"] == identity],
             "relations": [relations[identity] for identity in dict.fromkeys(chosen.relation_ids)]}
@@ -601,7 +601,7 @@ async def replay_book_reads(scope: dict[str, Any], reads: list[dict[str, Any]], 
         当前来源、写保护文档、规范读取记录和实际读取过的实体详情。
     """
     if protect and session is None:
-        raise ValueError("确认资料保护必须使用同一个 MongoDB 事务")
+        raise ValueError("Việc bảo vệ xác nhận tư liệu phải dùng cùng một transaction MongoDB")
     current: list[dict[str, Any]] = []
     tools = BookTools(scope, current, session=session)
     pending_facts = []
@@ -619,20 +619,20 @@ async def replay_book_reads(scope: dict[str, Any], reads: list[dict[str, Any]], 
             pending_facts.append(FactionFactReadV1.model_validate(raw).model_dump(mode="json"))
             continue
         if "kind" in raw:
-            raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "事实读取种类不受支持，请保留草稿并重新整理", status_code=409)
+            raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "Loại đọc sự kiện không được hỗ trợ, hãy giữ bản nháp và tổng hợp lại", status_code=409)
         if raw.get("scope", {}).get("reading_version") != 1 or not raw.get("scope", {}).get("reading_intent"):
-            raise DomainApiError("AGENT_READS_CHANGED", "旧资料整理未保存读取位置，请保留草稿并重新整理", status_code=409)
+            raise DomainApiError("AGENT_READS_CHANGED", "Lần tổng hợp tư liệu cũ chưa lưu vị trí đọc, hãy giữ bản nháp và tổng hợp lại", status_code=409)
         original = BookReadV1.model_validate(raw)
         if original.scope.model_dump(mode="json") != tools.scope:
-            raise DomainApiError("AGENT_SCOPE_CHANGED", "资料整理的小说或位置不一致", status_code=409)
+            raise DomainApiError("AGENT_SCOPE_CHANGED", "Tiểu thuyết hoặc vị trí của việc tổng hợp tư liệu không nhất quán", status_code=409)
         start = len(current)
         await tools.execute(original.tool, original.arguments)
         # 比较本次工具实际产生的完整读取段；不能把新事实依据写回旧累计历史。
         if current[start:] != [*pending_facts, original.model_dump(mode="json")]:
-            raise DomainApiError("AGENT_READS_CHANGED", "资料整理依据已变化，请重新整理并生成", status_code=409)
+            raise DomainApiError("AGENT_READS_CHANGED", "Căn cứ tổng hợp tư liệu đã thay đổi, hãy tổng hợp lại và tạo mới", status_code=409)
         pending_facts = []
     if pending_facts:
-        raise DomainApiError("AGENT_READS_CHANGED", "事实读取缺少原工具查询，请保留草稿并重新整理", status_code=409)
+        raise DomainApiError("AGENT_READS_CHANGED", "Đọc sự kiện thiếu truy vấn của công cụ gốc, hãy giữ bản nháp và tổng hợp lại", status_code=409)
     data = {"source_refs": list(tools.sources.values()), "guards": tools.guards,
             "reads": current, "selected_entities": list(tools.selected_entities.values()),
             "volume_states": list(tools.volume_states.values()), "relations": list(tools.relations.values()),
@@ -655,5 +655,5 @@ async def replay_book_reads(scope: dict[str, Any], reads: list[dict[str, Any]], 
                 {"$inc": {"writing_guard_revision": 1}}, session=session,
             )
             if result.matched_count != 1:
-                raise DomainApiError("AGENT_READS_CHANGED", "资料在确认期间发生变化，请重新整理", status_code=409)
+                raise DomainApiError("AGENT_READS_CHANGED", "Tư liệu đã thay đổi trong khi xác nhận, hãy tổng hợp lại", status_code=409)
     return data

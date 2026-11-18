@@ -48,9 +48,9 @@ class ItemRepository(BaseRepository):
         """
         document = ensure_initial_version(data)
         if not document.get("item_id") or not document.get("novel_id"):
-            raise ValueError("物品缺少 item_id 或 novel_id")
+            raise ValueError("Vật phẩm thiếu item_id hoặc novel_id")
         if not str(document.get("normalized_name") or "").strip():
-            raise ValueError("物品缺少 normalized_name")
+            raise ValueError("Vật phẩm thiếu normalized_name")
         now = document.get("created_at") or get_utc_now()
         document.update(
             {
@@ -68,7 +68,7 @@ class ItemRepository(BaseRepository):
             await self.collection.insert_one(document, session=session)
         except PyMongoDuplicateKeyError as exc:
             raise DuplicateKeyError(
-                "物品 ID、活动规范名、活动顺序或创建幂等键冲突"
+                "Xung đột ID vật phẩm, tên chuẩn hóa đang hoạt động, thứ tự đang hoạt động hoặc khóa idempotent tạo"
             ) from exc
         return document
 
@@ -240,7 +240,7 @@ class ItemRepository(BaseRepository):
             session=session,
         )
         if item is None:
-            raise NotFoundError(f"物品 {item_id} 不存在于小说 {novel_id}")
+            raise NotFoundError(f"Vật phẩm {item_id} không tồn tại trong tiểu thuyết {novel_id}")
         return item
 
     async def get_deleted_item(
@@ -271,7 +271,7 @@ class ItemRepository(BaseRepository):
             session=session,
         )
         if item is None:
-            raise NotFoundError(f"物品 {item_id} 不存在于小说 {novel_id} 的回收站")
+            raise NotFoundError(f"Vật phẩm {item_id} không tồn tại trong tiểu thuyết {novel_id} (trong thùng rác)")
         return item
 
     async def list_active_items(
@@ -367,7 +367,7 @@ class ItemRepository(BaseRepository):
                 session=session,
             )
         except PyMongoDuplicateKeyError as exc:
-            raise DuplicateKeyError("物品活动规范名或顺序冲突") from exc
+            raise DuplicateKeyError("Xung đột tên chuẩn hóa hoặc thứ tự đang hoạt động của vật phẩm") from exc
 
     async def restore_snapshot_exact(
         self,
@@ -404,7 +404,7 @@ class ItemRepository(BaseRepository):
                 session=session,
             )
         except PyMongoDuplicateKeyError as exc:
-            raise DuplicateKeyError("物品补偿恢复发生唯一键冲突") from exc
+            raise DuplicateKeyError("Khôi phục bù trừ vật phẩm gặp xung đột khóa duy nhất") from exc
         return result.matched_count == 1
 
     async def publish_created_exact(

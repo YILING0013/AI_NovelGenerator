@@ -66,35 +66,35 @@ async def export_book(
         ArchiveExportError: 文件操作失败；published 表明有效目标是否已发布。
     """
     if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", source_uri_env):
-        raise ArchiveValidationError("source_uri_env", "必须指定有效的环境变量名")
+        raise ArchiveValidationError("source_uri_env", "Phải chỉ định tên biến môi trường hợp lệ")
     uri = os.environ.get(source_uri_env)
     if not uri or not uri.strip():
-        raise ArchiveValidationError("source_uri_env", "指定的源连接环境变量没有值")
+        raise ArchiveValidationError("source_uri_env", "Biến môi trường kết nối nguồn đã chỉ định không có giá trị")
     if (not source_database or len(source_database.encode("utf-8")) > 63
             or re.search(r'[/\\. "$*<>:|?\x00]', source_database)):
-        raise ArchiveValidationError("source_database", "必须指定有效的源数据库名")
+        raise ArchiveValidationError("source_database", "Phải chỉ định tên cơ sở dữ liệu nguồn hợp lệ")
     if not re.fullmatch(r"[0-9a-f]{24}", novel_id):
-        raise ArchiveValidationError("novel_id", "小说 ID 必须是 24 位小写 ObjectId")
+        raise ArchiveValidationError("novel_id", "ID tiểu thuyết phải là ObjectId 24 ký tự chữ thường")
     if not re.fullmatch(r"[0-9a-f]{40}", source_revision):
-        raise ArchiveValidationError("source_revision", "源码版本必须是完整 Git 提交号")
+        raise ArchiveValidationError("source_revision", "Phiên bản mã nguồn phải là mã commit Git đầy đủ")
     if not str(source_covers_dir).strip():
-        raise ArchiveValidationError("source_covers_dir", "必须明确指定封面目录")
+        raise ArchiveValidationError("source_covers_dir", "Phải chỉ định rõ thư mục ảnh bìa")
     try:
         covers = Path(source_covers_dir).absolute()
         cover_dir_stat = covers.lstat()
         if (not stat.S_ISDIR(cover_dir_stat.st_mode) or covers.is_symlink()
                 or getattr(cover_dir_stat, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
-            raise ArchiveValidationError("source_covers_dir", "封面目录必须是现有普通目录，不能是链接")
+            raise ArchiveValidationError("source_covers_dir", "Thư mục ảnh bìa phải là thư mục thường hiện có, không được là liên kết")
         destination = Path(output).absolute()
         if os.path.lexists(destination):
-            raise ArchiveValidationError("output", "目标已存在，不能覆盖")
+            raise ArchiveValidationError("output", "Mục tiêu đã tồn tại, không thể ghi đè")
         destination = destination.parent.resolve(strict=True) / destination.name
         if not destination.parent.is_dir():
-            raise ArchiveValidationError("output", "目标父目录必须已存在")
+            raise ArchiveValidationError("output", "Thư mục cha của mục tiêu phải đã tồn tại")
     except (OSError, ValueError) as exc:
         if isinstance(exc, ArchiveValidationError):
             raise
-        raise ArchiveValidationError("paths", "源封面目录或目标路径无效、缺失或不可访问") from None
+        raise ArchiveValidationError("paths", "Thư mục ảnh bìa nguồn hoặc đường dẫn đích không hợp lệ, thiếu hoặc không truy cập được") from None
 
     # 参数和本地路径检查通过后才加载驱动，help、verify 不会走到这里。
     from pymongo import AsyncMongoClient, ReadPreference
@@ -117,7 +117,7 @@ async def export_book(
                 hello = await client.admin.command("hello")
                 if (hello.get("maxWireVersion", 0) < 13 or hello.get("logicalSessionTimeoutMinutes") is None
                         or not (hello.get("setName") or hello.get("msg") == "isdbgrid")):
-                    raise ArchiveValidationError("source", "导出需要 MongoDB 5+、会话和副本集或分片集群")
+                    raise ArchiveValidationError("source", "Xuất dữ liệu cần MongoDB 5+, session và replica set hoặc sharded cluster")
                 database = client.get_database(
                     source_database, codec_options=RAW_CODEC, read_preference=ReadPreference.PRIMARY,
                 )
@@ -140,14 +140,14 @@ async def export_book(
                                         location = f"{path}:{len(documents[name]) + 1}"
                                         record_count += 1
                                         if record_count > archive.MAX_RECORDS:
-                                            raise ArchiveValidationError(location, "文档总数超过限制")
+                                            raise ArchiveValidationError(location, "Tổng số tài liệu vượt quá giới hạn")
                                         # 先约束单条原始数据，再解码；不能对 RawBSONDocument 编码来检查保真，它会直接透传。
                                         if len(raw_document.raw) > archive.MAX_LINE_BYTES:
-                                            raise ArchiveValidationError(location, "单条原始 BSON 超过大小限制")
+                                            raise ArchiveValidationError(location, "Một bản ghi BSON thô đơn lẻ vượt quá giới hạn kích thước")
                                         raw = bytes(raw_document.raw)
                                         document = BSON(raw).decode(codec_options=DOCUMENT_CODEC)
                                         if BSON.encode(document, codec_options=DOCUMENT_CODEC) != raw:
-                                            raise ArchiveValidationError(location, "原始 BSON 包含无法无损保留的字段或类型")
+                                            raise ArchiveValidationError(location, "BSON thô chứa trường hoặc kiểu không thể bảo toàn mà không mất dữ liệu")
                                         line = archive.encode_document(document)
                                         _, nodes = archive._parse_json(line, location)
                                         json_nodes += nodes
@@ -156,13 +156,13 @@ async def export_book(
                                         if (collection_bytes > archive.MAX_COLLECTION_BYTES
                                                 or total_bytes > archive.MAX_TOTAL_BYTES
                                                 or json_nodes > archive.MAX_JSON_NODES):
-                                            raise ArchiveValidationError(location, "集合、总字节或 JSON 字段数量超过限制")
+                                            raise ArchiveValidationError(location, "Số collection, tổng byte hoặc số trường JSON vượt quá giới hạn")
                                         # 所有累计限额均在保存本条前检查；关系检查只保留限额内的原始文档。
                                         documents[name].append(document)
                                         member.write(line)
                                         digest.update(line)
                                         if stream.tell() > archive.MAX_ARCHIVE_BYTES:
-                                            raise ArchiveValidationError(location, "备份包超过大小限制")
+                                            raise ArchiveValidationError(location, "Gói sao lưu vượt quá giới hạn kích thước")
                             entries[name] = {"path": path, "count": len(documents[name]),
                                              "size_bytes": collection_bytes, "sha256": digest.hexdigest()}
                     summary = validate_documents(documents, book_id, format_version=archive.FACTION_VOLUME_START_FORMAT_VERSION)
@@ -172,12 +172,12 @@ async def export_book(
                         location = "collections/novels.jsonl:1:cover_image"
                         match = archive._COVER_PATH.fullmatch(cover[1:]) if isinstance(cover, str) and cover.startswith("/") else None
                         if match is None:
-                            raise ArchiveValidationError(location, "封面必须引用带 SHA256 的受支持文件名")
+                            raise ArchiveValidationError(location, "Ảnh bìa phải tham chiếu tên tệp được hỗ trợ kèm SHA256")
                         cover_path = covers / Path(cover).name
                         before = cover_path.lstat()
                         if (not stat.S_ISREG(before.st_mode) or stat.S_ISLNK(before.st_mode)
                                 or getattr(before, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
-                            raise ArchiveValidationError(location, "封面必须是普通文件，不能是链接")
+                            raise ArchiveValidationError(location, "Ảnh bìa phải là tệp thường, không được là liên kết")
                         flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
                         with os.fdopen(os.open(cover_path, flags), "rb") as cover_stream:
                             opened = os.fstat(cover_stream.fileno())
@@ -185,15 +185,15 @@ async def export_book(
                             if (not stat.S_ISREG(opened.st_mode) or not os.path.samestat(before, opened)
                                     or not os.path.samestat(opened, current) or stat.S_ISLNK(current.st_mode)
                                     or getattr(current, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
-                                raise ArchiveValidationError(location, "封面在打开时被替换，导出已停止")
+                                raise ArchiveValidationError(location, "Ảnh bìa bị thay thế khi đang mở, việc xuất đã dừng")
                             if opened.st_size > archive.MAX_COVER_BYTES:
-                                raise ArchiveValidationError(location, "封面超过大小限制")
+                                raise ArchiveValidationError(location, "Ảnh bìa vượt quá giới hạn kích thước")
                             content = cover_stream.read(archive.MAX_COVER_BYTES + 1)
                         if len(content) > archive.MAX_COVER_BYTES or hashlib.sha256(content).hexdigest() != match[1]:
-                            raise ArchiveValidationError(location, "封面大小或 SHA256 与小说引用不符")
+                            raise ArchiveValidationError(location, "Kích thước hoặc SHA256 của ảnh bìa không khớp với tham chiếu trong tiểu thuyết")
                         total_bytes += len(content)
                         if total_bytes > archive.MAX_TOTAL_BYTES:
-                            raise ArchiveValidationError(location, "包内总字节超过限制")
+                            raise ArchiveValidationError(location, "Tổng byte trong gói vượt quá giới hạn")
                         bundle.writestr(cover[1:], content)
                         assets.append({"path": cover[1:], "size_bytes": len(content), "sha256": match[1]})
                     location = "manifest.json"
@@ -208,13 +208,13 @@ async def export_book(
                     _, nodes = archive._parse_json(content, location)
                     if (len(content) > archive.MAX_MANIFEST_BYTES or total_bytes + len(content) > archive.MAX_TOTAL_BYTES
                             or json_nodes + nodes > archive.MAX_JSON_NODES):
-                        raise ArchiveValidationError(location, "清单、总字节或 JSON 字段数量超过限制")
+                        raise ArchiveValidationError(location, "Danh kiểm kê, tổng byte hoặc số trường JSON vượt quá giới hạn")
                     bundle.writestr(location, content)
             finally:
                 await client.close()
             location = "staging"
             if stream.tell() > archive.MAX_ARCHIVE_BYTES:
-                raise ArchiveValidationError(location, "备份包超过大小限制")
+                raise ArchiveValidationError(location, "Gói sao lưu vượt quá giới hạn kích thước")
             stream.flush()
             os.fsync(stream.fileno())
         result = archive.verify_archive(staging)
@@ -230,13 +230,13 @@ async def export_book(
                 os.close(directory_fd)
         return {**result, "status": "exported", "output": str(destination), "published": True}
     except PyMongoError:
-        raise ArchiveExportError(location, "源数据库连接或快照读取失败；未改用普通读取", published=published) from None
+        raise ArchiveExportError(location, "Kết nối cơ sở dữ liệu nguồn hoặc đọc snapshot thất bại; không chuyển sang chế độ đọc thường", published=published) from None
     except Warning:
-        raise ArchiveExportError(location, "源连接选项无效或不受支持", published=published) from None
+        raise ArchiveExportError(location, "Tùy chọn kết nối nguồn không hợp lệ hoặc không được hỗ trợ", published=published) from None
     except ArchiveValidationError:
         raise
     except (BSONError, DecimalException, ValueError, TypeError, OverflowError, RecursionError, SystemError):
-        raise ArchiveExportError(location, "源 BSON 类型不支持或无法无损编码", published=published) from None
+        raise ArchiveExportError(location, "Kiểu BSON nguồn không được hỗ trợ hoặc không thể mã hóa mà không mất dữ liệu", published=published) from None
     except (OSError, zipfile.LargeZipFile):
         message = "完整目标已发布，但后续文件同步失败" if published else "读取、写入或发布失败；未发布目标"
         raise ArchiveExportError(location, message, published=published) from None

@@ -119,7 +119,7 @@ def _prepare_content(value: Any) -> dict[str, Any]:
     except ValidationError as exc:
         raise _state_error(
             "FACTION_VOLUME_STATE_VALIDATION_FAILED",
-            "势力卷状态字段校验失败",
+            "Xác thực trường trạng thái thế lực theo quyển thất bại",
             field_errors=_validation_details(exc),
         ) from exc
     content = model.model_dump(mode="json")
@@ -140,7 +140,7 @@ def _prepare_content(value: Any) -> dict[str, Any]:
     except ValidationError as exc:
         raise _state_error(
             "FACTION_VOLUME_STATE_VALIDATION_FAILED",
-            "势力卷状态规范化后的字段不合法",
+            "Các trường sau chuẩn hóa của trạng thái thế lực theo quyển không hợp lệ",
             field_errors=_validation_details(exc),
         ) from exc
 
@@ -169,7 +169,7 @@ async def _get_volume_in_novel(
     if volume.get("novel_id") != to_object_id(novel_id):
         raise _state_error(
             "VOLUME_NOT_FOUND",
-            "卷不存在、已删除或不属于当前小说",
+            "Quyển không tồn tại, đã bị xóa hoặc không thuộc tiểu thuyết hiện tại",
             status_code=404,
         )
     return volume
@@ -193,7 +193,7 @@ async def _get_faction_in_novel(
     if require_active and faction.get("active_status", "active") != "active":
         raise _state_error(
             "FACTION_NOT_ACTIVE",
-            "势力已停用，不能建立或更新卷级状态",
+            "Thế lực đã bị vô hiệu hóa, không thể tạo hoặc cập nhật trạng thái cấp quyển",
             status_code=404,
             details={"faction_id": faction_id},
         )
@@ -219,7 +219,7 @@ def _validate_faction_volume_scope(
         if owned_volume_id is not None:
             raise _state_error(
                 "FACTION_SCOPE_DATA_INVALID",
-                "核心势力主档不能保存归属卷",
+                "Hồ sơ chính của thế lực lõi không được lưu quyển thuộc về",
                 status_code=409,
                 details={"faction_id": str(faction.get("faction_id") or "")},
             )
@@ -227,14 +227,14 @@ def _validate_faction_volume_scope(
     if level_type not in {"volume", "local"} or owned_volume_id is None:
         raise _state_error(
             "FACTION_SCOPE_DATA_INVALID",
-            "势力主档的层级与归属卷组合不完整",
+            "Tổ hợp phân cấp và quyển thuộc về của hồ sơ chính thế lực không đầy đủ",
             status_code=409,
             details={"faction_id": str(faction.get("faction_id") or "")},
         )
     if to_object_id(owned_volume_id) != to_object_id(volume_id):
         raise _state_error(
             "FACTION_VOLUME_SCOPE_INVALID",
-            "卷级或局部势力只能参与其归属卷",
+            "Thế lực cấp quyển hoặc cục bộ chỉ được tham gia quyển mà nó thuộc về",
             field_errors={"volume_id": ["目标卷不是该势力的正式归属卷"]},
             details={
                 "faction_id": str(faction.get("faction_id") or ""),
@@ -297,7 +297,7 @@ async def compensate_state_changes(changes: Sequence[StateChange]) -> None:
     for before, after in reversed(list(changes)):
         restored = await faction_volume_state_repo.restore_snapshot(after, before)
         if not restored:
-            raise RuntimeError("势力卷状态 standalone 补偿未精确命中")
+            raise RuntimeError("Bù trừ standalone cho trạng thái thế lực theo quyển không khớp chính xác")
 
 
 async def _change_deletion_source(
@@ -343,7 +343,7 @@ async def _change_deletion_source(
                 await compensate_state_changes(changes)
             except Exception as compensation_exc:
                 raise FactionStateSourceCompensationError(
-                    "势力卷状态删除来源传播失败，且 standalone 补偿未完成"
+                    "Lan truyền nguồn xóa trạng thái thế lực theo quyển thất bại và việc bù trừ standalone chưa hoàn tất"
                 ) from compensation_exc
         raise
 
@@ -393,7 +393,7 @@ class FactionVolumeStateService:
             if idempotency_key is None:
                 raise _state_error(
                     "IDEMPOTENCY_KEY_REQUIRED",
-                    "创建势力卷状态必须提供 Idempotency-Key",
+                    "Tạo trạng thái thế lực theo quyển phải kèm Idempotency-Key",
                 )
             fingerprint = build_idempotency_fingerprint(
                 idempotency_key,
@@ -450,13 +450,13 @@ class FactionVolumeStateService:
                     session=session,
                 )
                 if current is not None and current.get("content_contract") == "participation_plan_v1":
-                    raise _state_error("FACTION_FACT_REQUIRED", "这条记录只保存参与计划，实际情况请在剧情资料中选择位置记录", status_code=409)
+                    raise _state_error("FACTION_FACT_REQUIRED", "Bản ghi này chỉ lưu kế hoạch tham gia; diễn biến thực tế hãy chọn bản ghi vị trí trong tư liệu cốt truyện", status_code=409)
                 if expected_version is None:
                     assert fingerprint is not None
                     if current is not None:
                         raise _state_error(
                             "FACTION_VOLUME_STATE_ALREADY_EXISTS",
-                            "该势力在本卷已有活动状态；更新必须提交 expected_version",
+                            "Thế lực này đã có trạng thái active trong quyển; cập nhật phải gửi expected_version",
                             status_code=409,
                             details={
                                 "state_id": str(current["state_id"]),
@@ -519,14 +519,14 @@ class FactionVolumeStateService:
                 if current is None:
                     raise _state_error(
                         "FACTION_VOLUME_STATE_NOT_FOUND",
-                        "该势力在本卷没有可更新的活动状态",
+                        "Thế lực này không có trạng thái active nào để cập nhật trong quyển",
                         status_code=404,
                     )
                 expected = validate_expected_version(expected_version)
                 if int(current["version"]) != expected:
                     raise _state_error(
                         "FACTION_VOLUME_STATE_VERSION_CONFLICT",
-                        "势力卷状态版本已变化，请刷新后重试",
+                        "Phiên bản trạng thái thế lực theo quyển đã thay đổi, hãy làm mới rồi thử lại",
                         status_code=409,
                         details={"current_version": int(current["version"])},
                     )
@@ -684,7 +684,7 @@ class FactionVolumeStateService:
             from backend.services.novel.faction_fact_service import ensure_faction_fields_unmanaged
             original = await faction_volume_state_repo.get_state(novel_id, state_id, session=session)
             if original.get("content_contract") == "participation_plan_v1":
-                raise _state_error("FACTION_FACT_REQUIRED", "这条记录只保存参与计划，实际情况请在剧情资料中选择位置记录", status_code=409)
+                raise _state_error("FACTION_FACT_REQUIRED", "Bản ghi này chỉ lưu kế hoạch tham gia; diễn biến thực tế hãy chọn bản ghi vị trí trong tư liệu cốt truyện", status_code=409)
             await ensure_faction_fields_unmanaged(novel_id, [original["faction_id"]], [STATE_FACT_FIELDS[field] for field in payload if field in STATE_FACT_FIELDS], session=session)
             lock = await acquire_state_write_lock(novel_id, session=session)
             try:
@@ -697,7 +697,7 @@ class FactionVolumeStateService:
                 if int(current["version"]) != expected:
                     raise _state_error(
                         "FACTION_VOLUME_STATE_VERSION_CONFLICT",
-                        "势力卷状态版本已变化，请刷新后重试",
+                        "Phiên bản trạng thái thế lực theo quyển đã thay đổi, hãy làm mới rồi thử lại",
                         status_code=409,
                         details={"current_version": int(current["version"])},
                     )
@@ -769,7 +769,7 @@ class FactionVolumeStateService:
                 if int(current["version"]) != expected:
                     raise _state_error(
                         "FACTION_VOLUME_STATE_VERSION_CONFLICT",
-                        "势力卷状态版本已变化，请刷新后重试",
+                        "Phiên bản trạng thái thế lực theo quyển đã thay đổi, hãy làm mới rồi thử lại",
                         status_code=409,
                         details={"current_version": int(current["version"])},
                     )
@@ -777,7 +777,7 @@ class FactionVolumeStateService:
                 if "user" in sources:
                     raise _state_error(
                         "FACTION_VOLUME_STATE_ALREADY_DELETED",
-                        "势力卷状态已包含用户删除来源",
+                        "Trạng thái thế lực theo quyển đã chứa nguồn xóa do người dùng",
                         status_code=409,
                     )
                 changes: list[StateChange] = []
@@ -828,7 +828,7 @@ class FactionVolumeStateService:
                 if int(current["version"]) != expected:
                     raise _state_error(
                         "FACTION_VOLUME_STATE_VERSION_CONFLICT",
-                        "势力卷状态版本已变化，请刷新后重试",
+                        "Phiên bản trạng thái thế lực theo quyển đã thay đổi, hãy làm mới rồi thử lại",
                         status_code=409,
                         details={"current_version": int(current["version"])},
                     )
@@ -836,7 +836,7 @@ class FactionVolumeStateService:
                 if "user" not in sources:
                     raise _state_error(
                         "FACTION_VOLUME_STATE_USER_SOURCE_MISSING",
-                        "势力卷状态没有可恢复的用户删除来源",
+                        "Trạng thái thế lực theo quyển không có nguồn xóa do người dùng nào để khôi phục",
                         status_code=409,
                     )
                 next_sources = [source for source in sources if source != "user"]
@@ -891,13 +891,13 @@ class FactionVolumeStateService:
                 if current.get("is_deleted") is not True:
                     raise _state_error(
                         "FACTION_VOLUME_STATE_NOT_IN_TRASH",
-                        "只有回收站状态可以永久删除",
+                        "Chỉ trạng thái trong thùng rác mới được xóa vĩnh viễn",
                         status_code=409,
                     )
                 if int(current["version"]) != expected:
                     raise _state_error(
                         "FACTION_VOLUME_STATE_VERSION_CONFLICT",
-                        "势力卷状态版本已变化，请刷新后重试",
+                        "Phiên bản trạng thái thế lực theo quyển đã thay đổi, hãy làm mới rồi thử lại",
                         status_code=409,
                         details={"current_version": int(current["version"])},
                     )
@@ -927,7 +927,7 @@ class FactionVolumeStateService:
                 if descendants or protected:
                     raise _state_error(
                         "FACTION_VOLUME_STATE_REFERENCE_PROTECTED",
-                        "状态仍被初始化后代或结构事件引用，不能永久删除",
+                        "Trạng thái vẫn được hậu duệ khởi tạo hoặc sự kiện cấu trúc tham chiếu, không thể xóa vĩnh viễn",
                         status_code=409,
                         details={
                             "source_state_descendants": int(descendants),
@@ -951,7 +951,7 @@ class FactionVolumeStateService:
                 if not deleted:
                     raise _state_error(
                         "FACTION_VOLUME_STATE_VERSION_CONFLICT",
-                        "势力卷状态在永久删除期间已变化",
+                        "Trạng thái thế lực theo quyển đã thay đổi trong lúc xóa vĩnh viễn",
                         status_code=409,
                     )
                 return {"deleted": True, "state_id": str(state_obj_id)}
@@ -994,9 +994,9 @@ class FactionVolumeStateService:
         receipt = await faction_volume_state_initialization_receipt_repo.find_receipt(novel_id, fingerprint.key_hash)
         if receipt is not None:
             if receipt.get("request_hash") != fingerprint.request_hash:
-                raise IdempotencyConflictError("同一 Idempotency-Key 已用于不同的势力卷状态初始化请求")
+                raise IdempotencyConflictError("Cùng một Idempotency-Key đã dùng cho yêu cầu khởi tạo trạng thái thế lực theo quyển khác")
             return _receipt_result(receipt)
-        raise _state_error("FACTION_FACT_REQUIRED", "旧复制请求没有成功记录；请保留原请求，使用复制参与计划入口，实际资料按剧情位置记录", status_code=409)
+        raise _state_error("FACTION_FACT_REQUIRED", "Yêu cầu sao chép cũ không có bản ghi thành công; hãy giữ yêu cầu gốc, dùng lối vào sao chép kế hoạch tham gia, còn tư liệu thực tế ghi theo vị trí cốt truyện", status_code=409)
 
     @staticmethod
     async def add_faction_deletion_source(

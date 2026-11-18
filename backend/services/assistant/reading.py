@@ -96,7 +96,7 @@ async def replay_queries(novel_id: str, queries: list[dict], *, session=None) ->
         else:
             result = await search_text(novel_id, **query["arguments"], session=session)
         if query_fingerprint(result) != query["fingerprint"]:
-            raise DomainApiError("ASSISTANT_QUERY_CHANGED", "此前检索结果已变化，请重新检索后准备候选", status_code=409, details={"query": query["arguments"]})
+            raise DomainApiError("ASSISTANT_QUERY_CHANGED", "Kết quả truy vấn trước đó đã thay đổi, hãy truy vấn lại rồi chuẩn bị ứng viên", status_code=409, details={"query": query["arguments"]})
 
 
 class BookReader:
@@ -125,7 +125,7 @@ class BookReader:
             字段片段、后续位置和来源版本。
         """
         if not 1 <= length <= 12000 or start < 0:
-            raise DomainApiError("ASSISTANT_READ_RANGE", "读取长度需为 1–12000，起点不能为负")
+            raise DomainApiError("ASSISTANT_READ_RANGE", "Độ dài đọc phải từ 1 đến 12000, điểm bắt đầu không được âm")
         document = await get_resource(self.novel_id, ref, include_deleted=deleted)
         content = public_content(ref.resource_type, document)
         source = {**ref.model_dump(), "version": content["version"], "fingerprint": content_fingerprint(content)}
@@ -209,7 +209,7 @@ class BookReader:
         await sync_index(self.novel_id)
         saved = await collection.update_one({**key, "fingerprint": info["fingerprint"]}, {"$set": {"ai_summary": value, "ai_summary_fingerprint": info["fingerprint"], "ai_summary_model": model, "ai_summary_prompt_version": 1}})
         if saved.matched_count != 1:
-            raise DomainApiError("ASSISTANT_SOURCE_CHANGED", "摘要生成期间资料已修改，请重试", status_code=409)
+            raise DomainApiError("ASSISTANT_SOURCE_CHANGED", "Tài liệu đã bị sửa đổi trong quá trình sinh tóm tắt, vui lòng thử lại", status_code=409)
         return {**info, "summary": value, "summary_kind": "ai", "model": model, "cached": False}
 
 
@@ -229,6 +229,6 @@ async def read_chapter_position(novel_id: str, *, chapter_id: str | None = None,
     chapter = next((row for row in rows if (chapter_id is None or str(row["_id"]) == chapter_id)
                     and (chapter_number is None or row["chapter_number"] == chapter_number)), None)
     if chapter is None or (chapter_id is None and chapter_number is None):
-        raise DomainApiError("ASSISTANT_FACT_POSITION_REQUIRED", "没有找到这个章节位置，请核对章号或章节名称", status_code=409)
+        raise DomainApiError("ASSISTANT_FACT_POSITION_REQUIRED", "Không tìm thấy vị trí chương này, hãy kiểm tra số chương hoặc tên chương", status_code=409)
     return {"id": str(chapter["_id"]), "resource_type": "chapter", "title": chapter["title"], "chapter_number": chapter["chapter_number"],
             **{field: str(chapter[field]) for field in ("volume_id", "arc_id", "scene_id")}}

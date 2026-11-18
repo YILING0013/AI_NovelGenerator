@@ -30,7 +30,7 @@ class SceneRepository(BaseRepository):
         """
         scene = await self.find_one({"_id": to_object_id(scene_id)}, include_deleted=include_deleted, session=session)
         if scene is None:
-            raise NotFoundError("场景不存在或已回收")
+            raise NotFoundError("Cảnh không tồn tại hoặc đã bị thu hồi")
         return scene
 
     async def list_scenes(self, arc_id: str, *, deleted: bool = False, session: AsyncClientSession | None = None) -> list[dict[str, Any]]:

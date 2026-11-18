@@ -36,22 +36,22 @@ async def _load_chapter_check_source(novel_id: str, source: ChapterCheckSourceV1
     chain = await load_writing_parents(novel_id, "chapter", source.chapter_id, session=session)
     novel, chapter = chain[0][1], chain[-1][1]
     if "hard_delete_claim" in novel:
-        raise DomainApiError("CHAPTER_RECORD_PARENT_BUSY", "小说正在永久删除，不能使用章节来源", status_code=409)
+        raise DomainApiError("CHAPTER_RECORD_PARENT_BUSY", "Tiểu thuyết đang bị xóa vĩnh viễn, không thể dùng nguồn chương", status_code=409)
     revision = await BaseRepository("chapter_revisions").collection.find_one({
         "_id": ObjectId(source.revision_id), "chapter_id": chapter["_id"], "version": source.version,
         **{name: chapter[name] for name in ("novel_id", "volume_id", "arc_id", "scene_id")},
     }, session=session)
     if revision is None:
-        raise DomainApiError("CHAPTER_RECORD_REVISION_NOT_FOUND", "所选修订不存在或不属于当前章节，请重新选择历史版本", status_code=404)
+        raise DomainApiError("CHAPTER_RECORD_REVISION_NOT_FOUND", "Bản chỉnh sửa đã chọn không tồn tại hoặc không thuộc chương hiện tại, hãy chọn lại phiên bản lịch sử", status_code=404)
     content = revision["content"]
     content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
     if content_hash != revision["content_hash"]:
-        raise DomainApiError("CHAPTER_RECORD_REVISION_INVALID", "所选修订的正文校验失败", status_code=409)
+        raise DomainApiError("CHAPTER_RECORD_REVISION_INVALID", "Hợp lệ hoá nội dung chính của bản chỉnh sửa đã chọn thất bại", status_code=409)
     if content_hash != source.content_hash:
-        raise DomainApiError("CHAPTER_RECORD_SOURCE_CHANGED", "正文 hash 与所选修订不一致，请重新读取历史版本", status_code=409)
+        raise DomainApiError("CHAPTER_RECORD_SOURCE_CHANGED", "hash nội dung chính không khớp bản chỉnh sửa đã chọn, hãy đọc lại phiên bản lịch sử", status_code=409)
     # 只比较正文；改标题等元数据不应让相同原文失效。
     if hashlib.sha256(chapter["content"].encode("utf-8")).hexdigest() != content_hash:
-        raise DomainApiError("CHAPTER_RECORD_SOURCE_OUTDATED", "来源正文已经变化，请选择当前正文的修订再检查", status_code=409)
+        raise DomainApiError("CHAPTER_RECORD_SOURCE_OUTDATED", "Nội dung chính nguồn đã thay đổi, hãy chọn bản chỉnh sửa của nội dung hiện tại rồi kiểm tra lại", status_code=409)
     return chapter, content
 
 
@@ -70,18 +70,18 @@ async def load_chapter_check_context(request: ChapterCheckInputV1) -> dict:
             "volume_id": chapter["volume_id"], "is_deleted": False,
         }, session=session)
         if state is None:
-            raise DomainApiError("CHAPTER_CHECK_STATE_NOT_FOUND", "人物卷状态不存在、已回收或不属于来源章节所在卷", status_code=404)
+            raise DomainApiError("CHAPTER_CHECK_STATE_NOT_FOUND", "Trạng thái quyển của nhân vật không tồn tại, đã bị thu hồi hoặc không thuộc quyển của chương nguồn", status_code=404)
         if state["version"] != request.expected_version:
-            raise DomainApiError("CHAPTER_CHECK_STATE_CHANGED", "人物卷状态已经变化，请重新读取后检查", status_code=409)
+            raise DomainApiError("CHAPTER_CHECK_STATE_CHANGED", "Trạng thái quyển của nhân vật đã thay đổi, hãy đọc lại rồi kiểm tra", status_code=409)
         facts = await read_character_facts(request.novel_id, [state["character_id"]], {
             "target_type": "chapter", "target_id": request.source.chapter_id,
             "reading_intent": "chapter_before", "reading_version": 1,
         }, session=session)
         if not facts["characters"]:
-            raise DomainApiError("CHAPTER_CHECK_CHARACTER_NOT_FOUND", "人物不存在或已回收，请重新选择人物卷状态", status_code=404)
+            raise DomainApiError("CHAPTER_CHECK_CHARACTER_NOT_FOUND", "Nhân vật không tồn tại hoặc đã bị thu hồi, hãy chọn lại trạng thái quyển của nhân vật", status_code=404)
         character = facts["characters"][0]
         if "psychological_state" in character["unknown"]:
-            raise DomainApiError("CHARACTER_FACT_UNKNOWN", "该人物的章前心理尚未确定，请先认领或复核人物事实", status_code=409,
+            raise DomainApiError("CHARACTER_FACT_UNKNOWN", "Tâm lý trước chương của nhân vật này chưa được xác định, hãy nhận hoặc rà soát lại sự thật nhân vật trước", status_code=409,
                                  details={"field": "psychological_state", "reason": character["unknown"]["psychological_state"],
                                           "blockers": character["blockers"].get("psychological_state", [])})
         psychological_state = character["values"]["psychological_state"]
@@ -116,7 +116,7 @@ def validate_chapter_check_result(candidate: dict, data: dict) -> dict:
     if suggestion is not None:
         content = data["chapter_content"]
         if content[suggestion.start:suggestion.start + len(suggestion.quote)] != suggestion.quote:
-            raise DomainApiError("CHAPTER_CHECK_QUOTE_MISMATCH", "建议的原文片段与所选修订的位置不一致，请重新检查", status_code=422)
+            raise DomainApiError("CHAPTER_CHECK_QUOTE_MISMATCH", "Đoạn văn bản gốc đề xuất không khớp vị trí của bản chỉnh sửa đã chọn, hãy kiểm tra lại", status_code=422)
     return result.model_dump(mode="json")
 
 
@@ -131,27 +131,27 @@ async def load_chapter_item_owner_sources_in_session(request: ChapterItemOwnerCh
         三个真实文档及其完整版本依据；不采用客户端给出的来源子集。
     """
     if session is None or not session.in_transaction:
-        raise RuntimeError("物品持有人来源核验必须在调用方事务内执行")
+        raise RuntimeError("Việc xác minh nguồn người giữ vật phẩm phải thực hiện trong transaction của bên gọi")
     novel_id = ObjectId(request.novel_id)
     item = await BaseRepository("items").collection.find_one({
         "novel_id": novel_id, "item_id": request.item_id, "is_deleted": False,
         "item_write_pending_token": None,
     }, session=session)
     if item is None:
-        raise DomainApiError("CHAPTER_CHECK_ITEM_NOT_FOUND", "物品不存在于本书、已回收或正在保存", status_code=404)
+        raise DomainApiError("CHAPTER_CHECK_ITEM_NOT_FOUND", "Vật phẩm không tồn tại trong sách này, đã bị thu hồi hoặc đang được lưu", status_code=404)
     if item["version"] != request.expected_version:
-        raise DomainApiError("CHAPTER_CHECK_ITEM_CHANGED", "物品已经变化，请重新读取后检查", status_code=409)
+        raise DomainApiError("CHAPTER_CHECK_ITEM_CHANGED", "Vật phẩm đã thay đổi, hãy đọc lại rồi kiểm tra", status_code=409)
     if require_current_owner and item["lifecycle_status"] != "held":
-        raise DomainApiError("CHAPTER_CHECK_ITEM_NOT_HELD", "只有持有中的物品可以确认持有人变化", status_code=409)
+        raise DomainApiError("CHAPTER_CHECK_ITEM_NOT_HELD", "Chỉ vật phẩm đang được giữ mới xác nhận được thay đổi người giữ", status_code=409)
     if require_current_owner and item["owner_character_id"] != request.from_character_id:
-        raise DomainApiError("CHAPTER_CHECK_ITEM_OWNER_CHANGED", "物品当前持有人已经变化，请重新读取后检查", status_code=409)
+        raise DomainApiError("CHAPTER_CHECK_ITEM_OWNER_CHANGED", "Người giữ hiện tại của vật phẩm đã thay đổi, hãy đọc lại rồi kiểm tra", status_code=409)
     characters = []
     for identity in (request.from_character_id, request.to_character_id):
         character = await BaseRepository("characters").collection.find_one({
             "novel_id": novel_id, "character_id": identity, "is_deleted": False, "status": "active",
         }, session=session)
         if character is None:
-            raise DomainApiError("CHAPTER_CHECK_CHARACTER_NOT_FOUND", "持有人不存在于本书、已回收或已停用", status_code=404)
+            raise DomainApiError("CHAPTER_CHECK_CHARACTER_NOT_FOUND", "Người giữ không tồn tại trong sách này, đã bị thu hồi hoặc đã ngưng hoạt động", status_code=404)
         characters.append(character)
     refs = [CandidateSourceRefV1(resource_type=kind, id=str(row["_id"]), version=row["version"])
             for kind, row in (("item", item), ("character", characters[0]), ("character", characters[1]))]
@@ -199,12 +199,12 @@ def validate_chapter_item_owner_check_result(candidate: dict, data: dict) -> dic
                 message = "章前物品状态需要复核，请先确认完整状态" if before["unknown"] == "needs_review" else "章前物品状态未知，请先确认完整状态"
                 raise DomainApiError("CHAPTER_CHECK_ITEM_STATE_UNKNOWN", message, status_code=409)
             if before["values"]["lifecycle_status"] != "held":
-                raise DomainApiError("CHAPTER_CHECK_ITEM_NOT_HELD", "章前物品不是持有状态，不能采用持有人转交", status_code=409)
+                raise DomainApiError("CHAPTER_CHECK_ITEM_NOT_HELD", "Vật phẩm trước chương không ở trạng thái đang giữ, không thể áp dụng chuyển giao người giữ", status_code=409)
             if before["values"]["owner_character_id"] != data["target"]["from_character_id"]:
-                raise DomainApiError("CHAPTER_CHECK_ITEM_OWNER_CHANGED", "章前持有人与本次选定的原持有人不同，请重新选择", status_code=409)
+                raise DomainApiError("CHAPTER_CHECK_ITEM_OWNER_CHANGED", "Người giữ trước chương khác người giữ gốc đã chọn lần này, hãy chọn lại", status_code=409)
         content = data["chapter_content"]
         if content[suggestion.start:suggestion.start + len(suggestion.quote)] != suggestion.quote:
-            raise DomainApiError("CHAPTER_CHECK_QUOTE_MISMATCH", "建议的原文片段与所选修订的位置不一致，请重新检查", status_code=422)
+            raise DomainApiError("CHAPTER_CHECK_QUOTE_MISMATCH", "Đoạn văn bản gốc đề xuất không khớp vị trí của bản chỉnh sửa đã chọn, hãy kiểm tra lại", status_code=422)
     return result.model_dump(mode="json")
 
 
@@ -272,10 +272,10 @@ async def prepare_chapter_item_owner_facts(novel_id: str, data: dict) -> dict:
         if (basis.novel_id != novel_id or basis.workflow != task
                 or (basis.step, basis.schema_id, basis.schema_version) != (spec.step, spec.schema_id, spec.schema_version)
                 or snapshot["scope"] != fixed_input or snapshot["business_input"] != fixed_input):
-            raise DomainApiError("CANDIDATE_BASIS_CONFLICT", "物品、方向或章修订与原检查不同，请重新检查", status_code=409)
+            raise DomainApiError("CANDIDATE_BASIS_CONFLICT", "Vật phẩm, hướng hoặc bản chỉnh sửa chương khác với kiểm tra ban đầu, hãy kiểm tra lại", status_code=409)
         execution = snapshot["execution"]
         if execution.get("item_reading_contract") != "item_facts_v1" or not execution.get("item_fact_reads"):
-            raise DomainApiError("ITEM_FACT_CONTRACT_REQUIRED", "原检查没有完整物品状态依据，请重新检查", status_code=409)
+            raise DomainApiError("ITEM_FACT_CONTRACT_REQUIRED", "Kiểm tra ban đầu không có căn cứ trạng thái vật phẩm đầy đủ, hãy kiểm tra lại", status_code=409)
         await revalidate_item_fact_reads(execution["item_fact_reads"], session=session)
         context = await load_chapter_item_owner_facts_check_context(fixed, session=session)
         refs = context["source_refs"]
@@ -283,13 +283,13 @@ async def prepare_chapter_item_owner_facts(novel_id: str, data: dict) -> dict:
         reads = execution.get("source_refs_by_node")
         if (basis.source_refs != refs or any(read not in execution["item_fact_reads"] for read in context["fact_reads"])
                 or not isinstance(reads, dict) or reads.get("preflight") != ref_values or any(value != ref_values for value in reads.values())):
-            raise DomainApiError("CANDIDATE_BASIS_CONFLICT", "物品检查所用资料已变化，请重新检查", status_code=409)
+            raise DomainApiError("CANDIDATE_BASIS_CONFLICT", "Tư liệu dùng để kiểm tra vật phẩm đã thay đổi, hãy kiểm tra lại", status_code=409)
         try:
             fingerprint = compute_flow_candidate_fingerprint(task, fixed, refs, snapshot)
         except (KeyError, ValueError) as exc:
-            raise DomainApiError("CANDIDATE_BASIS_CONFLICT", "原检查流程或输入已变化，请重新检查", status_code=409) from exc
+            raise DomainApiError("CANDIDATE_BASIS_CONFLICT", "Luồng hoặc đầu vào của kiểm tra ban đầu đã thay đổi, hãy kiểm tra lại", status_code=409) from exc
         if fingerprint != basis.input_fingerprint:
-            raise DomainApiError("CANDIDATE_FINGERPRINT_CONFLICT", "原检查依据已变化，请重新检查", status_code=409)
+            raise DomainApiError("CANDIDATE_FINGERPRINT_CONFLICT", "Căn cứ của kiểm tra ban đầu đã thay đổi, hãy kiểm tra lại", status_code=409)
         validate_chapter_item_owner_check_result({"issues": [], "suggestion": {key: fields["evidence"][key] for key in ("start", "quote")}}, context)
         # 只替换原章前状态的持有人；其余三项不能从模型或今日字段取得。
         after = {**context["checked_facts"]["values"], "owner_character_id": fixed.to_character_id}
@@ -315,24 +315,24 @@ async def load_chapter_character_relation_state_sources_in_session(request: Chap
         活动关系、两个活动人物及三个物理身份和版本；不限制所在卷。
     """
     if session is None or not session.in_transaction:
-        raise RuntimeError("人物关系来源核验必须在调用方事务内执行")
+        raise RuntimeError("Việc xác minh nguồn quan hệ nhân vật phải thực hiện trong transaction của bên gọi")
     novel_id = ObjectId(request.novel_id)
     relation = await BaseRepository("character_relations").collection.find_one({
         "novel_id": novel_id, "relation_id": request.relation_id, "is_deleted": False,
     }, session=session)
     if relation is None:
-        raise DomainApiError("CHAPTER_CHECK_RELATION_NOT_FOUND", "人物关系不存在于本书或已回收", status_code=404)
+        raise DomainApiError("CHAPTER_CHECK_RELATION_NOT_FOUND", "Quan hệ nhân vật không tồn tại trong sách này hoặc đã bị thu hồi", status_code=404)
     if relation["version"] != request.expected_version:
-        raise DomainApiError("CHAPTER_CHECK_RELATION_CHANGED", "人物关系已经变化，请重新读取后检查", status_code=409)
+        raise DomainApiError("CHAPTER_CHECK_RELATION_CHANGED", "Quan hệ nhân vật đã thay đổi, hãy đọc lại rồi kiểm tra", status_code=409)
     if not relation["is_active"]:
-        raise DomainApiError("CHAPTER_CHECK_RELATION_INACTIVE", "只有活动人物关系可以检查当前状态", status_code=409)
+        raise DomainApiError("CHAPTER_CHECK_RELATION_INACTIVE", "Chỉ quan hệ nhân vật đang hoạt động mới kiểm tra được trạng thái hiện tại", status_code=409)
     characters = []
     for identity in (relation["source_character_id"], relation["target_character_id"]):
         character = await BaseRepository("characters").collection.find_one({
             "novel_id": novel_id, "character_id": identity, "is_deleted": False, "status": "active",
         }, session=session)
         if character is None:
-            raise DomainApiError("CHAPTER_CHECK_CHARACTER_NOT_FOUND", "关系人物不存在于本书、已回收或已停用", status_code=404)
+            raise DomainApiError("CHAPTER_CHECK_CHARACTER_NOT_FOUND", "Nhân vật trong quan hệ không tồn tại trong sách này, đã bị thu hồi hoặc đã ngưng hoạt động", status_code=404)
         characters.append(character)
     refs = [CandidateSourceRefV1(resource_type=kind, id=str(row["_id"]), version=row["version"])
             for kind, row in (("character_relation", relation), ("character", characters[0]), ("character", characters[1]))]
@@ -424,7 +424,7 @@ def validate_chapter_character_relation_state_check_result(
     if suggestion is not None:
         content = data["chapter_content"]
         if content[suggestion.start:suggestion.start + len(suggestion.quote)] != suggestion.quote:
-            raise DomainApiError("CHAPTER_CHECK_QUOTE_MISMATCH", "建议的原文片段与所选修订的位置不一致，请重新检查", status_code=422)
+            raise DomainApiError("CHAPTER_CHECK_QUOTE_MISMATCH", "Đoạn văn bản gốc đề xuất không khớp vị trí của bản chỉnh sửa đã chọn, hãy kiểm tra lại", status_code=422)
     return result.model_dump(mode="json")
 
 
@@ -445,9 +445,9 @@ async def load_chapter_world_rules_check_context(request: ChapterWorldRulesCheck
                 "is_deleted": False, "status": "active", "scope_type": "global",
             }, session=session)
             if rule is None:
-                raise DomainApiError("CHAPTER_CHECK_RULE_NOT_FOUND", "所选世界规则不存在于本书、已回收或不是全书活动规则，请重新选择", status_code=404)
+                raise DomainApiError("CHAPTER_CHECK_RULE_NOT_FOUND", "Quy tắc thế giới đã chọn không tồn tại trong sách này, đã bị thu hồi hoặc không phải quy tắc đang hoạt động của toàn sách, hãy chọn lại", status_code=404)
             if rule["version"] != selection.expected_version:
-                raise DomainApiError("CHAPTER_CHECK_RULE_CHANGED", "所选世界规则已经变化，请重新读取后检查", status_code=409)
+                raise DomainApiError("CHAPTER_CHECK_RULE_CHANGED", "Quy tắc thế giới đã chọn đã thay đổi, hãy đọc lại rồi kiểm tra", status_code=409)
             # 所有规则业务字段都保留，尤其不能省略例外和代价来压缩资料。
             rules.append({
                 "entity_id": str(rule["_id"]), "novel_id": str(rule["novel_id"]),
@@ -460,7 +460,7 @@ async def load_chapter_world_rules_check_context(request: ChapterWorldRulesCheck
             refs.append(CandidateSourceRefV1(resource_type="world_rule", id=str(rule["_id"]), version=rule["version"]))
         rules_context = json.dumps(rules, ensure_ascii=False)
         if len(rules_context) > CHAPTER_CHECK_RULES_MAX_CHARACTERS:
-            raise DomainApiError("CHAPTER_CHECK_RULES_BUDGET_EXCEEDED", "所选规则资料超过 60000 字符，请减少所选规则后重试；不会截短规则、例外或代价", status_code=422)
+            raise DomainApiError("CHAPTER_CHECK_RULES_BUDGET_EXCEEDED", "Tư liệu quy tắc đã chọn vượt 60000 ký tự, hãy giảm số quy tắc đã chọn rồi thử lại; không cắt ngắn quy tắc, ngoại lệ hay cái giá", status_code=422)
         return {"chapter_content": content, "rules": rules, "world_rules_context": rules_context, "source_refs": refs}
 
     return await run_mongo_write_unit(read, "read_chapter_world_rules_check", require_transaction=True)
@@ -480,7 +480,7 @@ def validate_chapter_world_rules_check_result(candidate: dict, data: dict) -> di
     content = data["chapter_content"]
     for issue in result.issues:
         if not set(issue.rule_ids).issubset(selected):
-            raise DomainApiError("CHAPTER_CHECK_RULE_NOT_SELECTED", "疑点引用了未选择的世界规则，请重新检查", status_code=422)
+            raise DomainApiError("CHAPTER_CHECK_RULE_NOT_SELECTED", "Điểm nghi vấn tham chiếu quy tắc thế giới chưa được chọn, hãy kiểm tra lại", status_code=422)
         if content[issue.start:issue.start + len(issue.quote)] != issue.quote:
-            raise DomainApiError("CHAPTER_CHECK_QUOTE_MISMATCH", "疑点的原文片段与所选修订的位置不一致，请重新检查", status_code=422)
+            raise DomainApiError("CHAPTER_CHECK_QUOTE_MISMATCH", "Đoạn văn bản gốc của điểm nghi vấn không khớp vị trí bản chỉnh sửa đã chọn, hãy kiểm tra lại", status_code=422)
     return result.model_dump(mode="json")

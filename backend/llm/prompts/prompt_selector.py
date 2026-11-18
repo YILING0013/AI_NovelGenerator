@@ -163,7 +163,7 @@ def load_llm_provider_test_prompts(*, prompt_dir: Path | None = None) -> dict[st
     path = custom if custom.exists() else directory / "default" / "llm_provider_test.yaml"
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or set(data) != {"llm_provider_test"}:
-        raise ValueError(f"{path} 必须只包含 llm_provider_test 提示词")
+        raise ValueError(f"{path} phải chỉ chứa câu lệnh llm_provider_test")
     prompts = data["llm_provider_test"]
     fields = {
         "text_probe_prompt": set(),
@@ -173,12 +173,12 @@ def load_llm_provider_test_prompts(*, prompt_dir: Path | None = None) -> dict[st
         "function_result_probe_prompt": {"tool_result", "probe_token"},
     }
     if not isinstance(prompts, dict) or set(prompts) != set(fields):
-        raise ValueError(f"{path} 必须包含全部五项探测提示词")
+        raise ValueError(f"{path} phải chứa đủ cả năm câu lệnh thăm dò")
     for key, expected in fields.items():
         value = prompts[key]
         if not isinstance(value, str) or not value.strip():
-            raise ValueError(f"{path} 的 {key} 不能为空")
+            raise ValueError(f"{path} của {key} không được để trống")
         actual = {name for _, name, _, _ in Formatter().parse(value) if name is not None}
         if actual != expected:
-            raise ValueError(f"{path} 的 {key} 占位符必须为 {sorted(expected)}")
+            raise ValueError(f"{path} của {key} phải có chỗ chờ là {sorted(expected)}")
     return prompts

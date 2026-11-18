@@ -141,7 +141,7 @@ def _normalize_rule_content(
     if unknown:
         raise DomainApiError(
             "WORLD_RULE_VALIDATION_FAILED",
-            "世界规则包含未登记字段",
+            "Quy tắc thế giới chứa các trường chưa được đăng ký",
             status_code=422,
             details={"fields": unknown},
         )
@@ -154,7 +154,7 @@ def _normalize_rule_content(
         if missing:
             raise DomainApiError(
                 "WORLD_RULE_VALIDATION_FAILED",
-                "世界规则缺少必填字段",
+                "Quy tắc thế giới thiếu các trường bắt buộc",
                 status_code=422,
                 field_errors={field: "字段必填" for field in missing},
             )
@@ -169,7 +169,7 @@ def _normalize_rule_content(
     elif not source:
         raise DomainApiError(
             "WORLD_RULE_VALIDATION_FAILED",
-            "世界规则更新至少需要一个可修改字段",
+            "Cập nhật quy tắc thế giới cần ít nhất một trường có thể sửa",
             status_code=422,
         )
 
@@ -201,7 +201,7 @@ def _normalize_rule_content(
         if not isinstance(statement, str):
             raise DomainApiError(
                 "WORLD_RULE_VALIDATION_FAILED",
-                "规则陈述必须是字符串",
+                "Nội dung quy tắc phải là chuỗi",
                 status_code=422,
                 field_errors={"statement": "必须是字符串"},
             )
@@ -209,7 +209,7 @@ def _normalize_rule_content(
         if not statement or len(statement) > 2000:
             raise DomainApiError(
                 "WORLD_RULE_VALIDATION_FAILED",
-                "规则陈述长度必须为 1 到 2000 个字符",
+                "Phát biểu quy tắc phải dài 1 đến 2000 ký tự",
                 status_code=422,
                 field_errors={"statement": "长度必须为 1 到 2000 个字符"},
             )
@@ -219,7 +219,7 @@ def _normalize_rule_content(
         if not isinstance(scope_type, str) or scope_type not in WORLD_RULE_SCOPE_TYPES:
             raise DomainApiError(
                 "WORLD_RULE_VALIDATION_FAILED",
-                "当前阶段规则作用域仅支持 global、faction 或 character",
+                "Phạm vi quy tắc của giai đoạn hiện tại chỉ hỗ trợ global, faction hoặc character",
                 status_code=422,
                 field_errors={"scope_type": "不支持的作用域类型"},
             )
@@ -229,7 +229,7 @@ def _normalize_rule_content(
         if not isinstance(entity_ids, list) or len(entity_ids) > 100:
             raise DomainApiError(
                 "WORLD_RULE_VALIDATION_FAILED",
-                "scope_entity_ids 必须是不超过 100 项的数组",
+                "scope_entity_ids phải là mảng không quá 100 phần tử",
                 status_code=422,
                 field_errors={"scope_entity_ids": "必须是不超过 100 项的数组"},
             )
@@ -238,7 +238,7 @@ def _normalize_rule_content(
             if not isinstance(entity_id, str) or not entity_id.strip():
                 raise DomainApiError(
                     "WORLD_RULE_VALIDATION_FAILED",
-                    "作用域实体 ID 必须是非空字符串",
+                    "ID thực thể của phạm vi phải là chuỗi không rỗng",
                     status_code=422,
                     field_errors={f"scope_entity_ids.{index}": "必须是非空字符串"},
                 )
@@ -246,7 +246,7 @@ def _normalize_rule_content(
         if len(cleaned_ids) != len(set(cleaned_ids)):
             raise DomainApiError(
                 "WORLD_RULE_VALIDATION_FAILED",
-                "scope_entity_ids 不能包含重复 ID",
+                "scope_entity_ids không được chứa ID trùng lặp",
                 status_code=422,
                 field_errors={"scope_entity_ids": "不能包含重复 ID"},
             )
@@ -256,7 +256,7 @@ def _normalize_rule_content(
         if not isinstance(enforcement, str) or len(enforcement.strip()) > 1000:
             raise DomainApiError(
                 "WORLD_RULE_VALIDATION_FAILED",
-                "执行方式必须是不超过 1000 个字符的字符串",
+                "Cách thức thực hiện phải là chuỗi không quá 1000 ký tự",
                 status_code=422,
                 field_errors={"enforcement": "最多 1000 个字符"},
             )
@@ -266,7 +266,7 @@ def _normalize_rule_content(
         if not isinstance(exceptions, list) or len(exceptions) > 20:
             raise DomainApiError(
                 "WORLD_RULE_VALIDATION_FAILED",
-                "exceptions 必须是不超过 20 项的数组",
+                "exceptions phải là mảng không quá 20 phần tử",
                 status_code=422,
                 field_errors={"exceptions": "必须是不超过 20 项的数组"},
             )
@@ -275,7 +275,7 @@ def _normalize_rule_content(
             if not isinstance(item, Mapping) or set(item) != {"condition", "effect"}:
                 raise DomainApiError(
                     "WORLD_RULE_VALIDATION_FAILED",
-                    "每条例外只能包含 condition 和 effect",
+                    "Mỗi ngoại lệ chỉ được gồm condition và effect",
                     status_code=422,
                     field_errors={f"exceptions.{index}": "字段必须严格为 condition/effect"},
                 )
@@ -291,7 +291,7 @@ def _normalize_rule_content(
             ):
                 raise DomainApiError(
                     "WORLD_RULE_VALIDATION_FAILED",
-                    "例外的 condition 和 effect 长度必须为 1 到 500 个字符",
+                    "condition và effect của mỗi ngoại lệ phải dài 1 đến 500 ký tự",
                     status_code=422,
                     field_errors={f"exceptions.{index}": "condition/effect 长度必须为 1 到 500"},
                 )
@@ -304,7 +304,7 @@ def _normalize_rule_content(
         if not isinstance(costs, list) or len(costs) > 20:
             raise DomainApiError(
                 "WORLD_RULE_VALIDATION_FAILED",
-                "costs_and_consequences 必须是不超过 20 项的数组",
+                "costs_and_consequences phải là mảng không quá 20 phần tử",
                 status_code=422,
                 field_errors={"costs_and_consequences": "必须是不超过 20 项的数组"},
             )
@@ -313,7 +313,7 @@ def _normalize_rule_content(
             if not isinstance(item, str) or not item.strip() or len(item.strip()) > 500:
                 raise DomainApiError(
                     "WORLD_RULE_VALIDATION_FAILED",
-                    "代价与后果每项长度必须为 1 到 500 个字符",
+                    "Mỗi mục chi phí và hệ quả phải dài 1 đến 500 ký tự",
                     status_code=422,
                     field_errors={f"costs_and_consequences.{index}": "长度必须为 1 到 500"},
                 )
@@ -324,7 +324,7 @@ def _normalize_rule_content(
         if isinstance(priority, bool) or not isinstance(priority, int) or not 0 <= priority <= 100:
             raise DomainApiError(
                 "WORLD_RULE_VALIDATION_FAILED",
-                "规则优先级必须为 0 到 100 的整数",
+                "Độ ưu tiên quy tắc phải là số nguyên từ 0 đến 100",
                 status_code=422,
                 field_errors={"priority": "必须为 0 到 100 的整数"},
             )
@@ -334,7 +334,7 @@ def _normalize_rule_content(
         if not isinstance(status, str) or status not in WORLD_RULE_STATUSES:
             raise DomainApiError(
                 "WORLD_RULE_VALIDATION_FAILED",
-                "规则状态必须为 draft、active 或 retired",
+                "Trạng thái quy tắc phải là draft, active hoặc retired",
                 status_code=422,
                 field_errors={"status": "不支持的规则状态"},
             )
@@ -344,7 +344,7 @@ def _normalize_rule_content(
         if not isinstance(tags, list) or len(tags) > 20:
             raise DomainApiError(
                 "WORLD_RULE_VALIDATION_FAILED",
-                "tags 必须是不超过 20 项的数组",
+                "tags phải là mảng không quá 20 phần tử",
                 status_code=422,
                 field_errors={"tags": "必须是不超过 20 项的数组"},
             )
@@ -353,7 +353,7 @@ def _normalize_rule_content(
             if not isinstance(tag, str) or not tag.strip():
                 raise DomainApiError(
                     "WORLD_RULE_VALIDATION_FAILED",
-                    "标签必须是非空字符串",
+                    "Nhãn phải là chuỗi không trống",
                     status_code=422,
                     field_errors={f"tags.{index}": "必须是非空字符串"},
                 )
@@ -377,7 +377,7 @@ class WorldRuleService:
         except InvalidIdError as exc:
             raise DomainApiError(
                 "INVALID_OBJECT_ID",
-                "novel_id 不是有效 ObjectId",
+                "novel_id không phải ObjectId hợp lệ",
                 status_code=422,
                 field_errors={"novel_id": "不是有效 ObjectId"},
             ) from exc
@@ -412,7 +412,7 @@ class WorldRuleService:
             if ids:
                 raise DomainApiError(
                     "WORLD_RULE_SCOPE_INVALID",
-                    "global 作用域不能携带实体 ID",
+                    "Phạm vi global không được mang theo ID thực thể",
                     status_code=422,
                     field_errors={"scope_entity_ids": "global 作用域必须为空"},
                 )
@@ -420,13 +420,13 @@ class WorldRuleService:
         if scope_type not in WORLD_RULE_SCOPE_TYPES:
             raise DomainApiError(
                 "WORLD_RULE_SCOPE_INVALID",
-                "当前阶段规则作用域仅支持 global、faction、character 或 location",
+                "Phạm vi quy tắc của giai đoạn hiện tại chỉ hỗ trợ global, faction, character hoặc location",
                 status_code=422,
             )
         if not ids:
             raise DomainApiError(
                 "WORLD_RULE_SCOPE_INVALID",
-                f"{scope_type} 作用域至少需要一个实体 ID",
+                f"{scope_type} phạm vi cần ít nhất một ID thực thể",
                 status_code=422,
                 field_errors={"scope_entity_ids": "至少需要一个实体 ID"},
             )
@@ -440,7 +440,7 @@ class WorldRuleService:
             if pattern.fullmatch(entity_id) is None:
                 raise DomainApiError(
                     "WORLD_RULE_SCOPE_INVALID",
-                    f"{entity_id} 不是 {scope_type} 作用域的稳定 ID",
+                    f"{entity_id} không phải là ID bền của phạm vi {scope_type} tương ứng",
                     status_code=422,
                     field_errors={"scope_entity_ids": "实体 ID 类型与作用域不匹配"},
                     details={"entity_id": entity_id, "scope_type": scope_type},
@@ -473,14 +473,14 @@ class WorldRuleService:
             except (NotFoundError, InvalidIdError) as exc:
                 raise DomainApiError(
                     "SCOPE_ENTITY_NOT_FOUND",
-                    f"作用域实体 {entity_id} 不存在、已删除或不属于当前小说",
+                    f"Thực thể phạm vi {entity_id} không tồn tại, đã bị xóa hoặc không thuộc tiểu thuyết hiện tại",
                     status_code=404,
                     details={"entity_id": entity_id, "scope_type": scope_type},
                 ) from exc
             if not is_available:
                 raise DomainApiError(
                     "SCOPE_ENTITY_NOT_FOUND",
-                    f"作用域实体 {entity_id} 当前不可用",
+                    f"Thực thể phạm vi {entity_id} hiện không khả dụng",
                     status_code=404,
                     details={"entity_id": entity_id, "scope_type": scope_type},
                 )
@@ -532,7 +532,7 @@ class WorldRuleService:
             except DuplicateKeyError as exc:
                 raise DomainApiError(
                     "WORLD_RULE_SCOPE_CONFLICT",
-                    "地点作用域在规则写入期间发生变化，请刷新后重试",
+                    "Phạm vi địa điểm đã thay đổi trong lúc ghi quy tắc, hãy làm mới rồi thử lại",
                     status_code=409,
                 ) from exc
         finally:
@@ -554,7 +554,7 @@ class WorldRuleService:
         if RULE_ID_RE.fullmatch(rule_id) is None:
             raise DomainApiError(
                 "WORLD_RULE_VALIDATION_FAILED",
-                "rule_id 格式不合法",
+                "Định dạng rule_id không hợp lệ",
                 status_code=422,
                 field_errors={"rule_id": "必须匹配 rule_[0-9]{6,}"},
             )
@@ -573,7 +573,7 @@ class WorldRuleService:
         except InvalidIdError as exc:
             raise DomainApiError(
                 "INVALID_OBJECT_ID",
-                "novel_id 不是有效 ObjectId",
+                "novel_id không phải ObjectId hợp lệ",
                 status_code=422,
             ) from exc
         except NotFoundError as exc:
@@ -591,7 +591,7 @@ class WorldRuleService:
         if actual != expected:
             raise DomainApiError(
                 "WORLD_RULE_VERSION_CONFLICT",
-                f"规则 {rule.get('rule_id')} 版本冲突",
+                f"Quy tắc {rule.get('rule_id')} 版本冲突",
                 status_code=409,
                 details={"expected_version": expected, "actual_version": actual},
             )
@@ -613,7 +613,7 @@ class WorldRuleService:
         if existing is not None and existing.get("rule_id") != exclude_rule_id:
             raise DomainApiError(
                 "WORLD_RULE_NAME_CONFLICT",
-                "同一小说下已存在同名活动规则",
+                "Đã tồn tại quy tắc đang hoạt động cùng tên trong cùng một tiểu thuyết",
                 status_code=409,
                 details={"existing_rule_id": existing.get("rule_id")},
             )
@@ -638,13 +638,13 @@ class WorldRuleService:
         except DuplicateKeyError as exc:
             raise DomainApiError(
                 "WORLD_RULE_ORDER_CONFLICT",
-                "世界规则活动名称或分类顺序发生冲突",
+                "Xung đột tên đang hoạt động hoặc thứ tự phân loại của quy tắc thế giới",
                 status_code=409,
             ) from exc
         if updated is None:
             raise DomainApiError(
                 "WORLD_RULE_VERSION_CONFLICT",
-                f"规则 {snapshot.get('rule_id')} 已被其他请求修改",
+                f"Quy tắc {snapshot.get('rule_id')} đã bị yêu cầu khác sửa đổi",
                 status_code=409,
             )
         applied.append(_AppliedRuleChange(dict(snapshot), dict(updated)))
@@ -785,7 +785,7 @@ class WorldRuleService:
                     ):
                         raise DomainApiError(
                             "WORLD_RULE_COMPENSATION_FAILED",
-                            "地点作用域规则创建失败，且规则补偿未完整完成",
+                            "Tạo quy tắc phạm vi địa điểm thất bại và bù đắp quy tắc chưa hoàn tất đầy đủ",
                             status_code=503,
                         )
                 raise
@@ -821,13 +821,13 @@ class WorldRuleService:
             if same_name is not None:
                 raise DomainApiError(
                     "WORLD_RULE_NAME_CONFLICT",
-                    "同一小说下已存在同名活动规则",
+                    "Đã tồn tại quy tắc đang hoạt động cùng tên trong cùng một tiểu thuyết",
                     status_code=409,
                     details={"existing_rule_id": same_name.get("rule_id")},
                 ) from exc
             raise DomainApiError(
                 "WORLD_RULE_ORDER_CONFLICT",
-                "规则创建时分类顺序发生并发冲突，请重试",
+                "Thứ tự phân loại khi tạo quy tắc xảy ra xung đột đồng thời, hãy thử lại",
                 status_code=409,
             ) from exc
 
@@ -873,7 +873,7 @@ class WorldRuleService:
         if len(normalized_names) != len(set(normalized_names)):
             raise DomainApiError(
                 "WORLD_RULE_NAME_CONFLICT",
-                "确认候选名称经规范化后不能重复",
+                "Tên ứng viên được xác nhận không được trùng sau chuẩn hóa",
                 status_code=409,
             )
         normalized_statements = [
@@ -890,7 +890,7 @@ class WorldRuleService:
         if len(normalized_statements) != len(set(normalized_statements)):
             raise DomainApiError(
                 "WORLD_RULE_SEMANTIC_CONFLICT",
-                "确认候选规则陈述经规范化后不能重复",
+                "Phát biểu quy tắc ứng viên được xác nhận không được trùng sau chuẩn hóa",
                 status_code=409,
             )
 
@@ -941,7 +941,7 @@ class WorldRuleService:
             if receipt.get("request_hash") != fingerprint.request_hash:
                 raise DomainApiError(
                     "IDEMPOTENCY_KEY_REUSED",
-                    "同一 Idempotency-Key 已用于不同的核心世界规则确认请求",
+                    "Cùng Idempotency-Key đã được dùng cho yêu cầu xác nhận quy tắc thế giới cốt lõi khác",
                     status_code=409,
                 )
             return receipt
@@ -960,7 +960,7 @@ class WorldRuleService:
             if marker.get("creation_request_hash") != fingerprint.request_hash:
                 raise DomainApiError(
                     "IDEMPOTENCY_KEY_REUSED",
-                    "同一 Idempotency-Key 已用于不同的核心世界规则确认请求",
+                    "Cùng Idempotency-Key đã được dùng cho yêu cầu xác nhận quy tắc thế giới cốt lõi khác",
                     status_code=409,
                 )
             if session is None:
@@ -972,7 +972,7 @@ class WorldRuleService:
                         return _receipt_result(receipt)
             raise DomainApiError(
                 "WORLD_RULE_BATCH_CONFLICT",
-                "核心世界规则确认的同键请求仍在处理中",
+                "Yêu cầu cùng khóa của xác nhận quy tắc thế giới cốt lõi vẫn đang được xử lý",
                 status_code=409,
             )
 
@@ -985,7 +985,7 @@ class WorldRuleService:
             if basis.novel_id != novel_id or generation_input.novel_id != novel_id:
                 raise DomainApiError(
                     "CANDIDATE_SOURCE_NOT_FOUND",
-                    "核心世界规则候选不属于当前小说",
+                    "Ứng viên quy tắc thế giới cốt lõi không thuộc tiểu thuyết hiện tại",
                     status_code=404,
                 )
             if (
@@ -996,7 +996,7 @@ class WorldRuleService:
             ):
                 raise DomainApiError(
                     "CANDIDATE_BASIS_CONFLICT",
-                    "核心世界规则候选契约已变化",
+                    "Hợp đồng của ứng viên quy tắc thế giới nòng cốt đã thay đổi",
                     status_code=409,
                 )
 
@@ -1009,13 +1009,13 @@ class WorldRuleService:
             except (NotFoundError, InvalidIdError) as exc:
                 raise DomainApiError(
                     "CANDIDATE_SOURCE_NOT_FOUND",
-                    "核心世界规则候选所属小说已不存在",
+                    "Quyển của ứng viên quy tắc thế giới cốt lõi không còn tồn tại",
                     status_code=404,
                 ) from exc
             except GenerationDomainError as exc:
                 raise DomainApiError(
                     "CANDIDATE_BASIS_CONFLICT",
-                    "核心世界规则生成所需的活动正式事实已变化",
+                    "Sự kiện chính thức đang hoạt động cần cho sinh quy tắc thế giới cốt lõi đã thay đổi",
                     status_code=409,
                 ) from exc
             basis_identities = {
@@ -1062,24 +1062,24 @@ class WorldRuleService:
                         else:
                             raise DomainApiError(
                                 "CANDIDATE_BASIS_CONFLICT",
-                                f"不支持的核心世界规则来源类型: {resource_type}",
+                                f"Loại nguồn của quy tắc thế giới cốt lõi không được hỗ trợ: {resource_type}",
                                 status_code=409,
                             )
                 except (NotFoundError, InvalidIdError) as exc:
                     raise DomainApiError(
                         "CANDIDATE_SOURCE_NOT_FOUND",
-                        "候选依据中的正式资源已不存在、已删除或不属于当前小说",
+                        "Tài nguyên chính thức trong căn cứ ứng viên không còn tồn tại, đã bị xóa hoặc không thuộc tiểu thuyết hiện tại",
                         status_code=404,
                     ) from exc
                 raise DomainApiError(
                     "CANDIDATE_BASIS_CONFLICT",
-                    "核心世界规则生成所用的活动正式事实集合已变化",
+                    "Tập sự thật chính thức đang hoạt động dùng để sinh quy tắc thế giới cốt lõi đã thay đổi",
                     status_code=409,
                 )
             if current_identities - basis_identities:
                 raise DomainApiError(
                     "CANDIDATE_BASIS_CONFLICT",
-                    "核心世界规则生成所用的活动正式事实集合已变化",
+                    "Tập sự thật chính thức đang hoạt động dùng để sinh quy tắc thế giới cốt lõi đã thay đổi",
                     status_code=409,
                 )
             source_versions = {
@@ -1095,7 +1095,7 @@ class WorldRuleService:
             except (KeyError, TypeError, ValueError) as exc:
                 raise DomainApiError(
                     "CANDIDATE_BASIS_CONFLICT",
-                    "核心世界规则候选的 Prompt 或执行配置已变化",
+                    "Prompt hoặc cấu hình thực thi của ứng viên quy tắc thế giới cốt lõi đã thay đổi",
                     status_code=409,
                 ) from exc
             require_current_candidate_basis(
@@ -1123,7 +1123,7 @@ class WorldRuleService:
             ]:
                 raise DomainApiError(
                     "WORLD_RULE_SEMANTIC_CONFLICT",
-                    "确认候选与已有活动规则陈述重复",
+                    "Ứng viên đã xác nhận trùng phát biểu với quy tắc đang hoạt động hiện có",
                     status_code=409,
                 )
             for ref in candidate_refs:
@@ -1143,7 +1143,7 @@ class WorldRuleService:
                 if invalid_scope_ids:
                     raise DomainApiError(
                         "SCOPE_ENTITY_NOT_FOUND",
-                        "作用域实体不存在、已删除、已停用或不属于当前小说",
+                        "Thực thể phạm vi không tồn tại, đã bị xóa, đã ngừng kích hoạt hoặc không thuộc tiểu thuyết hiện tại",
                         status_code=404,
                         details={"entity_ids": invalid_scope_ids},
                     )
@@ -1257,12 +1257,12 @@ class WorldRuleService:
                         )
                     if rules_compensated != len(created_rule_ids):
                         raise RuntimeError(
-                            "核心世界规则确认失败，且 standalone 补偿未完整完成"
+                            "Xác nhận quy tắc thế giới cốt lõi thất bại và bù đắp standalone chưa hoàn tất đầy đủ"
                         ) from exc
                     if published_receipt_conflict:
                         raise DomainApiError(
                             "IDEMPOTENCY_KEY_REUSED",
-                            "同一 Idempotency-Key 已用于不同的核心世界规则确认请求",
+                            "Cùng Idempotency-Key đã được dùng cho yêu cầu xác nhận quy tắc thế giới cốt lõi khác",
                             status_code=409,
                         ) from exc
                 raise
@@ -1285,7 +1285,7 @@ class WorldRuleService:
                 return inflight_replay
             raise DomainApiError(
                 "WORLD_RULE_BATCH_CONFLICT",
-                "核心世界规则确认发生名称、顺序或并发冲突",
+                "Xác nhận quy tắc thế giới cốt lõi gặp xung đột tên, thứ tự hoặc xử lý đồng thời",
                 status_code=409,
             ) from exc
 
@@ -1314,13 +1314,13 @@ class WorldRuleService:
         if status is not None and status not in WORLD_RULE_STATUSES:
             raise DomainApiError(
                 "WORLD_RULE_VALIDATION_FAILED",
-                "status 筛选值不合法",
+                "Giá trị lọc status không hợp lệ",
                 status_code=422,
             )
         if scope_type is not None and scope_type not in WORLD_RULE_SCOPE_TYPES:
             raise DomainApiError(
                 "WORLD_RULE_VALIDATION_FAILED",
-                "scope_type 筛选值不合法",
+                "Giá trị lọc scope_type không hợp lệ",
                 status_code=422,
             )
         try:
@@ -1338,7 +1338,7 @@ class WorldRuleService:
         if normalized_q is not None and (not normalized_q or len(normalized_q) > 200):
             raise DomainApiError(
                 "WORLD_RULE_VALIDATION_FAILED",
-                "q 长度必须为 1 到 200 个字符",
+                "Độ dài q phải từ 1 đến 200 ký tự",
                 status_code=422,
             )
         return await world_rule_repo.list_world_rules(
@@ -1418,7 +1418,7 @@ class WorldRuleService:
         if "expected_version" not in source:
             raise DomainApiError(
                 "WORLD_RULE_VALIDATION_FAILED",
-                "更新世界规则必须提供 expected_version",
+                "Cập nhật quy tắc thế giới phải cung cấp expected_version",
                 status_code=422,
             )
         try:
@@ -1520,7 +1520,7 @@ class WorldRuleService:
                         logger.exception("世界规则更新失败且 standalone 补偿未完成")
                         raise DomainApiError(
                             "WORLD_RULE_COMPENSATION_FAILED",
-                            "世界规则更新失败，且数据库补偿未完成",
+                            "Cập nhật quy tắc thế giới thất bại và bồi thường cơ sở dữ liệu chưa hoàn tất",
                             status_code=503,
                         ) from compensation_exc
                 raise exc
@@ -1546,7 +1546,7 @@ class WorldRuleService:
         if not items:
             raise DomainApiError(
                 "WORLD_RULE_VALIDATION_FAILED",
-                "规则重排至少需要一个条目",
+                "Sắp xếp lại quy tắc cần ít nhất một mục",
                 status_code=422,
             )
         normalized_items: list[dict[str, int | str]] = []
@@ -1566,19 +1566,19 @@ class WorldRuleService:
             if not isinstance(rule_id, str) or RULE_ID_RE.fullmatch(rule_id) is None:
                 raise DomainApiError(
                     "WORLD_RULE_VALIDATION_FAILED",
-                    "规则重排包含非法 rule_id",
+                    "Sắp xếp lại quy tắc chứa rule_id không hợp lệ",
                     status_code=422,
                 )
             if isinstance(order_index, bool) or not isinstance(order_index, int) or order_index < 1:
                 raise DomainApiError(
                     "WORLD_RULE_VALIDATION_FAILED",
-                    "order_index 必须为从 1 开始的整数",
+                    "order_index phải là số nguyên bắt đầu từ 1",
                     status_code=422,
                 )
             if rule_id in seen_ids or order_index in seen_orders:
                 raise DomainApiError(
                     "WORLD_RULE_VALIDATION_FAILED",
-                    "规则重排的 rule_id 和 order_index 均不能重复",
+                    "rule_id và order_index khi sắp xếp lại quy tắc đều không được trùng",
                     status_code=422,
                 )
             seen_ids.add(rule_id)
@@ -1593,7 +1593,7 @@ class WorldRuleService:
         if seen_orders != set(range(1, len(normalized_items) + 1)):
             raise DomainApiError(
                 "WORLD_RULE_ORDER_CONFLICT",
-                "同分类规则顺序必须完整覆盖 1..N",
+                "Thứ tự quy tắc cùng phân loại phải phủ đầy đủ 1..N",
                 status_code=409,
             )
 
@@ -1613,7 +1613,7 @@ class WorldRuleService:
             if len(categories) != 1:
                 raise DomainApiError(
                     "WORLD_RULE_ORDER_CONFLICT",
-                    "一次重排只能提交同一分类的规则",
+                    "Một lần sắp xếp lại chỉ được gửi quy tắc của cùng một phân loại",
                     status_code=409,
                 )
             category = next(iter(categories))
@@ -1625,7 +1625,7 @@ class WorldRuleService:
             if {str(rule["rule_id"]) for rule in siblings} != seen_ids:
                 raise DomainApiError(
                     "WORLD_RULE_ORDER_CONFLICT",
-                    "规则重排必须提交当前分类的完整活动兄弟集合",
+                    "Sắp xếp lại quy tắc phải gửi đầy đủ tập anh em đang hoạt động của phân loại hiện tại",
                     status_code=409,
                     details={
                         "expected_rule_ids": [rule["rule_id"] for rule in siblings],
@@ -1668,7 +1668,7 @@ class WorldRuleService:
                         logger.exception("世界规则重排失败且 standalone 补偿未完成")
                         raise DomainApiError(
                             "WORLD_RULE_COMPENSATION_FAILED",
-                            "世界规则重排失败，且数据库补偿未完成",
+                            "Sắp xếp lại quy tắc thế giới thất bại và bồi thường cơ sở dữ liệu chưa hoàn tất",
                             status_code=503,
                         ) from compensation_exc
                 raise exc
@@ -1743,7 +1743,7 @@ class WorldRuleService:
                         logger.exception("世界规则软删除失败且 standalone 补偿未完成")
                         raise DomainApiError(
                             "WORLD_RULE_COMPENSATION_FAILED",
-                            "世界规则删除失败，且数据库补偿未完成",
+                            "Xóa quy tắc thế giới thất bại và bồi thường cơ sở dữ liệu chưa hoàn tất",
                             status_code=503,
                         ) from compensation_exc
                 raise exc
@@ -1829,13 +1829,13 @@ class WorldRuleService:
                     except Exception as compensation_exc:
                         raise DomainApiError(
                             "WORLD_RULE_COMPENSATION_FAILED",
-                            "世界规则恢复失败，且数据库补偿未完整完成",
+                            "Khôi phục quy tắc thế giới thất bại và bồi thường cơ sở dữ liệu chưa hoàn tất đầy đủ",
                             status_code=503,
                         ) from compensation_exc
                 if isinstance(exc, DomainApiError) and exc.code == "WORLD_RULE_ORDER_CONFLICT":
                     raise DomainApiError(
                         "WORLD_RULE_RESTORE_CONFLICT",
-                        "规则恢复与活动名称或分类顺序冲突",
+                        "Khôi phục quy tắc xung đột tên hoặc thứ tự phân loại đang hoạt động",
                         status_code=409,
                     ) from exc
                 raise
@@ -1888,7 +1888,7 @@ class WorldRuleService:
                 # 待提交地点不是公开事实，只阻断删除而不返回其数量或业务 ID。
                 raise DomainApiError(
                     "WORLD_RULE_LOCATION_WRITE_CONFLICT",
-                    "地点写入正在使用该规则，请稍后重试",
+                    "Việc ghi địa điểm đang sử dụng quy tắc này, hãy thử lại sau",
                     status_code=409,
                 )
             references = await world_rule_repo.count_protected_references(
@@ -1899,7 +1899,7 @@ class WorldRuleService:
             if references["total"] > 0:
                 raise DomainApiError(
                     "WORLD_RULE_REFERENCE_PROTECTED",
-                    "规则仍被正式结构或伏笔引用，不能永久删除",
+                    "Quy tắc vẫn được cấu trúc chính thức hoặc chi tiết phục bút tham chiếu, không thể xóa vĩnh viễn",
                     status_code=409,
                     details={"references": references},
                 )
@@ -1910,7 +1910,7 @@ class WorldRuleService:
             if not deleted:
                 raise DomainApiError(
                     "WORLD_RULE_VERSION_CONFLICT",
-                    "规则已被其他请求修改，请刷新后重试",
+                    "Quy tắc đã bị yêu cầu khác sửa đổi, hãy làm mới rồi thử lại",
                     status_code=409,
                 )
             return {"rule_id": rule_id, "references": references}
@@ -1937,7 +1937,7 @@ class WorldRuleService:
         if novel.get("location_write_lock_token") is not None:
             raise DomainApiError(
                 "WORLD_RULE_CONTEXT_CONFLICT",
-                "地点正在更新，请刷新后重试",
+                "Địa điểm đang được cập nhật, hãy tải lại rồi thử lại",
                 status_code=409,
             )
         active_candidates = await world_rule_repo.list_world_rules(
@@ -1978,7 +1978,7 @@ class WorldRuleService:
         ):
             raise DomainApiError(
                 "WORLD_RULE_CONTEXT_CONFLICT",
-                "地点正在更新，请刷新后重试",
+                "Địa điểm đang được cập nhật, hãy tải lại rồi thử lại",
                 status_code=409,
             )
         return {

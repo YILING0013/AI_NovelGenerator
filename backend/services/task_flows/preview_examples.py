@@ -85,7 +85,7 @@ def example_value(schema: dict[str, Any], root: dict[str, Any] | None = None, *,
                 return value
             except FlowValidationError:
                 continue
-        raise FlowValidationError(f"{name} 无法自动生成符合结构的示例，请临时填写示例")
+        raise FlowValidationError(f"{name} không thể tự sinh ví dụ khớp cấu trúc, hãy tạm nhập ví dụ")
     kind = resolved.get("type", "object" if "properties" in resolved else "string")
     if isinstance(kind, list):
         kind = next((item for item in kind if item != "null"), "null")
@@ -116,12 +116,12 @@ def example_value(schema: dict[str, Any], root: dict[str, Any] | None = None, *,
         if pattern:
             value = _PATTERN_EXAMPLES.get(pattern)
             if value is None:
-                raise FlowValidationError(f"{name} 需要符合格式 {pattern}，请临时填写示例")
+                raise FlowValidationError(f"{name} cần tuân theo định dạng {pattern}, hãy điền tạm một ví dụ")
             if index and value[-1:].isdigit():
                 value = value[:-1] + str((index + 1) % 10)
         else:
             id_prefix = {"character_ids": "char", "faction_ids": "fac", "selected_existing_location_ids": "loc"}.get(name)
-            value = f"{id_prefix}_{index + 1:06d}" if id_prefix else _TEXT_EXAMPLES.get(name, f"{resolved.get('title') or name}的假设示例")
+            value = f"{id_prefix}_{index + 1:06d}" if id_prefix else _TEXT_EXAMPLES.get(name, f"{resolved.get('title') or name}(ví dụ giả định)")
             if index and not id_prefix:
                 value += str(index + 1)
         minimum = resolved.get("minLength", 0)
@@ -185,4 +185,4 @@ def missing_example(name: str) -> Any:
         return ["调查线索" if key != "tags" else "悬疑"]
     if key.endswith("_count") or key in {"number_of_chapters", "words_per_chapter", "version", "order_index"}:
         return 1
-    return _TEXT_EXAMPLES.get(key, f"{key}的假设示例")
+    return _TEXT_EXAMPLES.get(key, f"{key}(ví dụ giả định)")

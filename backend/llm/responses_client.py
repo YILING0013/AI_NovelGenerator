@@ -38,9 +38,9 @@ class ResponsesClient(OpenAICompatibleClient):
         """拒绝截断、失败和拒答结果，避免把半段生成内容当成成功。"""
         if response.status == "incomplete":
             reason = getattr(response.incomplete_details, "reason", "")
-            raise LLMSchemaError(f"模型输出未完成（{reason}），请增加输出上限或调整输入", provider=self.provider_name, model=model)
+            raise LLMSchemaError(f"Đầu ra của mô hình chưa hoàn tất ({reason}), hãy tăng giới hạn đầu ra hoặc điều chỉnh đầu vào", provider=self.provider_name, model=model)
         if response.status != "completed":
-            message = getattr(response.error, "message", None) or f"模型请求未完成：{response.status}"
+            message = getattr(response.error, "message", None) or f"Yêu cầu mô hình chưa hoàn tất:{response.status}"
             raise LLMResponseError(message, provider=self.provider_name, model=model)
         for item in response.output:
             if item.type == "message":
@@ -89,7 +89,7 @@ class ResponsesClient(OpenAICompatibleClient):
                     try:
                         content = schema.model_validate_json(content).model_dump_json()
                     except ValidationError as exc:
-                        raise LLMSchemaError("模型返回的 JSON 不符合目标结构", provider=self.provider_name, model=model) from exc
+                        raise LLMSchemaError("JSON mô hình trả về không khớp cấu trúc đích", provider=self.provider_name, model=model) from exc
                 result = self._finalize_response(LLMResponse(
                     content=content, raw_response=response.model_dump(mode="json", warnings=False),
                     usage=self._extract_usage(response.usage), model=response.model or model,
@@ -224,7 +224,7 @@ class ResponsesClient(OpenAICompatibleClient):
             tools = [LLMToolDefinition(name=probe.tool_name, description=probe.tool_description, parameters=probe.parameters_schema)]
             first = await self.tool_turn(request, tools)
             if not first.calls or any(item.name != probe.tool_name for item in first.calls):
-                raise LLMResponseError("模型未返回指定工具调用", provider=self.provider_name, model=model)
+                raise LLMResponseError("Mô hình không trả về lời gọi công cụ được chỉ định", provider=self.provider_name, model=model)
             for item in first.calls:
                 self._validate_probe_arguments(item.arguments, probe.expected_arguments)
             # 提示放入工具结果，下一轮必须先收到所有调用的返回值。

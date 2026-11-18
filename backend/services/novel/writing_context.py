@@ -201,7 +201,7 @@ def faction_position_content(document: dict[str, Any], facts: dict[str, Any]) ->
     parsed = FactionFactsAtPositionV1.model_validate(facts)
     if (parsed.entity_id != str(document["_id"]) or parsed.faction_id != document["faction_id"]
             or parsed.name != document["name"]):
-        raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "势力身份在读取期间已变化，请重新读取", status_code=409)
+        raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "Danh tính thế lực đã thay đổi trong lúc đọc, hãy đọc lại", status_code=409)
     value = position_content(document, "faction")
     value["facts"] = parsed.model_dump(exclude={"entity_id", "faction_id", "name", "version"}, exclude_unset=True)
     value["content_semantics"] = "position_facts_and_design_plan"
@@ -221,7 +221,7 @@ def character_position_content(document: dict[str, Any], facts: dict[str, Any]) 
     parsed = CharacterFactsAtPositionV1.model_validate(facts)
     if (parsed.entity_id != str(document["_id"]) or parsed.character_id != document["character_id"]
             or parsed.name != document["name"]):
-        raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "人物身份在读取期间已变化，请重新读取", status_code=409)
+        raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "Danh tính nhân vật đã thay đổi trong lúc đọc, hãy đọc lại", status_code=409)
     value = position_content(document, "character")
     # 实体编辑版本供确认使用；模型事实依据不因无关编辑版本变化失效。
     value["facts"] = parsed.model_dump(exclude={"entity_id", "character_id", "name", "version"}, exclude_unset=True)
@@ -243,7 +243,7 @@ def character_relation_position_content(document: dict[str, Any], facts: dict[st
     if (parsed.entity_id != str(document["_id"]) or parsed.relation_id != document["relation_id"]
             or parsed.source_character_id != document["source_character_id"]
             or parsed.target_character_id != document["target_character_id"]):
-        raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "关系身份在读取期间已变化，请重新读取", status_code=409)
+        raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "Danh tính quan hệ đã thay đổi trong lúc đọc, hãy đọc lại", status_code=409)
     value = position_content(document, "character_relation")
     value["facts"] = parsed.model_dump(exclude={"entity_id", "relation_id", "source_character_id", "target_character_id", "version"}, exclude_unset=True)
     value["content_semantics"] = "position_facts_and_design_plan"
@@ -263,7 +263,7 @@ def item_position_content(document: dict[str, Any], facts: dict[str, Any]) -> di
     parsed = ItemFactsAtPositionV1.model_validate(facts)
     if (parsed.entity_id != str(document["_id"]) or parsed.item_id != document["item_id"]
             or parsed.name != document["name"] or parsed.version != document["version"]):
-        raise DomainApiError("ITEM_FACT_CONTEXT_CHANGED", "物品在读取期间已变化，请重新读取", status_code=409)
+        raise DomainApiError("ITEM_FACT_CONTEXT_CHANGED", "Vật phẩm đã thay đổi trong lúc đọc, hãy đọc lại", status_code=409)
     value = position_content(document, "item")
     value["facts"] = parsed.model_dump(exclude={"entity_id", "item_id", "name", "version"})
     value["content_semantics"] = "position_facts_and_design_plan"
@@ -289,7 +289,7 @@ async def read_item_context(novel_id: str, item_ids: list[str], scope: dict[str,
         result = await read_item_facts(novel_id, item_ids[offset:offset + 200], scope,
             session=session if session is not None and session.in_transaction else None)
         if position is not None and position != result["position"]:
-            raise DomainApiError("ITEM_FACT_CONTEXT_CHANGED", "物品读取期间目录位置已变化，请重新读取", status_code=409)
+            raise DomainApiError("ITEM_FACT_CONTEXT_CHANGED", "Vị trí danh mục của vật phẩm đã thay đổi trong lúc đọc, hãy đọc lại", status_code=409)
         position = result["position"]
         facts.update((row["item_id"], row) for row in result["items"])
         reads.append(result["read"])
@@ -314,12 +314,12 @@ async def read_character_relation_context(novel_id: str, relation_ids: list[str]
         result = await read_character_relation_facts(novel_id, relation_ids[offset:offset + 200], scope,
             session=session if session is not None and session.in_transaction else None)
         if position is not None and position != result["position"]:
-            raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "关系读取期间目录位置已变化，请重新读取", status_code=409)
+            raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "Vị trí danh mục của quan hệ đã thay đổi trong lúc đọc, hãy đọc lại", status_code=409)
         position = result["position"]
         facts.update((row["relation_id"], row) for row in result["relations"])
         reads.extend(result["reads"])
     if set(relation_ids) != facts.keys():
-        raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "关系在读取期间已变化，请重新读取", status_code=409)
+        raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "Quan hệ đã thay đổi trong lúc đọc, hãy đọc lại", status_code=409)
     return facts, reads, position
 
 
@@ -344,7 +344,7 @@ async def revalidate_position_fact_reads(reads: list[dict[str, Any]], *, session
         elif read.get("kind") == "faction_facts":
             factions.append(read)
         else:
-            raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "事实读取种类不受支持，请保留草稿并重新读取", status_code=409)
+            raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "Loại đọc dữ kiện không được hỗ trợ, hãy giữ bản nháp và đọc lại", status_code=409)
     if characters:
         from backend.services.novel.character_fact_service import revalidate_character_fact_reads
         await revalidate_character_fact_reads(characters, session=session, protect=protect)
@@ -373,19 +373,19 @@ def resolve_writing_position(scope: dict[str, Any], directories: dict[str, dict[
     if kind == "novel":
         if (intent != "book_start" or scope.get("novel_id") is None
                 or ObjectId(identity) != ObjectId(scope["novel_id"])):
-            raise DomainApiError("WRITING_POSITION_INVALID", "书初位置必须指向当前小说", status_code=422)
+            raise DomainApiError("WRITING_POSITION_INVALID", "Vị trí khởi đầu của sách phải chỉ đúng tiểu thuyết hiện tại", status_code=422)
         if type(scope.get("reading_version")) is not int or scope["reading_version"] != 1:
-            raise DomainApiError("WRITING_POSITION_INVALID", "书初位置需要明确的读取版本", status_code=409)
+            raise DomainApiError("WRITING_POSITION_INVALID", "Vị trí khởi đầu của sách cần một phiên bản đọc xác định", status_code=409)
         return {"version": 1, "intent": intent, "target_type": kind, "target_id": identity, "order": []}
     if intent not in ({"chapter_before", "chapter_after"} if kind == "chapter" else
                       {"volume_start", "append", "replan"} if kind == "volume" else {"append", "replan"}):
-        raise DomainApiError("WRITING_POSITION_INVALID", "读取位置与当前操作不匹配", status_code=422)
+        raise DomainApiError("WRITING_POSITION_INVALID", "Vị trí đọc không khớp với thao tác hiện tại", status_code=422)
     if scope.get("reading_version") not in (None, 1):
-        raise DomainApiError("WRITING_POSITION_INVALID", "读取位置版本不支持，请重新生成", status_code=409)
+        raise DomainApiError("WRITING_POSITION_INVALID", "Phiên bản vị trí đọc không được hỗ trợ, hãy tạo lại", status_code=409)
     target = directories[kind].get(ObjectId(identity))
     order = writing_order(kind, target, directories) if target is not None else None
     if order is None:
-        raise DomainApiError("WRITING_CONTEXT_CHANGED", "目录正在变化，请刷新当前部分", status_code=409)
+        raise DomainApiError("WRITING_CONTEXT_CHANGED", "Danh mục đang thay đổi, hãy làm mới phần hiện tại", status_code=409)
     return {"version": 1, "intent": intent, "target_type": kind, "target_id": identity, "order": list(order)}
 
 
@@ -430,7 +430,7 @@ async def load_writing_parents(novel_id: str, target_type: str, target_id: str, 
             query["novel_id"] = ObjectId(novel_id)
         document = await BaseRepository(COLLECTIONS[kind]).collection.find_one(query, session=session)
         if document is None or (kind == "novel" and identity != ObjectId(novel_id)):
-            raise DomainApiError("WRITING_TARGET_NOT_FOUND", "当前部分不存在、已回收或不属于当前小说", status_code=404)
+            raise DomainApiError("WRITING_TARGET_NOT_FOUND", "Phần hiện tại không tồn tại, đã bị thu hồi hoặc không thuộc tiểu thuyết hiện tại", status_code=404)
         chain.append((kind, document))
         if kind == "novel":
             break
@@ -438,11 +438,11 @@ async def load_writing_parents(novel_id: str, target_type: str, target_id: str, 
         identity = document[f"{kind}_id"]
     chain.reverse()
     if not allow_write_lock and any(chain[0][1].get(name) is not None for name in ("location_write_lock_token", "item_write_lock_token", "state_write_lock_token")):
-        raise DomainApiError("WRITING_PARENT_BUSY", "当前小说资料正在保存，请稍后重试", status_code=409)
+        raise DomainApiError("WRITING_PARENT_BUSY", "Tư liệu của tiểu thuyết hiện tại đang được lưu, hãy thử lại sau", status_code=409)
     ancestors = {kind: document["_id"] for kind, document in chain}
     for kind, document in chain:
         if any(document.get(f"{parent}_id") != identity for parent, identity in ancestors.items() if parent != kind and f"{parent}_id" in document):
-            raise DomainApiError("WRITING_PARENT_MISMATCH", "当前部分的父级归属不一致", status_code=404)
+            raise DomainApiError("WRITING_PARENT_MISMATCH", "Quy thuộc cha của phần hiện tại không nhất quán", status_code=404)
     return chain
 
 
@@ -466,20 +466,20 @@ def volume_missing_fields(volume: dict[str, Any]) -> list[dict[str, str]]:
             field = str(error["loc"][0])
             label = labels.get(field, field)
             context = error.get("ctx", {})
-            message = f"请填写有效的{label}"
+            message = f"Hãy nhập giá trị hợp lệ cho{label}"
             if error["type"] == "string_too_long":
-                message = f"{label}不能超过 {context['max_length']} 字"
+                message = f"{label}không được vượt quá {context['max_length']} ký tự"
             elif error["type"] == "too_long":
-                message = f"{label}不能超过 {context['max_length']} 项"
+                message = f"{label}không được vượt quá {context['max_length']} mục"
             elif error["type"] == "greater_than_equal":
-                message = f"{label}不能少于 {context['ge']}"
+                message = f"{label}không được ít hơn {context['ge']}"
             elif error["type"] == "less_than_equal":
-                message = f"{label}不能超过 {context['le']}"
+                message = f"{label}không được vượt quá {context['le']}"
             missing[f"planning.{field}"] = message
     for field in ("premise", "major_conflict", "start_state", "end_state"):
         path = f"planning.{field}"
         if path not in missing and not planning[field].strip():
-            missing[path] = f"请填写当前卷的{labels[field]}"
+            missing[path] = f"Hãy điền phần của quyển hiện tại{labels[field]}"
     if "planning.key_turning_points" not in missing:
         points = [normalize_volume_text(value) for value in planning["key_turning_points"]]
         if not points or any(not value for value in points):
@@ -499,7 +499,7 @@ def require_volume_ready(volume: dict[str, Any]) -> None:
     """
     missing = volume_missing_fields(volume)
     if missing:
-        raise DomainApiError("WRITING_NOT_READY", "请先补齐当前卷的规划", status_code=409, field_errors={item["field"]: item["message"] for item in missing})
+        raise DomainApiError("WRITING_NOT_READY", "Hãy bổ sung đủ kế hoạch cho quyển hiện tại trước", status_code=409, field_errors={item["field"]: item["message"] for item in missing})
 
 
 def current_missing(chain: list[tuple[str, dict[str, Any]]]) -> list[dict[str, str]]:
@@ -520,7 +520,7 @@ def current_missing(chain: list[tuple[str, dict[str, Any]]]) -> list[dict[str, s
     planning = target.get("planning") or {}
     required = {"planning.goal": planning.get("goal"), "planning.start_state": planning.get("start_state"), "planning.end_state": planning.get("end_state")}
     labels = {"planning.goal": "目标", "planning.start_state": "起点", "planning.end_state": "终点"}
-    return missing + [{"field": field, "message": f"请填写当前部分的{labels[field]}"} for field, value in required.items() if not isinstance(value, str) or not value.strip()]
+    return missing + [{"field": field, "message": f"Hãy điền phần của phần hiện tại{labels[field]}"} for field, value in required.items() if not isinstance(value, str) or not value.strip()]
 
 
 def chapter_scope_content(plans: list[dict], neighbors: dict) -> dict:
@@ -578,10 +578,10 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
     intent = scope.get("reading_intent") or ("chapter_before" if scope.get("target_type") == "chapter" else "append")
     # 模型和开始表单都不能把章前写作改成章后；剧情重规划由独立服务固定意图。
     if check_ready and task == "write_chapter_by_ai" and intent != "chapter_before":
-        raise DomainApiError("WRITING_POSITION_INVALID", "章节写作必须读取本章开始前的资料", status_code=422)
+        raise DomainApiError("WRITING_POSITION_INVALID", "Khi viết chương phải đọc các tư liệu trước thời điểm mở đầu chương", status_code=422)
     request = WritingGenerateInputV1.model_validate({**parameters, **scope, "reading_intent": intent, "reading_version": 1})
     if request.target_type != WRITING_TASKS[task][0]:
-        raise DomainApiError("WRITING_TARGET_INVALID", "任务与当前部分不匹配", status_code=422)
+        raise DomainApiError("WRITING_TARGET_INVALID", "Tác vụ không khớp với phần hiện tại", status_code=422)
     in_transaction = session is not None and session.in_transaction
     # 历史读取可能带有不同位置；只复用同一事务、同一目标的已校验父链。
     if (in_transaction and parent_chain
@@ -593,11 +593,11 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
         chain = await load_writing_parents(request.novel_id, request.target_type, request.target_id, session=session)
     missing = current_missing(chain)
     if check_ready and missing:
-        raise DomainApiError("WRITING_NOT_READY", "请先补齐当前部分的规划", status_code=409, field_errors={item["field"]: item["message"] for item in missing})
+        raise DomainApiError("WRITING_NOT_READY", "Hãy bổ sung đủ kế hoạch cho phần hiện tại trước", status_code=409, field_errors={item["field"]: item["message"] for item in missing})
     if check_ready and request.target_type != "chapter":
         plot_missing = await writing_plot_missing(chain, session=session)
         if plot_missing:
-            raise DomainApiError("WRITING_PLOT_NOT_READY", "请先确认上级剧情和卷资料", status_code=409, field_errors={item["field"]: item["message"] for item in plot_missing})
+            raise DomainApiError("WRITING_PLOT_NOT_READY", "Hãy xác nhận cốt truyện cấp trên và tư liệu của quyển trước", status_code=409, field_errors={item["field"]: item["message"] for item in plot_missing})
     target = chain[-1][1]
     sources: dict[tuple[str, str], dict[str, Any]] = {}
     guards: dict[tuple[str, str], dict[str, Any]] = {}
@@ -611,22 +611,22 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
         if kind == "character":
             facts = character_facts.get(document["character_id"])
             if facts is None:
-                raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "人物在读取期间已变化，请重新读取", status_code=409)
+                raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "Nhân vật đã thay đổi trong lúc đọc, hãy đọc lại", status_code=409)
             value = character_position_content(document, facts)
         elif kind == "faction":
             facts = faction_facts.get(document["faction_id"])
             if facts is None:
-                raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "势力在读取期间已变化，请重新读取", status_code=409)
+                raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "Thế lực đã thay đổi trong lúc đọc, hãy đọc lại", status_code=409)
             value = faction_position_content(document, facts)
         elif kind == "character_relation":
             facts = relation_facts.get(document["relation_id"])
             if facts is None:
-                raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "关系在读取期间已变化，请重新读取", status_code=409)
+                raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "Quan hệ đã thay đổi trong lúc đọc, hãy đọc lại", status_code=409)
             value = character_relation_position_content(document, facts)
         elif kind == "item":
             facts = item_facts.get(document["item_id"])
             if facts is None:
-                raise DomainApiError("ITEM_FACT_CONTEXT_CHANGED", "物品在读取期间已变化，请重新读取", status_code=409)
+                raise DomainApiError("ITEM_FACT_CONTEXT_CHANGED", "Vật phẩm đã thay đổi trong lúc đọc, hãy đọc lại", status_code=409)
             value = item_position_content(document, facts)
         else:
             value = position_content(document, kind)
@@ -649,7 +649,7 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
         cursor = BaseRepository(COLLECTIONS[kind]).collection.find({"novel_id": ObjectId(request.novel_id), "is_deleted": False}, {"content": 0}, session=session).limit(10001)
         documents = await cursor.to_list(length=10001)
         if len(documents) > 10000:
-            raise DomainApiError("WRITING_CONTEXT_TOO_LARGE", "当前小说目录过大，请缩小写作范围", status_code=422)
+            raise DomainApiError("WRITING_CONTEXT_TOO_LARGE", "Danh mục tiểu thuyết hiện tại quá lớn, hãy thu hẹp phạm vi viết", status_code=422)
         directories[kind] = {doc["_id"]: doc for doc in documents}
 
     position = resolve_writing_position(target_scope, directories)
@@ -663,7 +663,7 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
     siblings = sorted((doc for doc in directories[request.target_type].values() if doc[f"{parent_kind}_id"] == target[f"{parent_kind}_id"]), key=lambda doc: doc["order_index"])
     current_index = next((index for index, doc in enumerate(siblings) if doc["_id"] == target["_id"]), None)
     if current_index is None:
-        raise DomainApiError("WRITING_CONTEXT_CHANGED", "目录正在变化，请刷新当前部分", status_code=409)
+        raise DomainApiError("WRITING_CONTEXT_CHANGED", "Danh mục đang thay đổi, hãy làm mới phần hiện tại", status_code=409)
     neighbors = {"previous": remember(request.target_type, siblings[current_index - 1]) if current_index else None, "next": remember(request.target_type, siblings[current_index + 1]) if current_index + 1 < len(siblings) else None}
     observe("neighbors", target_scope, neighbors)
     child_kind = {"volume": "arc", "arc": "scene", "scene": "chapter"}.get(request.target_type)
@@ -683,7 +683,7 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
         key, document = max(prior, key=lambda item: item[0])
         document = await BaseRepository("chapters").collection.find_one({"_id": document["_id"], "is_deleted": False}, session=session)
         if document is None or not chapter_visible_at_position(document, directories, position):
-            raise DomainApiError("WRITING_CONTEXT_CHANGED", "前章正在变化，请重试", status_code=409)
+            raise DomainApiError("WRITING_CONTEXT_CHANGED", "Chương trước đang thay đổi, hãy thử lại", status_code=409)
         value = remember("chapter", document)
         previous_basis = {"id": value["id"], "order": list(key), "summary": document.get("summary", ""), "content": document["content"]}
         previous = {"kind": "written_excerpt", "chapter_id": value["id"], "title": document["title"], "plan_summary": document.get("summary", ""), "excerpt": document["content"][-6000:], "truncated": len(document["content"]) > 6000}
@@ -695,7 +695,7 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
     if request.target_type == "chapter":
         edit_target = {**remember("chapter", target), "content": target["content"], "content_semantics": "edit_target"}
     if request.target_type == "chapter" and target["version"] != request.expected_version:
-        raise DomainApiError("WRITING_VERSION_CONFLICT", "章节已修改，请保留草稿并刷新后比较", status_code=409)
+        raise DomainApiError("WRITING_VERSION_CONFLICT", "Chương đã bị sửa đổi, hãy giữ bản nháp, làm mới rồi so sánh", status_code=409)
     observe("edit_target", {"id": request.target_id if request.target_type == "chapter" else None}, edit_target)
 
     selected = request.selected_entities.model_dump()
@@ -725,7 +725,7 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
         pov = (target.get("planning") or {}).get("pov_character_id")
         if pov and pov not in selected["character_ids"]:
             if request.chapter_selection_complete:
-                raise DomainApiError("WRITING_MATERIAL_MISSING", "整理结果缺少本章视角人物，请继续整理", status_code=409)
+                raise DomainApiError("WRITING_MATERIAL_MISSING", "Kết quả sắp xếp thiếu nhân vật góc nhìn của chương này, hãy tiếp tục sắp xếp", status_code=409)
             selected["character_ids"].append(pov)
     from backend.services.novel.character_fact_service import read_character_facts
     fact_result = await read_character_facts(request.novel_id, selected["character_ids"], target_scope, session=session)
@@ -737,7 +737,7 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
     from backend.services.novel.faction_fact_service import read_faction_facts
     faction_result = await read_faction_facts(request.novel_id, selected["faction_ids"], target_scope, session=session)
     if faction_result["position"] != position:
-        raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "势力读取期间目录位置已变化，请重新读取", status_code=409)
+        raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "Vị trí danh mục của thế lực đã thay đổi trong lúc đọc, hãy đọc lại", status_code=409)
     faction_facts = {row["faction_id"]: row for row in faction_result["factions"]}
     reads.extend(faction_result["reads"])
     entities = []
@@ -760,7 +760,7 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
         for identity in identities:
             document = by_id.get(identity)
             if document is None:
-                raise DomainApiError("WRITING_REFERENCE_UNAVAILABLE", "当前规划引用的资料不存在、已停用或不属于本卷", status_code=409, details={"resource_type": kind, "id": identity})
+                raise DomainApiError("WRITING_REFERENCE_UNAVAILABLE", "Tư liệu mà kế hoạch hiện tại tham chiếu không tồn tại, đã bị vô hiệu hóa hoặc không thuộc quyển này", status_code=409, details={"resource_type": kind, "id": identity})
             entities.append(remember(kind, document))
     observe("selected_entities", {"novel_id": request.novel_id, "selected": selected}, entities)
 
@@ -770,7 +770,7 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
                               {"target_character_id": {"$in": selected["character_ids"]}}]}
     relation_docs = await BaseRepository("character_relations").collection.find(relation_query, session=session).sort([("relation_id", 1), ("_id", 1)]).limit(10001).to_list(length=10001)
     if len(relation_docs) > 10000:
-        raise DomainApiError("WRITING_CONTEXT_TOO_LARGE", "相关关系过多，请缩小人物选择范围", status_code=422)
+        raise DomainApiError("WRITING_CONTEXT_TOO_LARGE", "Quá nhiều quan hệ liên quan, hãy thu hẹp phạm vi chọn nhân vật", status_code=422)
     relation_facts, relation_reads, _ = await read_character_relation_context(
         request.novel_id, [row["relation_id"] for row in relation_docs], target_scope, session=session)
     reads.extend(relation_reads)
@@ -815,7 +815,7 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
                 if request.search_text.casefold() in json.dumps(value, ensure_ascii=False).casefold():
                     found.append((document, value))
             if len(found) > 30:
-                raise DomainApiError("WRITING_SEARCH_TOO_LARGE", "检索结果过多，请缩小范围或增加检索文字", status_code=422)
+                raise DomainApiError("WRITING_SEARCH_TOO_LARGE", "Kết quả tìm kiếm quá nhiều, hãy thu hẹp phạm vi hoặc thêm từ khóa tìm kiếm", status_code=422)
             for document, value in found:
                 remember(kind, bodies.get(document["_id"], document))
                 search_results.append(value)
@@ -842,7 +842,7 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
         public["search_results"] = []
         public["relations"] = []
     if len(json.dumps(public, ensure_ascii=False)) > 200000:
-        raise DomainApiError("WRITING_CONTEXT_TOO_LARGE", "所选规划和资料过长，请缩小范围；作者要求未被截断", status_code=422)
+        raise DomainApiError("WRITING_CONTEXT_TOO_LARGE", "Kế hoạch và tư liệu đã chọn quá dài, hãy thu hẹp phạm vi; yêu cầu của tác giả không bị cắt", status_code=422)
     # 目录和正文分开读取；其他祖先移动也可能让前文成为未来正文。
     if not in_transaction:
         order_fields = ("novel_id", "volume_id", "arc_id", "scene_id", "order_index")
@@ -851,10 +851,10 @@ async def load_writing_context(task: str, parameters: dict[str, Any], scope: dic
             before = {identity: tuple(document.get(field) for field in order_fields) for identity, document in original.items()}
             after = {document["_id"]: tuple(document.get(field) for field in order_fields) for document in current}
             if before != after:
-                raise DomainApiError("WRITING_CONTEXT_CHANGED", "读取期间目录位置已变化，请重新生成", status_code=409)
+                raise DomainApiError("WRITING_CONTEXT_CHANGED", "Vị trí danh mục đã thay đổi trong lúc đọc, hãy tạo lại", status_code=409)
         final_chain = await load_writing_parents(request.novel_id, request.target_type, request.target_id, session=session)
         if [position_content(kind_document, kind) for kind, kind_document in final_chain] != plans:
-            raise DomainApiError("WRITING_CONTEXT_CHANGED", "读取期间当前规划或父链发生变化，请重试", status_code=409)
+            raise DomainApiError("WRITING_CONTEXT_CHANGED", "Kế hoạch hiện tại hoặc chuỗi cha đã thay đổi trong lúc đọc, hãy thử lại", status_code=409)
     return {"request": request, "context": public, "context_basis": WritingContextBasisV1.model_validate({"reads": reads}).model_dump(mode="json"), "source_refs": list(sources.values()), "guards": guards, "chain": chain, "siblings": siblings, "missing": missing}
 
 
@@ -883,7 +883,7 @@ async def protect_writing_sources(data: dict[str, Any], *, session: AsyncClientS
                 for query in queries
             ], ordered=True, session=session)
             if result.matched_count != len(queries):
-                raise DomainApiError("WRITING_SOURCE_CHANGED", "资料在确认期间发生变化，请保留候选并重试", status_code=409)
+                raise DomainApiError("WRITING_SOURCE_CHANGED", "Tư liệu đã thay đổi trong lúc xác nhận, hãy giữ ứng viên và thử lại", status_code=409)
         else:
             await touch_dependency_endpoint_guards(collection, queries, session=session)
 
@@ -956,13 +956,13 @@ async def writing_plot_missing(chain: list[tuple[str, dict[str, Any]]], *, sessi
             continue
         label = "卷" if kind == "volume" else "篇章"
         if not document.get("plot", "").strip():
-            missing.append({"field": f"{kind}.plot", "message": f"请先补齐{label}的详细剧情"})
+            missing.append({"field": f"{kind}.plot", "message": f"Hãy bổ sung đủ{label}cốt truyện chi tiết của"})
         else:
             _, _, fingerprint = await load_plot_sources(novel_id, kind, str(document["_id"]), session=session, parent_chain=chain[:index + 1])
             if fingerprint != document.get("plot_source_fingerprint"):
-                missing.append({"field": f"{kind}.plot", "message": f"{label}的上级规划已变化，请检查并确认剧情"})
+                missing.append({"field": f"{kind}.plot", "message": f"{label}có kế hoạch cấp trên đã thay đổi, hãy kiểm tra và xác nhận cốt truyện"})
         if kind == "volume":
             for stage, name in (("factions", "势力"), ("characters", "角色"), ("locations", "地点")):
                 if not document.get("plot", "").strip() or document.get("preparation", {}).get(stage) != plot_hash(document.get("plot", "")):
-                    missing.append({"field": f"volume.preparation.{stage}", "message": f"请先确认本卷{name}"})
+                    missing.append({"field": f"volume.preparation.{stage}", "message": f"Hãy xác nhận quyển này trước{name}"})
     return missing

@@ -32,7 +32,7 @@ class ArcRepository(BaseRepository):
         """
         document = await self.find_one({"_id": to_object_id(arc_id)}, include_deleted=include_deleted, session=session)
         if document is None:
-            raise NotFoundError("篇章不存在或已删除")
+            raise NotFoundError("Vòng truyện không tồn tại hoặc đã bị xóa")
         return document
 
     async def list_arcs(self, volume_id: str, *, deleted: bool = False, session: AsyncClientSession | None = None) -> list[dict[str, Any]]:

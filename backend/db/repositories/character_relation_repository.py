@@ -61,7 +61,7 @@ class CharacterRelationRepository(BaseRepository):
             )
             missing_fields = [field for field in required_fields if not prepared.get(field)]
             if missing_fields:
-                raise ValueError(f"角色关系缺少必填字段: {', '.join(missing_fields)}")
+                raise ValueError(f"Quan hệ nhân vật thiếu trường bắt buộc: {', '.join(missing_fields)}")
 
             prepared.pop("_id", None)
             # 预分配 Mongo _id，standalone 部分写入时可只删除本次文档。
@@ -89,7 +89,7 @@ class CharacterRelationRepository(BaseRepository):
             prepared_documents.append(prepared)
 
         if len(relation_ids) != len(set(relation_ids)):
-            raise DuplicateKeyError("同一批次不能重复使用 relation_id")
+            raise DuplicateKeyError("Cùng lô không được dùng lại relation_id")
 
         try:
             await self.insert_many(prepared_documents, session=session)
@@ -99,7 +99,7 @@ class CharacterRelationRepository(BaseRepository):
                 session=session,
             )
             if len(created) != len(prepared_documents):
-                raise RuntimeError("角色关系批量写入后未能完整回读")
+                raise RuntimeError("Không đọc lại đầy đủ được sau khi ghi hàng loạt quan hệ nhân vật")
             return created
         except (pymongo.errors.DuplicateKeyError, pymongo.errors.BulkWriteError) as exc:
             if session is None:
@@ -108,7 +108,7 @@ class CharacterRelationRepository(BaseRepository):
                     prepared_documents,
                     business_key_field="relation_id",
                 )
-            raise DuplicateKeyError("角色关系业务 ID 或活动语义边已存在") from exc
+            raise DuplicateKeyError("ID nghiệp vụ quan hệ nhân vật hoặc cạnh ngữ nghĩa đang hoạt động đã tồn tại") from exc
         except Exception:
             if session is None:
                 await delete_created_documents_cas(
@@ -143,7 +143,7 @@ class CharacterRelationRepository(BaseRepository):
             session=session,
         )
         if relation is None:
-            raise NotFoundError(f"角色关系 '{relation_id}' 不存在于小说 {novel_id}")
+            raise NotFoundError(f"Quan hệ nhân vật '{relation_id}' không tồn tại trong tiểu thuyết {novel_id}")
         return relation
 
     async def find_by_creation_idempotency(
@@ -356,10 +356,10 @@ class CharacterRelationRepository(BaseRepository):
         )
         if current is None or bool(current.get("is_deleted")) is not require_deleted:
             state = "回收站中" if require_deleted else "未删除状态下"
-            raise NotFoundError(f"角色关系 '{relation_id}' 在{state}不存在")
+            raise NotFoundError(f"Quan hệ nhân vật '{relation_id}' tại{state}không tồn tại")
         actual_version = current["version"]
         raise VersionConflictError(
-            f"角色关系 '{relation_id}' 版本冲突：expected={expected_version}, actual={actual_version}"
+            f"Quan hệ nhân vật '{relation_id}' 版本冲突：expected={expected_version}, actual={actual_version}"
         )
 
     async def update_relation(
@@ -400,7 +400,7 @@ class CharacterRelationRepository(BaseRepository):
                 session=session,
             )
         except pymongo.errors.DuplicateKeyError as exc:
-            raise DuplicateKeyError("角色关系活动语义边已存在") from exc
+            raise DuplicateKeyError("Cạnh ngữ nghĩa đang hoạt động của quan hệ nhân vật đã tồn tại") from exc
         if updated is None:
             await self._raise_cas_miss(
                 novel_id,
@@ -507,7 +507,7 @@ class CharacterRelationRepository(BaseRepository):
                 session=session,
             )
         except pymongo.errors.DuplicateKeyError as exc:
-            raise DuplicateKeyError("角色关系恢复后将与现有活动语义边冲突") from exc
+            raise DuplicateKeyError("Quan hệ nhân vật sau khôi phục sẽ xung đột với cạnh ngữ nghĩa đang hoạt động hiện có") from exc
         if restored is None:
             await self._raise_cas_miss(
                 novel_id,

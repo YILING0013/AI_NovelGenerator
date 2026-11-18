@@ -28,12 +28,12 @@ def normalize_world_rule_name(value: str) -> tuple[str, str]:
         NFKC 清理后的显示名及其 casefold 唯一键。
     """
     if not isinstance(value, str):
-        raise TypeError("规则名称必须是字符串")
+        raise TypeError("Tên quy tắc phải là chuỗi")
     display_name = unicodedata.normalize("NFKC", value).strip()
     if not display_name:
-        raise ValueError("规则名称不能为空")
+        raise ValueError("Tên quy tắc không được để trống")
     if len(display_name) > 80:
-        raise ValueError("规则名称不能超过 80 个字符")
+        raise ValueError("Tên quy tắc không được quá 80 ký tự")
     return display_name, display_name.casefold()
 
 
@@ -47,12 +47,12 @@ def normalize_world_rule_category(value: str) -> str:
         NFKC 清理后的非空分类。
     """
     if not isinstance(value, str):
-        raise TypeError("规则分类必须是字符串")
+        raise TypeError("Phân loại quy tắc phải là chuỗi")
     category = unicodedata.normalize("NFKC", value).strip()
     if not category:
-        raise ValueError("规则分类不能为空")
+        raise ValueError("Phân loại quy tắc không được để trống")
     if len(category) > 40:
-        raise ValueError("规则分类不能超过 40 个字符")
+        raise ValueError("Phân loại quy tắc không được quá 40 ký tự")
     return category
 
 
@@ -80,9 +80,9 @@ class WorldRuleRepository(BaseRepository):
         """
         prepared = ensure_initial_version(data)
         if not prepared.get("novel_id") or not prepared.get("rule_id"):
-            raise ValueError("世界规则缺少 novel_id 或 rule_id")
+            raise ValueError("Quy tắc thế giới thiếu novel_id hoặc rule_id")
         if not str(prepared.get("normalized_name") or "").strip():
-            raise ValueError("世界规则缺少 normalized_name")
+            raise ValueError("Quy tắc thế giới thiếu normalized_name")
 
         now = get_utc_now()
         prepared.update(
@@ -99,7 +99,7 @@ class WorldRuleRepository(BaseRepository):
         try:
             await self.collection.insert_one(prepared, session=session)
         except PyMongoDuplicateKeyError as exc:
-            raise DuplicateKeyError("世界规则 ID、活动规范名、分类顺序或创建幂等键冲突") from exc
+            raise DuplicateKeyError("Xung đột ID quy tắc thế giới, tên chuẩn hóa đang hoạt động, thứ tự phân loại hoặc khóa idempotent tạo") from exc
         return prepared
 
     async def find_by_creation_idempotency(
@@ -314,7 +314,7 @@ class WorldRuleRepository(BaseRepository):
             session=session,
         )
         if rule is None:
-            raise NotFoundError(f"规则 {rule_id} 不存在于小说 {novel_id}")
+            raise NotFoundError(f"Quy tắc {rule_id} không tồn tại trong tiểu thuyết {novel_id}")
         return rule
 
     async def get_deleted_world_rule(
@@ -344,7 +344,7 @@ class WorldRuleRepository(BaseRepository):
             session=session,
         )
         if rule is None:
-            raise NotFoundError(f"规则 {rule_id} 不存在于小说 {novel_id} 的回收站")
+            raise NotFoundError(f"Quy tắc {rule_id} không tồn tại trong tiểu thuyết {novel_id} (trong thùng rác)")
         return rule
 
     async def get_category_rules(
@@ -437,7 +437,7 @@ class WorldRuleRepository(BaseRepository):
                 session=session,
             )
         except PyMongoDuplicateKeyError as exc:
-            raise DuplicateKeyError("世界规则活动规范名或分类顺序冲突") from exc
+            raise DuplicateKeyError("Xung đột tên chuẩn hóa đang hoạt động hoặc thứ tự phân loại của quy tắc thế giới") from exc
 
     async def restore_snapshot_exact(
         self,
@@ -468,9 +468,9 @@ class WorldRuleRepository(BaseRepository):
         try:
             result = await self.collection.replace_one(query, dict(snapshot))
         except PyMongoDuplicateKeyError as exc:
-            raise RuntimeError("standalone 世界规则补偿发生唯一键冲突，未覆盖并发数据") from exc
+            raise RuntimeError("Bù đắp quy tắc thế giới standalone xảy ra xung đột khóa duy nhất, không ghi đè dữ liệu đồng thời") from exc
         if result.matched_count != 1:
-            raise RuntimeError("standalone 世界规则补偿 CAS 失败，未覆盖并发数据")
+            raise RuntimeError("Bù đắp quy tắc thế giới standalone thất bại CAS, không ghi đè dữ liệu đồng thời")
 
     async def hard_delete_world_rule(
         self,

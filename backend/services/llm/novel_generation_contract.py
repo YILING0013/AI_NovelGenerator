@@ -119,7 +119,7 @@ class NovelCreateFieldsV1(StrictRequestModel):
     def validate_unique_tags(cls, value: list[str]) -> list[str]:
         """拒绝去除空白后重复的小说标签。"""
         if len(value) != len(set(value)):
-            raise ValueError("tags 不能包含重复项")
+            raise ValueError("tags không được chứa mục trùng lặp")
         return value
 
 
@@ -188,25 +188,25 @@ class NovelFieldRewriteCandidateV1(StrictRequestModel):
         """验证标签、普通文本和叙事视角的目标字段规则。"""
         if self.target_field == "tags":
             if not isinstance(self.value, list):
-                raise ValueError("tags 改写结果必须为字符串数组")
+                raise ValueError("Kết quả viết lại tags phải là mảng chuỗi")
             tags = [item.strip() for item in self.value if item.strip()]
             if not tags or len(tags) != len(set(tags)) or len(tags) > 30:
-                raise ValueError("tags 改写结果必须为 1 到 30 个不重复非空标签")
+                raise ValueError("Kết quả viết lại tags phải là 1 đến 30 nhãn không rỗng, không trùng")
             if any(len(item) > 50 for item in tags):
-                raise ValueError("tags 单项不能超过 50 个字符")
+                raise ValueError("Mỗi mục tags không được vượt quá 50 ký tự")
             self.value = tags
             return self
 
         if not isinstance(self.value, str) or not self.value.strip():
-            raise ValueError("非 tags 字段的改写结果必须为非空字符串")
+            raise ValueError("Kết quả viết lại của trường không phải tags phải là chuỗi không rỗng")
         value = self.value.strip()
         if len(value) > NOVEL_REWRITE_TEXT_LIMITS[self.target_field]:
-            raise ValueError("字段改写结果超过目标字段长度限制")
+            raise ValueError("Kết quả viết lại trường vượt giới hạn độ dài của trường đích")
         if (
             self.target_field == "narrative_pov"
             and value not in NOVEL_NARRATIVE_POV_VALUES
         ):
-            raise ValueError("叙事视角改写结果不在允许枚举中")
+            raise ValueError("Kết quả viết lại góc nhìn kể chuyện không nằm trong các giá trị liệt kê cho phép")
         self.value = value
         return self
 
@@ -319,12 +319,12 @@ def canonicalize_novel_rewrite_input(
     generation_input = extract_novel_rewrite_generation_input(value)
     if novel is None:
         if generation_input.novel_id is not None:
-            raise ValueError("保存态字段改写必须重读正式小说")
+            raise ValueError("Viết lại trường ở trạng thái lưu phải đọc lại tiểu thuyết chính thức")
         return generation_input
 
     novel_id = str(novel.get("_id") or novel.get("id") or "")
     if generation_input.novel_id != novel_id:
-        raise ValueError("字段改写 generation_input 与正式小说不匹配")
+        raise ValueError("generation_input của việc viết lại trường không khớp với tiểu thuyết chính thức")
     context = {
         field: novel.get(field)
         for field in NOVEL_REWRITE_CONTEXT_FIELDS

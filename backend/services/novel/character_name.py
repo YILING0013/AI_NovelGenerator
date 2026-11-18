@@ -20,10 +20,10 @@ def normalize_character_name(name: str) -> tuple[str, str]:
     display_name = unicodedata.normalize("NFKC", str(name or "")).strip()
     normalized_name = display_name.casefold()
     if not normalized_name:
-        raise ValueError("角色名称不能为空")
+        raise ValueError("Tên nhân vật không được để trống")
     if len(display_name) > 80:
         # Schema 校验发生在 NFKC 之前；兼容字符展开后必须再次执行持久化长度约束。
-        raise ValueError("角色名称经 Unicode NFKC 规范化后不能超过 80 个字符")
+        raise ValueError("Tên nhân vật sau khi chuẩn hoá Unicode NFKC không được vượt quá 80 ký tự")
     return display_name, normalized_name
 
 

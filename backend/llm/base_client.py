@@ -279,7 +279,7 @@ class BaseLLMClient(ABC):
         """
         for key, expected_value in expected_arguments.items():
             if actual_arguments.get(key) != expected_value:
-                raise ValueError(f"工具参数不匹配: {key}")
+                raise ValueError(f"Tham số công cụ không khớp: {key}")
 
     def _validate_probe_final_text(self, content: str, expected_final_text: str) -> None:
         """校验 Function Calling 二轮结果是否包含约定文本。
@@ -295,7 +295,7 @@ class BaseLLMClient(ABC):
             ValueError: 回复为空或未包含约定文本时抛出。
         """
         if expected_final_text not in content:
-            raise ValueError("工具结果二轮回复未包含约定文本")
+            raise ValueError("Phản hồi vòng hai của kết quả công cụ không chứa văn bản đã thỏa thuận")
 
     @abstractmethod
     async def text_generate(self, request: LLMRequest) -> LLMResponse:
@@ -334,4 +334,4 @@ class BaseLLMClient(ABC):
         Returns:
             本轮调用和仅供服务端续接的历史。
         """
-        raise NotImplementedError("当前模型客户端不支持正式工具调用")
+        raise NotImplementedError("Client mô hình hiện tại không hỗ trợ gọi công cụ chính thức")

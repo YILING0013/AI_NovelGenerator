@@ -208,7 +208,7 @@ async def load_volume_planning_context(
         if target_index is None:
             raise DomainApiError(
                 "VOLUME_NOT_FOUND",
-                "目标卷不存在于当前小说或不在活动集合中",
+                "Quyển mục tiêu không tồn tại trong tiểu thuyết hiện tại hoặc không nằm trong tập đang hoạt động",
                 status_code=404,
             )
         volumes = all_volumes[
@@ -248,7 +248,7 @@ async def load_volume_planning_context(
     if len(source_refs) > MAX_CANDIDATE_SOURCE_REFS:
         raise DomainApiError(
             "VOLUME_PLANNING_SOURCE_BUDGET_EXCEEDED",
-            "卷规划正式来源超过 2000 项，禁止静默截断",
+            "Nguồn chính thức của kế hoạch quyển vượt 2000 mục, cấm cắt ngắn âm thầm",
             status_code=422,
         )
 
@@ -268,7 +268,7 @@ async def load_volume_planning_context(
             "reading_intent": "replan", "reading_version": 1,
         }, session=session)
         if facts["position"] != position:
-            raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "卷顺序在读取期间已变化，请重新读取", status_code=409)
+            raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "Thứ tự quyển đã thay đổi trong khi đọc, hãy đọc lại", status_code=409)
         fact_reads = facts["reads"]
         character_facts = {row["character_id"]: row for row in facts["characters"]}
         relation_facts, relation_reads, relation_position = await read_character_relation_context(
@@ -278,7 +278,7 @@ async def load_volume_planning_context(
             }, session=session,
         )
         if relation_position != position:
-            raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "卷顺序在读取期间已变化，请重新读取", status_code=409)
+            raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "Thứ tự quyển đã thay đổi trong khi đọc, hãy đọc lại", status_code=409)
         fact_reads = [*fact_reads, *relation_reads]
         from backend.services.novel.faction_fact_service import read_faction_facts
         faction_result = await read_faction_facts(novel_id, sorted(faction_ids), {
@@ -286,10 +286,10 @@ async def load_volume_planning_context(
             "reading_intent": "replan", "reading_version": 1,
         }, session=session)
         if faction_result["position"] != position:
-            raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "卷顺序在读取期间已变化，请重新读取", status_code=409)
+            raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "Thứ tự quyển đã thay đổi trong khi đọc, hãy đọc lại", status_code=409)
         faction_facts = {row["faction_id"]: row for row in faction_result["factions"]}
         if faction_ids != faction_facts.keys():
-            raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "势力在读取期间已变化，请重新读取", status_code=409)
+            raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "Thế lực đã thay đổi trong khi đọc, hãy đọc lại", status_code=409)
         fact_reads.extend(faction_result["reads"])
 
     def project(document: dict[str, Any], kind: str, fields: Sequence[str]) -> dict[str, Any]:
@@ -298,7 +298,7 @@ async def load_volume_planning_context(
             if kind == "character":
                 facts = character_facts.get(document["character_id"])
                 if facts is None:
-                    raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "人物在读取期间已变化，请重新读取", status_code=409)
+                    raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "Nhân vật đã thay đổi trong khi đọc, hãy đọc lại", status_code=409)
                 result = character_position_content(document, facts)
             elif kind == "character_relation":
                 result = character_relation_position_content(document, relation_facts[document["relation_id"]])

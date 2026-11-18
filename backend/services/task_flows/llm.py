@@ -109,7 +109,7 @@ class FlowModels:
                 if not node.config.get("provider_input"):
                     provider_config = self._provider(provider)
                     if node.type == "agent" and not provider_config.supports_function_calling:
-                        raise DomainApiError("AGENT_PROVIDER_UNSUPPORTED", f"节点 {node.label or node.id} 的模型服务不支持 Function Calling，请修改模型设置", status_code=422)
+                        raise DomainApiError("AGENT_PROVIDER_UNSUPPORTED", f"Nút {node.label or node.id} dịch vụ mô hình không hỗ trợ Function Calling, hãy sửa cài đặt mô hình", status_code=422)
                 options = {**self.parameters, **node.config.get("parameters", {})}
                 if node.config.get("system_prompt") is not None:
                     options["system_prompt"] = node.config["system_prompt"]
@@ -128,7 +128,7 @@ class FlowModels:
     def _provider(self, name: str):
         value = self.config.providers.get(name)
         if value is None or not value.enabled or not value.api_key:
-            raise DomainApiError("LLM_PROVIDER_UNAVAILABLE", f"模型服务 {name} 不可用，请检查节点和模型设置", status_code=503)
+            raise DomainApiError("LLM_PROVIDER_UNAVAILABLE", f"Dịch vụ mô hình {name} không khả dụng, hãy kiểm tra nút và cài đặt mô hình", status_code=503)
         return value
 
     def resolve_provider(self, node: Node, inputs: dict[str, Any]):
@@ -175,11 +175,11 @@ class FlowModels:
         )
         prompt = (
             instructions
-            + "返回符合所附 JSON Schema 的完整 JSON，不要只返回补丁、Markdown 代码块或解释。\n\n"
-            f"校验错误：{message}\n\n"
-            f"业务输入及参考资料：\n{json.dumps(context, ensure_ascii=False)}\n\n"
-            f"待修复响应：\n{json.dumps(candidate, ensure_ascii=False)}\n\n"
-            f"JSON Schema：\n{json.dumps(schema.model_json_schema(), ensure_ascii=False)}"
+            + "Hãy trả về JSON đầy đủ đúng theo JSON Schema đính kèm, không chỉ trả bản vá, khối code Markdown hay lời giải thích.\n\n"
+            f"Lỗi kiểm tra: {message}\n\n"
+            f"Đầu vào nghiệp vụ và tư liệu tham khảo:\n{json.dumps(context, ensure_ascii=False)}\n\n"
+            f"Phản hồi cần sửa:\n{json.dumps(candidate, ensure_ascii=False)}\n\n"
+            f"JSON Schema:\n{json.dumps(schema.model_json_schema(), ensure_ascii=False)}"
         )
         options = {key: value for key, value in self.parameters.items() if key != "system_prompt"}
         request = LLMRequest(messages=[{"role": "user", "content": prompt}], json_output_schema=schema.model_json_schema(), **options)
@@ -192,9 +192,9 @@ class FlowModels:
         try:
             result = json.loads(response.content)
         except ValueError as exc:
-            raise LLMSchemaError("修复响应不是合法 JSON，请再次修复") from exc
+            raise LLMSchemaError("Phản hồi sửa không phải JSON hợp lệ, hãy sửa lại lần nữa") from exc
         if not isinstance(result, dict):
-            raise LLMSchemaError("修复响应必须是 JSON 对象，请再次修复")
+            raise LLMSchemaError("Phản hồi sửa lỗi phải là đối tượng JSON, hãy sửa lại lần nữa")
         # 结构和业务规则统一在末端复验，失败时也保留本次完整响应。
         yield {"status": "done", "candidate": result}
 
@@ -223,7 +223,7 @@ class FlowModels:
             fingerprint = canonical_hash({"request": request.model_dump(mode="json"), "provider": provider,
                 "stream": stream, "native": native, "schema": schema.model_json_schema()})
             if checkpoint.get("request_fingerprint", fingerprint) != fingerprint:
-                raise DomainApiError("AGENT_CONTINUATION_CHANGED", "未完成模型调用的请求已变化，请重新生成", status_code=409)
+                raise DomainApiError("AGENT_CONTINUATION_CHANGED", "Yêu cầu chưa hoàn tất lời gọi mô hình đã thay đổi, hãy sinh lại", status_code=409)
             checkpoint["request_fingerprint"] = fingerprint
         if checkpoint is None or "raw" not in checkpoint:
             client = create_llm_client_from_config(config, provider_name=provider, timeout_seconds=cfg.get("timeout_seconds"))
@@ -266,7 +266,7 @@ class FlowModels:
         # 空结果没有可修正的内容，不能交给审校模型重新编造。
         if not raw.strip():
             raise DomainApiError(
-                "LLM_RESULT_EMPTY", "上游未返回生成结果，请重试或更换模型服务", status_code=502,
+                "LLM_RESULT_EMPTY", "Luồng trên chưa trả về kết quả sinh, hãy thử lại hoặc đổi dịch vụ mô hình", status_code=502,
             )
         if not structured:
             output_port = cfg.get("output_port", next(iter(node.outputs)))
@@ -277,12 +277,12 @@ class FlowModels:
         try:
             result = schema.model_validate_json(raw)
         except (ValidationError, ValueError) as exc:
-            log_parse_error(exc, content=raw, schema=schema, message="节点输出校验失败" if native or self.task == CHAPTER_WORLD_RULES_CHECK_TASK else "节点输出校验失败，准备格式审校")
+            log_parse_error(exc, content=raw, schema=schema, message="Đầu ra của nút không vượt qua kiểm tra" if native or self.task == CHAPTER_WORLD_RULES_CHECK_TASK else "Kiểm tra đầu ra của nút thất bại, chuẩn bị hiệu đính định dạng")
             if native:
-                raise LLMSchemaError("Provider 原生结构化结果不符合节点输出") from exc
+                raise LLMSchemaError("Kết quả có cấu trúc gốc của Provider không khớp đầu ra của nút") from exc
             if self.task == CHAPTER_WORLD_RULES_CHECK_TASK:
                 # 缺失或非法的疑点不能由另一次模型调用补成“没有疑点”。
-                raise LLMSchemaError("世界规则检查结果格式不正确，请重新检查") from exc
+                raise LLMSchemaError("Định dạng kết quả kiểm tra quy tắc thế giới không đúng, hãy kiểm tra lại") from exc
             # 沿用一次格式审校，使用请求开始时的配置，取消与错误直接向外传播。
             reviewer_name = resolve_format_review_provider(self.config)
             logger.info("[格式审校开始] provider=%s", reviewer_name)
@@ -292,7 +292,7 @@ class FlowModels:
                 fingerprint = canonical_hash({"request": review_request.model_dump(mode="json"), "provider": reviewer_name,
                     "schema": schema.model_json_schema()})
                 if checkpoint.get("review_request_fingerprint", fingerprint) != fingerprint:
-                    raise DomainApiError("AGENT_CONTINUATION_CHANGED", "未完成格式审校的请求已变化，请重新生成", status_code=409)
+                    raise DomainApiError("AGENT_CONTINUATION_CHANGED", "Yêu cầu chưa hoàn tất hiệu đính định dạng đã thay đổi, hãy sinh lại", status_code=409)
                 checkpoint["review_request_fingerprint"] = fingerprint
             if self.before_send is not None:
                 await self.before_send()
@@ -316,8 +316,8 @@ class FlowModels:
             try:
                 result = schema.model_validate_json(reviewed_raw)
             except (ValidationError, ValueError) as review_error:
-                log_parse_error(review_error, content=reviewed_raw, schema=schema, message="格式审校输出校验失败")
-                raise LLMSchemaError("格式审校结果仍不符合节点输出") from review_error
+                log_parse_error(review_error, content=reviewed_raw, schema=schema, message="Đầu ra hiệu đính định dạng không vượt qua kiểm tra")
+                raise LLMSchemaError("Kết quả hiệu đính định dạng vẫn không khớp với đầu ra của nút") from review_error
             logger.info("[格式审校完成] provider=%s", reviewer_name)
             yield {"status": "progress", "review_state": "done", "message": "输出格式已修正"}
         yield {"status": "done", "outputs": result.model_dump(mode="json"), "usage": usage.model_dump(), "model_calls": model_calls, "usage_complete": usage_complete}

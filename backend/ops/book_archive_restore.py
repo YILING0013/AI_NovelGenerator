@@ -100,7 +100,7 @@ async def _verify_restored(database, raw_documents, receipt_bytes, cover_content
     if set(catalog) != {*index_catalog, RESTORE_COLLECTION} or any(
         entry["type"] != "collection" or entry.get("options", {}) for entry in catalog.values()
     ):
-        raise ArchiveRestoreError("RESTORED_DATA_CHANGED", "verify_catalog", "目标集合、视图或集合选项与恢复结果不同")
+        raise ArchiveRestoreError("RESTORED_DATA_CHANGED", "verify_catalog", "Collection, view hoặc tùy chọn collection đích khác với kết quả khôi phục")
     raw_database = database.with_options(
         codec_options=RAW_CODEC, read_concern=ReadConcern("majority"),
         read_preference=ReadPreference.PRIMARY,
@@ -111,7 +111,7 @@ async def _verify_restored(database, raw_documents, receipt_bytes, cover_content
         async with cursor:
             actual = sorted([bytes(document.raw) async for document in cursor])
         if actual != sorted(expected):
-            raise ArchiveRestoreError("RESTORED_DATA_CHANGED", "verify_documents", "目标原始文档与已验证备份不同")
+            raise ArchiveRestoreError("RESTORED_DATA_CHANGED", "verify_documents", "Tài liệu gốc của đích khác với bản sao lưu đã xác minh")
         wanted = {"_id_": {"name": "_id_", "key": [("_id", 1)], "unique": False}}
         if name != RESTORE_COLLECTION:
             for model in index_catalog[name]:
@@ -130,7 +130,7 @@ async def _verify_restored(database, raw_documents, receipt_bytes, cover_content
                 definition.setdefault("unique", False)
                 actual_indexes[definition["name"]] = definition
         if actual_indexes != wanted:
-            raise ArchiveRestoreError("RESTORED_DATA_CHANGED", "verify_indexes", "目标索引名称、顺序或选项与本版恢复目录不同")
+            raise ArchiveRestoreError("RESTORED_DATA_CHANGED", "verify_indexes", "Tên, thứ tự hoặc tùy chọn chỉ mục của đích khác với danh mục khôi phục của phiên bản này")
     verify_cover(cover_content, cover_entry, covers_dir=covers_dir)
 
 
@@ -168,13 +168,13 @@ async def restore_empty(
         try:
             if (not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", target_uri_env)
                     or not os.environ.get(target_uri_env, "").strip()):
-                raise ArchiveRestoreError("INVALID_INPUT", "target_uri_env", "必须指定有值的连接环境变量名")
+                raise ArchiveRestoreError("INVALID_INPUT", "target_uri_env", "Phải chỉ định tên biến môi trường kết nối có giá trị")
             if (not target_database or len(target_database.encode("utf-8")) > 63
                     or re.search(r'[/\\. "$*<>:|?\s\x00]', target_database)
                     or target_database.lower() in {"admin", "local", "config"}):
-                raise ArchiveRestoreError("INVALID_INPUT", "target_database", "必须指定有效目标库名，不能使用系统库")
+                raise ArchiveRestoreError("INVALID_INPUT", "target_database", "Phải chỉ định tên database đích hợp lệ, không được dùng database hệ thống")
             if confirm_isolated_target != target_database:
-                raise ArchiveRestoreError("INVALID_INPUT", "confirm_isolated_target", "确认值必须精确等于目标库名，并由操作者保证独占目标库和封面目录")
+                raise ArchiveRestoreError("INVALID_INPUT", "confirm_isolated_target", "Giá trị xác nhận phải bằng đúng tên database đích, và người thao tác phải bảo đảm database đích cùng danh mục bìa được dùng riêng")
             report["target_database"] = target_database
             location = "archive"
             payload = load_verified_archive(archive_path)
@@ -182,7 +182,7 @@ async def restore_empty(
             report["payload_identity"] = payload.payload_identity
             # Mongo 写入必将顶层 _id 放首位；不允许“恢复成功”却悄悄改变包中顺序。
             if any(next(iter(doc)) != "_id" for rows in payload.documents.values() for doc in rows):
-                raise ArchiveRestoreError("UNSUPPORTED_DOCUMENT_ORDER", "archive", "MongoDB 会移动顶层 _id；本版只接受 _id 已在首位的文档，不改写包内字段顺序")
+                raise ArchiveRestoreError("UNSUPPORTED_DOCUMENT_ORDER", "archive", "MongoDB sẽ di chuyển _id ở cấp gốc nhất; phiên bản này chỉ chấp nhận tài liệu có _id đã ở vị trí đầu, không viết lại thứ tự trường trong gói")
             # 两条独立历史格式按原目录恢复；不为 v11 补建人物批次集合。
             restore_indexes = {FACTION_FACT_FORMAT_VERSION: V11_BOOK_INDEXES,
                                CHARACTER_BATCH_FORMAT_VERSION: V12_BOOK_INDEXES,
@@ -223,7 +223,7 @@ async def restore_empty(
             if (hello.get("maxWireVersion", 0) < 13 or hello.get("logicalSessionTimeoutMinutes") is None
                     or not hello.get("setName") or hello.get("msg") == "isdbgrid"
                     or hello.get("isWritablePrimary") is not True):
-                raise ArchiveRestoreError("UNSUPPORTED_TARGET", "target", "只支持 MongoDB 5+ 且支持会话和事务内建集合、索引的副本集")
+                raise ArchiveRestoreError("UNSUPPORTED_TARGET", "target", "Chỉ hỗ trợ MongoDB 5+ và replica set có khả năng tạo collection, chỉ mục trong session và transaction")
             database = client.get_database(target_database, read_preference=ReadPreference.PRIMARY)
             location = "catalog"
             catalog = await _catalog(database)
@@ -244,7 +244,7 @@ async def restore_empty(
                     candidates.append((BSON.encode(old_receipt), V4_BOOK_INDEXES))
                 verified_receipt, verified_indexes = next((candidate for candidate in candidates if candidate[0] == observed), candidates[0])
                 if observed != verified_receipt:
-                    raise ArchiveRestoreError("TARGET_NOT_FRESH", location, "目标非全新，或恢复回执与本次包和版本不同；不会修复或覆盖")
+                    raise ArchiveRestoreError("TARGET_NOT_FRESH", location, "Đích không hoàn toàn mới, hoặc biên nhận khôi phục khác gói và phiên bản lần này; hệ thống sẽ không sửa chữa hay ghi đè")
                 report["database_state"] = "committed"
                 report["verification_state"] = "failed"
                 await _verify_restored(database, raw_documents, verified_receipt, cover_content, cover_entry, target_covers_dir, index_catalog=verified_indexes)
@@ -258,7 +258,7 @@ async def restore_empty(
                 # 目录观察不是数据库锁。操作者必须保证没有任何外部写入者。
                 location = "catalog"
                 if await _catalog(database):
-                    raise ArchiveRestoreError("TARGET_NOT_FRESH", location, "发布封面后目标目录发生变化，停止数据库写入")
+                    raise ArchiveRestoreError("TARGET_NOT_FRESH", location, "Danh mục đích thay đổi sau khi phát hành danh mục bìa, dừng ghi database")
                 session = client.start_session(causal_consistency=False)
                 await session.start_transaction(
                     read_concern=ReadConcern("local"), write_concern=WriteConcern("majority"),
@@ -274,7 +274,7 @@ async def restore_empty(
                 location = "transaction_insert"
                 for name in raw_documents:
                     if await database[name].find_one({}, session=session) is not None:
-                        raise ArchiveRestoreError("TARGET_NOT_FRESH", location, "事务内目标集合已有文档，停止恢复")
+                        raise ArchiveRestoreError("TARGET_NOT_FRESH", location, "Collection đích đã có tài liệu trong transaction, dừng khôi phục")
                     if raw_documents[name]:
                         await database[name].insert_many(
                             [RawBSONDocument(raw) for raw in raw_documents[name]], ordered=True, session=session,
@@ -312,14 +312,14 @@ async def restore_empty(
             elif isinstance(exc, ArchiveValidationError):
                 error = ArchiveRestoreError("INVALID_ARCHIVE", exc.location, exc.message)
             elif isinstance(exc, asyncio.CancelledError):
-                error = ArchiveRestoreError("CANCELLED", location, "恢复被取消，请根据提交状态只读核对结果")
+                error = ArchiveRestoreError("CANCELLED", location, "Việc khôi phục bị hủy, hãy đối chiếu kết quả ở chế độ chỉ đọc theo trạng thái commit")
             elif isinstance(exc, Warning):
-                error = ArchiveRestoreError("DRIVER_WARNING", location, "目标连接选项或驱动操作产生警告，已停止并保留已知状态")
+                error = ArchiveRestoreError("DRIVER_WARNING", location, "Tùy chọn kết nối đích hoặc thao tác driver sinh cảnh báo, đã dừng và giữ nguyên trạng thái đã biết")
             elif location == "transaction_ddl" and isinstance(exc, OperationFailure) and exc.code == 263:
-                error = ArchiveRestoreError("UNSUPPORTED_TARGET", location, "目标不支持事务内创建集合或索引，不能执行本版恢复")
+                error = ArchiveRestoreError("UNSUPPORTED_TARGET", location, "Đích không hỗ trợ tạo collection hoặc chỉ mục trong transaction, không thể chạy khôi phục của phiên bản này")
             else:
                 code = "COMMIT_UNKNOWN" if report["database_state"] == "commit_unknown" else "RESTORE_FAILED"
-                error = ArchiveRestoreError(code, location, "目标操作失败；不会降级普通写入、拆分提交或重跑写入流程")
+                error = ArchiveRestoreError(code, location, "Thao tác trên đích thất bại; sẽ không giáng cấp sang ghi thường, tách commit hay chạy lại luồng ghi")
             if session is not None and not commit_entered:
                 try:
                     await session.abort_transaction()
@@ -355,7 +355,7 @@ async def restore_empty(
                 except (Exception, asyncio.CancelledError):
                     # 保留原失败及未知状态，不以读取失败推断事务结果。
                     if report["database_state"] == "committed" and error.code != "CANCELLED":
-                        error = ArchiveRestoreError("VERIFICATION_FAILED", "verification", "已确认数据库提交，但完整只读核验失败")
+                        error = ArchiveRestoreError("VERIFICATION_FAILED", "verification", "Đã xác nhận commit database, nhưng xác minh đầy đủ ở chế độ chỉ đọc thất bại")
         finally:
             # 未知提交时不请求 abort；关闭客户端释放本地资源，重启后凭回执只读识别。
             for stage, resource in (("session_close", session), ("client_close", client)):
@@ -369,7 +369,7 @@ async def restore_empty(
                 except (Exception, asyncio.CancelledError):
                     report.setdefault("cleanup_errors", []).append(stage)
                     if error is None:
-                        error = ArchiveRestoreError("CLOSE_FAILED", stage, "资源关闭失败；已知提交和封面状态保持不变")
+                        error = ArchiveRestoreError("CLOSE_FAILED", stage, "Đóng tài nguyên thất bại; trạng thái commit và danh mục bìa đã biết vẫn giữ nguyên")
     if error is not None:
         report["status"] = "restore_failed"
         error.report = report

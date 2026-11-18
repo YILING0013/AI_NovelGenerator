@@ -126,15 +126,15 @@ def _validate_bson_safe_extra(value: dict[str, JsonValue]) -> dict[str, JsonValu
         elif isinstance(current, list):
             stack.extend(current)
         elif isinstance(current, int) and not -(2**63) <= current <= 2**63 - 1:
-            raise ValueError("extra 中的整数必须位于 BSON int64 范围内")
+            raise ValueError("Số nguyên trong extra phải nằm trong dải BSON int64")
         elif isinstance(current, float) and not math.isfinite(current):
-            raise ValueError("extra 中的浮点数必须是有限值")
+            raise ValueError("Số thực trong extra phải là giá trị hữu hạn")
     try:
         encoded_size = len(BSON.encode({"extra": value}))
     except Exception as exc:
-        raise ValueError("extra 无法安全编码为 BSON") from exc
+        raise ValueError("Không thể mã hóa an toàn extra sang BSON") from exc
     if encoded_size > _EXTRA_BSON_MAX_BYTES:
-        raise ValueError("extra 的 BSON 编码不能超过 1 MiB")
+        raise ValueError("Mã hóa BSON của extra không được vượt 1 MiB")
     return value
 
 
@@ -215,7 +215,7 @@ class CharacterCreateRequestV1(StrictSchemaModel):
             ValueError: 任一元素长度超过 80 字符时抛出。
         """
         if any(len(item) > 80 for item in value):
-            raise ValueError("角色列表字段的每个元素长度必须为 1 至 80 字符")
+            raise ValueError("Mỗi phần tử của trường danh sách nhân vật phải dài từ 1 đến 80 ký tự")
         return value
 
 
@@ -268,10 +268,10 @@ class CharacterUpdateRequestV1(StrictSchemaModel):
             key: item for key, item in value.items() if key != "expected_version"
         }
         if not editable_items:
-            raise ValueError("角色更新至少需要提供一个可编辑字段")
+            raise ValueError("Cập nhật nhân vật cần cung cấp ít nhất một trường có thể chỉnh sửa")
         null_fields = sorted(key for key, item in editable_items.items() if item is None)
         if null_fields:
-            raise ValueError(f"角色更新字段不能为 null: {', '.join(null_fields)}")
+            raise ValueError(f"Trường cập nhật nhân vật không được là null: {', '.join(null_fields)}")
         return value
 
     @field_validator(
@@ -306,7 +306,7 @@ class CharacterUpdateRequestV1(StrictSchemaModel):
             校验通过的原数组或 None。
         """
         if value is not None and any(len(item) > 80 for item in value):
-            raise ValueError("角色列表字段的每个元素长度必须为 1 至 80 字符")
+            raise ValueError("Mỗi phần tử của trường danh sách nhân vật phải dài từ 1 đến 80 ký tự")
         return value
 
     @field_validator("extra")
@@ -422,7 +422,7 @@ class CharacterResponseV1(StrictSchemaModel):
             ValueError: 任一业务数组元素超过 80 字符时抛出。
         """
         if any(len(item) > 80 for item in value):
-            raise ValueError("角色列表字段的每个元素长度必须为 1 至 80 字符")
+            raise ValueError("Mỗi phần tử của trường danh sách nhân vật phải dài từ 1 đến 80 ký tự")
         return value
 
 
@@ -464,46 +464,46 @@ class CoreCharacterCandidateV1(StrictSchemaModel):
 
     character_ref: str = Field(
         pattern=_CHARACTER_REF_PATTERN,
-        description="仅在本次候选中使用的稳定引用，如 character_01。",
+        description="Tham chiếu ổn định chỉ dùng trong danh sách ứng viên lần này, ví dụ character_01.",
     )
-    name: str = Field(min_length=1, max_length=80, description="角色正式显示名。")
-    aliases: list[str] = Field(max_length=10, description="角色别名数组，可为空数组。")
-    role_type: CharacterRoleType = Field(description="角色在全书叙事中的类型。")
-    importance_level: CharacterImportanceLevel = Field(description="角色的重要程度。")
-    gender: str = Field(min_length=1, max_length=80, description="角色性别描述。")
-    age_group: str = Field(min_length=1, max_length=80, description="角色年龄阶段。")
-    race: str = Field(min_length=1, max_length=80, description="角色种族或物种。")
-    identity: str = Field(min_length=1, max_length=500, description="角色身份与社会位置。")
-    appearance: str = Field(min_length=1, max_length=1000, description="角色外貌特征。")
-    personality: str = Field(min_length=1, max_length=1000, description="角色核心性格。")
-    core_desire: str = Field(min_length=1, max_length=1000, description="角色核心欲望。")
-    core_fear: str = Field(min_length=1, max_length=1000, description="角色核心恐惧。")
-    strengths: list[str] = Field(max_length=12, description="角色优势数组，可为空数组。")
-    weaknesses: list[str] = Field(max_length=12, description="角色弱点数组，可为空数组。")
-    abilities: list[str] = Field(max_length=12, description="角色能力数组，可为空数组。")
+    name: str = Field(min_length=1, max_length=80, description="Tên hiển thị chính thức của nhân vật.")
+    aliases: list[str] = Field(max_length=10, description="Mảng biệt hiệu của nhân vật, có thể là mảng rỗng.")
+    role_type: CharacterRoleType = Field(description="Kiểu nhân vật trong mạch tự sự của toàn sách.")
+    importance_level: CharacterImportanceLevel = Field(description="Mức độ quan trọng của nhân vật.")
+    gender: str = Field(min_length=1, max_length=80, description="Mô tả giới tính của nhân vật.")
+    age_group: str = Field(min_length=1, max_length=80, description="Giai đoạn tuổi của nhân vật.")
+    race: str = Field(min_length=1, max_length=80, description="Chủng tộc hoặc loài của nhân vật.")
+    identity: str = Field(min_length=1, max_length=500, description="Thân phận và vị thế xã hội của nhân vật.")
+    appearance: str = Field(min_length=1, max_length=1000, description="Đặc điểm ngoại hình của nhân vật.")
+    personality: str = Field(min_length=1, max_length=1000, description="Tính cách cốt lõi của nhân vật.")
+    core_desire: str = Field(min_length=1, max_length=1000, description="Khao khát cốt lõi của nhân vật.")
+    core_fear: str = Field(min_length=1, max_length=1000, description="Nỗi sợ cốt lõi của nhân vật.")
+    strengths: list[str] = Field(max_length=12, description="Mảng ưu điểm của nhân vật, có thể là mảng rỗng.")
+    weaknesses: list[str] = Field(max_length=12, description="Mảng nhược điểm của nhân vật, có thể là mảng rỗng.")
+    abilities: list[str] = Field(max_length=12, description="Mảng năng lực của nhân vật, có thể là mảng rỗng.")
     conflict_with_mainline: str = Field(
         min_length=1,
         max_length=1000,
-        description="角色与全书主线的核心冲突。",
+        description="Xung đột cốt lõi giữa nhân vật và tuyến chính của toàn sách.",
     )
     relationship_with_protagonist: str = Field(
         min_length=1,
         max_length=1000,
-        description="角色与主角的初始关系。",
+        description="Quan hệ ban đầu giữa nhân vật và nhân vật chính.",
     )
-    initial_state: str = Field(min_length=1, max_length=1000, description="故事开始时的角色状态。")
+    initial_state: str = Field(min_length=1, max_length=1000, description="Trạng thái nhân vật lúc câu chuyện bắt đầu.")
     growth_direction: str = Field(
         min_length=1,
         max_length=1000,
-        description="跨全书的成长或堕落方向。",
+        description="Hướng trưởng thành hoặc sa ngã xuyên suốt toàn sách.",
     )
     story_function: str = Field(
         min_length=1,
         max_length=1000,
-        description="角色推动主线的叙事功能。",
+        description="Chức năng tự sự của nhân vật trong việc thúc đẩy tuyến chính.",
     )
-    arc_seed: str = Field(min_length=1, max_length=1000, description="可跨卷展开的角色弧种子。")
-    tags: list[str] = Field(max_length=10, description="角色标签数组，可为空数组。")
+    arc_seed: str = Field(min_length=1, max_length=1000, description="Hạt giống vòng cung nhân vật có thể triển khai qua nhiều quyển.")
+    tags: list[str] = Field(max_length=10, description="Mảng thẻ của nhân vật, có thể là mảng rỗng.")
 
     @field_validator(
         "aliases",
@@ -540,7 +540,7 @@ class CoreCharacterCandidateV1(StrictSchemaModel):
             ValueError: 任一元素不在 1 至 80 字符范围内时抛出。
         """
         if any(not 1 <= len(item) <= 80 for item in value):
-            raise ValueError("角色候选列表字段的每个元素长度必须为 1 至 80 字符")
+            raise ValueError("Mỗi phần tử của trường danh sách ứng viên nhân vật phải dài từ 1 đến 80 ký tự")
         return value
 
 
@@ -549,43 +549,43 @@ class CharacterFactionBindingCandidateV1(StrictSchemaModel):
 
     character_ref: str = Field(
         pattern=_CHARACTER_REF_PATTERN,
-        description="必须引用 core_characters 中恰好一个 character_ref。",
+        description="Phải tham chiếu đúng một character_ref trong core_characters.",
     )
     faction_id: str | None = Field(
         ...,
         min_length=FACTION_BUSINESS_ID_MIN_LENGTH,
         max_length=FACTION_BUSINESS_ID_MAX_LENGTH,
         pattern=FACTION_BUSINESS_ID_PATTERN,
-        description="核心势力业务 ID；角色无势力归属时必须为 null。",
+        description="ID nghiệp vụ của thế lực cốt lõi; phải là null khi nhân vật không thuộc thế lực nào.",
     )
     membership_type: CharacterFactionMembershipType | None = Field(
         ...,
-        description="成员关系；faction_id 非空时必填，否则必须为 null。",
+        description="Quan hệ thành viên; bắt buộc khi faction_id không trống, ngược lại phải là null.",
     )
     role_title: str | None = Field(
         ...,
         min_length=1,
         max_length=100,
-        description="角色在势力中的称谓；允许为 null。",
+        description="Cách xưng hô của nhân vật trong thế lực; được phép là null.",
     )
     public_status: str | None = Field(
         ...,
         min_length=1,
         max_length=200,
-        description="公开身份；faction_id 非空时必填，否则必须为 null。",
+        description="Danh tính công khai; bắt buộc khi faction_id không trống, ngược lại phải là null.",
     )
     loyalty_level: int | None = Field(
         ...,
         ge=1,
         le=5,
         strict=True,
-        description="忠诚度 1 至 5；faction_id 非空时必填，否则必须为 null。",
+        description="Độ trung thành từ 1 đến 5; bắt buộc khi faction_id không trống, ngược lại phải là null.",
     )
     reason: str | None = Field(
         ...,
         min_length=1,
         max_length=1000,
-        description="归属原因；faction_id 非空时必填，否则必须为 null。",
+        description="Lý do thuộc về; bắt buộc khi faction_id không trống, ngược lại phải là null.",
     )
 
     @model_validator(mode="after")
@@ -611,7 +611,7 @@ class CharacterFactionBindingCandidateV1(StrictSchemaModel):
         if self.faction_id is None:
             # 无势力是明确业务选择，不允许留下无法落库的半条绑定。
             if any(value is not None for value in binding_values):
-                raise ValueError("faction_id 为空时其余绑定业务字段必须全部为 null")
+                raise ValueError("Khi faction_id trống, toàn bộ các trường nghiệp vụ gắn kết còn lại phải là null")
             return self
 
         required_values = (
@@ -622,7 +622,7 @@ class CharacterFactionBindingCandidateV1(StrictSchemaModel):
         )
         if any(value is None for value in required_values):
             raise ValueError(
-                "faction_id 非空时 membership_type、public_status、loyalty_level 和 reason 必填"
+                "Khi faction_id không trống, phải điền membership_type, public_status, loyalty_level và reason"
             )
         return self
 
@@ -633,12 +633,12 @@ class CoreCharactersResultSchemaV1(StrictSchemaModel):
     core_characters: list[CoreCharacterCandidateV1] = Field(
         min_length=1,
         max_length=50,
-        description="全书级核心角色候选列表。",
+        description="Danh sách ứng viên nhân vật cốt lõi cấp toàn sách.",
     )
     binding_candidates: list[CharacterFactionBindingCandidateV1] = Field(
         min_length=1,
         max_length=50,
-        description="与核心角色候选一一对应的势力绑定决策列表。",
+        description="Danh sách quyết định gắn thế lực tương ứng một-một với ứng viên nhân vật cốt lõi.",
     )
 
     @model_validator(mode="after")
@@ -659,15 +659,15 @@ class CoreCharactersResultSchemaV1(StrictSchemaModel):
         binding_refs = [candidate.character_ref for candidate in self.binding_candidates]
 
         if len(character_refs) != len(set(character_refs)):
-            raise ValueError("core_characters 中的 character_ref 不能重复")
+            raise ValueError("character_ref trong core_characters không được trùng lặp")
         if len(character_names) != len(set(character_names)):
-            raise ValueError("core_characters 中的角色名称不能重复")
+            raise ValueError("Tên nhân vật trong core_characters không được trùng lặp")
         if len(binding_refs) != len(set(binding_refs)):
-            raise ValueError("binding_candidates 中的 character_ref 不能重复")
+            raise ValueError("character_ref trong binding_candidates không được trùng lặp")
 
         # 两侧集合完全相等且各自唯一，才能保证每名角色恰好拥有一条绑定决策。
         if set(character_refs) != set(binding_refs):
-            raise ValueError("binding_candidates 必须按 character_ref 一一完整覆盖角色候选")
+            raise ValueError("binding_candidates phải bao phủ đầy đủ, một-một, danh sách ứng viên nhân vật theo character_ref")
         return self
 
 
@@ -716,7 +716,7 @@ class CoreCharactersAIConfirmationRequestV1(StrictSchemaModel):
             or version < 1
             for key, version in value.items()
         ):
-            raise ValueError("expected_versions 必须使用非空资源键和正整数版本")
+            raise ValueError("expected_versions phải dùng khóa tài nguyên không trống và phiên bản là số nguyên dương")
         return value
 
     @model_validator(mode="after")
@@ -738,15 +738,15 @@ class CoreCharactersAIConfirmationRequestV1(StrictSchemaModel):
             or self.basis.schema_id != CORE_CHARACTERS_RESULT_SCHEMA_ID
             or self.basis.schema_version != CORE_CHARACTERS_RESULT_SCHEMA_VERSION
         ):
-            raise ValueError("核心角色确认的 basis 契约不匹配")
+            raise ValueError("Hợp đồng basis của xác nhận nhân vật cốt lõi không khớp")
 
         candidate_refs = {
             character.character_ref for character in self.candidate.core_characters
         }
         if any(ref not in candidate_refs for ref in self.selected_character_refs):
-            raise ValueError("selected_character_refs 包含候选中不存在的引用")
+            raise ValueError("selected_character_refs chứa tham chiếu không có trong danh sách ứng viên")
         if self.generation_input.character_count is not None and len(self.candidate.core_characters) != self.generation_input.character_count:
-            raise ValueError("核心角色候选数量必须匹配原始 generation_input")
+            raise ValueError("Số ứng viên nhân vật cốt lõi phải khớp với generation_input gốc")
 
         basis_faction_ids = {
             source.id
@@ -758,14 +758,14 @@ class CoreCharactersAIConfirmationRequestV1(StrictSchemaModel):
             if binding.character_ref not in selected_refs or binding.faction_id is None:
                 continue
             if binding.faction_id not in basis_faction_ids:
-                raise ValueError("所选角色绑定引用了候选依据之外的核心势力")
+                raise ValueError("Việc gắn nhân vật đã chọn tham chiếu thế lực cốt lõi nằm ngoài căn cứ của danh sách ứng viên")
 
         expected_from_basis = {
             f"{source.resource_type}:{source.id}": source.version
             for source in self.basis.source_refs
         }
         if self.expected_versions != expected_from_basis:
-            raise ValueError("expected_versions 必须精确匹配 basis.source_refs")
+            raise ValueError("expected_versions phải khớp chính xác với basis.source_refs")
         return self
 
 

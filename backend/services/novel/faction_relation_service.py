@@ -141,14 +141,14 @@ async def _load_faction_endpoint_documents(
                 session=session,
             )
         except NotFoundError as exc:
-            raise NotFoundError(f"阵营端点 {faction_id} 不存在于当前小说") from exc
+            raise NotFoundError(f"Đầu điểm thế lực {faction_id} không tồn tại trong tiểu thuyết hiện tại") from exc
         if require_usable and (
             faction.get("is_deleted") is True
             or faction.get("active_status") != "active"
         ):
-            raise ValueError(f"阵营端点 {faction_id} 当前不可用")
+            raise ValueError(f"Đầu điểm thế lực {faction_id} hiện không khả dụng")
         if not str(faction.get("name") or "").strip():
-            raise ValueError(f"阵营端点 {faction_id} 名称为空，无法生成关系投影")
+            raise ValueError(f"Đầu điểm thế lực {faction_id} tên trống, không thể tạo bản chiếu quan hệ")
         factions_by_id[faction_id] = faction
     return factions_by_id
 
@@ -224,7 +224,7 @@ class FactionRelationService:
         actual_version = int(relation["version"])
         if actual_version != expected_version:
             raise VersionConflictError(
-                f"阵营关系 '{relation.get('relation_id')}' 版本冲突："
+                f"Quan hệ thế lực '{relation.get('relation_id')}' 版本冲突："
                 f"expected={expected_version}, actual={actual_version}"
             )
 
@@ -271,16 +271,16 @@ class FactionRelationService:
                     session=session,
                 )
             except NotFoundError as exc:
-                raise NotFoundError(f"阵营端点 {faction_id} 不存在于当前小说") from exc
+                raise NotFoundError(f"Đầu điểm thế lực {faction_id} không tồn tại trong tiểu thuyết hiện tại") from exc
             if require_active_endpoints and (
                 faction.get("is_deleted") is True
                 or faction.get("active_status") != "active"
                 or faction.get("level_type") != "core"
             ):
-                raise ValueError(f"阵营端点 {faction_id} 必须是活动核心势力")
+                raise ValueError(f"Đầu điểm thế lực {faction_id} phải là thế lực nòng cốt đang hoạt động")
             projected_name = str(faction.get("name") or "").strip()
             if not projected_name:
-                raise ValueError(f"阵营端点 {faction_id} 名称为空，无法生成关系投影")
+                raise ValueError(f"Đầu điểm thế lực {faction_id} tên trống, không thể tạo bản chiếu quan hệ")
             factions_by_id[faction_id] = faction
 
         semantic_owner: Dict[tuple[str, str, str], int] = {}
@@ -291,22 +291,22 @@ class FactionRelationService:
             relation_type = str(_normalize_scalar(payload.get("relation_type")) or "")
             intensity = payload.get("intensity")
             if not source_id or not target_id:
-                raise ValueError(f"relations[{index}] 缺少阵营端点")
+                raise ValueError(f"relations[{index}] thiếu đầu điểm thế lực")
             if source_id == target_id:
-                raise ValueError(f"relations[{index}] 阵营关系不能指向自身")
+                raise ValueError(f"relations[{index}] quan hệ thế lực không được tự tham chiếu")
             if source_id not in factions_by_id or target_id not in factions_by_id:
-                raise ValueError(f"relations[{index}] 包含无效阵营端点")
+                raise ValueError(f"relations[{index}] chứa đầu điểm thế lực không hợp lệ")
             if relation_type not in FACTION_RELATION_TYPES:
-                raise ValueError(f"relations[{index}] 不支持 relation_type={relation_type}")
+                raise ValueError(f"relations[{index}] không hỗ trợ relation_type={relation_type}")
             if isinstance(intensity, bool) or not isinstance(intensity, int) or not 1 <= intensity <= 5:
-                raise ValueError(f"relations[{index}] intensity 必须为 1 至 5 的整数")
+                raise ValueError(f"relations[{index}] intensity phải là số nguyên từ 1 đến 5")
             for field in ("current_state", "core_conflict", "possible_change"):
                 value = payload.get(field)
                 if not isinstance(value, str) or not 1 <= len(value.strip()) <= 2000:
-                    raise ValueError(f"relations[{index}] {field} 必须为非空文本")
+                    raise ValueError(f"relations[{index}] {field} phải là văn bản không trống")
             hidden_tension = payload.get("hidden_tension", "")
             if not isinstance(hidden_tension, str) or len(hidden_tension.strip()) > 2000:
-                raise ValueError(f"relations[{index}] hidden_tension 最多 2000 字符")
+                raise ValueError(f"relations[{index}] hidden_tension tối đa 2000 ký tự")
 
             if payload.get("is_active", True) is True and check_active_semantic:
                 semantic = build_faction_relation_semantic_key(
@@ -317,7 +317,7 @@ class FactionRelationService:
                 previous_index = semantic_owner.get(semantic)
                 if previous_index is not None:
                     raise DuplicateKeyError(
-                        f"relations[{index}] 与 relations[{previous_index}] 构成重复语义关系"
+                        f"relations[{index}] và relations[{previous_index}] tạo thành quan hệ ngữ nghĩa trùng lặp"
                     )
                 semantic_owner[semantic] = index
                 semantics.append(semantic)
@@ -330,7 +330,7 @@ class FactionRelationService:
         )
         if conflicts:
             relation_ids = ", ".join(str(item["relation_id"]) for item in conflicts)
-            raise DuplicateKeyError(f"与既有活动阵营关系语义重复: {relation_ids}")
+            raise DuplicateKeyError(f"Trùng ngữ nghĩa với quan hệ phe đang hoạt động hiện có: {relation_ids}")
         return factions_by_id
 
     @staticmethod
@@ -440,7 +440,7 @@ class FactionRelationService:
                 current_factions,
                 endpoint_ids,
             ) != endpoint_signatures:
-                raise DuplicateKeyError("阵营关系创建期间端点已被并发修改，请重试")
+                raise DuplicateKeyError("Điểm cuối đã bị sửa đổi đồng thời trong lúc tạo quan hệ thế lực, hãy thử lại")
         except Exception:
             if session is None:
                 await faction_relation_repo.delete_relations_exact(
@@ -492,10 +492,10 @@ class FactionRelationService:
                 candidate["relation_ref"] = f"relation_{index:03d}"
             request_kind = "manual"
         if not normalized_candidates:
-            raise ValueError("至少需要一条阵营关系")
+            raise ValueError("Cần ít nhất một quan hệ thế lực")
         relation_refs = [str(candidate["relation_ref"]) for candidate in normalized_candidates]
         if len(relation_refs) != len(set(relation_refs)):
-            raise ValueError("阵营关系 local ref 不能重复")
+            raise ValueError("local ref của quan hệ phe không được trùng lặp")
         semantic_keys: set[tuple[str, str, str]] = set()
         for candidate in normalized_candidates:
             if candidate.get("is_active", True) is not True:
@@ -507,7 +507,7 @@ class FactionRelationService:
             )
             if semantic_key in semantic_keys:
                 raise DuplicateKeyError(
-                    "relations 中不能包含重复或反向重复的活动语义边"
+                    "relations không được chứa cạnh ngữ nghĩa đang hoạt động trùng lặp hoặc trùng chiều ngược"
                 )
             semantic_keys.add(semantic_key)
 
@@ -526,7 +526,7 @@ class FactionRelationService:
             if any(item.get("batch_request_hash") != request_hash for item in existing):
                 raise GenerationDomainError(
                     "IDEMPOTENCY_KEY_REUSED",
-                    "同一 Idempotency-Key 已用于不同的阵营关系批量请求",
+                    "Cùng Idempotency-Key đã được dùng cho yêu cầu hàng loạt quan hệ thế lực khác",
                     status_code=409,
                 )
             by_ref = {
@@ -535,11 +535,11 @@ class FactionRelationService:
                 if item.get("batch_local_ref")
             }
             if len(by_ref) != len(existing):
-                raise DuplicateKeyError("阵营关系批次 local ref 元数据冲突")
+                raise DuplicateKeyError("Xung đột metadata local ref của lô quan hệ thế lực")
             if set(by_ref) - set(relation_refs):
                 raise GenerationDomainError(
                     "IDEMPOTENCY_KEY_REUSED",
-                    "同一 Idempotency-Key 的既有阵营关系映射与当前请求不一致",
+                    "Mapping quan hệ thế lực đã có của cùng Idempotency-Key không nhất quán với yêu cầu hiện tại",
                     status_code=409,
                 )
             return by_ref
@@ -555,7 +555,7 @@ class FactionRelationService:
                 basis.get("novel_id") != novel_id
                 or source["generation_input"].get("novel_id") != novel_id
             ):
-                raise NotFoundError("AI 阵营关系确认不属于当前小说")
+                raise NotFoundError("Xác nhận quan hệ phe do AI tạo không thuộc tiểu thuyết hiện tại")
             if (
                 basis.get("workflow") != FACTION_RELATION_WORKFLOW
                 or basis.get("step") != FACTION_RELATION_GENERATION_STEP
@@ -563,7 +563,7 @@ class FactionRelationService:
                 or basis.get("schema_version")
                 != FACTION_RELATIONS_RESULT_SCHEMA_VERSION
             ):
-                raise ValueError("AI 阵营关系确认的 workflow/step/schema 契约不匹配")
+                raise ValueError("Hợp đồng workflow/step/schema của xác nhận quan hệ thế lực do AI không khớp")
             basis_faction_ids: set[str] = set()
             basis_relation_ids: set[str] = set()
             novel_source_count = 0
@@ -574,7 +574,7 @@ class FactionRelationService:
                 if resource_type == "novel":
                     novel_source_count += 1
                     if resource_id != novel_id:
-                        raise ValueError("basis 中的 novel 来源不属于当前小说")
+                        raise ValueError("Nguồn novel trong basis không thuộc tiểu thuyết hiện tại")
                     current = await novel_repo.get_novel_by_id(
                         novel_id,
                         session=active_session,
@@ -594,14 +594,14 @@ class FactionRelationService:
                         session=active_session,
                     )
                 else:
-                    raise ValueError(f"不支持的 basis resource_type={resource_type}")
+                    raise ValueError(f"Không hỗ trợ basis resource_type={resource_type}")
                 if int(current["version"]) != expected_version:
                     raise VersionConflictError(
                         f"AI 阵营关系候选依据版本冲突: {resource_type}:{resource_id}"
                     )
             selected_faction_ids = set(source["generation_input"]["faction_ids"])
             if novel_source_count != 1 or basis_faction_ids != selected_faction_ids:
-                raise ValueError("AI 阵营关系 basis 必须精确覆盖小说和所选正式势力")
+                raise ValueError("basis của quan hệ thế lực do AI phải bao phủ chính xác tiểu thuyết và các thế lực chính thức đã chọn")
             current_relation_ids = {
                 str(item["relation_id"])
                 for item in await faction_relation_repo.get_relations_by_novel(
@@ -614,14 +614,14 @@ class FactionRelationService:
                 and item.get("target_faction_id") in selected_faction_ids
             }
             if current_relation_ids != basis_relation_ids:
-                raise DuplicateKeyError("AI 阵营关系候选依据中的正式关系集合已变化")
+                raise DuplicateKeyError("Tập quan hệ chính thức trong căn cứ ứng viên quan hệ thế lực do AI đã thay đổi")
             current_fingerprint = compute_faction_relation_input_fingerprint(
                 source["generation_input"],
                 basis.get("source_refs", []),
                 flow_snapshot=basis.get("flow_snapshot"),
             )
             if basis.get("input_fingerprint") != current_fingerprint:
-                raise DuplicateKeyError("AI 阵营关系候选输入指纹冲突")
+                raise DuplicateKeyError("Xung đột vân tay đầu vào ứng viên quan hệ phe do AI tạo")
 
         def _build_result(
             existing_by_ref: Dict[str, Dict[str, Any]],
@@ -687,7 +687,7 @@ class FactionRelationService:
                 for relation in created:
                     existing_by_ref[str(relation["batch_local_ref"])] = relation
             if set(existing_by_ref) != set(relation_refs):
-                raise DuplicateKeyError("阵营关系批次未能形成完整 local ref 映射")
+                raise DuplicateKeyError("Lô quan hệ thế lực không tạo được mapping local ref đầy đủ")
             return _build_result(existing_by_ref)
 
         if session is not None:
@@ -733,7 +733,7 @@ class FactionRelationService:
             if existing.get("creation_request_hash") != request_hash:
                 raise GenerationDomainError(
                     "IDEMPOTENCY_KEY_REUSED",
-                    "同一 Idempotency-Key 已用于不同的阵营关系创建请求",
+                    "Cùng Idempotency-Key đã được dùng cho yêu cầu tạo quan hệ thế lực khác",
                     status_code=409,
                 )
             return existing
@@ -928,7 +928,7 @@ class FactionRelationService:
                         endpoint_ids,
                     ) != endpoint_signatures:
                         raise DuplicateKeyError(
-                            "阵营关系更新期间端点已被并发修改，请重试"
+                            "Điểm cuối đã bị sửa đổi đồng thời trong lúc cập nhật quan hệ thế lực, hãy thử lại"
                         )
                 return written
             except Exception:
@@ -937,7 +937,7 @@ class FactionRelationService:
                         await _compensate_faction_relation_update(current, written)
                     except Exception as compensation_exc:
                         raise RuntimeError(
-                            "阵营关系更新失败，且 standalone 补偿未完成"
+                            "Cập nhật quan hệ thế lực thất bại và bù đắp standalone chưa hoàn tất"
                         ) from compensation_exc
                 if session is None and guard_touches:
                     await rollback_dependency_endpoint_guards(
@@ -981,7 +981,7 @@ class FactionRelationService:
                     session=session,
                 )
             except NotFoundError as exc:
-                raise ValueError(f"阵营端点 {faction_id} 已被彻底删除") from exc
+                raise ValueError(f"Đầu điểm thế lực {faction_id} đã bị xóa vĩnh viễn") from exc
             if faction.get("is_deleted") is True or faction.get("active_status") != "active":
                 blockers.append(faction_id)
         return blockers
@@ -1033,7 +1033,7 @@ class FactionRelationService:
                     session=session,
                 )
                 if endpoint.get("is_deleted") is True or endpoint.get("active_status") != "active":
-                    raise ValueError(f"阵营端点 {endpoint_id} 当前不可用")
+                    raise ValueError(f"Đầu điểm thế lực {endpoint_id} hiện không khả dụng")
 
             semantic = build_faction_relation_semantic_key(
                 str(relation["source_faction_id"]),
@@ -1043,7 +1043,7 @@ class FactionRelationService:
             previous_relation_id = semantics.get(semantic)
             if previous_relation_id is not None:
                 raise DuplicateKeyError(
-                    f"阵营恢复后关系 {relation['relation_id']} 与 {previous_relation_id} 语义重复"
+                    f"Sau khi khôi phục thế lực, quan hệ {relation['relation_id']} và {previous_relation_id} trùng lặp về ngữ nghĩa"
                 )
             semantics[semantic] = str(relation["relation_id"])
             candidates.append(relation)
@@ -1055,7 +1055,7 @@ class FactionRelationService:
         )
         if existing:
             relation_ids = ", ".join(str(item["relation_id"]) for item in existing)
-            raise DuplicateKeyError(f"阵营恢复会与活动关系语义冲突: {relation_ids}")
+            raise DuplicateKeyError(f"Khôi phục phe sẽ xung đột ngữ nghĩa quan hệ đang hoạt động: {relation_ids}")
         return len(candidates)
 
     @staticmethod
@@ -1089,7 +1089,7 @@ class FactionRelationService:
                 session=session,
             )
             if is_active and blockers:
-                raise ValueError("阵营关系仍受失效端点阻断: " + ", ".join(blockers))
+                raise ValueError("Quan hệ thế lực vẫn bị chặn bởi các đầu điểm không còn hiệu lực: " + ", ".join(blockers))
             if is_active:
                 validation_payload = {**current, "is_active": True}
                 factions_by_id = await FactionRelationService.validate_relation_payloads(
@@ -1141,7 +1141,7 @@ class FactionRelationService:
                         endpoint_ids,
                     ) != endpoint_signatures:
                         raise DuplicateKeyError(
-                            "阵营关系启用期间端点已被并发修改，请重试"
+                            "Điểm cuối đã bị sửa đổi đồng thời trong lúc kích hoạt quan hệ thế lực, hãy thử lại"
                         )
                 return written
             except Exception:
@@ -1150,7 +1150,7 @@ class FactionRelationService:
                         await _compensate_faction_relation_update(current, written)
                     except Exception as compensation_exc:
                         raise RuntimeError(
-                            "阵营关系启停失败，且 standalone 补偿未完成"
+                            "Bật/tắt quan hệ thế lực thất bại và bù đắp standalone chưa hoàn tất"
                         ) from compensation_exc
                 if session is None and guard_touches:
                     await rollback_dependency_endpoint_guards(
@@ -1232,7 +1232,7 @@ class FactionRelationService:
                 session=session,
             )
             if not current.get("is_deleted"):
-                raise NotFoundError(f"阵营关系 '{relation_id}' 不在回收站")
+                raise NotFoundError(f"Quan hệ thế lực '{relation_id}' không nằm trong thùng rác")
             FactionRelationService._ensure_expected_version(current, expected_version)
             blockers = await FactionRelationService._current_blockers(
                 novel_id,
@@ -1300,7 +1300,7 @@ class FactionRelationService:
                     endpoint_ids,
                 ) != endpoint_signatures:
                     raise DuplicateKeyError(
-                        "阵营关系恢复期间端点已被并发修改，请重试"
+                        "Điểm cuối đã bị sửa đổi đồng thời trong lúc phục hồi quan hệ thế lực, hãy thử lại"
                     )
                 return restored
             except Exception:
@@ -1309,7 +1309,7 @@ class FactionRelationService:
                         await _compensate_faction_relation_update(current, restored)
                     except Exception as compensation_exc:
                         raise RuntimeError(
-                            "阵营关系恢复失败，且 standalone 补偿未完成"
+                            "Phục hồi quan hệ thế lực thất bại và bù đắp standalone chưa hoàn tất"
                         ) from compensation_exc
                 if session is None and guard_touches:
                     await rollback_dependency_endpoint_guards(

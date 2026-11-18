@@ -39,10 +39,10 @@ class VolumeEntityParametersV1(StrictRequestModel):
     def validate_selection(self) -> "VolumeEntityParametersV1":
         """限制本批总量并拒绝重复选择已有档案。"""
         if len(self.selected_existing_ids) != len(set(self.selected_existing_ids)):
-            raise ValueError("已有档案不能重复选择")
+            raise ValueError("Hồ sơ đã có không được chọn lặp")
         minimum = 0 if self.selection_mode == "auto" else 1
         if not minimum <= self.new_count + len(self.selected_existing_ids) <= 20:
-            raise ValueError("新建数量与已有档案数量合计必须为 1..20")
+            raise ValueError("Tổng số lượng tạo mới và số hồ sơ đã có phải nằm trong 1..20")
         return self
 
 
@@ -99,9 +99,9 @@ class VolumeCharacterCandidateV1(StrictRequestModel):
     def validate_target(self) -> "VolumeCharacterCandidateV1":
         """新人物需提供档案；已有人物只接受卷状态。"""
         if (self.character_id is None) == (self.profile is None):
-            raise ValueError("新人物必须提供 profile，已有角色只能提供 character_id")
+            raise ValueError("Nhân vật mới phải cung cấp profile, nhân vật đã có chỉ được cung cấp character_id")
         if self.character_id is None and self.state_expected_version is not None:
-            raise ValueError("新人物不能指定已有卷状态版本")
+            raise ValueError("Nhân vật mới không được chỉ định phiên bản trạng thái quyển đã có")
         return self
 
 
@@ -118,9 +118,9 @@ class VolumeFactionCandidateV1(StrictRequestModel):
     def validate_target(self) -> "VolumeFactionCandidateV1":
         """新势力需提供档案；已有势力只接受卷状态。"""
         if (self.faction_id is None) == (self.profile is None):
-            raise ValueError("新势力必须提供 profile，已有势力只能提供 faction_id")
+            raise ValueError("Thế lực mới phải cung cấp profile, thế lực đã có chỉ được cung cấp faction_id")
         if self.faction_id is None and self.state_expected_version is not None:
-            raise ValueError("新势力不能指定已有卷状态版本")
+            raise ValueError("Thế lực mới không được chỉ định phiên bản trạng thái quyển đã có")
         return self
 
 
@@ -159,15 +159,15 @@ class VolumeEntityBasisV1(CandidateBasisV1):
         """确保原图、小说、卷及版本属于同一个卷内任务。"""
         kind = VOLUME_ENTITY_TASKS.get(self.workflow)
         if kind is None or self.step != f"create_{kind}_for_volume" or self.schema_id != f"volume_{kind}_result" or self.schema_version != 1:
-            raise ValueError("卷内实体候选任务不一致")
+            raise ValueError("Tác vụ ứng viên thực thể trong quyển không nhất quán")
         if self.novel_id != self.generation_input.novel_id or self.flow_snapshot is None:
-            raise ValueError("卷内实体候选缺少原始流程或小说不一致")
+            raise ValueError("Ứng viên thực thể trong quyển thiếu luồng gốc hoặc tiểu thuyết không nhất quán")
         if self.flow_snapshot["scope"].get("volume_id") != self.generation_input.volume_id:
-            raise ValueError("原始流程与候选的目标卷不一致")
+            raise ValueError("Quyển đích của luồng gốc và của ứng viên không nhất quán")
         refs = {(ref.resource_type, ref.id): ref.version for ref in self.source_refs}
         volume_version = refs.get(("volume", self.generation_input.volume_id))
         if ("novel", self.novel_id) not in refs or volume_version is None or (self.generation_input.selection_mode != "auto" and volume_version != self.generation_input.volume_expected_version):
-            raise ValueError("卷内实体候选缺少当前小说或目标卷版本")
+            raise ValueError("Ứng viên thực thể trong quyển thiếu tiểu thuyết hiện tại hoặc phiên bản quyển đích")
         return self
 
 
@@ -216,7 +216,7 @@ class VolumeCharacterPlanCandidateV1(VolumeCharacterCandidateV1):
     def new_character_only(self) -> "VolumeCharacterPlanCandidateV1":
         """已有角色的计划不能顺便覆盖事实。"""
         if self.character_id is not None and self.initial_facts is not None:
-            raise ValueError("已有角色的本卷计划不接受实际状态修改")
+            raise ValueError("Kế hoạch quyển này của nhân vật đã có không chấp nhận sửa trạng thái thực tế")
         return self
 
 
@@ -234,7 +234,7 @@ class VolumeCharacterInitialFactsCandidateV1(VolumeCharacterPlanCandidateV1):
     @model_validator(mode="after")
     def require_initial_facts(self):
         if self.profile is not None and (self.initial_facts is None or not self.initial_facts.model_dump()):
-            raise ValueError("新角色至少需要一项明确的初始事实；未知事实不能用空值补齐")
+            raise ValueError("Nhân vật mới cần ít nhất một dữ kiện khởi tạo rõ ràng; dữ kiện chưa biết không được điền giá trị rỗng")
         return self
 
 
@@ -299,7 +299,7 @@ class VolumeCharactersInitialFactsConfirmV1(StrictRequestModel):
     @model_validator(mode="after")
     def require_generation_contract(self):
         if self.basis.flow_snapshot["execution"].get("character_candidate_contract") != CHARACTER_PLAN_CONTRACT:
-            raise ValueError("新人物计划需要同合同的原始生成依据")
+            raise ValueError("Kế hoạch nhân vật mới cần căn cứ tạo gốc cùng hợp đồng")
         return self
 
 
@@ -320,7 +320,7 @@ class VolumeFactionPlanCandidateV1(VolumeFactionCandidateV1):
     def new_faction_only(self) -> "VolumeFactionPlanCandidateV1":
         """已有势力只改卷计划，不借计划确认覆盖当前事实。"""
         if self.faction_id is not None and self.initial_facts is not None:
-            raise ValueError("已有势力的参与计划不接受实际剧情状态修改")
+            raise ValueError("Kế hoạch tham gia của thế lực đã có không chấp nhận sửa trạng thái cốt truyện thực tế")
         return self
 
 

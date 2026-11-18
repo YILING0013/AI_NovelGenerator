@@ -102,7 +102,7 @@ def validate_volume_location_candidates(
         and len(normalized_candidates) != normalized_input.location_count
     ):
         raise ValueError(
-            f"模型地点数量必须严格等于 {normalized_input.location_count}"
+            f"Số địa điểm của mô hình phải bằng đúng {normalized_input.location_count}"
         )
 
     existing_tokens = set(context["existing_location_tokens"])
@@ -113,12 +113,12 @@ def validate_volume_location_candidates(
     allowed_faction_ids = set(context["allowed_faction_ids"])
     for candidate in normalized_candidates:
         if candidate.candidate_ref in seen_refs:
-            raise ValueError("candidate_ref 不能重复")
+            raise ValueError("candidate_ref không được trùng lặp")
         if (
             candidate.parent_location_ref is not None
             and candidate.parent_location_ref not in seen_refs
         ):
-            raise ValueError("候选父级只能引用本批中排在前面的 candidate_ref")
+            raise ValueError("Cha ứng viên chỉ được tham chiếu candidate_ref đứng trước trong lô này")
         seen_refs.add(candidate.candidate_ref)
 
         tokens = {
@@ -126,9 +126,9 @@ def validate_volume_location_candidates(
             for value in [candidate.name, *candidate.aliases]
         }
         if tokens & candidate_tokens:
-            raise ValueError("候选地点名称或别名在规范化后互相重复")
+            raise ValueError("Tên hoặc bí danh của các ứng viên địa điểm trùng nhau sau chuẩn hóa")
         if tokens & existing_tokens:
-            raise ValueError("候选地点名称或别名与已有活动地点重复")
+            raise ValueError("Tên hoặc bí danh ứng viên địa điểm trùng với địa điểm đang hoạt động hiện có")
         candidate_tokens.update(tokens)
 
         if (
@@ -136,14 +136,14 @@ def validate_volume_location_candidates(
             and candidate.parent_location_id not in allowed_location_ids
         ):
             raise ValueError(
-                f"{candidate.candidate_ref} 引用了输入白名单外的父地点"
+                f"{candidate.candidate_ref} tham chiếu địa điểm cha ngoài danh sách trắng đầu vào"
             )
         invalid_rule_ids = sorted(
             set(candidate.applicable_rule_ids) - allowed_rule_ids
         )
         if invalid_rule_ids:
             raise ValueError(
-                f"{candidate.candidate_ref} 引用了输入白名单外规则: "
+                f"{candidate.candidate_ref} tham chiếu quy tắc ngoài danh sách trắng đầu vào: "
                 + ", ".join(invalid_rule_ids)
             )
         invalid_faction_ids = sorted(
@@ -151,7 +151,7 @@ def validate_volume_location_candidates(
         )
         if invalid_faction_ids:
             raise ValueError(
-                f"{candidate.candidate_ref} 引用了输入白名单外势力: "
+                f"{candidate.candidate_ref} tham chiếu thế lực ngoài danh sách trắng đầu vào: "
                 + ", ".join(invalid_faction_ids)
             )
 

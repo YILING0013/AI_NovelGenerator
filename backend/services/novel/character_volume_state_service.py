@@ -123,7 +123,7 @@ def _prepare_content(value: Any) -> dict[str, Any]:
     except ValidationError as exc:
         raise _state_error(
             "CHARACTER_VOLUME_STATE_VALIDATION_FAILED",
-            "角色卷状态字段校验失败",
+            "Xác thực trường trạng thái nhân vật theo quyển thất bại",
             field_errors=_validation_details(exc),
         ) from exc
     content = model.model_dump(mode="json")
@@ -143,7 +143,7 @@ def _prepare_content(value: Any) -> dict[str, Any]:
     except ValidationError as exc:
         raise _state_error(
             "CHARACTER_VOLUME_STATE_VALIDATION_FAILED",
-            "角色卷状态规范化后的字段不合法",
+            "Các trường sau chuẩn hóa của trạng thái nhân vật theo quyển không hợp lệ",
             field_errors=_validation_details(exc),
         ) from exc
 
@@ -186,7 +186,7 @@ async def acquire_state_write_lock(
             ):
                 raise _state_error(
                     "CHARACTER_VOLUME_STATE_WRITE_CONFLICT",
-                    "当前小说正由另一个状态或生命周期命令修改，请刷新后重试",
+                    "Tiểu thuyết hiện đang được một lệnh trạng thái hoặc vòng đời khác chỉnh sửa, hãy làm mới rồi thử lại",
                     status_code=409,
                 ) from exc
             raise
@@ -205,10 +205,10 @@ async def acquire_state_write_lock(
         return locked
     current = await novel_repo.collection.find_one({"_id": to_object_id(novel_id)})
     if current is None or current.get("is_deleted") is True:
-        raise _state_error("NOVEL_NOT_FOUND", "小说不存在或已删除", status_code=404)
+        raise _state_error("NOVEL_NOT_FOUND", "Tiểu thuyết không tồn tại hoặc đã bị xóa", status_code=404)
     raise _state_error(
         "CHARACTER_VOLUME_STATE_WRITE_CONFLICT",
-        "当前小说正由另一个状态或生命周期命令修改，请刷新后重试",
+        "Tiểu thuyết hiện đang được một lệnh trạng thái hoặc vòng đời khác chỉnh sửa, hãy làm mới rồi thử lại",
         status_code=409,
     )
 
@@ -290,7 +290,7 @@ async def release_state_write_lock(
             return
     raise _state_error(
         "CHARACTER_VOLUME_STATE_WRITE_GUARD_UNAVAILABLE",
-        "状态写入已结束，但小说级内部互斥无法精确释放",
+        "Việc ghi trạng thái đã kết thúc, nhưng không giải phóng chính xác được khóa loại trừ nội bộ cấp tiểu thuyết",
         status_code=503,
     ) from release_error
 
@@ -311,7 +311,7 @@ async def _get_volume_in_novel(
     if volume.get("novel_id") != to_object_id(novel_id):
         raise _state_error(
             "VOLUME_NOT_FOUND",
-            "卷不存在、已删除或不属于当前小说",
+            "Quyển không tồn tại, đã bị xóa hoặc không thuộc tiểu thuyết hiện tại",
             status_code=404,
         )
     return volume
@@ -335,7 +335,7 @@ async def _get_character_in_novel(
     if require_active and character.get("status", "active") != "active":
         raise _state_error(
             "CHARACTER_NOT_ACTIVE",
-            "角色已停用，不能建立或更新卷级状态",
+            "Nhân vật đã bị vô hiệu hóa, không thể tạo hoặc cập nhật trạng thái cấp quyển",
             status_code=404,
             details={"character_id": character_id},
         )
@@ -361,7 +361,7 @@ async def _validate_relationship_focus(
         missing = sorted(set(ordered_ids) - set(resolved_ids))
         raise _state_error(
             "CHARACTER_RELATION_NOT_FOUND",
-            "关系焦点包含不存在、已删除或跨小说的角色关系",
+            "Tiêu điểm quan hệ chứa quan hệ nhân vật không tồn tại, đã bị xóa hoặc thuộc tiểu thuyết khác",
             status_code=404,
             details={"relation_ids": missing},
         )
@@ -376,7 +376,7 @@ async def _validate_relationship_focus(
     if invalid:
         raise _state_error(
             "CHARACTER_RELATION_FOCUS_INVALID",
-            "关系焦点必须是涉及当前角色的活动同书关系",
+            "Tiêu điểm quan hệ phải là quan hệ active cùng cuốn có liên quan đến nhân vật hiện tại",
             field_errors={"relationship_focus_ids": ["存在不涉及当前角色或未启用的关系"]},
             details={"relation_ids": invalid},
         )
@@ -436,7 +436,7 @@ async def compensate_state_changes(changes: Sequence[StateChange]) -> None:
     for before, after in reversed(list(changes)):
         restored = await character_volume_state_repo.restore_snapshot(after, before)
         if not restored:
-            raise RuntimeError("角色卷状态 standalone 补偿未精确命中")
+            raise RuntimeError("Bù trừ standalone cho trạng thái nhân vật theo quyển không khớp chính xác")
 
 
 async def _change_deletion_source(
@@ -482,7 +482,7 @@ async def _change_deletion_source(
                 await compensate_state_changes(changes)
             except Exception as compensation_exc:
                 raise StateSourceCompensationError(
-                    "角色卷状态删除来源传播失败，且 standalone 补偿未完成"
+                    "Lan truyền nguồn xóa trạng thái nhân vật theo quyển thất bại và việc bù trừ standalone chưa hoàn tất"
                 ) from compensation_exc
         raise
 
@@ -507,12 +507,12 @@ async def _check_state_command_novel(novel_id: str, *, session: AsyncClientSessi
     """
     novel = await novel_repo.collection.find_one({"_id": to_object_id(novel_id)}, session=session)
     if novel is None or novel.get("is_deleted") is True:
-        raise _state_error("NOVEL_NOT_FOUND", "小说不存在或已删除", status_code=404)
+        raise _state_error("NOVEL_NOT_FOUND", "Tiểu thuyết không tồn tại hoặc đã bị xóa", status_code=404)
     if (novel.get("is_deleted") is not False or "hard_delete_claim" in novel
             or novel.get("state_write_lock_token") is not None):
         raise _state_error(
             "CHARACTER_VOLUME_STATE_WRITE_CONFLICT",
-            "当前小说正由另一个状态或生命周期命令修改，请刷新后重试",
+            "Tiểu thuyết hiện đang được một lệnh trạng thái hoặc vòng đời khác chỉnh sửa, hãy làm mới rồi thử lại",
             status_code=409,
         )
 
@@ -539,7 +539,7 @@ async def _protect_unmanaged_state_fields(
             raise
         raise _state_error(
             "CHARACTER_VOLUME_STATE_WRITE_CONFLICT",
-            "当前小说正由另一个状态或生命周期命令修改，请刷新后重试",
+            "Tiểu thuyết hiện đang được một lệnh trạng thái hoặc vòng đời khác chỉnh sửa, hãy làm mới rồi thử lại",
             status_code=409,
         ) from exc
 
@@ -571,7 +571,7 @@ async def _save_volume_state(
     """
     async def write(session: AsyncClientSession | None) -> dict[str, Any]:
         if session is None or not session.in_transaction:
-            raise TransactionNotSupportedError("角色卷状态保存必须使用事务")
+            raise TransactionNotSupportedError("Việc lưu trạng thái nhân vật theo quyển phải dùng giao dịch")
         replay = None
         if expected_version is None:
             assert fingerprint is not None
@@ -598,18 +598,18 @@ async def _save_volume_state(
         if expected_version is None and current is not None:
             raise _state_error(
                 "CHARACTER_VOLUME_STATE_ALREADY_EXISTS",
-                "该角色在本卷已有活动状态；更新必须提交 expected_version",
+                "Nhân vật này đã có trạng thái active trong quyển; cập nhật phải gửi expected_version",
                 status_code=409,
                 details={"state_id": str(current["state_id"]), "current_version": int(current["version"])},
             )
         if expected_version is not None:
             if current is None:
                 raise _state_error(
-                    "CHARACTER_VOLUME_STATE_NOT_FOUND", "该角色在本卷没有可更新的活动状态", status_code=404,
+                    "CHARACTER_VOLUME_STATE_NOT_FOUND", "Nhân vật này không có trạng thái active nào để cập nhật trong quyển", status_code=404,
                 )
             if int(current["version"]) != validate_expected_version(expected_version):
                 raise _state_error(
-                    "CHARACTER_VOLUME_STATE_VERSION_CONFLICT", "角色卷状态版本已变化，请刷新后重试",
+                    "CHARACTER_VOLUME_STATE_VERSION_CONFLICT", "Phiên bản trạng thái nhân vật theo quyển đã thay đổi, hãy làm mới rồi thử lại",
                     status_code=409, details={"current_version": int(current["version"])},
                 )
         # 空字段的参与计划也保护小说，防止认领与新建参与行交错提交。
@@ -672,7 +672,7 @@ class CharacterVolumeStateService:
         fingerprint = None
         if expected_version is None:
             if idempotency_key is None:
-                raise _state_error("IDEMPOTENCY_KEY_REQUIRED", "创建角色卷状态必须提供 Idempotency-Key")
+                raise _state_error("IDEMPOTENCY_KEY_REQUIRED", "Tạo trạng thái nhân vật theo quyển phải kèm Idempotency-Key")
             fingerprint = build_idempotency_fingerprint(idempotency_key, {
                 "operation": "create", "novel_id": novel_id, "volume_id": volume_id,
                 "character_id": character_id, "content": content,
@@ -745,13 +745,13 @@ class CharacterVolumeStateService:
 
         async def write(current_session):
             if current_session is None or not current_session.in_transaction:
-                raise TransactionNotSupportedError("人物计划保存必须使用事务")
+                raise TransactionNotSupportedError("Việc lưu kế hoạch nhân vật phải dùng giao dịch")
             # 原成功先于当前版本和目标读取；回放不再修改计划。
             receipt = await volume_command_receipt_repo.find_receipt(novel_id, fingerprint.key_hash, session=current_session)
             await _check_state_command_novel(novel_id, session=current_session)
             if receipt is not None:
                 if receipt.get("operation") != original["operation"] or receipt.get("request_hash") != fingerprint.request_hash:
-                    raise IdempotencyConflictError("本次人物计划请求键已用于其他内容，请保留原请求")
+                    raise IdempotencyConflictError("Khóa yêu cầu của kế hoạch nhân vật lần này đã dùng cho nội dung khác, hãy giữ nguyên yêu cầu gốc")
                 return deepcopy(receipt["result"])
             saved = await CharacterVolumeStateService.update_state(novel_id, state_id, payload, session=current_session)
             await volume_command_receipt_repo.create_receipt({"novel_id": novel_id, "volume_id": saved["volume_id"],
@@ -873,13 +873,13 @@ class CharacterVolumeStateService:
 
         async def write(session: AsyncClientSession | None) -> dict[str, Any]:
             if session is None or not session.in_transaction:
-                raise TransactionNotSupportedError("角色卷状态保存必须使用事务")
+                raise TransactionNotSupportedError("Việc lưu trạng thái nhân vật theo quyển phải dùng giao dịch")
             current = await character_volume_state_repo.get_state(
                 novel_id, state_id, include_deleted=False, session=session,
             )
             if int(current["version"]) != expected:
                 raise _state_error(
-                    "CHARACTER_VOLUME_STATE_VERSION_CONFLICT", "角色卷状态版本已变化，请刷新后重试",
+                    "CHARACTER_VOLUME_STATE_VERSION_CONFLICT", "Phiên bản trạng thái nhân vật theo quyển đã thay đổi, hãy làm mới rồi thử lại",
                     status_code=409, details={"current_version": int(current["version"])},
                 )
             await _get_volume_in_novel(novel_id, str(current["volume_id"]), include_deleted=False, session=session)
@@ -939,7 +939,7 @@ class CharacterVolumeStateService:
                 if int(current["version"]) != expected:
                     raise _state_error(
                         "CHARACTER_VOLUME_STATE_VERSION_CONFLICT",
-                        "角色卷状态版本已变化，请刷新后重试",
+                        "Phiên bản trạng thái nhân vật theo quyển đã thay đổi, hãy làm mới rồi thử lại",
                         status_code=409,
                         details={"current_version": int(current["version"])},
                     )
@@ -947,7 +947,7 @@ class CharacterVolumeStateService:
                 if "user" in sources:
                     raise _state_error(
                         "CHARACTER_VOLUME_STATE_ALREADY_DELETED",
-                        "角色卷状态已包含用户删除来源",
+                        "Trạng thái nhân vật theo quyển đã chứa nguồn xóa do người dùng",
                         status_code=409,
                     )
                 changes: list[StateChange] = []
@@ -998,7 +998,7 @@ class CharacterVolumeStateService:
                 if int(current["version"]) != expected:
                     raise _state_error(
                         "CHARACTER_VOLUME_STATE_VERSION_CONFLICT",
-                        "角色卷状态版本已变化，请刷新后重试",
+                        "Phiên bản trạng thái nhân vật theo quyển đã thay đổi, hãy làm mới rồi thử lại",
                         status_code=409,
                         details={"current_version": int(current["version"])},
                     )
@@ -1006,7 +1006,7 @@ class CharacterVolumeStateService:
                 if "user" not in sources:
                     raise _state_error(
                         "CHARACTER_VOLUME_STATE_USER_SOURCE_MISSING",
-                        "角色卷状态没有可恢复的用户删除来源",
+                        "Trạng thái nhân vật theo quyển không có nguồn xóa do người dùng nào để khôi phục",
                         status_code=409,
                     )
                 next_sources = [source for source in sources if source != "user"]
@@ -1061,13 +1061,13 @@ class CharacterVolumeStateService:
                 if current.get("is_deleted") is not True:
                     raise _state_error(
                         "CHARACTER_VOLUME_STATE_NOT_IN_TRASH",
-                        "只有回收站状态可以永久删除",
+                        "Chỉ trạng thái trong thùng rác mới được xóa vĩnh viễn",
                         status_code=409,
                     )
                 if int(current["version"]) != expected:
                     raise _state_error(
                         "CHARACTER_VOLUME_STATE_VERSION_CONFLICT",
-                        "角色卷状态版本已变化，请刷新后重试",
+                        "Phiên bản trạng thái nhân vật theo quyển đã thay đổi, hãy làm mới rồi thử lại",
                         status_code=409,
                         details={"current_version": int(current["version"])},
                     )
@@ -1097,7 +1097,7 @@ class CharacterVolumeStateService:
                 if descendants or protected:
                     raise _state_error(
                         "CHARACTER_VOLUME_STATE_REFERENCE_PROTECTED",
-                        "状态仍被初始化后代或结构事件引用，不能永久删除",
+                        "Trạng thái vẫn được hậu duệ khởi tạo hoặc sự kiện cấu trúc tham chiếu, không thể xóa vĩnh viễn",
                         status_code=409,
                         details={
                             "source_state_descendants": int(descendants),
@@ -1121,7 +1121,7 @@ class CharacterVolumeStateService:
                 if not deleted:
                     raise _state_error(
                         "CHARACTER_VOLUME_STATE_VERSION_CONFLICT",
-                        "角色卷状态在永久删除期间已变化",
+                        "Trạng thái nhân vật theo quyển đã thay đổi trong lúc xóa vĩnh viễn",
                         status_code=409,
                     )
                 return {"deleted": True, "state_id": str(state_obj_id)}
@@ -1166,7 +1166,7 @@ class CharacterVolumeStateService:
 
         async def write(session: AsyncClientSession | None) -> dict[str, Any]:
             if session is None or not session.in_transaction:
-                raise TransactionNotSupportedError("角色卷状态初始化必须使用事务")
+                raise TransactionNotSupportedError("Khởi tạo trạng thái nhân vật theo quyển phải dùng giao dịch")
             receipt = await character_volume_state_initialization_receipt_repo.find_receipt(
                 novel_id,
                 fingerprint.key_hash,
@@ -1176,7 +1176,7 @@ class CharacterVolumeStateService:
             if receipt is not None:
                 if receipt.get("request_hash") != fingerprint.request_hash:
                     raise IdempotencyConflictError(
-                        "同一 Idempotency-Key 已用于不同的角色卷状态初始化请求"
+                        "Cùng một Idempotency-Key đã dùng cho yêu cầu khởi tạo trạng thái nhân vật theo quyển khác"
                     )
                 active_volumes = await volume_repo.get_volumes_by_novel(
                     novel_id,
@@ -1194,7 +1194,7 @@ class CharacterVolumeStateService:
                 if target_volume is None:
                     raise _state_error(
                         "VOLUME_NOT_FOUND",
-                        "初始化回放的目标卷不存在、已删除或不属于当前小说",
+                        "Quyển đích của việc phát lại khởi tạo không tồn tại, đã bị xóa hoặc không thuộc tiểu thuyết hiện tại",
                         status_code=404,
                     )
 
@@ -1220,7 +1220,7 @@ class CharacterVolumeStateService:
                 if invalid_characters:
                     raise _state_error(
                         "CHARACTER_NOT_FOUND",
-                        "初始化回放的角色包含不存在、已删除或停用的角色",
+                        "Danh sách phát lại khởi tạo chứa nhân vật không tồn tại, đã bị xóa hoặc bị vô hiệu hóa",
                         status_code=404,
                         details={"character_ids": invalid_characters},
                     )
@@ -1242,13 +1242,13 @@ class CharacterVolumeStateService:
             if target_index is None:
                 raise _state_error(
                     "VOLUME_NOT_FOUND",
-                    "目标卷不存在、已删除或不属于当前小说",
+                    "Quyển đích không tồn tại, đã bị xóa hoặc không thuộc tiểu thuyết hiện tại",
                     status_code=404,
                 )
             if target_index == 0:
                 raise _state_error(
                     "CHARACTER_VOLUME_STATE_PREVIOUS_VOLUME_MISSING",
-                    "首卷没有可用于初始化的上一正式卷",
+                    "Quyển đầu tiên không có quyển chính thức liền trước để khởi tạo",
                 )
             source_volume = volumes[target_index - 1]
             target_volume = volumes[target_index]
@@ -1269,7 +1269,7 @@ class CharacterVolumeStateService:
             if missing:
                 raise _state_error(
                     "CHARACTER_VOLUME_STATE_SOURCE_MISSING",
-                    "选中角色在上一正式卷没有活动状态",
+                    "Nhân vật đã chọn không có trạng thái active ở quyển chính thức liền trước",
                     details={"character_ids": missing},
                 )
             characters = await character_repo.get_characters_by_ids(
@@ -1289,7 +1289,7 @@ class CharacterVolumeStateService:
             if invalid_characters:
                 raise _state_error(
                     "CHARACTER_NOT_FOUND",
-                    "初始化角色包含不存在、已删除或停用的角色",
+                    "Danh sách nhân vật khởi tạo chứa nhân vật không tồn tại, đã bị xóa hoặc bị vô hiệu hóa",
                     status_code=404,
                     details={"character_ids": invalid_characters},
                 )
@@ -1312,7 +1312,7 @@ class CharacterVolumeStateService:
             if conflicts:
                 raise _state_error(
                     "CHARACTER_VOLUME_STATE_INITIALIZATION_CONFLICT",
-                    "目标卷已有选中角色的状态，整批未写入",
+                    "Quyển đích đã có trạng thái của các nhân vật được chọn, cả lô không được ghi",
                     status_code=409,
                     details={"character_ids": conflicts},
                 )
@@ -1401,7 +1401,7 @@ class CharacterVolumeStateService:
         if references:
             raise _state_error(
                 "CHARACTER_RELATION_STATE_REFERENCE_PROTECTED",
-                "角色关系仍被卷级状态焦点引用，不能禁用或删除",
+                "Quan hệ nhân vật vẫn được tiêu điểm trạng thái cấp quyển tham chiếu, không thể vô hiệu hóa hoặc xóa",
                 status_code=409,
                 details={
                     "relation_ids": unique_ids,
@@ -1606,7 +1606,7 @@ class CharacterVolumeStateService:
         if not readiness["ready"]:
             raise _state_error(
                 "ARC_CHARACTER_VOLUME_STATE_NOT_READY",
-                "当前卷至少需要一个活动主角的活动卷状态才能规划人物弧",
+                "Quyển hiện tại cần ít nhất một trạng thái quyển active của nhân vật chính để lập kế hoạch vòng cung nhân vật",
                 status_code=409,
                 details=readiness,
             )

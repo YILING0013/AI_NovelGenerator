@@ -101,7 +101,7 @@ class LLMService:
         try:
             return schema.model_validate(json.loads(response.content))
         except (ValueError, TypeError) as exc:
-            log_parse_error(exc, content=response.content, schema=schema, message="结构化生成结果校验失败")
+            log_parse_error(exc, content=response.content, schema=schema, message="Kiểm tra hợp lệ hoá kết quả tạo có cấu trúc thất bại")
             raise
 
     async def stream_text(

@@ -64,7 +64,7 @@ async def init_novel_indexes(db=None):
         await novels_collection.create_indexes(indexes)
         logger.info("成功初始化'novels'集合的索引。")
     except Exception as e:
-        logger.error(f"初始化novel索引失败：{e}")
+        logger.error(f"Khởi tạo chỉ mục novel thất bại:{e}")
         raise
 
 
@@ -127,7 +127,7 @@ async def init_volume_indexes(db=None):
         await volumes_collection.create_indexes(indexes)
         logger.info("成功初始化'volumes'集合的索引。")
     except Exception as e:
-        logger.error(f"初始化volume索引失败：{e}")
+        logger.error(f"Khởi tạo chỉ mục volume thất bại:{e}")
         raise
 
 
@@ -223,7 +223,7 @@ async def init_faction_indexes(db=None):
         await factions_collection.create_indexes(indexes)
         logger.info("成功初始化'factions'集合的索引。")
     except Exception as exc:
-        logger.error("初始化faction索引失败：%s", exc)
+        logger.error("Khởi tạo chỉ mục faction thất bại: %s", exc)
         raise
 
 
@@ -315,7 +315,7 @@ async def init_faction_relation_indexes(db=None):
         await relations_collection.create_indexes(indexes)
         logger.info("成功初始化'faction_relations'集合的索引。")
     except Exception as exc:
-        logger.error("初始化faction_relations索引失败：%s", exc)
+        logger.error("Khởi tạo chỉ mục faction_relations thất bại: %s", exc)
         raise
 
 
@@ -370,7 +370,7 @@ async def init_character_indexes(db=None) -> None:
         await collection.create_indexes(indexes)
         logger.info("成功初始化'characters'集合的索引。")
     except Exception as exc:
-        logger.error("初始化characters索引失败：%s", exc)
+        logger.error("Khởi tạo chỉ mục characters thất bại: %s", exc)
         raise
 
 
@@ -442,7 +442,7 @@ async def init_character_relation_indexes(db=None) -> None:
         await collection.create_indexes(indexes)
         logger.info("成功初始化'character_relations'集合的索引。")
     except Exception as exc:
-        logger.error("初始化character_relations索引失败：%s", exc)
+        logger.error("Khởi tạo chỉ mục character_relations thất bại: %s", exc)
         raise
 
 
@@ -513,7 +513,7 @@ async def init_character_faction_binding_indexes(db=None) -> None:
         await collection.create_indexes(indexes)
         logger.info("成功初始化'character_faction_bindings'集合的索引。")
     except Exception as exc:
-        logger.error("初始化character_faction_bindings索引失败：%s", exc)
+        logger.error("Khởi tạo chỉ mục character_faction_bindings thất bại: %s", exc)
         raise
 
 
@@ -590,7 +590,7 @@ async def init_world_rule_indexes(db=None) -> None:
         )
         logger.info("成功初始化'world_rules'集合的索引。")
     except Exception as exc:
-        logger.error("初始化world_rules索引失败：%s", exc)
+        logger.error("Khởi tạo chỉ mục world_rules thất bại: %s", exc)
         raise
 
 
@@ -616,7 +616,7 @@ async def init_world_rule_confirmation_receipt_indexes(db=None) -> None:
         )
         logger.info("成功初始化核心世界规则确认回执索引。")
     except Exception as exc:
-        logger.error("初始化核心世界规则确认回执索引失败：%s", exc)
+        logger.error("Khởi tạo chỉ mục biên nhận xác nhận quy tắc thế giới cốt lõi thất bại: %s", exc)
         raise
 
 
@@ -642,7 +642,7 @@ async def init_volume_command_receipt_indexes(db=None) -> None:
         )
         logger.info("成功初始化卷命令不可变收据索引。")
     except Exception as exc:
-        logger.error("初始化卷命令收据索引失败：%s", exc)
+        logger.error("Khởi tạo chỉ mục biên lệnh quyển thất bại: %s", exc)
         raise
 
 
@@ -727,7 +727,7 @@ async def init_location_indexes(db=None) -> None:
         )
         logger.info("成功初始化'locations'集合的索引。")
     except Exception as exc:
-        logger.error("初始化locations索引失败：%s", exc)
+        logger.error("Khởi tạo chỉ mục locations thất bại: %s", exc)
         raise
 
 
@@ -753,7 +753,7 @@ async def init_location_confirmation_receipt_indexes(db=None) -> None:
         )
         logger.info("成功初始化地点批量确认不可变回执索引。")
     except Exception as exc:
-        logger.error("初始化地点批量确认回执索引失败：%s", exc)
+        logger.error("Khởi tạo chỉ mục biên nhận xác nhận hàng loạt địa điểm thất bại: %s", exc)
         raise
 
 
@@ -832,7 +832,7 @@ async def init_item_indexes(db=None) -> None:
         )
         logger.info("成功初始化'items'集合的索引。")
     except Exception as exc:
-        logger.error("初始化items索引失败：%s", exc)
+        logger.error("Khởi tạo chỉ mục items thất bại: %s", exc)
         raise
 
 
@@ -858,7 +858,7 @@ async def init_item_confirmation_receipt_indexes(db=None) -> None:
         )
         logger.info("成功初始化物品批量确认不可变回执索引。")
     except Exception as exc:
-        logger.error("初始化物品批量确认回执索引失败：%s", exc)
+        logger.error("Khởi tạo chỉ mục biên nhận xác nhận hàng loạt vật phẩm thất bại: %s", exc)
         raise
 
 
@@ -1128,7 +1128,7 @@ async def init_id_sequence_indexes(db=None) -> None:
         )
         logger.info("成功初始化'id_sequences'集合的索引。")
     except Exception as exc:
-        logger.error("初始化id_sequences索引失败：%s", exc)
+        logger.error("Khởi tạo chỉ mục id_sequences thất bại: %s", exc)
         raise
 
 

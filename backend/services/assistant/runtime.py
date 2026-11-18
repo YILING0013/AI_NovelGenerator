@@ -83,7 +83,7 @@ async def get_session(novel_id: str, session_id: str) -> dict:
     """
     value = await BaseRepository("assistant_sessions").collection.find_one({"_id": ObjectId(session_id), "novel_id": ObjectId(novel_id)})
     if value is None:
-        raise DomainApiError("ASSISTANT_SESSION_NOT_FOUND", "对话不存在或不属于当前小说", status_code=404)
+        raise DomainApiError("ASSISTANT_SESSION_NOT_FOUND", "Hội thoại không tồn tại hoặc không thuộc tiểu thuyết hiện tại", status_code=404)
     return value
 
 
@@ -116,7 +116,7 @@ async def update_session(novel_id: str, session_id: str, request: SessionUpdate)
     await get_session(novel_id, session_id)
     fields = request.model_dump(exclude_unset=True)
     if any(value is None for value in fields.values()):
-        raise DomainApiError("ASSISTANT_SESSION_INVALID", "会话设置不能设为 null")
+        raise DomainApiError("ASSISTANT_SESSION_INVALID", "Không được đặt cấu hình phiên thành null")
     return await BaseRepository("assistant_sessions").collection.find_one_and_update({"_id": ObjectId(session_id), "novel_id": ObjectId(novel_id)}, {"$set": {**fields, "updated_at": get_utc_now()}}, return_document=ReturnDocument.AFTER)
 
 
@@ -131,7 +131,7 @@ async def get_run(novel_id: str, run_id: str) -> dict:
     """
     run = await BaseRepository("assistant_runs").collection.find_one({"_id": ObjectId(run_id), "novel_id": ObjectId(novel_id)})
     if run is None:
-        raise DomainApiError("ASSISTANT_RUN_NOT_FOUND", "任务不存在或不属于当前小说", status_code=404)
+        raise DomainApiError("ASSISTANT_RUN_NOT_FOUND", "Nhiệm vụ không tồn tại hoặc không thuộc tiểu thuyết hiện tại", status_code=404)
     if run["status"] == "running":
         lease = await BaseRepository("assistant_book_leases").collection.find_one({"_id": ObjectId(novel_id), "run_id": run_id, "expires_at": {"$gt": get_utc_now()}})
         if lease is None:
@@ -173,7 +173,7 @@ async def create_run(novel_id: str, session_id: str, request: TurnRequest, reque
     """
     chat = await get_session(novel_id, session_id)
     if chat["archived"]:
-        raise DomainApiError("ASSISTANT_SESSION_ARCHIVED", "请先恢复归档对话")
+        raise DomainApiError("ASSISTANT_SESSION_ARCHIVED", "Hãy khôi phục hội thoại đã lưu trữ trước")
     request_value = request.model_dump(mode="json")
     if request.execution_mode is None:
         request_value.pop("execution_mode")
@@ -185,7 +185,7 @@ async def create_run(novel_id: str, session_id: str, request: TurnRequest, reque
     existing = await collection.find_one(query)
     if existing:
         if existing["request_hash"] != request_hash:
-            raise DomainApiError("ASSISTANT_MESSAGE_KEY_REUSED", "同一消息键不能用于不同内容", status_code=409)
+            raise DomainApiError("ASSISTANT_MESSAGE_KEY_REUSED", "Cùng một khóa tin nhắn không được dùng cho nội dung khác", status_code=409)
         # 进程可能在创建运行后、保存用户消息前退出；同键重试补齐消息，不重复创建。
         await BaseRepository("assistant_messages").collection.update_one({"_id": existing["_id"]}, {"$setOnInsert": {
             "session_id": chat["_id"], "run_id": existing["_id"], "role": "user", "content": request.message,
@@ -195,15 +195,15 @@ async def create_run(novel_id: str, session_id: str, request: TurnRequest, reque
     for attachment in request.attachments:
         await get_resource(novel_id, ResourceRef(resource_type=attachment.resource_type, id=attachment.id))
         if attachment.origin == "draft" and attachment.text is None:
-            raise DomainApiError("ASSISTANT_DRAFT_EMPTY", "引用草稿时需要明确附上草稿文字")
+            raise DomainApiError("ASSISTANT_DRAFT_EMPTY", "Khi trích dẫn bản nháp phải kèm rõ văn bản bản nháp")
     if request.location:
         await get_resource(novel_id, request.location)
     if request.writing_target:
         if request.writing_target.resource_type not in {"volume", "arc", "scene", "chapter"}:
-            raise DomainApiError("ASSISTANT_WRITING_TARGET_REQUIRED", "按位置创作需要明确选择卷、篇章、场景或章节")
+            raise DomainApiError("ASSISTANT_WRITING_TARGET_REQUIRED", "Sáng tác theo vị trí cần chọn rõ quyển, vòng truyện, cảnh hoặc chương")
         await get_resource(novel_id, request.writing_target)
         if len(request.message) > 5000:
-            raise DomainApiError("ASSISTANT_WRITING_MESSAGE_TOO_LONG", "按位置创作的作者要求最多 5000 字；请保留原文并缩短后另发，助手不会代为截断")
+            raise DomainApiError("ASSISTANT_WRITING_MESSAGE_TOO_LONG", "Yêu cầu của tác giả khi sáng tác theo vị trí tối đa 5000 ký tự; hãy giữ nguyên văn bản rồi gửi bản rút gọn, trợ lý sẽ không cắt bớt giúp")
     # 发送前校验能力；不会默默改用其它服务，也不在持久状态保存密钥。
     client, provider, model = resolve_model(chat)
     await client._http_client.aclose()
@@ -238,7 +238,7 @@ async def book_lease(novel_id: str, run_id: str):
         lease = await collection.find_one_and_update({"_id": ObjectId(novel_id), "$or": [{"expires_at": {"$lte": now}}, {"expires_at": {"$exists": False}}]},
             {"$set": {"owner": owner, "run_id": run_id, "expires_at": now + timedelta(seconds=60)}}, upsert=True, return_document=ReturnDocument.AFTER)
     except DuplicateKeyError as exc:
-        raise DomainApiError("ASSISTANT_BOOK_BUSY", "这本书已有助手操作正在执行，请先停止或等待完成", status_code=409) from exc
+        raise DomainApiError("ASSISTANT_BOOK_BUSY", "Cuốn sách này đang có thao tác của trợ lý chạy, hãy dừng hoặc chờ hoàn tất trước", status_code=409) from exc
     task = asyncio.current_task()
     async def renew():
         try:
@@ -292,7 +292,7 @@ async def save_checkpoint(run_id: str, state: dict) -> None:
     """
     raw = json.dumps(state, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     if len(raw) > 32_000_000:
-        raise DomainApiError("ASSISTANT_HISTORY_LIMIT", "本轮保留资料过大，请新建一轮继续，已有记录和候选仍保留")
+        raise DomainApiError("ASSISTANT_HISTORY_LIMIT", "Tư liệu giữ lại của lượt này quá lớn, hãy tạo lượt mới để tiếp tục; bản ghi và ứng viên đã có vẫn được giữ")
     checkpoint = ObjectId()
     pieces = [raw[start:start + 2_000_000] for start in range(0, len(raw), 2_000_000)]
     collection = BaseRepository("assistant_checkpoints").collection
@@ -313,7 +313,7 @@ async def load_checkpoint(run: dict) -> dict | None:
         return None
     parts = await BaseRepository("assistant_checkpoints").collection.find({"checkpoint_id": run["checkpoint_id"], "run_id": run["_id"]}).sort("part", 1).to_list()
     if len(parts) != run["checkpoint_parts"]:
-        raise DomainApiError("ASSISTANT_CHECKPOINT_INCOMPLETE", "检查点不完整，已有候选和回执仍可查看", status_code=503)
+        raise DomainApiError("ASSISTANT_CHECKPOINT_INCOMPLETE", "Điểm kiểm tra không đầy đủ, vẫn có thể xem ứng viên và biên nhận đã có", status_code=503)
     return json.loads(b"".join(piece["data"] for piece in parts))
 
 
@@ -388,9 +388,9 @@ async def run_conversation(novel_id: str, run_id: str, *, additional_rounds: int
             client = None
             try:
                 if run.get("creation_contract_version") != 1:
-                    raise DomainApiError("ASSISTANT_CREATION_REQUEST_EXPIRED", "旧轮次缺少创作来源，请保留记录并另发新消息；已保存结果仍可查看", status_code=409)
+                    raise DomainApiError("ASSISTANT_CREATION_REQUEST_EXPIRED", "Lượt cũ thiếu nguồn sáng tác, hãy giữ bản ghi và gửi tin nhắn khác; kết quả đã lưu vẫn xem được", status_code=409)
                 if run.get("model_configuration") != model_configuration(run["settings"]):
-                    raise DomainApiError("ASSISTANT_CONFIG_CHANGED", "模型接入配置已变化，请用新一轮继续；已有候选仍可查看", status_code=409)
+                    raise DomainApiError("ASSISTANT_CONFIG_CHANGED", "Cấu hình kết nối mô hình đã thay đổi, hãy dùng lượt mới để tiếp tục; vẫn xem được ứng viên đã có", status_code=409)
                 client, provider, model = resolve_model(run["settings"])
                 await sync_index(novel_id)
                 if state is None:
@@ -492,7 +492,7 @@ async def run_conversation(novel_id: str, run_id: str, *, additional_rounds: int
                         call_key = f"{state['rounds']}:{state['pending_index']}"
                         if not state["pending_started"]:
                             if call.id is not None and call.id in state["seen_ids"]:
-                                raise DomainApiError("ASSISTANT_TOOL_ID_DUPLICATE", "模型重复使用了工具调用 ID，当前轮次无法继续", status_code=502)
+                                raise DomainApiError("ASSISTANT_TOOL_ID_DUPLICATE", "Mô hình dùng lặp ID lời gọi công cụ, lượt hiện tại không thể tiếp tục", status_code=502)
                             if call.id is not None:
                                 state["seen_ids"].append(call.id)
                             state["tool_calls"] += 1
@@ -501,9 +501,9 @@ async def run_conversation(novel_id: str, run_id: str, *, additional_rounds: int
                         await emit("tool", {"key": call_key, "name": call.name, "state": "running"})
                         try:
                             if state.get("stale_pending") and (call.name.startswith("stage_") or call.name in {"run_generation_task", "finish_turn", "ask_user"}):
-                                raise DomainApiError("ASSISTANT_STALE_PENDING_CALL", "中断期间资料已改变，此旧调用未执行。请重新读取资料后再准备候选或总结。", status_code=409)
+                                raise DomainApiError("ASSISTANT_STALE_PENDING_CALL", "Tư liệu đã thay đổi trong lúc gián đoạn, lời gọi cũ này không được thực thi. Hãy đọc lại tư liệu rồi chuẩn bị ứng viên hoặc bản tóm tắt.", status_code=409)
                             if call.name in {"finish_turn", "ask_user"} and len(state["pending_calls"]) != 1:
-                                raise DomainApiError("ASSISTANT_FINAL_TOOL_ALONE", "结束或提问工具必须独立调用")
+                                raise DomainApiError("ASSISTANT_FINAL_TOOL_ALONE", "Công cụ kết thúc hoặc đặt câu hỏi phải được gọi riêng biệt")
                             output = await execute_tool(call.name, call.arguments, run=run, state=state, key=call_key, emit=emit)
                             result = LLMToolResult(id=call.id, name=call.name, content=bounded_tool_result(output))
                         except (ValueError, DomainApiError) as exc:
@@ -621,28 +621,28 @@ async def answer_run(novel_id: str, run_id: str, request: AnswerRequest, request
         existing = next((item for item in run.get("answers", []) if item["id"] == identity), None)
         if existing:
             if existing["hash"] != answer_hash:
-                raise DomainApiError("ASSISTANT_ANSWER_KEY_REUSED", "同一回答不能换成其它内容", status_code=409)
+                raise DomainApiError("ASSISTANT_ANSWER_KEY_REUSED", "Cùng một câu trả lời không được đổi thành nội dung khác", status_code=409)
             await BaseRepository("assistant_messages").collection.update_one(
                 {"_id": ObjectId(identity[:24])}, {"$setOnInsert": {"session_id": run["session_id"], "run_id": run["_id"],
                     "role": "user", "content": existing["message"], "created_at": get_utc_now()}}, upsert=True)
             return run
         question = run.get("pending_question")
         if run["status"] != "waiting_input" or not question or question["id"] != request.question_id:
-            raise DomainApiError("ASSISTANT_QUESTION_EXPIRED", "这个问题已处理，请查看对话里的最新问题", status_code=409)
+            raise DomainApiError("ASSISTANT_QUESTION_EXPIRED", "Câu hỏi này đã được xử lý, hãy xem câu hỏi mới nhất trong hội thoại", status_code=409)
         for item in question["changes"]:
             change = await get_change(novel_id, item["id"])
             receipt = await BaseRepository("assistant_receipts").collection.find_one({"novel_id": run["novel_id"], "change_id": change["_id"], "revision": item["revision"]})
             if change["revision"] != item["revision"] or (change["status"] != item["status"] and not receipt):
-                raise DomainApiError("ASSISTANT_QUESTION_CHANGED", "等待回答时修改内容已变化，请先核对最新修改", status_code=409)
+                raise DomainApiError("ASSISTANT_QUESTION_CHANGED", "Nội dung sửa đổi đã thay đổi trong lúc chờ trả lời, hãy đối chiếu bản sửa mới nhất trước", status_code=409)
         state = await load_checkpoint(run)
         if state is None:
-            raise DomainApiError("ASSISTANT_CHECKPOINT_INCOMPLETE", "原任务记录不完整，原修改仍保留", status_code=409)
+            raise DomainApiError("ASSISTANT_CHECKPOINT_INCOMPLETE", "Bản ghi nhiệm vụ gốc không đầy đủ, bản sửa gốc vẫn được giữ", status_code=409)
         answer = {"id": identity, "hash": answer_hash, "question": question, "message": request.message}
         confirmation = question.get("confirmation")
         affirmative = request.message.strip().rstrip("。.!！") in {"好", "好的", "是", "是的", "确认", "确认并继续", "Yes", "yes", "Confirm and continue"}
         if confirmation and affirmative:
             if request.confirmation_token != confirmation["token"]:
-                raise DomainApiError("ASSISTANT_CONFIRMATION_CHANGED", "请确认对话中列出的具体改动", status_code=409)
+                raise DomainApiError("ASSISTANT_CONFIRMATION_CHANGED", "Hãy xác nhận các thay đổi cụ thể được liệt kê trong hội thoại", status_code=409)
             result = await apply_change(novel_id, confirmation["change_id"], ChangeApproval(
                 expected_revision=confirmation["revision"], confirmation_token=confirmation["token"],
                 confirm_lifecycle=True, accept_content_risk=True), author_confirmed=True, mode="review", lease=lease)

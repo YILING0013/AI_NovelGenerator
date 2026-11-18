@@ -141,7 +141,7 @@ def validate_local_candidate_ref(value: str) -> str:
         ValueError: 引用格式非法或与正式业务 ID 命名空间重叠。
     """
     if not is_local_candidate_ref(value):
-        raise ValueError("候选局部引用格式不合法或与正式业务 ID 冲突")
+        raise ValueError("Định dạng tham chiếu cục bộ của ứng viên không hợp lệ hoặc xung đột với ID nghiệp vụ chính thức")
     return value
 
 

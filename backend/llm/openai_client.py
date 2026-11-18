@@ -55,27 +55,27 @@ def build_openai_parameters(request: LLMRequest, config: LLMProviderConfig,
     effort = request.reasoning_effort
     if config.is_deepseek:
         if request.thinking_mode not in (None, "enabled", "disabled"):
-            raise ValueError("DeepSeek 思考模式只支持 enabled 或 disabled")
+            raise ValueError("Chế độ suy nghĩ của DeepSeek chỉ hỗ trợ enabled hoặc disabled")
         if request.thinking_mode == "disabled":
             if effort not in (None, "none"):
-                raise ValueError("关闭思考时不能同时设置思考等级")
+                raise ValueError("Khi tắt suy nghĩ thì không được đặt cấp độ suy nghĩ")
             effort = "none"
         elif request.thinking_mode == "enabled" and effort == "none":
-            raise ValueError("开启思考时不能选择 none 等级")
+            raise ValueError("Khi bật suy nghĩ thì không được chọn cấp độ none")
         if request.reasoning_mode or request.verbosity:
-            raise ValueError("DeepSeek 不支持 Pro 推理或输出详细程度参数")
+            raise ValueError("DeepSeek không hỗ trợ suy luận Pro hay tham số mức độ chi tiết đầu ra")
     elif request.thinking_mode is not None:
-        raise ValueError("OpenAI 使用思考等级控制推理，不支持 thinking_mode")
+        raise ValueError("OpenAI dùng cấp độ suy nghĩ để điều khiển suy luận, không hỗ trợ thinking_mode")
     if request.thinking_budget is not None:
-        raise ValueError("此接口使用思考等级，不支持思考 token 预算")
+        raise ValueError("Giao diện này dùng cấp độ suy nghĩ, không hỗ trợ ngân sách token suy nghĩ")
     if model_name.startswith(("gpt-6-astra", "gpt-6.1-sol")) and effort in {"none", "minimal"}:
-        raise ValueError("GPT-6 Astra / GPT-6.1 Sol 的最低思考等级为 low")
+        raise ValueError("Cấp độ suy nghĩ tối thiểu của GPT-6 Astra / GPT-6.1 Sol là low")
     if not responses and request.reasoning_mode is not None:
-        raise ValueError("Pro 推理模式需要选择 Responses 接口")
+        raise ValueError("Chế độ suy luận Pro cần chọn giao diện Responses")
     if function_calling and not responses and not config.is_deepseek and (
         model_name.startswith("gpt-6") or re.match(r"^gpt-5\.[4-9](?:-|$)", model_name)
     ) and (effort != "none" or model_name.startswith("gpt-6-astra")):
-        raise ValueError("当前模型的推理工具调用需要 Responses 接口，请在 Provider 设置中切换接口模式")
+        raise ValueError("Lời gọi công cụ suy luận của mô hình hiện tại cần giao diện Responses; hãy chuyển chế độ giao diện trong cài đặt Provider")
 
     params: dict[str, Any] = {"model": model}
     json_output = config.resolved_structured_output_mode == "json_object" and (schema is not None or config.json_output_enabled)
@@ -343,7 +343,7 @@ class OpenAICompatibleClient(BaseLLMClient):
                             observe_provider_response(event.chunk, self.config.resolved_api_mode)
                     response = await events.get_final_completion()
                 if not response.choices or any(choice.finish_reason is None for choice in response.choices):
-                    raise LLMConnectionError("Chat Completions 响应流提前断开，请重试", provider=self.provider_name)
+                    raise LLMConnectionError("Luồng phản hồi Chat Completions bị ngắt sớm, hãy thử lại", provider=self.provider_name)
                 return response
             except openai.BadRequestError as exc:
                 # 中转服务可能使用自定义模型名，以明确的错误说明为准。
@@ -409,7 +409,7 @@ class OpenAICompatibleClient(BaseLLMClient):
                 call.finish_reason = choice.finish_reason
                 call.usage = self._extract_usage(resp.usage)
                 raise LLMResponseError(
-                    "模型输出达到长度上限，内容未完成", provider=self.provider_name, model=model,
+                    "Đầu ra của mô hình đã chạm giới hạn độ dài, nội dung chưa hoàn chỉnh", provider=self.provider_name, model=model,
                     partial_text=choice.message.content or "",
                 )
             result = LLMResponse(
@@ -461,10 +461,10 @@ class OpenAICompatibleClient(BaseLLMClient):
 
             if choice and choice.finish_reason == "length":
                 raise LLMSchemaError(
-                    "模型输出被截断，请增加 max_tokens 后重试", provider=self.provider_name, model=model
+                    "Đầu ra của mô hình bị cắt ngắn, hãy tăng max_tokens rồi thử lại", provider=self.provider_name, model=model
                 )
             if choice and choice.finish_reason == "content_filter":
-                raise LLMSchemaError("模型输出被内容过滤，请调整输入后重试", provider=self.provider_name, model=model)
+                raise LLMSchemaError("Đầu ra của mô hình bị bộ lọc nội dung chặn, hãy điều chỉnh đầu vào rồi thử lại", provider=self.provider_name, model=model)
             parsed_obj = None
             if choice and choice.message.content and not choice.message.refusal:
                 reject_duplicate_json_keys(choice.message.content)
@@ -472,7 +472,7 @@ class OpenAICompatibleClient(BaseLLMClient):
                     parsed_obj = schema.model_validate_json(choice.message.content)
                 except ValidationError as exc:
                     raise LLMSchemaError(
-                        "模型返回的 JSON 不符合目标结构", provider=self.provider_name, model=model
+                        "JSON mô hình trả về không khớp cấu trúc mục tiêu", provider=self.provider_name, model=model
                     ) from exc
             if parsed_obj is None:
                 refusal = getattr(choice.message, "refusal", None) if choice else None
@@ -523,10 +523,10 @@ class OpenAICompatibleClient(BaseLLMClient):
                             if clean_text:
                                 yield clean_text
                 if not call.finish_reason:
-                    raise LLMConnectionError("Chat Completions 响应流提前断开，请重试", provider=self.provider_name, model=model)
+                    raise LLMConnectionError("Luồng phản hồi Chat Completions bị ngắt sớm, hãy thử lại", provider=self.provider_name, model=model)
                 if call.finish_reason == "length":
                     raise LLMResponseError(
-                        "模型输出达到长度上限，内容未完成", provider=self.provider_name, model=model,
+                        "Đầu ra của mô hình đã chạm giới hạn độ dài, nội dung chưa hoàn chỉnh", provider=self.provider_name, model=model,
                         partial_text="".join(call.chunks),
                     )
                 if request.json_output_schema is not None:
@@ -569,12 +569,12 @@ class OpenAICompatibleClient(BaseLLMClient):
             response = await self._create_completion(params, collect_stream=request.stream)
             observe_provider_response(response, self.config.resolved_api_mode)
             if not response.choices:
-                raise ValueError("工具对话没有返回候选")
+                raise ValueError("Hội thoại công cụ không trả về ứng viên nào")
             choice = response.choices[0]
             if choice.finish_reason not in {"stop", "tool_calls"}:
-                raise LLMResponseError(f"工具回复未完成：{choice.finish_reason}，请检查输出上限或输入", provider=self.provider_name, model=model)
+                raise LLMResponseError(f"Hồi đáp công cụ chưa hoàn chỉnh:{choice.finish_reason}, hãy kiểm tra giới hạn đầu ra hoặc đầu vào", provider=self.provider_name, model=model)
             if choice.message.refusal:
-                raise LLMResponseError("模型拒绝了本次工具对话，请调整输入后重试", provider=self.provider_name, model=model)
+                raise LLMResponseError("Mô hình đã từ chối hội thoại công cụ lần này, hãy điều chỉnh đầu vào rồi thử lại", provider=self.provider_name, model=model)
             # 不能只重建正文和工具字段，reasoning_content 等续接字段也必须留下。
             # SDK 的解析结果和分片序号不属于上游消息字段。
             messages.append(choice.message.model_dump(
@@ -645,7 +645,7 @@ class OpenAICompatibleClient(BaseLLMClient):
                     None,
                 )
                 if tool_call is None:
-                    raise ValueError("模型未返回指定工具调用")
+                    raise ValueError("Mô hình không trả về lời gọi công cụ được chỉ định")
 
                 reject_duplicate_json_keys(tool_call.function.arguments or "{}")
                 actual_args = json.loads(tool_call.function.arguments or "{}")

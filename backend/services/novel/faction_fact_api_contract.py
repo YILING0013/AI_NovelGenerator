@@ -20,7 +20,7 @@ class FactionFactQueryV1(StrictRequestModel):
     def validate_selection(self) -> "FactionFactQueryV1":
         """拒绝重复选择，不在接口中悄悄去重或扩大范围。"""
         if len(self.faction_ids) != len(set(self.faction_ids)):
-            raise ValueError("势力编号不能重复")
+            raise ValueError("Mã thế lực không được trùng")
         return self
 
 

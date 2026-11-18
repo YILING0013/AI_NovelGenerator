@@ -33,7 +33,7 @@ class ChapterPlanV2(StrictRequestModel):
             已校验的原值。
         """
         if value is not None and not is_business_id("character", value):
-            raise ValueError("pov_character_id 必须填写人物业务 ID")
+            raise ValueError("pov_character_id phải điền ID nghiệp vụ của nhân vật")
         return value
 
 
@@ -93,10 +93,10 @@ class ChapterUpdateV2(ChapterCreateV2):
         """
         fields = self.model_fields_set - {"expected_version"}
         if not fields:
-            raise ValueError("章节更新至少需要一个内容字段")
+            raise ValueError("Cập nhật chương cần ít nhất một trường nội dung")
         for field in fields:
             if getattr(self, field) is None:
-                raise ValueError(f"{field} 不能设为 null")
+                raise ValueError(f"{field} không được đặt là null")
         return self
 
 

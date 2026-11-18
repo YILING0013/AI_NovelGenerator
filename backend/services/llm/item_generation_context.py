@@ -135,7 +135,7 @@ async def load_item_generation_context(
     if novel.get("item_write_lock_token") is not None and not allow_item_write_lock:
         raise DomainApiError(
             "ITEM_READ_CONFLICT",
-            "物品正在更新，请稍后重试",
+            "Vật phẩm đang được cập nhật, hãy thử lại sau",
             status_code=409,
         )
 
@@ -200,7 +200,7 @@ async def load_item_generation_context(
     if len(source_refs) > MAX_CANDIDATE_SOURCE_REFS:
         raise DomainApiError(
             "ITEM_GENERATION_SOURCE_BUDGET_EXCEEDED",
-            "物品生成使用的资料超过 2000 项，请先减少内容",
+            "Tài liệu dùng để tạo vật phẩm vượt quá 2000 mục, hãy giảm nội dung trước",
             status_code=422,
         )
 

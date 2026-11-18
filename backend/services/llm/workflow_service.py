@@ -28,6 +28,6 @@ def ensure_text_budget(
     if actual_chars > max_chars:
         raise GenerationDomainError(
             code,
-            f"{label}超出输入预算：{actual_chars} > {max_chars} 字符",
+            f"{label}Vượt quá ngân sách đầu vào:{actual_chars} > {max_chars} ký tự",
             status_code=422,
         )

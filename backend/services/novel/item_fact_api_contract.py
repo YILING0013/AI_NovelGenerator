@@ -74,5 +74,5 @@ class ItemFactBatchConfirmV1(StrictRequestModel):
             对应原完整候选的请求。
         """
         if [row.candidate_ref for row in self.entries] != [row.candidate_ref for row in self.generation.candidates]:
-            raise ValueError("请保留原整批候选及顺序，不能拆开确认")
+            raise ValueError("Hãy giữ nguyên toàn bộ ứng viên và thứ tự của lô, không được tách ra để xác nhận")
         return self

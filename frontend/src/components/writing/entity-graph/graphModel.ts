@@ -129,7 +129,7 @@ export function createRelationshipGraphSnapshot(
           code: "missing_business_id",
           entityKind,
           entityId: rawId ?? null,
-          message: "实体缺少稳定业务 ID，已跳过。",
+          message: "Thực thể thiếu ID nghiệp vụ ổn định, đã bỏ qua.",
         }),
       );
       return;
@@ -140,7 +140,7 @@ export function createRelationshipGraphSnapshot(
           code: "duplicate_node_id",
           entityKind,
           entityId: node.id,
-          message: "发现重复节点业务 ID，保留首条记录。",
+          message: "Phát hiện ID nghiệp vụ nút trùng lặp, giữ bản ghi đầu tiên.",
         }),
       );
       return;
@@ -191,7 +191,7 @@ export function createRelationshipGraphSnapshot(
           code: "unknown_faction_level",
           entityKind: "faction",
           entityId: factionId,
-          message: "势力层级无法识别，节点仍保留以便未来扩展。",
+          message: "Cấp thế lực không xác định được, nút vẫn được giữ để mở rộng sau này.",
           details: { level: faction.level_type ?? "" },
         }),
       );
@@ -235,7 +235,7 @@ export function createRelationshipGraphSnapshot(
           code: "missing_business_id",
           entityKind: kind,
           entityId: rawId ?? null,
-          message: "关系缺少稳定业务 ID，已跳过。",
+          message: "Quan hệ thiếu ID nghiệp vụ ổn định, đã bỏ qua.",
         }),
       );
       return;
@@ -246,7 +246,7 @@ export function createRelationshipGraphSnapshot(
           code: "self_reference",
           entityKind: kind,
           entityId: edge.id,
-          message: "自引用关系不会进入图谱。",
+          message: "Quan hệ tự tham chiếu sẽ không vào đồ thị.",
         }),
       );
       return;
@@ -260,7 +260,7 @@ export function createRelationshipGraphSnapshot(
           code: "missing_endpoint",
           entityKind: kind,
           entityId: edge.id,
-          message: "关系端点不存在，已跳过且未创建虚构节点。",
+          message: "Điểm cuối quan hệ không tồn tại, đã bỏ qua và không tạo nút hư cấu.",
           details: { missing: missing.join(",") },
         }),
       );
@@ -272,7 +272,7 @@ export function createRelationshipGraphSnapshot(
           code: "duplicate_edge_id",
           entityKind: kind,
           entityId: edge.id,
-          message: "发现重复关系业务 ID，保留首条记录。",
+          message: "Phát hiện ID nghiệp vụ quan hệ trùng lặp, giữ bản ghi đầu tiên.",
         }),
       );
       return;

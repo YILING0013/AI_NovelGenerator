@@ -43,7 +43,7 @@ def require_assistant() -> None:
         无；关闭时明确拒绝执行，查询历史仍可用。
     """
     if not assistant_enabled():
-        raise DomainApiError("ASSISTANT_DISABLED", "小说助手当前已关闭，可使用原编辑入口", status_code=503)
+        raise DomainApiError("ASSISTANT_DISABLED", "Trợ lý tiểu thuyết hiện đã tắt, hãy dùng lối vào chỉnh sửa gốc", status_code=503)
 
 
 router = APIRouter(prefix="/api/novels/{novel_id}/assistant", tags=["novel-assistant"])
@@ -175,7 +175,7 @@ async def session_detail(novel_id: ObjectIdString, session_id: ObjectIdString, b
     query = {"session_id": chat["_id"]}
     if before:
         if not ObjectId.is_valid(before):
-            raise DomainApiError("ASSISTANT_CURSOR_INVALID", "消息游标不正确")
+            raise DomainApiError("ASSISTANT_CURSOR_INVALID", "Con trỏ tin nhắn không đúng")
         query["_id"] = {"$lt": ObjectId(before)}
     messages = await BaseRepository("assistant_messages").collection.find(query).sort("_id", -1).limit(51).to_list()
     runs = await BaseRepository("assistant_runs").collection.find({"session_id": chat["_id"], "novel_id": chat["novel_id"]}).sort("created_at", -1).limit(20).to_list()
@@ -271,7 +271,7 @@ async def continue_run(novel_id: ObjectIdString, run_id: ObjectIdString, request
     """
     run = await get_run(novel_id, run_id)
     if run.get("pending_question"):
-        raise DomainApiError("ASSISTANT_ANSWER_REQUIRED", "请回答对话里的问题，之后会继续原任务", status_code=409)
+        raise DomainApiError("ASSISTANT_ANSWER_REQUIRED", "Hãy trả lời câu hỏi trong hội thoại, nhiệm vụ gốc sẽ tiếp tục sau đó", status_code=409)
     return conversation_stream(novel_id, run_id, request.additional_rounds)
 
 

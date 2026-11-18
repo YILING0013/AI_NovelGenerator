@@ -107,7 +107,7 @@ class CharacterFactionBindingUpdateRequestV1(BaseModel):
                 "notes",
             }
         ):
-            raise ValueError("绑定更新至少需要一个可修改字段")
+            raise ValueError("Việc cập nhật liên kết cần ít nhất một trường có thể sửa đổi")
         return self
 
 
@@ -163,7 +163,7 @@ class CharacterFactionBindingPrimaryRequestV1(BaseModel):
             or len(binding_id) < 10
         ]
         if invalid_ids:
-            raise ValueError("replaced_expected_versions 包含非法 binding_id")
+            raise ValueError("replaced_expected_versions chứa binding_id không hợp lệ")
         return value
 
 

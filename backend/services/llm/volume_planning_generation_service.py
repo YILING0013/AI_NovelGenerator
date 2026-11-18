@@ -69,20 +69,20 @@ class VolumePlanningGenerationService:
         ):
             raise GenerationDomainError(
                 "VOLUME_BUDGET_INVALID",
-                "章节和字数总预算都必须至少等于目标卷数",
+                "Tổng ngân sách chương và số chữ đều phải lớn hơn hoặc bằng số quyển đích",
                 status_code=422,
             )
         context = await load_volume_planning_context(generation_input.novel_id)
         if int(context["novel"]["version"]) != generation_input.novel_expected_version:
             raise GenerationDomainError(
                 "VOLUME_NOVEL_VERSION_CONFLICT",
-                "小说版本已变化，请刷新后重新生成卷骨架",
+                "Phiên bản tiểu thuyết đã thay đổi, hãy làm mới rồi tạo lại khung quyển",
                 status_code=409,
             )
         if not context["protagonists"] or not context["factions"]:
             raise GenerationDomainError(
                 "VOLUME_PLANNING_READINESS_REQUIRED",
-                "生成卷规划前必须已有活动主角和活动核心势力",
+                "Trước khi tạo kế hoạch quyển phải đã có nhân vật chính và thế lực cốt lõi đang hoạt động",
                 status_code=422,
             )
         volumes = context["volumes"]
@@ -91,7 +91,7 @@ class VolumePlanningGenerationService:
             if volumes:
                 raise GenerationDomainError(
                     "VOLUME_MODE_CONFLICT",
-                    "create 模式要求当前小说没有活动卷",
+                    "chế độ create yêu cầu tiểu thuyết hiện chưa có quyển nào đang hoạt động",
                     status_code=409,
                 )
             expected_orders = list(range(1, generation_input.target_volume_count + 1))
@@ -99,7 +99,7 @@ class VolumePlanningGenerationService:
             if not volumes:
                 raise GenerationDomainError(
                     "VOLUME_MODE_CONFLICT",
-                    "没有活动卷时应使用 create 模式",
+                    "Khi chưa có quyển nào đang hoạt động, hãy dùng chế độ create",
                     status_code=409,
                 )
             start = int(volumes[-1]["order_index"]) + 1
@@ -112,7 +112,7 @@ class VolumePlanningGenerationService:
             if any(order not in current_orders for order in expected_orders):
                 raise GenerationDomainError(
                     "VOLUME_REPLAN_RANGE_INVALID",
-                    "replan 目标区间必须完整对应当前活动卷",
+                    "Khoảng đích của replan phải tương ứng đầy đủ với các quyển đang hoạt động hiện tại",
                     status_code=409,
                 )
         if generation_input.target_order_range is not None and (
@@ -126,7 +126,7 @@ class VolumePlanningGenerationService:
         ):
             raise GenerationDomainError(
                 "VOLUME_ORDER_RANGE_INVALID",
-                "target_order_range 与当前模式的实际目标顺序不一致",
+                "target_order_range không khớp với thứ tự đích thực tế của chế độ hiện tại",
                 status_code=409,
             )
 
@@ -181,7 +181,7 @@ class VolumePlanningGenerationService:
             )
             ordered = sorted(candidates, key=lambda item: int(item["order_index"]))
             if [int(item["order_index"]) for item in ordered] != context["expected_orders"]:
-                raise ValueError("模型卷顺序与当前模式目标不一致")
+                raise ValueError("Thứ tự quyển của mô hình không khớp mục tiêu của chế độ hiện tại")
             volumes = context["volumes"]
             existing_titles = {
                 normalize_volume_text(str(item["title"])) for item in volumes
@@ -191,12 +191,12 @@ class VolumePlanningGenerationService:
                     normalize_volume_text(str(item["title"])) for item in ordered
                 }
                 if existing_titles & candidate_titles:
-                    raise ValueError("append 候选标题与活动卷冲突")
+                    raise ValueError("Tiêu đề ứng viên append xung đột với quyển đang hoạt động")
                 previous_planning = volumes[-1].get("planning")
                 if previous_planning is not None and normalize_volume_text(
                     str(previous_planning["end_state"])
                 ) != normalize_volume_text(str(ordered[0]["planning"]["start_state"])):
-                    raise ValueError("append 首卷起点与当前末卷终点不衔接")
+                    raise ValueError("Điểm mở đầu của quyển đầu khi append không nối tiếp điểm kết của quyển cuối hiện tại")
             elif generation_input.mode == "replan":
                 target_orders = set(context["expected_orders"])
                 non_target_titles = {
@@ -208,7 +208,7 @@ class VolumePlanningGenerationService:
                     normalize_volume_text(str(item["title"])) for item in ordered
                 }
                 if non_target_titles & candidate_titles:
-                    raise ValueError("replan 候选标题与区间外活动卷冲突")
+                    raise ValueError("Tiêu đề ứng viên replan xung đột với quyển đang hoạt động ngoài khoảng")
                 by_order = {int(item["order_index"]): item for item in volumes}
                 first_order, last_order = min(target_orders), max(target_orders)
                 previous_planning = (
@@ -224,11 +224,11 @@ class VolumePlanningGenerationService:
                 if previous_planning is not None and normalize_volume_text(
                     str(previous_planning["end_state"])
                 ) != normalize_volume_text(str(ordered[0]["planning"]["start_state"])):
-                    raise ValueError("replan 首卷起点与左侧相邻卷终点不衔接")
+                    raise ValueError("Điểm mở đầu của quyển đầu khi replan không nối tiếp điểm kết của quyển liền bên trái")
                 if next_planning is not None and normalize_volume_text(
                     str(ordered[-1]["planning"]["end_state"])
                 ) != normalize_volume_text(str(next_planning["start_state"])):
-                    raise ValueError("replan 末卷终点与右侧相邻卷起点不衔接")
+                    raise ValueError("Điểm kết của quyển cuối khi replan không nối tiếp điểm mở đầu của quyển liền bên phải")
         except ValueError as exc:
             raise GenerationDomainError(
                 "VOLUME_SKELETON_OUTPUT_INVALID",
@@ -252,7 +252,7 @@ class VolumePlanningGenerationService:
         if not context["protagonists"] or not context["factions"]:
             raise GenerationDomainError(
                 "VOLUME_PLANNING_READINESS_REQUIRED",
-                "生成卷启动包前必须已有活动主角和活动核心势力",
+                "Trước khi tạo gói khởi động quyển phải đã có nhân vật chính và thế lực cốt lõi đang hoạt động",
                 status_code=422,
             )
         volumes = context["volumes"]
@@ -263,7 +263,7 @@ class VolumePlanningGenerationService:
         if int(target["version"]) != generation_input.volume_expected_version:
             raise GenerationDomainError(
                 "VOLUME_VERSION_CONFLICT",
-                "目标卷版本已变化，请刷新后重新生成启动包",
+                "Phiên bản quyển đích đã thay đổi, hãy làm mới rồi tạo lại gói khởi động",
                 status_code=409,
             )
         previous = volumes[target_index - 1] if target_index > 0 else None
@@ -275,7 +275,7 @@ class VolumePlanningGenerationService:
             if target_planning is None:
                 raise GenerationDomainError(
                     "VOLUME_LAUNCH_BUDGET_REQUIRED",
-                    "目标卷尚无规划时必须提供 target_chapter_count",
+                    "Khi quyển đích chưa có kế hoạch, phải cung cấp target_chapter_count",
                     status_code=422,
                 )
             chapter_count = int(target_planning["target_chapter_count"])
@@ -283,7 +283,7 @@ class VolumePlanningGenerationService:
             if target_planning is None:
                 raise GenerationDomainError(
                     "VOLUME_LAUNCH_BUDGET_REQUIRED",
-                    "目标卷尚无规划时必须提供 target_word_count",
+                    "Khi quyển đích chưa có kế hoạch, phải cung cấp target_word_count",
                     status_code=422,
                 )
             word_count = int(target_planning["target_word_count"])

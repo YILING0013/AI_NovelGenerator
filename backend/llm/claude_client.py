@@ -90,28 +90,28 @@ def build_claude_parameters(request: LLMRequest, config: LLMProviderConfig) -> d
 
     # 当前 SDK 已移除采样参数，避免让用户误以为设置仍生效。
     if request.temperature is not None or request.top_p is not None:
-        raise ValueError("Claude 当前接口不再支持 temperature 和 top_p，请关闭这两个采样参数")
+        raise ValueError("Giao diện Claude hiện không còn hỗ trợ temperature và top_p, hãy tắt hai tham số lấy mẫu này")
     if request.reasoning_mode or request.verbosity:
-        raise ValueError("Claude 不支持 OpenAI 的推理模式或输出详细程度参数")
+        raise ValueError("Claude không hỗ trợ tham số chế độ suy luận hoặc mức độ chi tiết đầu ra của OpenAI")
     if request.reasoning_effort not in (None, "low", "medium", "high", "xhigh", "max"):
-        raise ValueError("Claude 思考等级支持 low、medium、high、xhigh、max")
+        raise ValueError("Mức suy nghĩ của Claude hỗ trợ low, medium, high, xhigh, max")
     model = params["model"].lower()
     thinking_mode = request.thinking_mode
     if request.thinking_budget is not None:
         if thinking_mode not in (None, "enabled"):
-            raise ValueError("手动思考预算不能与自适应或关闭思考同时设置")
+            raise ValueError("Không được đặt đồng thời ngân sách suy nghĩ thủ công với chế độ adaptive hoặc tắt suy nghĩ")
         if re.search(r"claude-(?:opus-4-[78]|\w+-5|mythos)", model):
-            raise ValueError("当前 Claude 模型使用自适应思考，请取消 token 预算并选择思考等级")
+            raise ValueError("Mô hình Claude hiện dùng suy nghĩ thích ứng, hãy bỏ ngân sách token và chọn mức suy nghĩ")
         if not 1024 <= request.thinking_budget < params["max_tokens"]:
-            raise ValueError("Claude 思考预算至少为 1024，且必须小于最大输出 token 数")
+            raise ValueError("Ngân sách suy nghĩ của Claude tối thiểu 1024 và phải nhỏ hơn số token đầu ra tối đa")
         params["thinking"] = {"type": "enabled", "budget_tokens": request.thinking_budget}
     elif thinking_mode == "enabled":
-        raise ValueError("Claude enabled 模式需要思考预算；新模型请选择 adaptive")
+        raise ValueError("Chế độ enabled của Claude cần ngân sách suy nghĩ; với mô hình mới hãy chọn adaptive")
     elif thinking_mode:
         if thinking_mode == "disabled" and ("opus-5-5" in model or "sonnet-5-5" in model):
-            raise ValueError("当前 Claude 模型不能关闭思考，请降低思考等级")
+            raise ValueError("Mô hình Claude hiện không thể tắt suy nghĩ, hãy hạ mức suy nghĩ")
         if thinking_mode == "between_tools" and request.reasoning_effort in {"xhigh", "max"}:
-            raise ValueError("between_tools 使用 low、medium、high 等级；模型是否支持请查看接口测试结果")
+            raise ValueError("between_tools sử dụng các mức low, medium, high; để biết mô hình có hỗ trợ hay không, hãy xem kết quả kiểm thử giao diện")
         params["thinking"] = {"type": thinking_mode}
     elif request.reasoning_effort and re.search(r"claude-(?:opus-4-[678]|sonnet-4-6)", model):
         params["thinking"] = {"type": "adaptive"}
@@ -223,7 +223,7 @@ class ClaudeClient(BaseLLMClient):
                 raise LLMConnectionError("Claude 响应流提前断开，请重试", provider=self.provider_name)
             response = await events.get_final_message()
         if response.stop_reason not in {"end_turn", "stop_sequence", "tool_use"}:
-            raise LLMResponseError(f"Claude 回复未完成：{response.stop_reason}", provider=self.provider_name)
+            raise LLMResponseError(f"Claude trả lời chưa hoàn tất:{response.stop_reason}", provider=self.provider_name)
         return response
 
     async def text_generate(self, request: LLMRequest) -> LLMResponse:
@@ -255,7 +255,7 @@ class ClaudeClient(BaseLLMClient):
                 call.finish_reason = resp.stop_reason
                 call.usage = self._extract_usage(resp.usage)
                 raise LLMResponseError(
-                    "模型输出达到长度上限，内容未完成", provider=self.provider_name, model=model,
+                    "Đầu ra mô hình chạm giới hạn độ dài, nội dung chưa hoàn tất", provider=self.provider_name, model=model,
                     partial_text=content,
                 )
             result = LLMResponse(
@@ -290,7 +290,7 @@ class ClaudeClient(BaseLLMClient):
 
             tool_def = {
                 "name": "structured_output",
-                "description": f"按照 {schema.__name__} 结构输出结果",
+                "description": f"Hãy xuất kết quả theo {schema.__name__} (đầu ra có cấu trúc)",
                 "input_schema": schema.model_json_schema(),
             }
 
@@ -298,7 +298,7 @@ class ClaudeClient(BaseLLMClient):
                 params = self._build_params(request)
                 if self.config.structured_output_mode == "tool_call":
                     if params.get("thinking", {}).get("type") in {"enabled", "adaptive", "between_tools"}:
-                        raise ValueError("工具式结构化输出不能强制调用思考模型，请选择原生 JSON Schema")
+                        raise ValueError("Đầu ra có cấu trúc kiểu công cụ không thể ép buộc mô hình có suy nghĩ, hãy chọn JSON Schema gốc")
                     params["tools"] = [tool_def]
                     params["tool_choice"] = {"type": "tool", "name": "structured_output"}
                     if request.stream:
@@ -343,7 +343,7 @@ class ClaudeClient(BaseLLMClient):
             elapsed_ms = int((time.perf_counter() - start) * 1000)
 
             if resp.stop_reason in {"max_tokens", "refusal"}:
-                raise LLMSchemaError(f"Claude 未完成结构化输出：{resp.stop_reason}", provider=self.provider_name, model=model)
+                raise LLMSchemaError(f"Claude chưa hoàn thành đầu ra có cấu trúc:{resp.stop_reason}", provider=self.provider_name, model=model)
             # 原生输出从文本读取，旧接口只读取约定的工具参数。
             tool_input: dict[str, Any] | str | None = None
             if self.config.structured_output_mode == "tool_call":
@@ -356,7 +356,7 @@ class ClaudeClient(BaseLLMClient):
 
             if tool_input is None:
                 error = LLMSchemaError(
-                    "Claude 未返回有效的 tool_use 结构化输出",
+                    "Claude không trả về đầu ra có cấu trúc tool_use hợp lệ",
                     provider=self.provider_name,
                     model=model,
                 )
@@ -368,9 +368,9 @@ class ClaudeClient(BaseLLMClient):
             try:
                 parsed = schema.model_validate_json(tool_input) if isinstance(tool_input, str) else schema.model_validate(tool_input)
             except Exception as parse_exc:
-                log_parse_error(parse_exc, content=tool_input, schema=schema, message="Claude 结构化输出校验失败")
+                log_parse_error(parse_exc, content=tool_input, schema=schema, message="Kiểm tra đầu ra có cấu trúc của Claude thất bại")
                 error = LLMSchemaError(
-                    f"Claude 返回内容无法解析为目标 Schema: {parse_exc}",
+                    f"Nội dung Claude trả về không phân tích được thành Schema mục tiêu: {parse_exc}",
                     provider=self.provider_name,
                     model=model,
                 )
@@ -422,7 +422,7 @@ class ClaudeClient(BaseLLMClient):
                     raise LLMConnectionError("Claude 响应流提前断开，请重试", provider=self.provider_name, model=model)
                 if call.finish_reason == "max_tokens":
                     raise LLMResponseError(
-                        "模型输出达到长度上限，内容未完成", provider=self.provider_name, model=model,
+                        "Đầu ra mô hình chạm giới hạn độ dài, nội dung chưa hoàn tất", provider=self.provider_name, model=model,
                         partial_text="".join(call.chunks),
                     )
                 if request.json_output_schema is not None:
@@ -470,7 +470,7 @@ class ClaudeClient(BaseLLMClient):
             response = await self._create_message(params, stream=request.stream)
             observe_provider_response(response, self.config.resolved_api_mode)
             if response.stop_reason not in {"end_turn", "stop_sequence", "tool_use"}:
-                raise LLMResponseError(f"Claude 工具回复未完成：{response.stop_reason}，请检查输出上限或输入", provider=self.provider_name, model=model)
+                raise LLMResponseError(f"Claude chưa hoàn tất phản hồi công cụ:{response.stop_reason}, hãy kiểm tra giới hạn đầu ra hoặc đầu vào", provider=self.provider_name, model=model)
             messages.append({"role": "assistant", "content": [block.model_dump(mode="json", exclude_none=True) for block in response.content]})
             calls = [LLMToolCall(id=block.id, name=block.name, arguments=block.input)
                      for block in response.content if block.type == "tool_use"]
@@ -521,7 +521,7 @@ class ClaudeClient(BaseLLMClient):
                     None,
                 )
                 if tool_block is None:
-                    raise ValueError("模型未返回指定工具调用")
+                    raise ValueError("Mô hình không trả về lời gọi công cụ được chỉ định")
 
                 actual_args = dict(tool_block.input or {})
                 self._validate_probe_arguments(actual_args, probe.expected_arguments)

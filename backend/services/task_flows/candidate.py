@@ -22,11 +22,11 @@ def flow_fingerprint_inputs(task: str, generation_input: Any, snapshot: Mapping[
     """
     from .registry import AGENT_TASKS
     if task in AGENT_TASKS | {"plan_volume_launch_by_ai"} and snapshot.get("execution", {}).get("reading_contract") != "position_v1":
-        raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "旧候选未保存按位置读取依据，请保留草稿并重新生成", status_code=409)
+        raise DomainApiError("CANDIDATE_READING_CONTRACT_CHANGED", "Ứng viên cũ chưa lưu căn cứ đọc theo vị trí, hãy giữ bản nháp và tạo lại", status_code=409)
     ref = snapshot["flow_ref"]
     flow = task_flow_store.flow_store().get(ref["id"], ref["revision"])
     if flow.task != task or flow_fingerprint(flow) != snapshot["definition_hash"]:
-        raise ValueError("生成时的流程版本不存在或内容不一致")
+        raise ValueError("Phiên bản luồng lúc tạo không tồn tại hoặc nội dung không khớp")
     value = generation_input.model_dump(mode="json") if hasattr(generation_input, "model_dump") else dict(generation_input)
     chapter_version = next((node.config.get("chapter_context_version") for node in flow.nodes if node.type == "agent" and node.config.get("chapter_context_version")), None)
     if task == "write_chapter_by_ai" and (
@@ -34,20 +34,20 @@ def flow_fingerprint_inputs(task: str, generation_input: Any, snapshot: Mapping[
         or snapshot["scope"].get("chapter_context_version") != chapter_version
         or bool(value.get("chapter_selection_complete")) != bool(chapter_version)
     ):
-        raise ValueError("候选的本章资料模式或最终选择与原方案不一致")
+        raise ValueError("Chế độ tư liệu chương này hoặc lựa chọn cuối của ứng viên không khớp phương án gốc")
     value.pop("use_stream", None)
     scope = snapshot["scope"]
     if any(scope.get(key) != value[key] for key in ("novel_id", "volume_id", "target_type", "target_id") if key in value):
-        raise ValueError("候选资料范围与当前小说或操作位置不一致")
+        raise ValueError("Phạm vi tư liệu của ứng viên không khớp tiểu thuyết hoặc vị trí thao tác hiện tại")
     if task in AGENT_TASKS:
         from .book_tools import normalize_agent_scope
         # 防止在卷范围中额外塞入 target_id，改变资料工具实际采用的位置。
         if normalize_agent_scope(scope, task=task) != normalize_agent_scope(value, task=task):
-            raise ValueError("候选资料范围与当前小说或操作位置不一致")
+            raise ValueError("Phạm vi tư liệu của ứng viên không khớp tiểu thuyết hoặc vị trí thao tác hiện tại")
     expected = dict(snapshot["business_input"])
     expected.pop("use_stream", None)
     if canonical_request_hash(value) != canonical_request_hash(expected):
-        raise ValueError("确认输入与生成时使用的业务参数不一致")
+        raise ValueError("Đầu vào xác nhận không khớp tham số nghiệp vụ dùng lúc tạo")
     return {"generation_input": value, "task_flow": dict(snapshot)}
 
 

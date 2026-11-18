@@ -82,7 +82,7 @@ def prepared_task_parameters(task: str, parameters: dict[str, Any], scope: dict[
     report = PreparedContextV1.model_validate(prepared)
     if (report.target.reading_version != 1 or not report.target.reading_intent
             or report.target.model_dump(mode="json") != normalize_agent_scope(scope, task=task)):
-        raise DomainApiError("AGENT_SCOPE_CHANGED", "整理报告的读取位置已变化，请保留草稿并重新整理", status_code=409)
+        raise DomainApiError("AGENT_SCOPE_CHANGED", "Vị trí đọc của báo cáo sắp xếp đã thay đổi, hãy giữ bản thảo và sắp xếp lại", status_code=409)
     selected = report.selected_entities.model_dump(mode="json") if hasattr(report.selected_entities, "model_dump") else report.selected_entities
     counts = report.new_counts.model_dump(mode="json")
     if task in WRITING_TASKS:
@@ -91,7 +91,7 @@ def prepared_task_parameters(task: str, parameters: dict[str, Any], scope: dict[
             # 原作者选择留在 run.scope；完成后的空集合不再当作尚未选择。
             for field, identities in scope.get("selected_entities", {}).items():
                 if set(identities) - set(selected[field]):
-                    raise DomainApiError("WRITING_MATERIAL_MISSING", "整理结果遗漏作者明确选择的资料，请继续整理", status_code=409)
+                    raise DomainApiError("WRITING_MATERIAL_MISSING", "Kết quả sắp xếp bỏ sót tài liệu mà tác giả đã chọn rõ ràng, hãy tiếp tục sắp xếp", status_code=409)
             actual_scope["chapter_selection_complete"] = True
         if task != "write_chapter_by_ai":
             if not report.remaining:
@@ -211,9 +211,9 @@ async def load_task_context(task: str, parameters: dict[str, Any], scope: dict[s
         factions = await faction_repo.get_active_core_factions(request.novel_id)
         ids = {f["faction_id"] for f in factions}
         if any(t.faction_id not in ids for t in request.existing_relation_targets):
-            raise DomainApiError("FACTION_REFERENCE_INVALID", "指定的已有阵营不存在", status_code=422)
+            raise DomainApiError("FACTION_REFERENCE_INVALID", "Thế lực hiện có được chỉ định không tồn tại", status_code=422)
         if request.faction_count is not None and request.faction_count - request.independent_faction_count == 1 and (not factions or (request.faction_count == 1 and not request.connect_to_existing)):
-            raise DomainApiError("FACTION_RELATION_INPUT_INVALID", "只有一个势力需要建立关系，却没有可连接的对象。请调整生成数量或连接已有势力", status_code=422)
+            raise DomainApiError("FACTION_RELATION_INPUT_INVALID", "Chỉ có một thế lực cần thiết lập quan hệ mà không có đối tượng để kết nối. Hãy điều chỉnh số lượng sinh hoặc kết nối với thế lực hiện có", status_code=422)
         relations = [
             relation
             for relation in await faction_relation_repo.get_relations_by_novel(request.novel_id, active_only=True)
@@ -221,7 +221,7 @@ async def load_task_context(task: str, parameters: dict[str, Any], scope: dict[s
         ]
         refs = build_core_factions_source_refs(novel, factions, relations)
         if len(refs) > 2000:
-            raise DomainApiError("FACTION_GENERATION_SOURCE_BUDGET_EXCEEDED", "正式来源超过 2000 项", status_code=422)
+            raise DomainApiError("FACTION_GENERATION_SOURCE_BUDGET_EXCEEDED", "Nguồn chính thức vượt quá 2000 mục", status_code=422)
         values = {
             key: format_faction_novel_text(novel, key)
             for key in (
@@ -255,7 +255,7 @@ async def load_task_context(task: str, parameters: dict[str, Any], scope: dict[s
         refs = [{"resource_type": "novel", "id": scope["novel_id"], "version": int(novel["version"])}] if novel else []
         return TaskContext(effective, gen, {"novel": novel, "source_refs": refs}, ports)
     else:
-        raise ValueError(f"任务 {task} 没有资料读取节点")
+        raise ValueError(f"Tác vụ {task} không có nút đọc tài liệu")
 
     # 数量是可空整数端口；只有原 JSON 文本端口需要序列化，不能把 AI 决定的 None 写成字符串。
     fields = PROMPT_TEMPLATE_FIELDS[spec.step + "_prompt_base"]
@@ -338,5 +338,5 @@ async def validate_task_result(task: str, candidate: dict[str, Any], context: Ta
             raise DomainApiError("CORE_FACTIONS_OUTPUT_INVALID", str(exc), status_code=502,
                                  details={"message": str(exc)}) from exc
     elif task == "rewrite_novel_field_by_ai" and result.target_field != req.target_field:
-        raise DomainApiError("CANDIDATE_TARGET_INVALID", "改写结果的目标字段不一致", status_code=502)
+        raise DomainApiError("CANDIDATE_TARGET_INVALID", "Trường đích của kết quả viết lại không nhất quán", status_code=502)
     return result.model_dump(mode="json")

@@ -42,9 +42,9 @@ async def ensure_faction_fields_unmanaged(novel_id, faction_ids, fields, *, sess
     from backend.services.novel.faction_fact_contract import FACTION_FACT_FIELDS
     requested = set(fields)
     if not requested <= FACTION_FACT_FIELDS:
-        raise ValueError("势力旧写口保护只能接收事实字段")
+        raise ValueError("Bảo vệ lối ghi cũ của thế lực chỉ nhận các trường dữ kiện")
     if protect and (session is None or not session.in_transaction):
-        raise RuntimeError("势力字段保护必须使用原保存事务")
+        raise RuntimeError("Bảo vệ trường thế lực phải dùng transaction lưu gốc")
     chain = await load_writing_parents(novel_id, "novel", novel_id, session=session)
     records = await BaseRepository("entity_state_history").collection.find({"novel_id": ObjectId(novel_id),
         "faction_id": {"$in": faction_ids}, "$or": [{"schema_id": {"$exists": True}}, {"schema_version": {"$exists": True}}]}, session=session).to_list(length=None)
@@ -52,9 +52,9 @@ async def ensure_faction_fields_unmanaged(novel_id, faction_ids, fields, *, sess
         try:
             record = parse_faction_fact_record(document)
         except (ValueError, TypeError) as exc:
-            raise DomainApiError("FACTION_FACT_RECORD_INVALID", "势力记录需要核对；原修改已保留", status_code=409) from exc
+            raise DomainApiError("FACTION_FACT_RECORD_INVALID", "Bản ghi thế lực cần đối chiếu; thay đổi gốc đã được giữ lại", status_code=409) from exc
         if requested & record["after"].keys():
-            raise DomainApiError("FACTION_FACT_MANAGED_FIELDS", "这些资料已有明确剧情位置，请在势力详情中按位置更正；原输入已保留", status_code=409)
+            raise DomainApiError("FACTION_FACT_MANAGED_FIELDS", "Các tài liệu này đã có vị trí cốt truyện rõ ràng, vui lòng hiệu chỉnh theo vị trí trong trang chi tiết thế lực; đầu vào gốc đã được giữ lại", status_code=409)
     if protect:
         await protect_chapter_record_sources({("novels", novel_id): chain[0][1]}, session=session)
 
@@ -65,14 +65,14 @@ async def _load_snapshot(novel_id, faction_ids, scope, *, session):
     chain = await load_writing_parents(novel_id, "novel", novel_id, session=session)
     novel = chain[0][1]
     if "hard_delete_claim" in novel:
-        raise DomainApiError("FACTION_FACT_PARENT_BUSY", "小说正在永久删除，请稍后读取", status_code=409)
+        raise DomainApiError("FACTION_FACT_PARENT_BUSY", "Tiểu thuyết đang bị xóa vĩnh viễn, vui lòng đọc lại sau", status_code=409)
     directories = {}
     for kind in PARENTS:
         rows = await BaseRepository(COLLECTIONS[kind]).collection.find(
             {"novel_id": novel_key, "is_deleted": False}, {"content": 0}, session=session,
         ).limit(10001).to_list(length=10001)
         if len(rows) > 10000:
-            raise DomainApiError("WRITING_CONTEXT_TOO_LARGE", "目录超过单次读取范围，请先整理目录", status_code=409)
+            raise DomainApiError("WRITING_CONTEXT_TOO_LARGE", "Danh mục vượt quá phạm vi đọc một lần, vui lòng sắp xếp lại danh mục trước", status_code=409)
         directories[kind] = {row["_id"]: row for row in rows}
     position = resolve_writing_position({**scope, "novel_id": novel_id}, directories)
     factions = await faction_repo.collection.find({"novel_id": novel_key, "faction_id": {"$in": faction_ids}}, session=session).sort("faction_id", 1).to_list(length=None)
@@ -89,10 +89,10 @@ async def _load_snapshot(novel_id, faction_ids, scope, *, session):
         try:
             record = parse_faction_fact_record(document)
         except (ValueError, TypeError) as exc:
-            raise DomainApiError("FACTION_FACT_RECORD_INVALID", "势力确认记录格式不正确，请检查记录", status_code=409) from exc
+            raise DomainApiError("FACTION_FACT_RECORD_INVALID", "Định dạng bản ghi xác nhận thế lực không đúng, vui lòng kiểm tra bản ghi", status_code=409) from exc
         if record["faction_id"] not in faction_ids or any(
                 row["faction_id"] == record["faction_id"] and row["_id"] != ObjectId(record["entity_id"]) for row in factions):
-            raise DomainApiError("FACTION_FACT_RECORD_INVALID", "势力确认记录的身份不一致", status_code=409)
+            raise DomainApiError("FACTION_FACT_RECORD_INVALID", "Định danh bản ghi xác nhận thế lực không nhất quán", status_code=409)
         records.append(record)
     sources, validity, source_guards = await load_fact_source_observations(novel_key, records, directories, session=session)
     guards = {("novels", novel_id): novel}
@@ -143,7 +143,7 @@ async def read_faction_facts(novel_id: str, faction_ids: list[str], position_sco
     if session is None or not session.in_transaction:
         checked, _, _ = await _load_snapshot(novel_id, selected, position_scope, session=session)
         if checked["reads"] != result["reads"]:
-            raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "势力资料或目录正在变化，请重新读取", status_code=409)
+            raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "Tài liệu hoặc danh mục thế lực đang thay đổi, vui lòng đọc lại", status_code=409)
     return result
 
 
@@ -193,7 +193,7 @@ async def list_faction_fact_history(novel_id: str, entity_id: str, *, before_ver
     try:
         return [parse_faction_fact_record(row) for row in rows]
     except (ValueError, TypeError) as exc:
-        raise DomainApiError("FACTION_FACT_RECORD_INVALID", "势力记录格式不正确，请保留原稿并检查记录", status_code=409) from exc
+        raise DomainApiError("FACTION_FACT_RECORD_INVALID", "Định dạng bản ghi thế lực không đúng, hãy giữ nguyên bản thảo và kiểm tra bản ghi", status_code=409) from exc
 
 
 async def get_faction_fact_history(novel_id: str, history_id: str) -> dict:
@@ -210,11 +210,11 @@ async def get_faction_fact_history(novel_id: str, history_id: str) -> dict:
         "$or": [{"schema_id": {"$exists": True}}, {"schema_version": {"$exists": True}}],
     })
     if row is None:
-        raise NotFoundError("势力记录不存在或不属于当前小说")
+        raise NotFoundError("Bản ghi thế lực không tồn tại hoặc không thuộc tiểu thuyết hiện tại")
     try:
         return parse_faction_fact_record(row)
     except (ValueError, TypeError) as exc:
-        raise DomainApiError("FACTION_FACT_RECORD_INVALID", "势力记录格式不正确，请保留原稿并检查记录", status_code=409) from exc
+        raise DomainApiError("FACTION_FACT_RECORD_INVALID", "Định dạng bản ghi thế lực không đúng, hãy giữ nguyên bản thảo và kiểm tra bản ghi", status_code=409) from exc
 
 
 async def revalidate_faction_fact_reads(reads: list[dict], *, session=None, protect: bool = False) -> None:
@@ -228,7 +228,7 @@ async def revalidate_faction_fact_reads(reads: list[dict], *, session=None, prot
         无；任一变化立即拒绝。
     """
     if protect and (session is None or not session.in_transaction):
-        raise RuntimeError("势力事实保护必须使用调用方事务")
+        raise RuntimeError("Bảo vệ dữ kiện thế lực phải dùng transaction của bên gọi")
     for original in reads:
         read = FactionFactReadV1.model_validate(original).model_dump()
         position = read["position"]
@@ -237,9 +237,9 @@ async def revalidate_faction_fact_reads(reads: list[dict], *, session=None, prot
         if session is None or not session.in_transaction:
             checked, _, _ = await _load_snapshot(read["novel_id"], read["faction_ids"], scope, session=session)
             if checked["reads"] != current["reads"]:
-                raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "势力资料或目录正在变化，请重新读取", status_code=409)
+                raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "Tài liệu hoặc danh mục thế lực đang thay đổi, vui lòng đọc lại", status_code=409)
         if current["reads"][0] != read:
-            raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "势力事实、来源或目录已变化，请保留原稿并重新预览", status_code=409)
+            raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "Dữ kiện, nguồn hoặc danh mục thế lực đã thay đổi, hãy giữ nguyên bản thảo và xem trước lại", status_code=409)
         if protect:
             await protect_chapter_record_sources(guards, session=session)
 
@@ -256,7 +256,7 @@ async def _build_preview(novel_id, data, *, new_entity_id, session):
             volume_id=candidate.get("volume_id"), parent_faction_id=candidate.get("parent_faction_id"), session=session)
         await FactionService._ensure_unique_active_name(novel_id, candidate["name"], level_type=candidate.get("level_type", "core"), volume_id=owned_volume, session=session)
         if await faction_repo.collection.find_one({"_id": ObjectId(new_entity_id)}, session=session) is not None:
-            raise DomainApiError("FACTION_FACT_CREATE_CONFLICT", "势力物理身份已有记录，请重新预览", status_code=409)
+            raise DomainApiError("FACTION_FACT_CREATE_CONFLICT", "Định danh vật lý thế lực đã có bản ghi, vui lòng xem trước lại", status_code=409)
         if owned_volume is not None:
             chain = await load_writing_parents(novel_id, "volume", str(owned_volume), session=session)
             scope_guards.update({(COLLECTIONS[kind], str(row["_id"])): row for kind, row in chain})
@@ -270,9 +270,9 @@ async def _build_preview(novel_id, data, *, new_entity_id, session):
         existing = await faction_repo.collection.find_one({"_id": ObjectId(supplied["entity_id"]), "novel_id": novel_key,
             "faction_id": supplied["faction_id"], "is_deleted": False}, session=session)
         if existing is None:
-            raise NotFoundError("势力不存在、已回收或不属于当前小说")
+            raise NotFoundError("Thế lực không tồn tại, đã vào thùng rác hoặc không thuộc tiểu thuyết hiện tại")
         if existing["version"] != supplied["expected_version"]:
-            raise VersionConflictError("势力已变化，请保留原稿并重新预览")
+            raise VersionConflictError("Thế lực đã thay đổi, hãy giữ nguyên bản thảo và xem trước lại")
         target = {"kind": "existing", "novel_id": novel_id, "entity_id": str(existing["_id"]),
                   "faction_id": existing["faction_id"], "name": existing["name"], "version": existing["version"]}
     disposition_ids = set(data.get("targets", {}).values()) | set(data.get("replaces", {}).values()) | {i for ids in data.get("resolves", {}).values() for i in ids}
@@ -280,10 +280,10 @@ async def _build_preview(novel_id, data, *, new_entity_id, session):
     for identity in sorted(disposition_ids):
         raw = await BaseRepository("entity_state_history").collection.find_one({"_id": ObjectId(identity), "novel_id": novel_key}, session=session)
         if raw is None:
-            raise NotFoundError("所选势力确认记录不存在")
+            raise NotFoundError("Bản ghi xác nhận thế lực đã chọn không tồn tại")
         row = parse_faction_fact_record(raw)
         if ObjectId(row["entity_id"]) != ObjectId(target["entity_id"]):
-            raise DomainApiError("FACTION_FACT_TARGET_INVALID", "不能处置其他势力的记录", status_code=409)
+            raise DomainApiError("FACTION_FACT_TARGET_INVALID", "Không được xử lý bản ghi của thế lực khác", status_code=409)
         targets.append(row)
     if operation == "void":
         position, source, kind = (deepcopy(targets[0][key]) for key in ("position", "source", "kind"))
@@ -321,11 +321,11 @@ async def _build_preview(novel_id, data, *, new_entity_id, session):
             if row["position"] == position:
                 for name in selected:
                     if name in row["after"] and row["validity"][name]["state"] == "active" and data.get("replaces", {}).get(name) != row["history_id"]:
-                        raise DomainApiError("FACTION_FACT_POSITION_CONFLICT", "这个位置已有该字段，请明确替代原记录", status_code=409)
+                        raise DomainApiError("FACTION_FACT_POSITION_CONFLICT", "Vị trí này đã có trường này, vui lòng nêu rõ bản ghi gốc cần thay thế", status_code=409)
         if source["kind"] == "chapter":
             checked = await load_chapter_record_source_in_session(novel_id, source["evidence"], session=session)
             if checked["needs_review"]:
-                raise DomainApiError("FACTION_FACT_SOURCE_OUTDATED", "来源正文已变化，请重新选择当前正文证据", status_code=409)
+                raise DomainApiError("FACTION_FACT_SOURCE_OUTDATED", "Văn bản chính của nguồn đã thay đổi, vui lòng chọn lại bằng chứng văn bản chính hiện tại", status_code=409)
             source["evidence"] = checked["evidence"]
             guards.update(checked["guards"])
     for record in [*targets, *field_sources]:
@@ -334,9 +334,9 @@ async def _build_preview(novel_id, data, *, new_entity_id, session):
             query = {"_id": ObjectId(ref["id"]), **({"novel_id": novel_key} if resource != "novel" else {})}
             row = await BaseRepository(COLLECTIONS[resource]).collection.find_one(query, session=session)
             if row is None:
-                raise DomainApiError("FACTION_FACT_SOURCE_MISSING", "原确认的位置或父级永久缺失，请先检查来源", status_code=409)
+                raise DomainApiError("FACTION_FACT_SOURCE_MISSING", "Vị trí hoặc cha của bản xác nhận gốc đã mất vĩnh viễn, vui lòng kiểm tra nguồn trước", status_code=409)
             if resource != "novel" and row[f"{PARENTS[resource]}_id"] != ObjectId(ref["parent_id"]):
-                raise DomainApiError("FACTION_FACT_SOURCE_CHANGED", "原确认来源的父级已变化，请检查记录", status_code=409)
+                raise DomainApiError("FACTION_FACT_SOURCE_CHANGED", "Cha của nguồn xác nhận gốc đã thay đổi, vui lòng kiểm tra bản ghi", status_code=409)
             guards[(COLLECTIONS[resource], str(row["_id"]))] = row
     references.sort(key=lambda row: (row["entity_type"], row["entity_id"]))
     reference_reads = []
@@ -345,7 +345,7 @@ async def _build_preview(novel_id, data, *, new_entity_id, session):
         row = await BaseRepository(collection).collection.find_one({"novel_id": novel_key, "is_deleted": False,
             identity_field: ObjectId(ref["entity_id"]) if identity_field == "_id" else ref["entity_id"]}, session=session)
         if row is None or row.get("is_active") is False or row.get("status") == "inactive" or row.get("active_status") == "inactive":
-            raise DomainApiError("FACTION_FACT_REFERENCE_UNAVAILABLE", "引用资料不存在、已回收或已停用", status_code=409)
+            raise DomainApiError("FACTION_FACT_REFERENCE_UNAVAILABLE", "Tài liệu tham chiếu không tồn tại, đã vào thùng rác hoặc đã ngừng sử dụng", status_code=409)
         if row.get("volume_id") is not None:
             chain = await load_writing_parents(novel_id, "volume", str(row["volume_id"]), session=session)
             guards.update({(COLLECTIONS[k], str(parent["_id"])): parent for k, parent in chain})
@@ -360,10 +360,10 @@ async def _build_preview(novel_id, data, *, new_entity_id, session):
             states = await BaseRepository("faction_volume_states").collection.find({"novel_id": novel_key, "faction_id": target["faction_id"]}, session=session).sort("_id", 1).to_list(length=None)
             for state in states:
                 if state.get("state_id") != state["_id"]:
-                    raise DomainApiError("FACTION_FACT_LEGACY_SOURCE_INVALID", "旧势力卷状态的身份不一致", status_code=409)
+                    raise DomainApiError("FACTION_FACT_LEGACY_SOURCE_INVALID", "Định danh trạng thái quyển của thế lực cũ không nhất quán", status_code=409)
                 volume = await BaseRepository("volumes").collection.find_one({"_id": state["volume_id"]}, session=session)
                 if volume is not None and volume["novel_id"] != novel_key:
-                    raise DomainApiError("FACTION_FACT_LEGACY_SOURCE_INVALID", "旧势力卷状态不属于当前小说", status_code=409)
+                    raise DomainApiError("FACTION_FACT_LEGACY_SOURCE_INVALID", "Trạng thái quyển của thế lực cũ không thuộc tiểu thuyết hiện tại", status_code=409)
                 legacy.append({"kind": "volume_state", "state_id": str(state["_id"]), "faction_id": state["faction_id"],
                     "version": state["version"], "is_deleted": state["is_deleted"], "volume_id": str(state["volume_id"]),
                     "volume": {key: volume[key] for key in ("title", "version", "is_deleted")} if volume else None,
@@ -398,7 +398,7 @@ async def preview_faction_facts(novel_id: str, data: dict, *, session=None) -> d
 
     async def preview(current_session):
         if current_session is None or not current_session.in_transaction:
-            raise RuntimeError("势力预览必须使用调用方事务")
+            raise RuntimeError("Xem trước thế lực phải dùng transaction của bên gọi")
         result, _ = await _build_preview(novel_id, fields, new_entity_id=new_id, session=current_session)
         return result
 
@@ -425,13 +425,13 @@ async def confirm_faction_facts(novel_id: str, data: dict, *, idempotency_key: s
 
     async def save(current_session):
         if current_session is None or not current_session.in_transaction:
-            raise RuntimeError("势力确认必须使用调用方事务")
+            raise RuntimeError("Xác nhận thế lực phải dùng transaction của bên gọi")
         replay = await _replay(novel_id, fingerprint, expected_operation=command["operation"], session=current_session, expected_receipt_schema="faction.fact.receipt")
         if replay is not None:
             return replay
         target = basis["target"]
         if target["novel_id"] != novel_id:
-            raise DomainApiError("FACTION_FACT_TARGET_INVALID", "势力预览不属于当前小说", status_code=409)
+            raise DomainApiError("FACTION_FACT_TARGET_INVALID", "Bản xem trước thế lực không thuộc tiểu thuyết hiện tại", status_code=409)
         preview_input = {"operation": command["operation"], "references": basis["references"]}
         if command["operation"] == "create":
             preview_input.update(target={"candidate": target["candidate"]}, position=basis["position"], source=basis["source"], fields=basis["fields"])
@@ -443,7 +443,7 @@ async def confirm_faction_facts(novel_id: str, data: dict, *, idempotency_key: s
                 preview_input.update({name: basis[name] for name in ("kind", "position", "source", "fields", "replaces", "resolves")})
         current, guards = await _build_preview(novel_id, preview_input, new_entity_id=target["entity_id"] if target["kind"] == "new" else None, session=current_session)
         if current["basis"] != basis:
-            raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "原预览的势力、旧资料或来源已变化，请保留原稿并重新预览", status_code=409)
+            raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "Thế lực, tài liệu cũ hoặc nguồn của bản xem trước gốc đã thay đổi, hãy giữ nguyên bản thảo và xem trước lại", status_code=409)
         # 同一事务已重建全部原读取；保护小说空范围和具体来源后才做主档 CAS。
         await protect_chapter_record_sources(guards, session=current_session)
         now = get_utc_now().replace(tzinfo=None)
@@ -470,7 +470,7 @@ async def confirm_faction_facts(novel_id: str, data: dict, *, idempotency_key: s
                 "faction_id": faction_id, "version": before_version, "is_deleted": False},
                 {"$inc": {"version": 1}, "$set": {**mirror, "updated_at": now}}, session=current_session)
             if updated.matched_count != 1:
-                raise VersionConflictError("势力在确认期间已变化，请保留原稿并重新预览")
+                raise VersionConflictError("Thế lực đã thay đổi trong quá trình xác nhận, hãy giữ nguyên bản thảo và xem trước lại")
         record = None
         if command["operation"] != "void":
             record = FactionFactRecordV1.model_validate({
@@ -489,7 +489,7 @@ async def confirm_faction_facts(novel_id: str, data: dict, *, idempotency_key: s
                 "novel_id": ObjectId(novel_id), "entity_id": ObjectId(target["entity_id"]), "schema_id": "faction.fact", "schema_version": 1,
                 f"validity.{field}": {"state": "active"}}, {"$set": {f"validity.{field}": state}}, session=current_session)
             if changed.matched_count != 1:
-                raise VersionConflictError("待处置势力字段已被替代或作废，请重新预览")
+                raise VersionConflictError("Trường thế lực chờ xử lý đã bị thay thế hoặc hủy bỏ, vui lòng xem trước lại")
             changes.append({"history_id": identity, "field": field, "before": {"state": "active"}, "after": state})
         result = FactionFactResultV1.model_validate({"schema_version": 1, "operation": command["operation"], "novel_id": novel_id,
             "entity_id": target["entity_id"], "faction_id": faction_id, "faction_name": name, "before_version": before_version,

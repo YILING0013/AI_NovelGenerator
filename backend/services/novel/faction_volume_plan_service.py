@@ -68,13 +68,13 @@ async def create_faction_volume_plan(novel_id, volume_id, faction_id, request, *
         existing = await faction_volume_state_repo.find_by_creation_idempotency(novel_id, fingerprint.key_hash, session=current_session)
         if existing is not None:
             if existing.get("creation_request_hash") != fingerprint.request_hash:
-                raise _state_error("FACTION_VOLUME_PLAN_IDEMPOTENCY_CONFLICT", "这次保存已用于其他内容，请保留原请求", status_code=409)
+                raise _state_error("FACTION_VOLUME_PLAN_IDEMPOTENCY_CONFLICT", "Lần lưu này đã được dùng cho nội dung khác, hãy giữ yêu cầu gốc", status_code=409)
             return deepcopy(existing["plan_creation_result"])
         lock = await acquire_state_write_lock(novel_id, session=current_session)
         try:
             await _parents(novel_id, volume_id, faction_id, current_session)
             if await faction_volume_state_repo.find_active_by_pair(novel_id, volume_id, faction_id, session=current_session):
-                raise _state_error("FACTION_VOLUME_STATE_ALREADY_EXISTS", "该势力在本卷已有参与计划，请保留输入并核对当前内容", status_code=409)
+                raise _state_error("FACTION_VOLUME_STATE_ALREADY_EXISTS", "Thế lực này đã có kế hoạch tham gia trong quyển này; hãy giữ đầu vào và kiểm tra nội dung hiện tại", status_code=409)
             identity, now = ObjectId(), _mongo_write_time()
             document = {"_id": identity, "state_id": identity, "novel_id": ObjectId(novel_id),
                 "volume_id": ObjectId(volume_id), "faction_id": faction_id,
@@ -89,7 +89,7 @@ async def create_faction_volume_plan(novel_id, volume_id, faction_id, request, *
 
     if session is not None:
         if not session.in_transaction:
-            raise RuntimeError("卷参与计划保存需要事务")
+            raise RuntimeError("Việc lưu kế hoạch tham gia quyển cần transaction")
         return await write(session)
     return await run_mongo_write_unit(write, "create_faction_volume_plan", require_transaction=True)
 
@@ -116,13 +116,13 @@ async def update_faction_volume_plan(novel_id, state_id, request, *, session=Non
             receipt = await volume_command_receipt_repo.find_receipt(novel_id, fingerprint.key_hash, session=current_session)
             if receipt is not None:
                 if receipt.get("operation") != original["operation"] or receipt.get("request_hash") != fingerprint.request_hash:
-                    raise _state_error("FACTION_VOLUME_PLAN_IDEMPOTENCY_CONFLICT", "这次保存已用于其他内容，请保留原请求", status_code=409)
+                    raise _state_error("FACTION_VOLUME_PLAN_IDEMPOTENCY_CONFLICT", "Lần lưu này đã được dùng cho nội dung khác, hãy giữ yêu cầu gốc", status_code=409)
                 return deepcopy(receipt["result"])
         lock = await acquire_state_write_lock(novel_id, session=current_session)
         try:
             current = await faction_volume_state_repo.get_state(novel_id, state_id, session=current_session)
             if current["version"] != expected:
-                raise _state_error("FACTION_VOLUME_STATE_VERSION_CONFLICT", "本卷计划已在另一处修改；输入已保留，请核对后再保存", status_code=409)
+                raise _state_error("FACTION_VOLUME_STATE_VERSION_CONFLICT", "Kế hoạch của quyển này đã bị sửa ở nơi khác; đầu vào đã được giữ, hãy kiểm tra rồi lưu lại", status_code=409)
             await _parents(novel_id, str(current["volume_id"]), current["faction_id"], current_session)
             saved = await _apply_state_change(current, changes, changes=[], session=current_session,
                 conflict_message="本卷计划在保存期间变化；输入已保留")
@@ -136,7 +136,7 @@ async def update_faction_volume_plan(novel_id, state_id, request, *, session=Non
 
     if session is not None:
         if not session.in_transaction:
-            raise RuntimeError("卷参与计划保存需要事务")
+            raise RuntimeError("Việc lưu kế hoạch tham gia quyển cần transaction")
         return await write(session)
     return await run_mongo_write_unit(write, "update_faction_volume_plan", require_transaction=True)
 
@@ -163,20 +163,20 @@ async def initialize_faction_volume_plans(novel_id, volume_id, request, *, idemp
         receipt = await faction_volume_state_initialization_receipt_repo.find_receipt(novel_id, fingerprint.key_hash, session=session)
         if receipt is not None:
             if receipt["request_hash"] != fingerprint.request_hash:
-                raise _state_error("FACTION_VOLUME_PLAN_IDEMPOTENCY_CONFLICT", "这次复制请求已用于其他内容，请保留原请求", status_code=409)
+                raise _state_error("FACTION_VOLUME_PLAN_IDEMPOTENCY_CONFLICT", "Yêu cầu sao chép này đã được dùng cho nội dung khác, hãy giữ yêu cầu gốc", status_code=409)
             return {"source_volume_id": str(receipt["source_volume_id"]), "target_volume_id": str(receipt["target_volume_id"]), "states": deepcopy(receipt["states"])}
         volumes = sorted(await volume_repo.get_volumes_by_novel(novel_id, session=session), key=lambda row: row["order_index"])
         index = next((index for index, row in enumerate(volumes) if str(row["_id"]) == volume_id), -1)
         if index <= 0:
-            raise _state_error("FACTION_VOLUME_PLAN_SOURCE_REQUIRED", "本卷之前没有可复制参与计划的正式卷", status_code=409)
+            raise _state_error("FACTION_VOLUME_PLAN_SOURCE_REQUIRED", "Trước quyển này không có quyển chính thức nào có kế hoạch tham gia để sao chép", status_code=409)
         previous = volumes[index - 1]
         sources = await faction_volume_state_repo.list_by_volume(novel_id, str(previous["_id"]), session=session)
         selected = {row["faction_id"]: row for row in sources if row["faction_id"] in identities}
         if set(selected) != set(identities):
-            raise _state_error("FACTION_VOLUME_PLAN_SOURCE_CHANGED", "上卷所选计划已变化，请保留选择并重新核对", status_code=409)
+            raise _state_error("FACTION_VOLUME_PLAN_SOURCE_CHANGED", "Kế hoạch đã chọn của quyển trước đã thay đổi; hãy giữ lựa chọn và kiểm tra lại", status_code=409)
         for identity in identities:
             if await faction_volume_state_repo.find_any_by_pair(novel_id, volume_id, identity, session=session):
-                raise _state_error("FACTION_VOLUME_STATE_ALREADY_EXISTS", "所选势力在本卷已有参与记录；整批未保存", status_code=409)
+                raise _state_error("FACTION_VOLUME_STATE_ALREADY_EXISTS", "Thế lực đã chọn đã có bản ghi tham gia trong quyển này; toàn bộ đợt chưa được lưu", status_code=409)
         protected = {("volumes", str(row["_id"])): row for row in volumes}
         protected.update({("faction_volume_states", str(row["_id"])): row for row in selected.values()})
         await protect_chapter_record_sources(protected, session=session)

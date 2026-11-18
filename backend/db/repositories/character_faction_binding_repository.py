@@ -59,7 +59,7 @@ class CharacterFactionBindingRepository(BaseRepository):
             )
             missing_fields = [field for field in required_fields if not prepared.get(field)]
             if missing_fields:
-                raise ValueError(f"角色—势力绑定缺少必填字段: {', '.join(missing_fields)}")
+                raise ValueError(f"Liên kết nhân vật - thế lực thiếu trường bắt buộc: {', '.join(missing_fields)}")
 
             prepared.pop("_id", None)
             # 预分配 Mongo _id，standalone 部分写入时可只删除本次文档。
@@ -91,7 +91,7 @@ class CharacterFactionBindingRepository(BaseRepository):
             prepared_documents.append(prepared)
 
         if len(binding_ids) != len(set(binding_ids)):
-            raise DuplicateKeyError("同一批次不能重复使用 binding_id")
+            raise DuplicateKeyError("Cùng lô không được dùng lại binding_id")
 
         try:
             await self.insert_many(prepared_documents, session=session)
@@ -101,7 +101,7 @@ class CharacterFactionBindingRepository(BaseRepository):
                 session=session,
             )
             if len(created) != len(prepared_documents):
-                raise RuntimeError("角色—势力绑定批量写入后未能完整回读")
+                raise RuntimeError("Không đọc lại đầy đủ được sau khi ghi hàng loạt liên kết nhân vật - thế lực")
             return created
         except (pymongo.errors.DuplicateKeyError, pymongo.errors.BulkWriteError) as exc:
             if session is None:
@@ -111,7 +111,7 @@ class CharacterFactionBindingRepository(BaseRepository):
                     business_key_field="binding_id",
                 )
             raise DuplicateKeyError(
-                "角色—势力绑定业务 ID、主归属或活动语义绑定已存在"
+                "Liên kết nhân vật-thế lực đã tồn tại theo ID nghiệp vụ, thành viên chính hoặc liên kết ngữ nghĩa đang hoạt động"
             ) from exc
         except Exception:
             if session is None:
@@ -147,7 +147,7 @@ class CharacterFactionBindingRepository(BaseRepository):
             session=session,
         )
         if binding is None:
-            raise NotFoundError(f"角色—势力绑定 '{binding_id}' 不存在于小说 {novel_id}")
+            raise NotFoundError(f"Liên kết nhân vật—thế lực '{binding_id}' không tồn tại trong tiểu thuyết {novel_id}")
         return binding
 
     async def find_by_creation_idempotency(
@@ -457,7 +457,7 @@ class CharacterFactionBindingRepository(BaseRepository):
             )
             if result.matched_count != 1:
                 raise DuplicateKeyError(
-                    f"旧主归属绑定 '{binding_id}' 的切换完成声明已并发漂移"
+                    f"Liên kết thuộc tính chính cũ '{binding_id}' tuyên bố hoàn tất chuyển đổi đã bị lệch do xử lý đồng thời"
                 )
 
     async def _raise_cas_miss(
@@ -488,10 +488,10 @@ class CharacterFactionBindingRepository(BaseRepository):
         )
         if current is None or bool(current.get("is_deleted")) is not require_deleted:
             state = "回收站中" if require_deleted else "未删除状态下"
-            raise NotFoundError(f"角色—势力绑定 '{binding_id}' 在{state}不存在")
+            raise NotFoundError(f"Liên kết nhân vật—thế lực '{binding_id}' tại{state}không tồn tại")
         actual_version = current["version"]
         raise DuplicateKeyError(
-            f"角色—势力绑定 '{binding_id}' 版本冲突："
+            f"Liên kết nhân vật—thế lực '{binding_id}' 版本冲突："
             f"expected={expected_version}, actual={actual_version}"
         )
 
@@ -534,7 +534,7 @@ class CharacterFactionBindingRepository(BaseRepository):
                 session=session,
             )
         except pymongo.errors.DuplicateKeyError as exc:
-            raise DuplicateKeyError("角色—势力活动绑定或主归属冲突") from exc
+            raise DuplicateKeyError("Xung đột liên kết đang hoạt động hoặc quy thuộc chính của nhân vật - thế lực") from exc
         if updated is None:
             await self._raise_cas_miss(
                 novel_id,
@@ -644,7 +644,7 @@ class CharacterFactionBindingRepository(BaseRepository):
                 session=session,
             )
         except pymongo.errors.DuplicateKeyError as exc:
-            raise DuplicateKeyError("角色—势力绑定恢复后将与活动绑定冲突") from exc
+            raise DuplicateKeyError("Liên kết nhân vật - thế lực sau khôi phục sẽ xung đột với liên kết đang hoạt động") from exc
         if restored is None:
             await self._raise_cas_miss(
                 novel_id,

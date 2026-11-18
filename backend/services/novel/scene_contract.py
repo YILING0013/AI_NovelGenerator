@@ -42,10 +42,10 @@ class SceneUpdateV1(StrictRequestModel):
         """
         fields = self.model_fields_set - {"expected_version"}
         if not fields:
-            raise ValueError("场景更新至少需要一个内容字段")
+            raise ValueError("Cập nhật cảnh cần ít nhất một trường nội dung")
         for field in fields:
             if getattr(self, field) is None:
-                raise ValueError(f"{field} 不能设为 null")
+                raise ValueError(f"{field} không được đặt thành null")
         return self
 
 

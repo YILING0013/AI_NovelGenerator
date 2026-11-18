@@ -157,7 +157,7 @@ async def load_preview_context(task: str, parameters: dict[str, Any], scope: dic
                     **({"beats": ["主角取得新的线索"], "pov_character_id": None, "must_include": [], "must_avoid": []} if kind == "chapter" else {"key_beats": ["主角取得新的线索"], "continuity_notes": "", "target_chapter_count": 2, "character_ids": [], "faction_ids": [], "location_ids": [], "item_ids": [], "rule_ids": []}),
                 }
                 identity = f"{index:024x}"
-                sample["plan"].append({"resource_type": kind, "id": identity, **ancestors, "order_index": 1, "title": f"示例{dict(volume='卷', arc='篇章', scene='场景', chapter='章节')[kind]}", "summary": "当前部分的假设概要", "planning": planning})
+                sample["plan"].append({"resource_type": kind, "id": identity, **ancestors, "order_index": 1, "title": f"Ví dụ{dict(volume='卷', arc='篇章', scene='场景', chapter='章节')[kind]}", "summary": "当前部分的假设概要", "planning": planning})
                 ancestors[f"{kind}_id"] = identity
                 if kind == target_type:
                     break
@@ -200,7 +200,7 @@ async def load_preview_context(task: str, parameters: dict[str, Any], scope: dic
     if task == "rewrite_novel_field_by_ai":
         target = scope.get("target_field")
         if target is not None and target not in NOVEL_REWRITE_FIELD_LABELS:
-            raise DomainApiError("TASK_FLOW_PREVIEW_SCOPE_INVALID", "请选择有效的小说字段", status_code=422)
+            raise DomainApiError("TASK_FLOW_PREVIEW_SCOPE_INVALID", "Vui lòng chọn một trường tiểu thuyết hợp lệ", status_code=422)
         values = {
             "context_json": compact_rewrite_context({key: novel.get(key) for key in NOVEL_REWRITE_CONTEXT_FIELDS if key in novel}, target or ""),
             "instruction": params.get("instruction", "请补充该字段的细节"),
@@ -210,7 +210,7 @@ async def load_preview_context(task: str, parameters: dict[str, Any], scope: dic
         if target:
             values.update(target_field=target, target_field_label=NOVEL_REWRITE_FIELD_LABELS[target], current_value=format_rewrite_value(novel.get(target)) or "无")
             if novel.get(target) is None or novel.get(target) == "":
-                missing.append({"port": "current_value", "path": [], "note": f"小说尚未填写{NOVEL_REWRITE_FIELD_LABELS[target]}"})
+                missing.append({"port": "current_value", "path": [], "note": f"Tiểu thuyết chưa điền{NOVEL_REWRITE_FIELD_LABELS[target]}"})
         else:
             missing.extend({"port": name, "path": [], "note": "尚未选择改写字段"} for name in ("target_field", "target_field_label", "current_value"))
 
@@ -257,7 +257,7 @@ async def load_preview_context(task: str, parameters: dict[str, Any], scope: dic
                 continue
             identity = requested[index] if index < len(requested) else f"{'char' if is_character else 'fac'}_{999999 - index:06d}"
             note = "此 ID 未在资料范围中选择，显示假设档案，不读取小说资料" if index < len(requested) else "关系预览至少需要两个可用对象"
-            missing.append({"port": port, "path": [str(index)], "note": note, "example": {identity_key: identity, "name": f"示例{'角色' if is_character else '势力'} {index + 1}"}})
+            missing.append({"port": port, "path": [str(index)], "note": note, "example": {identity_key: identity, "name": f"Ví dụ{'角色' if is_character else '势力'} {index + 1}"}})
 
     elif task == "create_world_rules_by_ai":
         generation_input = CoreWorldRulesGenerationInputV1.model_construct(**params, novel_id=novel_id)
@@ -265,7 +265,7 @@ async def load_preview_context(task: str, parameters: dict[str, Any], scope: dic
         values, refs = data["prompt_input"], data["source_refs"]
         for name, label in (("protagonists", "主角"), ("factions", "核心势力")):
             if not values[name]:
-                missing.append({"port": name, "path": ["0"], "note": f"生成世界规则所需的{label}尚未创建", "example": {"name": f"示例{label}"}})
+                missing.append({"port": name, "path": ["0"], "note": f"cần cho việc tạo quy tắc thế giới{label}chưa được tạo", "example": {"name": f"Ví dụ{label}"}})
 
     elif task == "create_items_by_ai":
         data = await load_item_generation_context(ItemsGenerationInputV1.model_construct(**params, novel_id=novel_id))
@@ -295,7 +295,7 @@ async def load_preview_context(task: str, parameters: dict[str, Any], scope: dic
         for name, label in (("protagonists", "主角"), ("factions_and_relations", "核心势力")):
             absent = not values[name] if name == "protagonists" else not values[name]["factions"]
             if absent:
-                missing.append({"port": name, "path": ["0"] if name == "protagonists" else ["factions", "0"], "note": f"生成卷规划所需的{label}尚未创建", "example": {"name": f"示例{label}"}})
+                missing.append({"port": name, "path": ["0"] if name == "protagonists" else ["factions", "0"], "note": f"cần cho việc lập quy hoạch quyển{label}chưa được tạo", "example": {"name": f"Ví dụ{label}"}})
 
     elif task == "create_locations_for_volume_by_ai":
         volume_id = scope.get("volume_id")
@@ -316,7 +316,7 @@ async def load_preview_context(task: str, parameters: dict[str, Any], scope: dic
             locations = [item for item in await location_repo.list_locations(novel_id) if item.get("status") == "active" and item.get("location_order_pending_token") is None]
             by_id = {item["location_id"]: item for item in locations}
             if any(identity not in by_id for identity in selected):
-                raise DomainApiError("SELECTED_LOCATION_NOT_FOUND", "所选地点不存在、已停用或不属于当前小说", status_code=404)
+                raise DomainApiError("SELECTED_LOCATION_NOT_FOUND", "Địa điểm đã chọn không tồn tại, đã ngừng sử dụng hoặc không thuộc tiểu thuyết hiện tại", status_code=404)
             values = {**params, "novel_summary": position_content(novel, "novel"), "active_world_rules": [position_content(item, "world_rule") for item in rules], "existing_locations": [{"location_id": item["location_id"], **position_content(item, "location")} for item in locations], "selected_existing_locations": [{"location_id": identity, **position_content(by_id[identity], "location")} for identity in selected], "reading_semantics": "position_not_selected"}
             refs += [{"resource_type": kind, "id": item[identity], "version": item["version"]} for kind, records, identity in (("world_rule", rules, "rule_id"), ("location", locations, "location_id")) for item in records]
             missing.extend({"port": name, "path": [], "note": "尚未选择当前卷"} for name in ("volume_launch_package", "character_volume_states", "faction_volume_states"))
@@ -340,7 +340,7 @@ async def load_preview_context(task: str, parameters: dict[str, Any], scope: dic
             identity = "character_id" if is_character else "faction_id"
             records = [item for item in records if item.get("status" if is_character else "active_status") == "active" and (is_character or item.get("level_type") == "core")]
             if set(selected) - {item[identity] for item in records}:
-                raise DomainApiError("VOLUME_ENTITY_REFERENCE_UNAVAILABLE", "所选档案不存在、已停用或不属于当前范围", status_code=404)
+                raise DomainApiError("VOLUME_ENTITY_REFERENCE_UNAVAILABLE", "Hồ sơ đã chọn không tồn tại, đã ngừng sử dụng hoặc không thuộc phạm vi hiện tại", status_code=404)
             relations = []
             if is_character:
                 available = {item[identity] for item in records}
@@ -361,7 +361,7 @@ async def load_preview_context(task: str, parameters: dict[str, Any], scope: dic
         target_type = PLOT_TASKS[task] if task in PLOT_TASKS else WRITING_TASKS[task][0]
         target_id = scope.get("target_id") or scope.get(f"{target_type}_id")
         if scope.get("target_type", target_type) != target_type:
-            raise DomainApiError("WRITING_TARGET_INVALID", "任务与当前部分不匹配", status_code=422)
+            raise DomainApiError("WRITING_TARGET_INVALID", "Tác vụ không khớp với phần hiện tại", status_code=422)
         if target_id:
             chain = await load_writing_parents(novel_id, target_type, target_id)
             selected_entities = {field: scope.get(f"selected_{field}", []) for field in ("character_ids", "faction_ids", "location_ids", "item_ids", "rule_ids")}
@@ -386,7 +386,7 @@ async def load_preview_context(task: str, parameters: dict[str, Any], scope: dic
                               for identity in getattr(report.selected_entities, field)}
                     available = {(value["resource_type"], value["id"]) for value in context["selected_entities"]}
                     if chosen - available:
-                        raise DomainApiError("PREVIEW_CONTEXT_UNREAD", "预览没有执行工具，新增采用资料尚未读取；请在原生成页面完成资料整理后核对", status_code=422)
+                        raise DomainApiError("PREVIEW_CONTEXT_UNREAD", "Bản xem trước không thực thi công cụ, tài liệu mới được áp dụng vẫn chưa được đọc; hãy hoàn tất việc soạn tài liệu trên trang tạo ban đầu rồi đối chiếu lại", status_code=422)
                     context["selected_entities"] = [value for value in context["selected_entities"] if (value["resource_type"], value["id"]) in chosen]
                     context["volume_states"] = [value for value in context["volume_states"] if ("character", value.get("character_id")) in chosen or ("faction", value.get("faction_id")) in chosen]
                     data["context"] = assemble_chapter_context(context, report, {})

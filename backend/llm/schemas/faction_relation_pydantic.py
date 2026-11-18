@@ -138,7 +138,7 @@ class FactionRelationCreateRequestV1(StrictSchemaModel):
             校验通过后的创建请求。
         """
         if self.source_faction_id == self.target_faction_id:
-            raise ValueError("阵营关系不能指向自身")
+            raise ValueError("Quan hệ thế lực không được chỉ đến chính nó")
         return self
 
 
@@ -229,7 +229,7 @@ class FactionRelationResponseV1(StrictSchemaModel):
             校验通过后的响应。
         """
         if self.source_faction_id == self.target_faction_id:
-            raise ValueError("阵营关系不能指向自身")
+            raise ValueError("Quan hệ thế lực không được chỉ đến chính nó")
         return self
 
 
@@ -258,9 +258,9 @@ class FactionRelationsAppendResponseV1(StrictSchemaModel):
             or not isinstance(relation_id, str)
             for relation_ref, relation_id in value.items()
         ):
-            raise ValueError("relation_ref_map 必须是字符串到字符串的映射")
+            raise ValueError("relation_ref_map phải là ánh xạ từ chuỗi sang chuỗi")
         if len(value.values()) != len(set(value.values())):
-            raise ValueError("relation_ref_map 中的正式关系 ID 不能重复")
+            raise ValueError("ID quan hệ chính thức trong relation_ref_map không được trùng lặp")
         return value
 
 
@@ -311,7 +311,7 @@ class FactionRelationsGenerationInputV1(ReasoningOptions, StrictSchemaModel):
             校验通过的原数组。
         """
         if any(re.fullmatch(FACTION_BUSINESS_ID_PATTERN, item) is None for item in value):
-            raise ValueError("faction_ids 只能包含 fac_ 开头的稳定阵营业务 ID")
+            raise ValueError("faction_ids chỉ được chứa ID nghiệp vụ thế lực ổn định bắt đầu bằng fac_")
         return value
 
     @field_validator("user_guidance", mode="before")
@@ -343,14 +343,14 @@ class FactionRelationsGenerationInputV1(ReasoningOptions, StrictSchemaModel):
         faction_count = len(self.faction_ids)
         maximum_edge_count = faction_count * (faction_count - 1)
         if self.relation_count_limit > maximum_edge_count:
-            raise ValueError("relation_count_limit 不能超过所选阵营可形成的有向边数量")
+            raise ValueError("relation_count_limit không được vượt quá số cạnh có hướng mà các thế lực đã chọn có thể tạo thành")
 
         minimum_cover_count = (faction_count + 1) // 2
         if (
             not self.allow_isolated_factions
             and self.relation_count_limit < minimum_cover_count
         ):
-            raise ValueError("relation_count_limit 不足以覆盖全部所选阵营")
+            raise ValueError("relation_count_limit không đủ để bao phủ toàn bộ các thế lực đã chọn")
         return self
 
 
@@ -365,17 +365,17 @@ class FactionRelationCandidateV1(StrictSchemaModel):
 
     relation_ref: str = Field(
         pattern=_RELATION_REF_PATTERN,
-        description="仅在本次候选中使用的稳定引用，例如 relation_001。",
+        description="Tham chiếu ổn định chỉ dùng trong các ứng viên lần này, ví dụ relation_001.",
     )
     source_faction_id: str = Field(
         pattern=FACTION_BUSINESS_ID_PATTERN,
-        description="关系来源阵营业务 ID，必须来自本次输入阵营。",
+        description="ID nghiệp vụ thế lực nguồn của quan hệ, phải thuộc các thế lực đầu vào lần này.",
     )
     target_faction_id: str = Field(
         pattern=FACTION_BUSINESS_ID_PATTERN,
-        description="关系目标阵营业务 ID，必须来自本次输入阵营。",
+        description="ID nghiệp vụ thế lực đích của quan hệ, phải thuộc các thế lực đầu vào lần này.",
     )
-    relation_type: FactionRelationType = Field(description="阵营关系类型。")
+    relation_type: FactionRelationType = Field(description="Kiểu quan hệ thế lực.")
     current_state: str = Field(min_length=1, max_length=2000)
     core_conflict: str = Field(min_length=1, max_length=2000)
     hidden_tension: str = Field(max_length=2000)
@@ -384,7 +384,7 @@ class FactionRelationCandidateV1(StrictSchemaModel):
     is_active: bool = Field(
         ...,
         strict=True,
-        description="新生成关系固定为 true。",
+        description="Quan hệ mới tạo luôn là true.",
     )
 
     @field_validator("is_active")
@@ -399,7 +399,7 @@ class FactionRelationCandidateV1(StrictSchemaModel):
             值为 true 时返回原值。
         """
         if value is not True:
-            raise ValueError("新生成阵营关系的 is_active 必须为 true")
+            raise ValueError("is_active của quan hệ thế lực mới tạo phải là true")
         return value
 
     @model_validator(mode="after")
@@ -413,7 +413,7 @@ class FactionRelationCandidateV1(StrictSchemaModel):
             校验通过后的阵营关系候选。
         """
         if self.source_faction_id == self.target_faction_id:
-            raise ValueError("阵营关系候选不能指向自身")
+            raise ValueError("Ứng viên quan hệ thế lực không được chỉ đến chính nó")
         return self
 
 
@@ -423,7 +423,7 @@ class FactionRelationsResultSchemaV1(StrictSchemaModel):
     relations: list[FactionRelationCandidateV1] = Field(
         min_length=1,
         max_length=500,
-        description="仅追加到当前小说的阵营关系候选列表。",
+        description="Danh sách ứng viên quan hệ thế lực chỉ được thêm vào tiểu thuyết hiện tại.",
     )
 
     @model_validator(mode="after")
@@ -438,7 +438,7 @@ class FactionRelationsResultSchemaV1(StrictSchemaModel):
         """
         relation_refs = [relation.relation_ref for relation in self.relations]
         if len(relation_refs) != len(set(relation_refs)):
-            raise ValueError("relations 中的 relation_ref 不能重复")
+            raise ValueError("relation_ref trong relations không được trùng lặp")
 
         semantic_keys = [
             build_faction_relation_semantic_key(
@@ -449,7 +449,7 @@ class FactionRelationsResultSchemaV1(StrictSchemaModel):
             for relation in self.relations
         ]
         if len(semantic_keys) != len(set(semantic_keys)):
-            raise ValueError("relations 中不能包含重复或反向重复的同类型语义边")
+            raise ValueError("relations không được chứa cạnh ngữ nghĩa cùng loại bị trùng hoặc trùng ngược chiều")
         return self
 
 
@@ -507,26 +507,26 @@ class FactionRelationsAIConfirmationRequestV1(StrictSchemaModel):
             可交给领域 Service 重读正式事实的确认请求。
         """
         if self.basis.novel_id != self.generation_input.novel_id:
-            raise ValueError("basis 与 generation_input 的 novel_id 不一致")
+            raise ValueError("novel_id của basis và generation_input không nhất quán")
         if (
             self.basis.workflow != "create_faction_relations_by_ai"
             or self.basis.step != "create_faction_relations"
             or self.basis.schema_id != FACTION_RELATIONS_RESULT_SCHEMA_ID
             or self.basis.schema_version != FACTION_RELATIONS_RESULT_SCHEMA_VERSION
         ):
-            raise ValueError("阵营关系确认的 workflow/step/schema 契约不匹配")
+            raise ValueError("Hợp đồng workflow/step/schema của việc xác nhận quan hệ thế lực không khớp")
         candidate_by_ref = {
             relation.relation_ref: relation for relation in self.candidate.relations
         }
         if any(ref not in candidate_by_ref for ref in self.selected_relation_refs):
-            raise ValueError("selected_relation_refs 包含候选中不存在的引用")
+            raise ValueError("selected_relation_refs chứa tham chiếu không có trong các ứng viên")
         if any(
             re.fullmatch(FACTION_BUSINESS_ID_PATTERN, ref) is None
             for ref in self.selected_faction_refs
         ):
-            raise ValueError("selected_faction_refs 必须使用正式 fac_* 业务 ID")
+            raise ValueError("selected_faction_refs phải dùng ID nghiệp vụ fac_* chính thức")
         if set(self.selected_faction_refs) != set(self.generation_input.faction_ids):
-            raise ValueError("selected_faction_refs 必须精确匹配生成时锁定的势力")
+            raise ValueError("selected_faction_refs phải khớp chính xác các thế lực đã khóa khi tạo")
         selected_factions = set(self.selected_faction_refs)
         for relation_ref in self.selected_relation_refs:
             relation = candidate_by_ref[relation_ref]
@@ -534,18 +534,18 @@ class FactionRelationsAIConfirmationRequestV1(StrictSchemaModel):
                 relation.source_faction_id not in selected_factions
                 or relation.target_faction_id not in selected_factions
             ):
-                raise ValueError("所选关系端点超出 selected_faction_refs")
+                raise ValueError("Các đầu mút quan hệ đã chọn nằm ngoài selected_faction_refs")
         expected_from_basis = {
             f"{source.resource_type}:{source.id}": source.version
             for source in self.basis.source_refs
         }
         if self.expected_versions != expected_from_basis:
-            raise ValueError("expected_versions 必须精确匹配 basis.source_refs")
+            raise ValueError("expected_versions phải khớp chính xác với basis.source_refs")
         if any(
             isinstance(version, bool) or not isinstance(version, int) or version < 1
             for version in self.expected_versions.values()
         ):
-            raise ValueError("expected_versions 必须使用正整数版本")
+            raise ValueError("expected_versions phải dùng phiên bản là số nguyên dương")
         return self
 
 

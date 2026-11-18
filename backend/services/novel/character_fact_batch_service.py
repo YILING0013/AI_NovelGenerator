@@ -37,10 +37,10 @@ async def _validate_generation(novel_id, generation, *, relation, session):
     spec = TASKS[task]
     if (basis.novel_id != novel_id or inputs.novel_id != novel_id or basis.workflow != task
             or basis.step != spec.step or basis.schema_id != spec.schema_id or basis.schema_version != spec.schema_version):
-        raise DomainApiError("CHARACTER_BATCH_SOURCE_CHANGED", "这批结果不属于当前作品或操作", status_code=409)
+        raise DomainApiError("CHARACTER_BATCH_SOURCE_CHANGED", "Kết quả của lô này không thuộc tác phẩm hoặc thao tác hiện tại", status_code=409)
     novel = await BaseRepository("novels").collection.find_one({"_id": ObjectId(novel_id), "is_deleted": False}, session=session)
     if novel is None:
-        raise DomainApiError("NOVEL_NOT_FOUND", "作品不存在或已回收", status_code=404)
+        raise DomainApiError("NOVEL_NOT_FOUND", "Tác phẩm không tồn tại hoặc đã vào thùng rác", status_code=404)
     query = {"novel_id": ObjectId(novel_id), "is_deleted": False}
     characters = await BaseRepository("characters").collection.find(
         {**query, **({"character_id": {"$in": inputs.character_ids}} if relation else {})}, session=session,
@@ -66,10 +66,10 @@ async def _validate_generation(novel_id, generation, *, relation, session):
     try:
         fingerprint = compute_flow_candidate_fingerprint(task, inputs, refs, basis.flow_snapshot)
     except (KeyError, ValueError) as exc:
-        raise DomainApiError("CHARACTER_BATCH_SOURCE_CHANGED", "生成所用方案已变化，请保留这批编辑内容", status_code=409) from exc
+        raise DomainApiError("CHARACTER_BATCH_SOURCE_CHANGED", "Phương án dùng để tạo đã thay đổi, hãy giữ lại nội dung đã sửa của lô này", status_code=409) from exc
     ordered_refs = lambda rows: sorted((row.resource_type, row.id, row.version) for row in rows)
     if fingerprint != basis.input_fingerprint or ordered_refs(refs) != ordered_refs(basis.source_refs):
-        raise DomainApiError("CHARACTER_BATCH_SOURCE_CHANGED", "生成所用资料已变化，请保留这批编辑内容", status_code=409)
+        raise DomainApiError("CHARACTER_BATCH_SOURCE_CHANGED", "Tài liệu dùng để tạo đã thay đổi, hãy giữ lại nội dung đã sửa của lô này", status_code=409)
     execution = basis.flow_snapshot["execution"]
     reads = [*execution.get("character_fact_reads", []), *execution.get("character_relation_fact_reads", []), *execution.get("item_fact_reads", [])]
     await revalidate_position_fact_reads(reads, session=session, protect=True)
@@ -92,12 +92,12 @@ async def _save_batch(novel_id, request, *, idempotency_key, relation, session):
 
     async def save(current_session):
         if current_session is None or not current_session.in_transaction:
-            raise RuntimeError("整批人物或关系保存必须使用同一事务")
+            raise RuntimeError("Việc lưu cả lô nhân vật hoặc quan hệ phải dùng cùng một giao dịch")
         receipts = BaseRepository("character_creation_batch_receipts").collection
         receipt = await receipts.find_one({"_id": receipt_id}, session=current_session)
         if receipt is not None:
             if receipt["request_hash"] != fingerprint.request_hash or receipt["idempotency_key_hash"] != fingerprint.key_hash:
-                raise DomainApiError("CHARACTER_BATCH_IDEMPOTENCY_CONFLICT", "这次保存请求已用于其他内容，请保留原请求", status_code=409)
+                raise DomainApiError("CHARACTER_BATCH_IDEMPOTENCY_CONFLICT", "Yêu cầu lưu lần này đã được dùng cho nội dung khác, hãy giữ nguyên yêu cầu ban đầu", status_code=409)
             return result_model.model_validate(receipt["result"]).model_dump(mode="json")
         await _validate_generation(novel_id, request.generation, relation=relation, session=current_session)
         saved_rows, saved_bindings = [], []
@@ -115,7 +115,7 @@ async def _save_batch(novel_id, request, *, idempotency_key, relation, session):
                         "version": binding.faction_version, "is_deleted": False, "active_status": "active",
                     }, session=current_session)
                     if faction is None:
-                        raise DomainApiError("CHARACTER_BATCH_BINDING_CHANGED", "人物所属势力已变化，请保留这批编辑内容", status_code=409)
+                        raise DomainApiError("CHARACTER_BATCH_BINDING_CHANGED", "Thế lực của nhân vật đã thay đổi, hãy giữ lại nội dung đã sửa của lô này", status_code=409)
                     guards["factions", str(faction["_id"])] = faction
                 await protect_chapter_record_sources(guards, session=current_session)
                 data["references"] = [{"entity_type": "faction", "entity_id": identity} for identity in dict.fromkeys(row.faction_id for row in candidate.bindings)]
@@ -151,7 +151,7 @@ async def _save_batch(novel_id, request, *, idempotency_key, relation, session):
     except OperationFailure as exc:
         # 原事务层不自动重跑业务。暂时争用继续保留原请求，不把它误标成可改稿的新请求。
         if exc.code == 112 and exc.has_error_label("TransientTransactionError") and not exc.has_error_label("UnknownTransactionCommitResult"):
-            raise DomainApiError("CHARACTER_BATCH_SAVE_RETRY", "另一处也在保存，请重试这批保存；已填写的内容会保留", status_code=503) from exc
+            raise DomainApiError("CHARACTER_BATCH_SAVE_RETRY", "Một nơi khác cũng đang lưu, hãy thử lại việc lưu lô này; nội dung đã điền sẽ được giữ lại", status_code=503) from exc
         raise
 
 

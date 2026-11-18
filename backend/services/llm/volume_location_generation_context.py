@@ -111,19 +111,19 @@ async def load_volume_location_generation_context(
     if str(volume["novel_id"]) != novel_id:
         raise DomainApiError(
             "VOLUME_LOCATION_SOURCE_NOT_FOUND",
-            "目标卷不存在于当前小说",
+            "Quyển đích không tồn tại trong tiểu thuyết hiện tại",
             status_code=404,
         )
     if require_planning and volume.get("planning") is None:
         raise DomainApiError(
             "VOLUME_LAUNCH_PACKAGE_REQUIRED",
-            "目标卷尚未确认启动包，不能生成按需地点",
+            "Quyển đích chưa xác nhận gói khởi động, không thể tạo địa điểm theo yêu cầu",
             status_code=404,
         )
     if generation_input.selection_mode != "auto" and int(volume["version"]) != generation_input.volume_expected_version:
         raise DomainApiError(
             "VOLUME_VERSION_CONFLICT",
-            "目标卷版本已变化，请刷新后重新生成地点",
+            "Phiên bản quyển đích đã thay đổi, hãy làm mới rồi tạo lại địa điểm",
             status_code=409,
         )
 
@@ -170,7 +170,7 @@ async def load_volume_location_generation_context(
     if missing_character_ids or missing_faction_ids:
         raise DomainApiError(
             "VOLUME_LOCATION_STATE_SOURCE_NOT_FOUND",
-            "卷级参与状态引用的角色或势力已不存在或不可用",
+            "Nhân vật hoặc thế lực mà trạng thái tham gia cấp quyển tham chiếu không còn tồn tại hoặc không khả dụng",
             status_code=404,
             details={
                 "character_ids": missing_character_ids,
@@ -220,7 +220,7 @@ async def load_volume_location_generation_context(
     if missing_selected:
         raise DomainApiError(
             "SELECTED_LOCATION_NOT_FOUND",
-            "所选既有地点不存在、已删除、不可用或不属于当前小说",
+            "Địa điểm hiện có đã chọn không tồn tại, đã bị xóa, không khả dụng hoặc không thuộc tiểu thuyết hiện tại",
             status_code=404,
             details={"location_ids": missing_selected},
         )
@@ -273,7 +273,7 @@ async def load_volume_location_generation_context(
     if len(source_refs) > MAX_CANDIDATE_SOURCE_REFS:
         raise DomainApiError(
             "VOLUME_LOCATION_SOURCE_BUDGET_EXCEEDED",
-            "单卷地点生成正式来源超过 2000 项，禁止静默截断",
+            "Nguồn chính thức của việc tạo địa điểm cho một quyển vượt 2000 mục, không được cắt ngầm",
             status_code=422,
         )
 
@@ -287,7 +287,7 @@ async def load_volume_location_generation_context(
     for state in character_states:
         character_id = str(state["character_id"])
         if character_id not in character_facts:
-            raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "人物在读取期间已变化，请重新读取", status_code=409)
+            raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "Nhân vật đã thay đổi trong khi đọc, hãy đọc lại", status_code=409)
         character_state_input.append(
             {
                 "state_id": str(state["state_id"]),
@@ -307,7 +307,7 @@ async def load_volume_location_generation_context(
     for state in faction_states:
         faction_id = str(state["faction_id"])
         if faction_id not in faction_facts:
-            raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "势力在读取期间已变化，请重新读取", status_code=409)
+            raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "Thế lực đã thay đổi trong khi đọc, hãy đọc lại", status_code=409)
         faction_state_input.append(
             {
                 "state_id": str(state["state_id"]),
@@ -324,9 +324,9 @@ async def load_volume_location_generation_context(
         {"volume": {volume["_id"]: volume}},
     )
     if facts["position"] != position:
-        raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "卷顺序在读取期间已变化，请重新读取", status_code=409)
+        raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "Thứ tự quyển đã thay đổi trong khi đọc, hãy đọc lại", status_code=409)
     if faction_result["position"] != position:
-        raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "卷顺序在读取期间已变化，请重新读取", status_code=409)
+        raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "Thứ tự quyển đã thay đổi trong khi đọc, hãy đọc lại", status_code=409)
     location_input = {
         item["location_id"]: {"location_id": item["location_id"], "version": item["version"],
             "order_index": item["order_index"], **position_content(item, "location")}

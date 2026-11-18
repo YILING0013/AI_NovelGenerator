@@ -33,7 +33,7 @@ def evaluate_character_relation_facts(
             or len({row["_id"] for row in characters}) != len(characters)
             or not endpoints.keys() <= endpoint_ids
             or any(row["novel_id"] != relation["novel_id"] for row in characters)):
-        raise DomainApiError("CHARACTER_RELATION_FACT_IDENTITY_INVALID", "关系人物的身份或所属小说不一致，请检查资料", status_code=409)
+        raise DomainApiError("CHARACTER_RELATION_FACT_IDENTITY_INVALID", "Danh tính nhân vật trong quan hệ hoặc tiểu thuyết mà nhân vật thuộc về không nhất quán, hãy kiểm tra tài liệu", status_code=409)
 
     normalized, identities, source_checks, unavailable = [], set(), {}, set()
     endpoint_bindings = None
@@ -48,10 +48,10 @@ def evaluate_character_relation_facts(
                 or ObjectId(record["entity_id"]) != relation["_id"] or record["relation_id"] != relation["relation_id"]
                 or record["source_character_id"] != relation["source_character_id"]
                 or record["target_character_id"] != relation["target_character_id"] or identity in identities):
-            raise DomainApiError("CHARACTER_RELATION_FACT_RECORD_INVALID", "关系事实的身份、两端人物或记录编号不一致，请检查记录", status_code=409)
+            raise DomainApiError("CHARACTER_RELATION_FACT_RECORD_INVALID", "Danh tính của sự kiện quan hệ, nhân vật hai đầu hoặc số bản ghi không nhất quán, hãy kiểm tra bản ghi", status_code=409)
         binding = (record["source_character_entity_id"], record["target_character_entity_id"])
         if endpoint_bindings is not None and binding != endpoint_bindings:
-            raise DomainApiError("CHARACTER_RELATION_FACT_RECORD_INVALID", "同一关系的历史不能改绑人物物理身份，请检查记录", status_code=409)
+            raise DomainApiError("CHARACTER_RELATION_FACT_RECORD_INVALID", "Lịch sử của cùng một quan hệ không được buộc lại danh tính vật lý của nhân vật, hãy kiểm tra bản ghi", status_code=409)
         endpoint_bindings = binding
         for side in ("source", "target"):
             endpoint = endpoints.get(record[f"{side}_character_id"])
@@ -74,7 +74,7 @@ def evaluate_character_relation_facts(
         fields = evaluate_fact_fields(CHARACTER_RELATION_FACT_FIELDS, normalized, position, directories,
                                       source_checks, unavailable_references=unavailable)
     except FactPositionConflictError as exc:
-        raise DomainApiError("CHARACTER_RELATION_FACT_POSITION_CONFLICT", "同一位置有重复的关系状态，请明确替代原记录", status_code=409) from exc
+        raise DomainApiError("CHARACTER_RELATION_FACT_POSITION_CONFLICT", "Cùng một vị trí có trạng thái quan hệ trùng lặp, hãy thay thế rõ ràng bản ghi gốc", status_code=409) from exc
     return CharacterRelationFactsAtPositionV1.model_validate({
         "entity_id": str(relation["_id"]), "relation_id": relation["relation_id"],
         "source_character_id": relation["source_character_id"], "target_character_id": relation["target_character_id"],

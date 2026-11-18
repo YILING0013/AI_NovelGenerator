@@ -92,13 +92,13 @@ class WorldRuleCandidateV1(StrictRequestModel):
         """
         ids = list(self.scope_entity_ids)
         if len(ids) != len(set(ids)):
-            raise ValueError("scope_entity_ids 不能包含重复 ID")
+            raise ValueError("scope_entity_ids không được chứa ID trùng lặp")
         if self.scope_type == "global":
             if ids:
-                raise ValueError("global 作用域不能携带实体 ID")
+                raise ValueError("Phạm vi global không được kèm ID thực thể")
             return self
         if not ids:
-            raise ValueError(f"{self.scope_type} 作用域至少需要一个实体 ID")
+            raise ValueError(f"{self.scope_type} phạm vi cần ít nhất một ID thực thể")
         if self.scope_type == "faction":
             invalid = any(
                 re.fullmatch(FACTION_BUSINESS_ID_PATTERN, item) is None
@@ -107,7 +107,7 @@ class WorldRuleCandidateV1(StrictRequestModel):
         else:
             invalid = any(re.fullmatch(r"^char_[0-9]{6,}$", item) is None for item in ids)
         if invalid:
-            raise ValueError("scope_entity_ids 的 ID 类型必须匹配 scope_type")
+            raise ValueError("Loại ID trong scope_entity_ids phải khớp với scope_type")
         return self
 
 class CoreWorldRulesResultV1(StrictRequestModel):
@@ -127,7 +127,7 @@ class CoreWorldRulesResultV1(StrictRequestModel):
         """
         refs = [item.candidate_ref for item in self.core_world_rules]
         if len(refs) != len(set(refs)):
-            raise ValueError("candidate_ref 不能重复")
+            raise ValueError("candidate_ref không được trùng lặp")
         return self
 
 
@@ -153,7 +153,7 @@ class CoreWorldRulesBasisV1(CandidateBasisV1):
             or self.schema_version != CORE_WORLD_RULES_RESULT_SCHEMA_VERSION
             or self.novel_id != self.generation_input.novel_id
         ):
-            raise ValueError("核心世界规则 basis 契约不匹配")
+            raise ValueError("Hợp đồng basis của quy tắc thế giới cốt lõi không khớp")
         return self
 
 
@@ -197,7 +197,7 @@ class CoreWorldRulesConfirmV1(StrictRequestModel):
             or version < 1
             for key, version in value.items()
         ):
-            raise ValueError("expected_versions 必须使用非空资源键和正整数版本")
+            raise ValueError("expected_versions phải dùng khóa tài nguyên không trống và phiên bản là số nguyên dương")
         return value
 
     @model_validator(mode="after")
@@ -212,15 +212,15 @@ class CoreWorldRulesConfirmV1(StrictRequestModel):
         """
         refs = [item.candidate_ref for item in self.candidates]
         if len(refs) != len(set(refs)):
-            raise ValueError("确认候选 candidate_ref 不能重复")
+            raise ValueError("candidate_ref trong danh sách ứng viên xác nhận không được trùng lặp")
         expected = {
             f"{source.resource_type}:{source.id}": source.version
             for source in self.basis.source_refs
         }
         if self.expected_versions != expected:
-            raise ValueError("expected_versions 必须精确匹配 basis.source_refs")
+            raise ValueError("expected_versions phải khớp chính xác với basis.source_refs")
         if len(self.candidates) > (self.basis.generation_input.core_rule_count or 20):
-            raise ValueError("确认候选数量不能超过原始生成数量")
+            raise ValueError("Số ứng viên được xác nhận không được vượt quá số lượng sinh gốc")
         return self
 
 

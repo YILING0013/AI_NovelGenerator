@@ -140,7 +140,7 @@ class CharacterRelationCreateRequestV1(StrictSchemaModel):
             校验通过后的创建请求。
         """
         if self.source_character_id == self.target_character_id:
-            raise ValueError("角色关系不能指向自身")
+            raise ValueError("Quan hệ nhân vật không được trỏ tới chính nó")
         return self
 
 
@@ -233,7 +233,7 @@ class CharacterRelationResponseV1(StrictSchemaModel):
             校验通过后的关系响应。
         """
         if self.source_character_id == self.target_character_id:
-            raise ValueError("角色关系不能指向自身")
+            raise ValueError("Quan hệ nhân vật không được trỏ tới chính nó")
         return self
 
 
@@ -262,9 +262,9 @@ class CharacterRelationsAppendResponseV1(StrictSchemaModel):
             or not isinstance(relation_id, str)
             for relation_ref, relation_id in value.items()
         ):
-            raise ValueError("relation_ref_map 必须是字符串到字符串的映射")
+            raise ValueError("relation_ref_map phải là ánh xạ từ chuỗi sang chuỗi")
         if len(value.values()) != len(set(value.values())):
-            raise ValueError("relation_ref_map 中的正式关系 ID 不能重复")
+            raise ValueError("ID quan hệ chính thức trong relation_ref_map không được trùng lặp")
         return value
 
 
@@ -315,7 +315,7 @@ class CharacterRelationsGenerationInputV1(ReasoningOptions, StrictSchemaModel):
             校验通过的原数组。
         """
         if any(re.fullmatch(_CHARACTER_ID_PATTERN, item) is None for item in value):
-            raise ValueError("character_ids 只能包含 char_ 开头的稳定角色业务 ID")
+            raise ValueError("character_ids chỉ được chứa ID nghiệp vụ nhân vật ổn định bắt đầu bằng char_")
         return value
 
     @field_validator("user_guidance", mode="before")
@@ -347,14 +347,14 @@ class CharacterRelationsGenerationInputV1(ReasoningOptions, StrictSchemaModel):
         character_count = len(self.character_ids)
         maximum_edge_count = character_count * (character_count - 1)
         if self.relation_count_limit > maximum_edge_count:
-            raise ValueError("relation_count_limit 不能超过所选角色可形成的有向边数量")
+            raise ValueError("relation_count_limit không được vượt quá số cạnh có hướng mà các nhân vật đã chọn có thể tạo")
 
         minimum_cover_count = (character_count + 1) // 2
         if (
             not self.allow_isolated_characters
             and self.relation_count_limit < minimum_cover_count
         ):
-            raise ValueError("relation_count_limit 不足以覆盖全部所选角色")
+            raise ValueError("relation_count_limit không đủ để bao phủ toàn bộ nhân vật đã chọn")
         return self
 
 
@@ -369,48 +369,48 @@ class CharacterRelationCandidateV1(StrictSchemaModel):
 
     relation_ref: str = Field(
         pattern=_RELATION_REF_PATTERN,
-        description="仅在本次候选中使用的稳定引用，如 relation_001。",
+        description="Tham chiếu ổn định chỉ dùng trong danh sách ứng viên lần này, ví dụ relation_001.",
     )
     source_character_id: str = Field(
         pattern=_CHARACTER_ID_PATTERN,
-        description="关系源角色业务 ID，必须来自本次输入角色。",
+        description="ID nghiệp vụ nhân vật nguồn của quan hệ, phải lấy từ nhân vật đầu vào lần này.",
     )
     target_character_id: str = Field(
         pattern=_CHARACTER_ID_PATTERN,
-        description="关系目标角色业务 ID，必须来自本次输入角色。",
+        description="ID nghiệp vụ nhân vật đích của quan hệ, phải lấy từ nhân vật đầu vào lần này.",
     )
-    relation_type: CharacterRelationType = Field(description="关系类型。")
+    relation_type: CharacterRelationType = Field(description="Loại quan hệ.")
     current_state: str = Field(
         min_length=1,
         max_length=2000,
-        description="故事开始时双方关系的当前状态。",
+        description="Trạng thái hiện tại của quan hệ giữa hai bên khi bắt đầu câu chuyện.",
     )
     core_conflict: str = Field(
         min_length=1,
         max_length=2000,
-        description="关系中的核心矛盾。",
+        description="Mâu thuẫn cốt lõi trong quan hệ.",
     )
     hidden_tension: str = Field(
         min_length=1,
         max_length=2000,
-        description="未公开或尚未爆发的深层张力。",
+        description="Căng thẳng sâu chưa công khai hoặc chưa bùng phát.",
     )
     possible_change: str = Field(
         min_length=1,
         max_length=2000,
-        description="跨全书可能发生的关系变化。",
+        description="Các thay đổi quan hệ có thể xảy ra xuyên suốt toàn sách.",
     )
     story_value: str = Field(
         min_length=1,
         max_length=2000,
-        description="该关系推动主线的叙事价值。",
+        description="Giá trị tự sự của quan hệ này thúc đẩy tuyến truyện chính.",
     )
-    intensity: int = Field(ge=1, le=5, strict=True, description="关系强度，1 至 5。")
+    intensity: int = Field(ge=1, le=5, strict=True, description="Cường độ quan hệ, từ 1 đến 5.")
     # google-genai 1.69.0 无法转换布尔 const；使用必填严格布尔值并在 Pydantic 层固定为 true。
     is_active: bool = Field(
         ...,
         strict=True,
-        description="新生成关系固定为 true。",
+        description="Quan hệ mới tạo luôn là true.",
     )
 
     @field_validator("is_active")
@@ -425,7 +425,7 @@ class CharacterRelationCandidateV1(StrictSchemaModel):
             值为 true 时返回原值。
         """
         if value is not True:
-            raise ValueError("新生成关系的 is_active 必须为 true")
+            raise ValueError("is_active của quan hệ mới tạo phải là true")
         return value
 
     @model_validator(mode="after")
@@ -439,7 +439,7 @@ class CharacterRelationCandidateV1(StrictSchemaModel):
             校验通过后的关系候选。
         """
         if self.source_character_id == self.target_character_id:
-            raise ValueError("角色关系候选不能指向自身")
+            raise ValueError("Ứng viên quan hệ nhân vật không được trỏ tới chính nó")
         return self
 
 
@@ -449,7 +449,7 @@ class CharacterRelationsResultSchemaV1(StrictSchemaModel):
     relations: list[CharacterRelationCandidateV1] = Field(
         min_length=1,
         max_length=500,
-        description="仅追加到当前小说的全书级角色关系候选列表。",
+        description="Danh sách ứng viên quan hệ nhân vật cấp toàn sách, chỉ thêm vào tiểu thuyết hiện tại.",
     )
 
     @model_validator(mode="after")
@@ -464,7 +464,7 @@ class CharacterRelationsResultSchemaV1(StrictSchemaModel):
         """
         relation_refs = [relation.relation_ref for relation in self.relations]
         if len(relation_refs) != len(set(relation_refs)):
-            raise ValueError("relations 中的 relation_ref 不能重复")
+            raise ValueError("relation_ref trong relations không được trùng lặp")
 
         semantic_keys = [
             build_relation_semantic_key(
@@ -475,7 +475,7 @@ class CharacterRelationsResultSchemaV1(StrictSchemaModel):
             for relation in self.relations
         ]
         if len(semantic_keys) != len(set(semantic_keys)):
-            raise ValueError("relations 中不能包含重复或反向重复的同类型语义边")
+            raise ValueError("relations không được chứa cạnh ngữ nghĩa cùng loại bị trùng hoặc trùng ngược chiều")
         return self
 
 
@@ -539,7 +539,7 @@ class CharacterRelationsAIConfirmationRequestV1(StrictSchemaModel):
             or version < 1
             for key, version in value.items()
         ):
-            raise ValueError("expected_versions 必须使用非空资源键和正整数版本")
+            raise ValueError("expected_versions phải dùng khoá tài nguyên không rỗng và phiên bản là số nguyên dương")
         return value
 
     @model_validator(mode="after")
@@ -555,28 +555,28 @@ class CharacterRelationsAIConfirmationRequestV1(StrictSchemaModel):
             可交给领域 Service 重读正式事实的确认请求。
         """
         if self.basis.novel_id != self.generation_input.novel_id:
-            raise ValueError("basis 与 generation_input 的 novel_id 不一致")
+            raise ValueError("novel_id của basis và generation_input không nhất quán")
         if (
             self.basis.workflow != "create_character_relations_by_ai"
             or self.basis.step != "create_character_relations"
             or self.basis.schema_id != CHARACTER_RELATIONS_RESULT_SCHEMA_ID
             or self.basis.schema_version != CHARACTER_RELATIONS_RESULT_SCHEMA_VERSION
         ):
-            raise ValueError("角色关系确认的 basis 契约不匹配")
+            raise ValueError("Hợp đồng basis của xác nhận quan hệ nhân vật không khớp")
         candidate_by_ref = {
             relation.relation_ref: relation for relation in self.candidate.relations
         }
         if any(ref not in candidate_by_ref for ref in self.selected_relation_refs):
-            raise ValueError("selected_relation_refs 包含候选中不存在的引用")
+            raise ValueError("selected_relation_refs chứa tham chiếu không có trong danh sách ứng viên")
         if any(
             re.fullmatch(_CHARACTER_ID_PATTERN, ref) is None
             for ref in self.selected_character_refs
         ):
-            raise ValueError("selected_character_refs 必须使用正式 char_* 业务 ID")
+            raise ValueError("selected_character_refs phải dùng ID nghiệp vụ char_* chính thức")
         if set(self.selected_character_refs) != set(
             self.generation_input.character_ids
         ):
-            raise ValueError("selected_character_refs 必须精确匹配生成时锁定的角色")
+            raise ValueError("selected_character_refs phải khớp chính xác với các nhân vật bị khóa lúc tạo")
         selected_characters = set(self.selected_character_refs)
         for relation_ref in self.selected_relation_refs:
             relation = candidate_by_ref[relation_ref]
@@ -584,18 +584,18 @@ class CharacterRelationsAIConfirmationRequestV1(StrictSchemaModel):
                 relation.source_character_id not in selected_characters
                 or relation.target_character_id not in selected_characters
             ):
-                raise ValueError("所选关系端点超出 selected_character_refs")
+                raise ValueError("Các đầu mút quan hệ đã chọn vượt ngoài selected_character_refs")
         expected_from_basis = {
             f"{source.resource_type}:{source.id}": source.version
             for source in self.basis.source_refs
         }
         if self.expected_versions != expected_from_basis:
-            raise ValueError("expected_versions 必须精确匹配 basis.source_refs")
+            raise ValueError("expected_versions phải khớp chính xác với basis.source_refs")
         if any(
             isinstance(version, bool) or not isinstance(version, int) or version < 1
             for version in self.expected_versions.values()
         ):
-            raise ValueError("expected_versions 必须使用正整数版本")
+            raise ValueError("expected_versions phải dùng phiên bản là số nguyên dương")
         return self
 
 

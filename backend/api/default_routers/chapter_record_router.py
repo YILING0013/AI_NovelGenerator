@@ -241,7 +241,7 @@ async def list_state_history(novel_id: ObjectIdString, chapter_id: ObjectIdStrin
     try:
         if ((state_id is not None and (entity_type is not None or entity_id is not None))
                 or ((entity_type is None) != (entity_id is None))):
-            raise DomainApiError("CHAPTER_RECORD_HISTORY_FILTER_INVALID", "人物卷状态 ID 不能与实体筛选混用；实体类型和 ID 必须一起提供", status_code=422)
+            raise DomainApiError("CHAPTER_RECORD_HISTORY_FILTER_INVALID", "ID trạng thái nhân vật theo quyển không được dùng lẫn với bộ lọc thực thể; phải cung cấp đồng thời loại thực thể và ID", status_code=422)
         if state_id is not None:
             return await ChapterRecordService.list(novel_id, "history", chapter_id=chapter_id, revision_id=revision_id, entity_id=state_id, entity_type="character_volume_state")
         return await ChapterRecordService.list(novel_id, "history", chapter_id=chapter_id, revision_id=revision_id, entity_id=entity_id, entity_type=entity_type)

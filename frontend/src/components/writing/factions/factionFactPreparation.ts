@@ -57,22 +57,22 @@ export async function reprepareFactionFact(previous: FactionFactDraftV1, next: F
 
 type Entry = WritingDraft<FactionFactPreparationV1>;
 const scopeFor = (novelId: string) => `${novelId}:faction-fact-preparations`;
-const failure = () => new Error("另一页已保存或更新这份草稿，请重新打开查看；本页文字仍会保留");
+const failure = () => new Error("Một trang khác đã lưu hoặc cập nhật bản nháp này, hãy mở lại để xem; nội dung trang này vẫn được giữ");
 
 /** 位置和内容决定原操作；同位置更正明确关联原记录，旧设计不会变成事实。 */
 export function factionFactPreviewInput(value: FactionFactPreparationV1): FactionFactPreviewInputV1 {
   if (value.void_record && value.target) return { operation: "void", target: value.target,
     targets: Object.fromEntries(Object.entries(value.void_record.validity).filter(([, state]) => state?.state === "active").map(([field]) => [field, value.void_record!.history_id])) };
   const fields = Object.keys(value.after) as FactionFactField[];
-  if (!fields.length) throw new Error("请先填写或修改要保存的资料");
-  const source = { kind: "author" as const, note: "作者确认这处剧情位置的势力资料" };
+  if (!fields.length) throw new Error("Hãy điền hoặc sửa tư liệu cần lưu trước");
+  const source = { kind: "author" as const, note: "Tác giả xác nhận tư liệu thế lực tại vị trí cốt truyện này" };
   if (value.candidate) return { operation: "create", target: { candidate: value.candidate }, position: value.position, source, fields };
   if (!value.target) throw failure();
   const selected = value.records.filter((record) => record.position.intent === value.position.intent
     && record.position.target_id === value.position.target_id && fields.some((field) => record.validity[field]?.state === "active"));
   const kinds = new Set(selected.map((record) => record.kind));
   const sources = new Set(selected.filter((record) => record.kind === "change").map((record) => JSON.stringify(record.source)));
-  if (kinds.size > 1 || sources.size > 1) throw new Error("这些资料来自不同的剧情记录，请从对应历史记录更正；编辑内容已保留");
+  if (kinds.size > 1 || sources.size > 1) throw new Error("Những tư liệu này đến từ các bản ghi cốt truyện khác nhau, hãy sửa từ bản ghi lịch sử tương ứng; nội dung đã sửa vẫn được giữ");
   const replaces = Object.fromEntries(fields.flatMap((field) => {
     const record = selected.find((row) => row.validity[field]?.state === "active");
     return record ? [[field, record.history_id]] : [];

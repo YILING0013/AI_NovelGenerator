@@ -38,7 +38,7 @@ async def ensure_item_fields_unmanaged(novel_id: str, item_ids: list[str], *, se
         无；已有整组记录时拒绝旧写入。
     """
     if protect and (session is None or not session.in_transaction):
-        raise RuntimeError("物品状态保护必须使用原保存事务")
+        raise RuntimeError("Bảo vệ trạng thái vật phẩm phải dùng transaction lưu gốc")
     chain = await load_writing_parents(novel_id, "novel", novel_id, session=session)
     items = await BaseRepository("items").collection.find({
         "novel_id": ObjectId(novel_id), "item_id": {"$in": item_ids},
@@ -53,12 +53,12 @@ async def ensure_item_fields_unmanaged(novel_id: str, item_ids: list[str], *, se
         try:
             record = parse_item_fact_record(document)
         except (ValueError, TypeError) as exc:
-            raise DomainApiError("ITEM_FACT_RECORD_INVALID", "物品状态记录格式不正确，请检查记录", status_code=409) from exc
+            raise DomainApiError("ITEM_FACT_RECORD_INVALID", "Định dạng bản ghi trạng thái vật phẩm không đúng, vui lòng kiểm tra bản ghi", status_code=409) from exc
         item = by_id.get(record["item_id"])
         if item is None or ObjectId(record["entity_id"]) != item["_id"] or ObjectId(record["novel_id"]) != ObjectId(novel_id):
-            raise DomainApiError("ITEM_FACT_RECORD_INVALID", "物品状态记录的身份或所属小说不一致", status_code=409)
+            raise DomainApiError("ITEM_FACT_RECORD_INVALID", "Danh tính hoặc tiểu thuyết của bản ghi trạng thái vật phẩm không nhất quán", status_code=409)
     if records:
-        raise DomainApiError("ITEM_FACT_MANAGED_FIELDS", "物品状态已有明确位置，请从按章状态中记录变化或更正", status_code=409)
+        raise DomainApiError("ITEM_FACT_MANAGED_FIELDS", "Trạng thái vật phẩm đã có vị trí rõ ràng, hãy ghi thay đổi hoặc hiệu chỉnh từ trạng thái theo chương", status_code=409)
     if protect:
         await protect_chapter_record_sources({("novels", novel_id): chain[0][1]}, session=session)
 
@@ -118,7 +118,7 @@ async def list_item_fact_history(novel_id: str, entity_id: str | None = None, *,
     try:
         return [parse_item_fact_record(row) for row in rows]
     except (ValueError, TypeError) as exc:
-        raise DomainApiError("ITEM_FACT_RECORD_INVALID", "物品状态记录格式不正确，请检查记录", status_code=409) from exc
+        raise DomainApiError("ITEM_FACT_RECORD_INVALID", "Định dạng bản ghi trạng thái vật phẩm không đúng, vui lòng kiểm tra bản ghi", status_code=409) from exc
 
 
 async def _load_item_fact_snapshot(novel_id, item_ids, position_scope, *, session):
@@ -136,14 +136,14 @@ async def _load_item_fact_snapshot(novel_id, item_ids, position_scope, *, sessio
     parents = await load_writing_parents(novel_id, "novel", novel_id, session=session)
     novel = parents[0][1]
     if "hard_delete_claim" in novel:
-        raise DomainApiError("ITEM_FACT_PARENT_BUSY", "小说正在永久删除，请稍后读取", status_code=409)
+        raise DomainApiError("ITEM_FACT_PARENT_BUSY", "Tiểu thuyết đang bị xoá vĩnh viễn, vui lòng đọc lại sau", status_code=409)
     directories = {}
     for kind in PARENTS:
         documents = await BaseRepository(COLLECTIONS[kind]).collection.find(
             {"novel_id": novel_key, "is_deleted": False}, {"content": 0}, session=session,
         ).limit(10001).to_list(length=10001)
         if len(documents) > 10000:
-            raise DomainApiError("WRITING_CONTEXT_TOO_LARGE", "目录超过单次读取范围，请先整理目录", status_code=409)
+            raise DomainApiError("WRITING_CONTEXT_TOO_LARGE", "Thư mục vượt quá phạm vi đọc mỗi lần, hãy dọn thư mục trước", status_code=409)
         directories[kind] = {row["_id"]: row for row in documents}
         # 回收父级下的残留子目录不成为活动位置，原历史仍全部核验。
         directories[kind] = {key: row for key, row in directories[kind].items()
@@ -164,10 +164,10 @@ async def _load_item_fact_snapshot(novel_id, item_ids, position_scope, *, sessio
         try:
             record = parse_item_fact_record(document)
         except (ValueError, TypeError) as exc:
-            raise DomainApiError("ITEM_FACT_RECORD_INVALID", "物品事实记录格式不正确，请检查记录", status_code=409) from exc
+            raise DomainApiError("ITEM_FACT_RECORD_INVALID", "Định dạng bản ghi dữ kiện vật phẩm không đúng, vui lòng kiểm tra bản ghi", status_code=409) from exc
         item = by_id.get(record["item_id"])
         if item is None or ObjectId(record["novel_id"]) != novel_key or ObjectId(record["entity_id"]) != item["_id"]:
-            raise DomainApiError("ITEM_FACT_RECORD_INVALID", "物品事实的业务身份、物理身份或小说不一致", status_code=409)
+            raise DomainApiError("ITEM_FACT_RECORD_INVALID", "Danh tính nghiệp vụ, danh tính vật lý hoặc tiểu thuyết của dữ kiện vật phẩm không nhất quán", status_code=409)
         records.append(record)
 
     sources, source_validity = {}, {}
@@ -276,12 +276,12 @@ async def read_item_facts(novel_id: str, item_ids: list[str], position_scope: di
 
     selected = TypeAdapter(list[ItemId]).validate_python(item_ids, strict=True)
     if len(selected) > 200 or len(selected) != len(set(selected)):
-        raise ValueError("物品读取最多选择 200 个不重复 ID")
+        raise ValueError("Đọc vật phẩm chỉ được chọn tối đa 200 ID không trùng lặp")
     novel_id = str(ObjectId(novel_id))
 
     async def read(current_session):
         if current_session is None or not current_session.in_transaction:
-            raise RuntimeError("物品事实读取必须使用同一事务")
+            raise RuntimeError("Đọc dữ kiện vật phẩm phải dùng cùng transaction")
         result, _ = await _load_item_fact_snapshot(novel_id, sorted(selected), position_scope, session=current_session)
         return result
 
@@ -299,14 +299,14 @@ async def revalidate_item_fact_reads(reads: list[dict], *, session=None, protect
         无；依据变化时拒绝发送或保存，保留原稿。
     """
     if protect and (session is None or not session.in_transaction):
-        raise RuntimeError("物品事实保护必须在调用方事务内执行")
+        raise RuntimeError("Bảo vệ dữ kiện vật phẩm phải thực hiện trong transaction của bên gọi")
     if session is None:
         return await run_mongo_write_unit(
             lambda current_session: revalidate_item_fact_reads(reads, session=current_session),
             "revalidate_item_fact_reads", require_transaction=True,
         )
     if not session.in_transaction:
-        raise RuntimeError("物品事实复验必须使用同一读取事务")
+        raise RuntimeError("Kiểm tra lại dữ kiện vật phẩm phải dùng cùng transaction đọc")
     for original in reads:
         read = ItemFactReadV1.model_validate(original).model_dump(mode="json")
         position = read["position"]
@@ -314,7 +314,7 @@ async def revalidate_item_fact_reads(reads: list[dict], *, session=None, protect
                  "reading_intent": position["intent"], "reading_version": position["version"]}
         current, guards = await _load_item_fact_snapshot(read["novel_id"], read["item_ids"], scope, session=session)
         if current["read"] != read:
-            raise DomainApiError("ITEM_FACT_CONTEXT_CHANGED", "物品事实、来源、引用或目录已变化，请保留原稿并重新读取", status_code=409)
+            raise DomainApiError("ITEM_FACT_CONTEXT_CHANGED", "Dữ kiện vật phẩm, nguồn, tham chiếu hoặc thư mục đã thay đổi, hãy giữ nguyên bản thảo và đọc lại", status_code=409)
         if protect:
             await protect_chapter_record_sources(guards, session=session)
 
@@ -332,11 +332,11 @@ async def get_item_fact_history(novel_id: str, history_id: str, *, session=None)
     document = await BaseRepository("entity_state_history").collection.find_one(
         {"_id": ObjectId(history_id), "novel_id": ObjectId(novel_id)}, session=session)
     if document is None:
-        raise NotFoundError("物品事实记录不存在")
+        raise NotFoundError("Bản ghi dữ kiện vật phẩm không tồn tại")
     try:
         return parse_item_fact_record(document)
     except (ValueError, TypeError) as exc:
-        raise DomainApiError("ITEM_FACT_RECORD_INVALID", "物品事实记录格式不正确", status_code=409) from exc
+        raise DomainApiError("ITEM_FACT_RECORD_INVALID", "Định dạng bản ghi dữ kiện vật phẩm không đúng", status_code=409) from exc
 
 
 async def _build_item_fact_preview(novel_id, fields, *, new_entity_id, session):
@@ -359,7 +359,7 @@ async def _build_item_fact_preview(novel_id, fields, *, new_entity_id, session):
         candidate = ItemFactCreateDataV1.model_validate({k: v for k, v in content.items()
                                                        if k not in ITEM_FACT_FIELDS | {"normalized_name"}}).model_dump()
         if await BaseRepository("items").collection.find_one({"_id": ObjectId(new_entity_id)}, session=session):
-            raise DomainApiError("ITEM_FACT_CREATE_CONFLICT", "物品身份已存在，请保留原稿并重新预览", status_code=409)
+            raise DomainApiError("ITEM_FACT_CREATE_CONFLICT", "Danh tính vật phẩm đã tồn tại, hãy giữ nguyên bản thảo và xem trước lại", status_code=409)
         await ItemService._ensure_name_available(novel_id, content["normalized_name"], exclude_item_id=None, session=session)
         target = {"kind": "new", "novel_id": novel_id, "entity_id": new_entity_id, "candidate": candidate}
     else:
@@ -369,16 +369,16 @@ async def _build_item_fact_preview(novel_id, fields, *, new_entity_id, session):
             "is_deleted": False, "item_write_pending_token": None,
         }, session=session)
         if existing is None:
-            raise NotFoundError("物品不存在、已回收或不属于当前小说")
+            raise NotFoundError("Vật phẩm không tồn tại, đã bị thu hồi hoặc không thuộc tiểu thuyết hiện tại")
         if existing["version"] != supplied["expected_version"]:
-            raise VersionConflictError("物品已变化，请保留原稿并重新预览")
+            raise VersionConflictError("Vật phẩm đã thay đổi, hãy giữ nguyên bản thảo và xem trước lại")
         target = {"kind": "existing", "novel_id": novel_id, "entity_id": str(existing["_id"]),
                   **{key: existing[key] for key in ("item_id", "name", "version", "is_deleted")}}
 
     if operation == "void":
         original = await get_item_fact_history(novel_id, fields["history_id"], session=session)
         if ObjectId(original["entity_id"]) != ObjectId(target["entity_id"]) or original["item_id"] != target["item_id"]:
-            raise DomainApiError("ITEM_FACT_TARGET_INVALID", "不能作废其他物品的记录", status_code=409)
+            raise DomainApiError("ITEM_FACT_TARGET_INVALID", "Không thể vô hiệu hoá bản ghi của vật phẩm khác", status_code=409)
         position, source, kind, protected = (deepcopy(original[k]) for k in ("position", "source", "kind", "protected_sources"))
     else:
         position, source, kind = deepcopy(fields["position"]), deepcopy(fields["source"]), fields.get("kind", "start")
@@ -408,11 +408,11 @@ async def _build_item_fact_preview(novel_id, fields, *, new_entity_id, session):
             if (row["position"]["intent"] == position["intent"] and ObjectId(row["position"]["target_id"]) == ObjectId(position["target_id"])
                     and row["validity"]["state"] == "active"
                     and (fields.get("replaces") is None or ObjectId(fields["replaces"]) != ObjectId(row["history_id"]))):
-                raise DomainApiError("ITEM_FACT_POSITION_CONFLICT", "这个位置已有完整物品状态，请明确替代原记录", status_code=409)
+                raise DomainApiError("ITEM_FACT_POSITION_CONFLICT", "Vị trí này đã có trạng thái vật phẩm đầy đủ, hãy thay thế rõ ràng bản ghi gốc", status_code=409)
         if source["kind"] == "chapter":
             checked = await load_chapter_record_source_in_session(novel_id, source["evidence"], session=session)
             if checked["needs_review"]:
-                raise DomainApiError("ITEM_FACT_SOURCE_OUTDATED", "来源正文已变化，请重新选择当前证据", status_code=409)
+                raise DomainApiError("ITEM_FACT_SOURCE_OUTDATED", "Nội dung nguồn đã thay đổi, hãy chọn lại bằng chứng hiện tại", status_code=409)
             source["evidence"] = checked["evidence"]
             guards.update(checked["guards"])
     selected = {ObjectId(v) for v in [previous, fields.get("replaces"), fields.get("history_id"), *blockers, *fields.get("resolves", [])] if v is not None}
@@ -427,9 +427,9 @@ async def _build_item_fact_preview(novel_id, fields, *, new_entity_id, session):
                 query["novel_id"] = novel_key
             document = await BaseRepository(COLLECTIONS[resource]).collection.find_one(query, session=session)
             if document is None:
-                raise DomainApiError("ITEM_FACT_SOURCE_MISSING", "原记录的位置或父级已缺失，请先恢复来源", status_code=409)
+                raise DomainApiError("ITEM_FACT_SOURCE_MISSING", "Vị trí hoặc cha của bản ghi gốc đã thiếu, hãy khôi phục nguồn trước", status_code=409)
             if resource != "novel" and document[f"{PARENTS[resource]}_id"] != ObjectId(ref["parent_id"]):
-                raise DomainApiError("ITEM_FACT_SOURCE_CHANGED", "原来源的父级归属已变化，请检查记录", status_code=409)
+                raise DomainApiError("ITEM_FACT_SOURCE_CHANGED", "Cha của nguồn gốc đã thay đổi, vui lòng kiểm tra bản ghi", status_code=409)
             guards[COLLECTIONS[resource], ref["id"]] = document
     legacy_values = {key: existing[key] for key in ITEM_FACT_FIELDS} if existing else None
     reference_selection = fields.get("reference_selection")
@@ -473,7 +473,7 @@ async def preview_item_facts(novel_id: str, data: dict, *, session=None) -> dict
 
     async def read(current_session):
         if current_session is None or not current_session.in_transaction:
-            raise RuntimeError("物品事实预览必须使用同一事务")
+            raise RuntimeError("Xem trước dữ kiện vật phẩm phải dùng cùng transaction")
         preview, _ = await _build_item_fact_preview(novel_id, fields, new_entity_id=new_id, session=current_session)
         return preview
 
@@ -503,14 +503,14 @@ async def confirm_item_facts(novel_id: str, data: dict, *, idempotency_key: str,
 
     async def save(current_session):
         if current_session is None or not current_session.in_transaction:
-            raise RuntimeError("物品事实确认必须使用同一事务")
+            raise RuntimeError("Xác nhận dữ kiện vật phẩm phải dùng cùng transaction")
         replay = await _replay(novel_id, fingerprint, expected_operation=command["operation"],
                                expected_receipt_schema="item.fact.receipt", session=current_session)
         if replay is not None:
             return replay
         target = basis["target"]
         if ObjectId(target["novel_id"]) != ObjectId(novel_id):
-            raise DomainApiError("ITEM_FACT_TARGET_INVALID", "物品预览不属于当前小说", status_code=409)
+            raise DomainApiError("ITEM_FACT_TARGET_INVALID", "Bản xem trước vật phẩm không thuộc tiểu thuyết hiện tại", status_code=409)
         if command["operation"] == "create":
             preview_input = {"operation": "create", "candidate": target["candidate"], "position": basis["position"],
                              "source": basis["source"], "reference_selection": basis["reference_selection"]}
@@ -524,13 +524,13 @@ async def confirm_item_facts(novel_id: str, data: dict, *, idempotency_key: str,
         preview, guards = await _build_item_fact_preview(novel_id, preview_input,
             new_entity_id=target["entity_id"] if target["kind"] == "new" else None, session=current_session)
         if preview["basis"] != basis:
-            raise DomainApiError("ITEM_FACT_CONTEXT_CHANGED", "原物品、来源、引用或目录已变化，请保留原稿并重新预览", status_code=409)
+            raise DomainApiError("ITEM_FACT_CONTEXT_CHANGED", "Vật phẩm gốc, nguồn, tham chiếu hoặc thư mục đã thay đổi, hãy giữ nguyên bản thảo và xem trước lại", status_code=409)
         if command["operation"] != "void":
             references = {(row["resource_type"], row["business_id"]): row
                           for row in [*basis["read"]["references"], *basis["preview_references"]]}
             if any(command["after"][field] is not None and not references[kind, command["after"][field]]["available"]
                    for kind, _, _, field, _ in REFERENCES):
-                raise DomainApiError("ITEM_REFERENCE_NOT_FOUND", "原预览中的物品引用不可用，请保留草稿并重新预览", status_code=409)
+                raise DomainApiError("ITEM_REFERENCE_NOT_FOUND", "Tham chiếu vật phẩm trong bản xem trước gốc không khả dụng, hãy giữ bản nháp và xem trước lại", status_code=409)
             dependencies = await ItemService._load_dependencies(novel_id,
                 **{field: command["after"][field] for _, _, _, field, _ in REFERENCES}, session=current_session)
             guards.update({(collection, str(row["_id"])): row for (_, collection, _, _, _), row in zip(REFERENCES, dependencies) if row is not None})
@@ -555,7 +555,7 @@ async def confirm_item_facts(novel_id: str, data: dict, *, idempotency_key: str,
                 "version": before_version, "is_deleted": False, "item_write_pending_token": None,
             }, {"$inc": {"version": 1}, "$set": {**mirror, "updated_at": now}}, session=current_session)
             if changed.matched_count != 1:
-                raise VersionConflictError("物品在确认期间已变化，请保留原稿并重新预览")
+                raise VersionConflictError("Vật phẩm đã thay đổi trong quá trình xác nhận, hãy giữ nguyên bản thảo và xem trước lại")
         identities = {"novel_id": novel_id, "entity_id": target["entity_id"], "item_id": item_id, "item_name": name}
         record = None
         if command["operation"] != "void":
@@ -576,7 +576,7 @@ async def confirm_item_facts(novel_id: str, data: dict, *, idempotency_key: str,
                 "item_id": item_id, "schema_id": "item.fact", "schema_version": 1, "validity": {"state": "active"},
             }, {"$set": {"validity": validity}}, session=current_session)
             if changed.matched_count != 1:
-                raise VersionConflictError("原物品记录已被替代或作废，请重新预览")
+                raise VersionConflictError("Bản ghi vật phẩm gốc đã bị thay thế hoặc vô hiệu hoá, hãy xem trước lại")
             changes = [{"history_id": disposition, "before": {"state": "active"}, "after": validity}]
         result = ItemFactResultV1.model_validate({"schema_version": 1, "operation": command["operation"], **identities,
             "before_version": before_version, "after_version": after_version, "record": record,
@@ -647,7 +647,7 @@ async def confirm_item_fact_batch(novel_id: str, data: dict, *, idempotency_key:
 
     async def save(current_session):
         if current_session is None or not current_session.in_transaction:
-            raise RuntimeError("物品整批确认必须使用同一事务")
+            raise RuntimeError("Xác nhận toàn bộ lô vật phẩm phải dùng cùng transaction")
         replay = await ItemService._load_confirmation_receipt(novel_id, fingerprint.key_hash, fingerprint.request_hash, session=current_session)
         if replay is not None:
             return ItemService._confirmation_receipt_result(replay)
@@ -662,7 +662,7 @@ async def confirm_item_fact_batch(novel_id: str, data: dict, *, idempotency_key:
                 query["novel_id"] = ObjectId(novel_id)
             row = await BaseRepository(collection).collection.find_one(query, session=current_session)
             if row is None:
-                raise DomainApiError("ITEM_BASIS_CONFLICT", "物品批次所用资料已变化，请保留原批次", status_code=409)
+                raise DomainApiError("ITEM_BASIS_CONFLICT", "Tài liệu mà lô vật phẩm sử dụng đã thay đổi, hãy giữ nguyên lô gốc", status_code=409)
             guards[collection, str(row["_id"])] = row
         await protect_chapter_record_sources(guards, session=current_session)
         created, mapping = [], {}
@@ -671,7 +671,7 @@ async def confirm_item_fact_batch(novel_id: str, data: dict, *, idempotency_key:
             command = entry.command.model_dump(mode="json")
             design = {key: value for key, value in content.items() if key not in ITEM_FACT_FIELDS | {"normalized_name"}}
             if command["basis"]["target"]["candidate"] != design or command["after"] != {field: content[field] for field in ITEM_FACT_FIELDS}:
-                raise DomainApiError("ITEM_BASIS_CONFLICT", "候选与起点预览不同，请保留整批并重新预览", status_code=409)
+                raise DomainApiError("ITEM_BASIS_CONFLICT", "Ứng viên khác với bản xem trước điểm khởi đầu, hãy giữ nguyên cả lô và xem trước lại", status_code=409)
             saved = await confirm_item_facts(novel_id, command,
                 idempotency_key=f"item-batch:{fingerprint.key_hash}:{entry.candidate_ref}", session=current_session)
             row = await BaseRepository("items").collection.find_one({"_id": ObjectId(saved["entity_id"])}, session=current_session)

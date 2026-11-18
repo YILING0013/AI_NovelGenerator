@@ -60,7 +60,7 @@ async def load_chapter_parent_chain(scene_id: str, *, session: AsyncClientSessio
     scene = await scene_repo.get_scene(scene_id, session=session)
     novel, volume, arc = await load_scene_parent_chain(str(scene["arc_id"]), session=session)
     if scene["novel_id"] != novel["_id"] or scene["volume_id"] != volume["_id"]:
-        raise NotFoundError("场景不属于当前父篇章")
+        raise NotFoundError("Cảnh không thuộc vòng truyện cha hiện tại")
     return novel, volume, arc, scene
 
 
@@ -80,11 +80,11 @@ async def update_chapter_ancestors(novel: dict, volume: dict, arc: dict, scene: 
     """
     fields = {"chapter_count": scene["chapter_count"] + chapter_delta, "word_count": scene["word_count"] + word_delta}
     if min(fields.values()) < 0:
-        raise DomainApiError("CHAPTER_STATS_CONFLICT", "章节数量或字数不一致，请刷新后重试", status_code=409)
+        raise DomainApiError("CHAPTER_STATS_CONFLICT", "Số chương hoặc số chữ không nhất quán, hãy làm mới rồi thử lại", status_code=409)
     await update_scene_ancestors(novel, volume, arc, chapter_delta=chapter_delta, word_delta=word_delta, session=session)
     changed = await update_versioned_document(scene_repo.collection, {"_id": scene["_id"], "arc_id": arc["_id"]}, scene["version"], fields, is_deleted=False, session=session)
     if changed is None:
-        raise VersionConflictError("所属场景在保存期间已变化，请重试")
+        raise VersionConflictError("Cảnh chứa mục này đã thay đổi trong khi lưu, hãy thử lại")
 
 
 async def _validate_povs(plannings: list[Mapping[str, Any]], novel_id: ObjectId, *, session: AsyncClientSession) -> None:
@@ -105,14 +105,14 @@ async def _validate_povs(plannings: list[Mapping[str, Any]], novel_id: ObjectId,
     characters = await collection.find({**query, "character_id": {"$in": identities}}, session=session).to_list(length=None)
     by_identity = {character["character_id"]: character for character in characters}
     if any(identity not in by_identity for identity in identities):
-        raise DomainApiError("CHAPTER_REFERENCE_NOT_FOUND", "视角人物不存在、已回收、已停用或不属于当前小说", status_code=404, field_errors={"planning.pov_character_id": "人物不可用"})
+        raise DomainApiError("CHAPTER_REFERENCE_NOT_FOUND", "Nhân vật góc nhìn không tồn tại, đã vào thùng rác, đã bị vô hiệu hoá hoặc không thuộc tiểu thuyết hiện tại", status_code=404, field_errors={"planning.pov_character_id": "人物不可用"})
     try:
         await touch_dependency_endpoint_guards(collection, [
             {**query, "character_id": identity, "_id": by_identity[identity]["_id"], "version": by_identity[identity]["version"]}
             for identity in identities
         ], session=session)
     except DuplicateKeyError as exc:
-        raise DomainApiError("CHAPTER_REFERENCE_CONFLICT", "视角人物在保存期间已变化，请重试", status_code=409) from exc
+        raise DomainApiError("CHAPTER_REFERENCE_CONFLICT", "Nhân vật góc nhìn đã thay đổi trong khi lưu, hãy thử lại", status_code=409) from exc
 
 
 async def _check_first_appearances(chapter: dict, *, session: AsyncClientSession) -> None:
@@ -127,7 +127,7 @@ async def _check_first_appearances(chapter: dict, *, session: AsyncClientSession
     query = {"novel_id": chapter["novel_id"], "first_appearance_chapter_id": {"$in": [chapter["_id"], str(chapter["_id"])]}}
     for name in ("characters", "factions"):
         if await BaseRepository(name).collection.find_one(query, {"_id": 1}, session=session):
-            raise DomainApiError("CHAPTER_DELETE_BLOCKED", "章节仍被人物或势力标为首次出场，请先修改引用", status_code=409)
+            raise DomainApiError("CHAPTER_DELETE_BLOCKED", "Chương vẫn được nhân vật hoặc thế lực đánh dấu là lần xuất hiện đầu tiên, hãy sửa tham chiếu trước", status_code=409)
 
 
 class ChapterService:
@@ -228,7 +228,7 @@ class ChapterService:
         chapter = await chapter_repo.get_chapter(chapter_id, include_deleted=include_deleted, session=session)
         novel, volume, arc, _ = await load_chapter_parent_chain(str(chapter["scene_id"]), session=session)
         if any(chapter[name] != parent["_id"] for name, parent in (("novel_id", novel), ("volume_id", volume), ("arc_id", arc))) or (novel_id is not None and to_object_id(novel_id) != novel["_id"]):
-            raise NotFoundError("章节不属于当前小说或父场景")
+            raise NotFoundError("Chương không thuộc tiểu thuyết hiện tại hoặc cảnh cha")
         return chapter
 
     @staticmethod
@@ -253,11 +253,11 @@ class ChapterService:
         volume_oid = to_object_id(volume_id) if volume_id is not None else None
         scene_oid = to_object_id(scene_id) if scene_id is not None else None
         if volume_oid is not None and volume_oid not in volumes:
-            raise NotFoundError("卷不属于当前活动小说")
+            raise NotFoundError("Quyển không thuộc tiểu thuyết đang hoạt động hiện tại")
         if scene_oid is not None:
             chain = await load_chapter_parent_chain(str(scene_oid), session=session)
             if chain[0]["_id"] != novel["_id"] or (volume_oid is not None and chain[1]["_id"] != volume_oid):
-                raise NotFoundError("场景不属于当前范围")
+                raise NotFoundError("Cảnh không thuộc phạm vi hiện tại")
         rows = await chapter_repo.collection.find({"novel_id": novel["_id"], "is_deleted": deleted}, {"content": 0, "creation_idempotency_key_hash": 0, "creation_request_hash": 0}, session=session).to_list(length=None)
         rows = [row for row in rows if row["volume_id"] in volumes and row["arc_id"] in arcs and row["scene_id"] in scenes and arcs[row["arc_id"]]["volume_id"] == row["volume_id"] and scenes[row["scene_id"]]["arc_id"] == row["arc_id"] and scenes[row["scene_id"]]["volume_id"] == row["volume_id"]]
         rows.sort(key=lambda row: (volumes[row["volume_id"]]["order_index"], arcs[row["arc_id"]]["order_index"], scenes[row["scene_id"]]["order_index"], row["order_index"], str(row["_id"])))
@@ -265,7 +265,7 @@ class ChapterService:
             row["chapter_number"] = None if deleted else number
         current = await novel_repo.get_novel_by_id(novel_id, session=session)
         if current["version"] != novel["version"]:
-            raise DomainApiError("CHAPTER_DIRECTORY_CHANGED", "章节目录正在更新，请刷新后重试", status_code=409)
+            raise DomainApiError("CHAPTER_DIRECTORY_CHANGED", "Mục lục chương đang được cập nhật, hãy làm mới rồi thử lại", status_code=409)
         return [row for row in rows if (volume_oid is None or row["volume_id"] == volume_oid) and (scene_oid is None or row["scene_id"] == scene_oid)]
 
     @staticmethod
@@ -315,7 +315,7 @@ class ChapterService:
             fields["planning"] = request.planning.model_dump()
         chapter = await ChapterService.get_chapter(chapter_id, session=session)
         if chapter["version"] != request.expected_version:
-            raise VersionConflictError("章节已被修改，请保留草稿并刷新后比较")
+            raise VersionConflictError("Chương đã bị sửa đổi, hãy giữ bản nháp, làm mới rồi so sánh")
         if restored_from_version is None and all(chapter[key] == value for key, value in fields.items()):
             return chapter
         previous = await BaseRepository("chapter_revisions").collection.find_one({"chapter_id": chapter["_id"]}, sort=[("version", -1)], session=session)
@@ -333,7 +333,7 @@ class ChapterService:
             await _validate_povs([fields["planning"]], chapter["novel_id"], session=session)
         changed = await update_versioned_document(chapter_repo.collection, {"_id": chapter["_id"], "scene_id": chapter["scene_id"]}, request.expected_version, fields, is_deleted=False, session=session)
         if changed is None:
-            raise VersionConflictError("章节保存期间已变化，请重试")
+            raise VersionConflictError("Chương đã thay đổi trong khi lưu, hãy thử lại")
         await append_chapter_revision(changed, source=source, parent_version=parent_version, session=session, restored_from_version=restored_from_version)
         return changed
 
@@ -374,7 +374,7 @@ class ChapterService:
             chapter = await ChapterService.get_chapter(chapter_id, include_deleted=include_deleted, session=session)
             revision = await BaseRepository("chapter_revisions").collection.find_one({"chapter_id": chapter["_id"], "version": validate_expected_version(version)}, session=session)
             if revision is None:
-                raise NotFoundError("章节修订不存在")
+                raise NotFoundError("Bản chỉnh sửa chương không tồn tại")
             return revision
         return await run_mongo_write_unit(read, "get_chapter_revision", require_transaction=True)
 
@@ -393,7 +393,7 @@ class ChapterService:
             chapter = await ChapterService.get_chapter(chapter_id, include_deleted=include_deleted, session=session)
             revision = await BaseRepository("chapter_revisions").collection.find_one({"chapter_id": chapter["_id"], "version": validate_expected_version(version)}, session=session)
             if revision is None:
-                raise NotFoundError("章节修订不存在")
+                raise NotFoundError("Bản chỉnh sửa chương không tồn tại")
             normalized = ChapterUpdateV2.model_validate({"expected_version": chapter["version"], **{name: revision[name] for name in ("title", "summary", "planning", "content")}}).model_dump()
             return {"revision": serialize_chapter_revision(revision), "current": serialize_chapter(chapter),
                     "changed_fields": [name for name in ("title", "summary", "planning", "content") if revision[name] != chapter[name]],
@@ -423,13 +423,13 @@ class ChapterService:
             receipt = await receipts.find_one(query, session=session)
             if receipt is not None:
                 if receipt["request_hash"] != fingerprint.request_hash:
-                    raise IdempotencyConflictError("同一恢复键不能用于不同章节、旧稿或版本")
+                    raise IdempotencyConflictError("Không thể dùng cùng khoá khôi phục cho các chương, bản cũ hoặc phiên bản khác nhau")
                 return receipt["result"]["data"][0]
             if chapter["version"] != request.expected_version:
-                raise VersionConflictError("章节已被修改，请保留草稿并重新比较")
+                raise VersionConflictError("Chương đã bị sửa đổi, hãy giữ bản nháp và so sánh lại")
             revision = await BaseRepository("chapter_revisions").collection.find_one({"chapter_id": chapter["_id"], "version": revision_version}, session=session)
             if revision is None:
-                raise NotFoundError("章节修订不存在")
+                raise NotFoundError("Bản chỉnh sửa chương không tồn tại")
             changed = await ChapterService._save_chapter_in_session(chapter_id, {"expected_version": request.expected_version, **{name: revision[name] for name in ("title", "summary", "planning", "content")}}, session=session, source="restore", restored_from_version=revision_version)
             result = ChapterReadV2.model_validate(serialize_chapter(changed)).model_dump()
             await receipts.insert_one({**query, "request_hash": fingerprint.request_hash, "result": {"operation": query["operation"], "ids": [chapter_id.lower()], "data": [result]}, "created_at": get_utc_now()}, session=session)
@@ -453,9 +453,9 @@ class ChapterService:
         async def change(session: AsyncClientSession) -> dict:
             chapter = await ChapterService.get_chapter(chapter_id, include_deleted=True, session=session)
             if chapter["version"] != expected:
-                raise VersionConflictError("章节版本已变化，请刷新后重试")
+                raise VersionConflictError("Phiên bản chương đã thay đổi, hãy làm mới rồi thử lại")
             if chapter["is_deleted"] == deleted:
-                raise DomainApiError("CHAPTER_STATE_CONFLICT", "章节已经处于目标状态", status_code=409)
+                raise DomainApiError("CHAPTER_STATE_CONFLICT", "Chương đã ở trạng thái đích", status_code=409)
             if deleted:
                 await _check_first_appearances(chapter, session=session)
             parents = await load_chapter_parent_chain(str(chapter["scene_id"]), session=session)
@@ -469,13 +469,13 @@ class ChapterService:
                 fields["order_index"] = max((row["order_index"] for row in siblings), default=0) + 1
             changed = await update_versioned_document(chapter_repo.collection, {"_id": chapter["_id"]}, expected, fields, is_deleted=not deleted, session=session)
             if changed is None:
-                raise VersionConflictError("章节状态在保存期间已变化")
+                raise VersionConflictError("Trạng thái chương đã thay đổi trong khi lưu")
             if deleted:
                 for sibling in siblings:
                     if sibling["order_index"] > chapter["order_index"]:
                         moved = await update_versioned_document(chapter_repo.collection, {"_id": sibling["_id"]}, sibling["version"], {"order_index": sibling["order_index"] - 1}, is_deleted=False, session=session)
                         if moved is None:
-                            raise VersionConflictError("章节顺序已变化，请重试")
+                            raise VersionConflictError("Thứ tự chương đã thay đổi, hãy thử lại")
             return changed
         if session is not None:
             return await change(session)
@@ -497,27 +497,27 @@ class ChapterService:
         async def delete(session: AsyncClientSession) -> None:
             chapter = await ChapterService.get_chapter(chapter_id, include_deleted=True, session=session)
             if chapter["version"] != expected:
-                raise VersionConflictError("章节版本已变化，请刷新后重试")
+                raise VersionConflictError("Phiên bản chương đã thay đổi, hãy làm mới rồi thử lại")
             if not chapter["is_deleted"]:
-                raise DomainApiError("CHAPTER_DELETE_BLOCKED", "请先将章节移入回收站", status_code=409)
+                raise DomainApiError("CHAPTER_DELETE_BLOCKED", "Hãy chuyển chương vào thùng rác trước", status_code=409)
             foreshadowings = await count_foreshadowing_references(chapter["novel_id"], "chapter", chapter["_id"], session=session)
             if foreshadowings:
-                raise DomainApiError("CHAPTER_FORESHADOWING_DELETE_BLOCKED", "章节仍被伏笔证据引用，请先在伏笔回收站逐条处理", status_code=409, details={"foreshadowings": foreshadowings})
+                raise DomainApiError("CHAPTER_FORESHADOWING_DELETE_BLOCKED", "Chương vẫn được bằng chứng phục bút tham chiếu, hãy xử lý từng mục trong thùng rác phục bút trước", status_code=409, details={"foreshadowings": foreshadowings})
             records = await count_chapter_record_references(chapter["novel_id"], "chapter", chapter["_id"], session=session)
             if records:
-                raise DomainApiError("CHAPTER_RECORD_DELETE_BLOCKED", "章节仍是章后确认记录的来源；作废不会清除原文，如需全部清理请删除整部作品", status_code=409, details={"chapter_records": records})
+                raise DomainApiError("CHAPTER_RECORD_DELETE_BLOCKED", "Chương vẫn là nguồn của bản ghi xác nhận sau chương; huỷ hiệu lực sẽ không xoá văn bản gốc, nếu muốn dọn sạch hoàn toàn hãy xoá toàn bộ tác phẩm", status_code=409, details={"chapter_records": records})
             revisions = BaseRepository("chapter_revisions").collection
             count = await revisions.count_documents({"chapter_id": chapter["_id"]}, session=session)
             if count and expected_revision_count is None:
-                raise DomainApiError("CHAPTER_HISTORY_DELETE_BLOCKED", "章节有历史版本，请先查看删除影响并明确确认", status_code=409)
+                raise DomainApiError("CHAPTER_HISTORY_DELETE_BLOCKED", "Chương có phiên bản lịch sử, hãy xem ảnh hưởng khi xoá và xác nhận rõ ràng trước", status_code=409)
             if expected_revision_count is not None and expected_revision_count != count:
-                raise VersionConflictError("章节历史数量已变化，请重新查看删除影响")
+                raise VersionConflictError("Số lượng lịch sử chương đã thay đổi, hãy xem lại ảnh hưởng khi xoá")
             await _check_first_appearances(chapter, session=session)
             parents = await load_chapter_parent_chain(str(chapter["scene_id"]), session=session)
             await update_chapter_ancestors(*parents, session=session)
             result = await chapter_repo.collection.delete_one({"_id": chapter["_id"], "is_deleted": True, "version": expected}, session=session)
             if result.deleted_count != 1:
-                raise VersionConflictError("章节删除期间已变化")
+                raise VersionConflictError("Chương đã thay đổi trong khi xoá")
             await revisions.delete_many({"chapter_id": chapter["_id"]}, session=session)
         await run_mongo_write_unit(delete, "hard_delete_chapter", require_transaction=True)
 

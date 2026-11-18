@@ -244,7 +244,9 @@ async def _run_step(
                 or (details._http_status is not None and details._http_status >= 500)
                 or (details._send_count > 0 and details._http_status is None)
                 or details._incomplete
-                or (isinstance(exc, LLMResponseError) and "提前断开" in str(exc))
+                # "bị ngắt sớm" la cum cuoi cung cua thong bao ngat dong da dich
+                # (xem .err-work/FIXED.md); giu ca text goc de tuong thich ban khac ngon ngu.
+                or (isinstance(exc, LLMResponseError) and ("提前断开" in str(exc) or "bị ngắt sớm" in str(exc)))
             )
             result = _result(
                 capability, label, "failed",

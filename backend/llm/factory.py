@@ -62,10 +62,10 @@ def create_llm_client_from_config(
 
     if require_enabled and not config.enabled:
         name = provider_name or "default"
-        raise ValueError(f"LLM 服务商 '{name}' 未启用，请在配置中设置 enabled: true")
+        raise ValueError(f"Nhà cung cấp LLM '{name}' chưa được bật, hãy đặt enabled: true trong cấu hình")
 
     if not config.api_key:
-        raise ValueError("LLM 服务商未配置 api_key")
+        raise ValueError("Nhà cung cấp LLM chưa được cấu hình api_key")
 
     provider_type = config.type
     alias = provider_name or "default"
@@ -89,4 +89,4 @@ def create_llm_client_from_config(
         from backend.llm.claude_client import ClaudeClient
         return ClaudeClient(config, provider_name=alias)
 
-    raise ValueError(f"不支持的 LLM 服务商类型: {provider_type}")
+    raise ValueError(f"Loại nhà cung cấp LLM không được hỗ trợ: {provider_type}")

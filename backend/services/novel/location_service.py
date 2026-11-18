@@ -160,7 +160,7 @@ def _prepare_location_content(value: Any) -> dict[str, Any]:
     except ValidationError as exc:
         raise _location_error(
             "LOCATION_VALIDATION_FAILED",
-            "地点创建字段校验失败",
+            "Các trường tạo địa điểm không vượt qua kiểm tra",
             field_errors=_validation_details(exc),
         ) from exc
     content = model.model_dump(mode="json")
@@ -181,7 +181,7 @@ def _prepare_location_content(value: Any) -> dict[str, Any]:
     except ValidationError as exc:
         raise _location_error(
             "LOCATION_VALIDATION_FAILED",
-            "地点规范化后的字段长度或组合不合法",
+            "Độ dài hoặc tổ hợp trường của địa điểm sau chuẩn hóa không hợp lệ",
             field_errors=_validation_details(exc),
         ) from exc
     content["normalized_name"] = normalize_location_text(content["name"])
@@ -202,7 +202,7 @@ def _prepare_location_update(value: Any) -> tuple[int, dict[str, Any]]:
     except ValidationError as exc:
         raise _location_error(
             "LOCATION_VALIDATION_FAILED",
-            "地点更新字段校验失败",
+            "Các trường cập nhật địa điểm không vượt qua kiểm tra",
             field_errors=_validation_details(exc),
         ) from exc
     fields = model.model_dump(mode="json", exclude_unset=True)
@@ -369,7 +369,7 @@ async def _publish_created_location(
     if published is None:
         raise _location_error(
             "LOCATION_ORDER_CONFLICT",
-            "地点创建发布期间发生并发变化",
+            "Có thay đổi đồng phát trong khi tạo và công bố địa điểm",
             status_code=409,
         )
     return published
@@ -420,7 +420,7 @@ async def _compensate_location_changes(
         if moved is None:
             raise _location_error(
                 "LOCATION_COMPENSATION_FAILED",
-                "地点写入失败，且安全顺序补偿未完整完成",
+                "Ghi địa điểm thất bại và bồi thường thứ tự an toàn chưa hoàn tất đầy đủ",
                 status_code=503,
             )
         temporary.append((before, dict(moved)))
@@ -433,7 +433,7 @@ async def _compensate_location_changes(
         if not restored:
             raise _location_error(
                 "LOCATION_COMPENSATION_FAILED",
-                "地点写入失败，且数据库补偿未完整完成",
+                "Ghi địa điểm thất bại và bồi thường cơ sở dữ liệu chưa hoàn tất đầy đủ",
                 status_code=503,
             )
 
@@ -473,7 +473,7 @@ async def _remove_generated_locations(
     if remaining:
         raise _location_error(
             "LOCATION_COMPENSATION_FAILED",
-            "地点批量确认失败，且新地点补偿未完整完成",
+            "Xác nhận hàng loạt địa điểm thất bại và bồi thường địa điểm mới chưa hoàn tất đầy đủ",
             status_code=503,
         )
 
@@ -512,7 +512,7 @@ async def _assert_sibling_group(
     if projection != list(expected):
         raise _location_error(
             "LOCATION_ORDER_CONFLICT",
-            "地点兄弟集合或连续顺序在写入期间发生变化",
+            "Tập hợp địa điểm anh em hoặc thứ tự liên tục đã thay đổi trong quá trình ghi",
             status_code=409,
         )
 
@@ -566,7 +566,7 @@ async def _acquire_novel_write_lock(
             ):
                 raise _location_error(
                     "LOCATION_WRITE_CONFLICT",
-                    "当前小说正由另一个地点或生命周期命令修改，请刷新后重试",
+                    "Tiểu thuyết hiện đang bị một lệnh địa điểm hoặc vòng đời khác thay đổi, hãy làm mới rồi thử lại",
                     status_code=409,
                 ) from exc
             raise
@@ -587,12 +587,12 @@ async def _acquire_novel_write_lock(
     if current is None or current.get("is_deleted") is True:
         raise _location_error(
             "NOVEL_NOT_FOUND",
-            "小说不存在或已删除",
+            "Tiểu thuyết không tồn tại hoặc đã bị xóa",
             status_code=404,
         )
     raise _location_error(
         "LOCATION_WRITE_CONFLICT",
-        "当前小说正由另一个地点或生命周期命令修改，请刷新后重试",
+        "Tiểu thuyết hiện đang bị một lệnh địa điểm hoặc vòng đời khác thay đổi, hãy làm mới rồi thử lại",
         status_code=409,
     )
 
@@ -677,7 +677,7 @@ async def _release_novel_write_lock(
 
     raise _location_error(
         "LOCATION_WRITE_GUARD_UNAVAILABLE",
-        "地点写入已完成，但小说级内部互斥无法精确释放",
+        "Việc ghi địa điểm đã hoàn tất nhưng không giải phóng chính xác được mutex nội bộ cấp tiểu thuyết",
         status_code=503,
     ) from release_error
 
@@ -741,14 +741,14 @@ async def _assert_reorder_members(
         except (NotFoundError, InvalidIdError) as exc:
             raise _location_error(
                 "LOCATION_REFERENCE_NOT_FOUND",
-                "重排地点不存在、已删除或不属于当前小说",
+                "Địa điểm sắp xếp lại không tồn tại, đã bị xóa hoặc không thuộc tiểu thuyết hiện tại",
                 status_code=404,
                 details={"location_id": location_id},
             ) from exc
         if location.get("location_order_pending_token") is not None:
             raise _location_error(
                 "LOCATION_REFERENCE_NOT_FOUND",
-                "重排地点当前不可用",
+                "Địa điểm sắp xếp lại hiện không khả dụng",
                 status_code=404,
                 details={"location_id": location_id},
             )
@@ -756,13 +756,13 @@ async def _assert_reorder_members(
         if location.get("parent_location_id") == parent_location_id:
             raise _location_error(
                 "LOCATION_ORDER_CONFLICT",
-                "地点兄弟集合在重排期间发生变化",
+                "Tập hợp địa điểm anh em thay đổi trong thời gian sắp xếp lại",
                 status_code=409,
             )
     if set(requested_ids) != sibling_ids:
         raise _location_error(
             "LOCATION_REORDER_INCOMPLETE",
-            "地点重排必须提交当前同父全部未删除兄弟",
+            "Sắp xếp lại địa điểm phải gửi toàn bộ anh em chưa bị xóa hiện có của cùng cha",
             status_code=409,
         )
 
@@ -781,7 +781,7 @@ def _ensure_sibling_group_ready(
     if any(item.get("location_order_pending_token") for item in siblings):
         raise _location_error(
             "LOCATION_ORDER_CONFLICT",
-            "地点兄弟组仍有创建命令正在完成，请刷新后重试",
+            "Nhóm anh em của địa điểm vẫn có lệnh tạo đang hoàn tất, hãy làm mới rồi thử lại",
             status_code=409,
         )
 
@@ -809,7 +809,7 @@ class LocationService:
         except InvalidIdError as exc:
             raise _location_error(
                 "INVALID_OBJECT_ID",
-                "novel_id 不是有效 ObjectId",
+                "novel_id không phải ObjectId hợp lệ",
                 field_errors={"novel_id": "不是有效 ObjectId"},
             ) from exc
         except NotFoundError as exc:
@@ -841,7 +841,7 @@ class LocationService:
         ):
             raise _location_error(
                 "LOCATION_READ_CONFLICT",
-                "地点正在更新，请刷新后重试",
+                "Địa điểm đang được cập nhật, hãy tải lại rồi thử lại",
                 status_code=409,
             )
         return revision
@@ -884,7 +884,7 @@ class LocationService:
         except (NotFoundError, InvalidIdError) as exc:
             raise _location_error(
                 "LOCATION_NOT_FOUND",
-                "地点不存在、已删除或不属于当前小说",
+                "Địa điểm không tồn tại, đã bị xóa hoặc không thuộc tiểu thuyết hiện tại",
                 status_code=404,
                 details={"location_id": location_id},
             ) from exc
@@ -894,7 +894,7 @@ class LocationService:
             if actual != expected:
                 raise _location_error(
                     "LOCATION_VERSION_CONFLICT",
-                    f"地点 {location_id} 版本冲突",
+                    f"Địa điểm {location_id} 版本冲突",
                     status_code=409,
                     details={
                         "expected_version": expected,
@@ -904,7 +904,7 @@ class LocationService:
         if location.get("location_order_pending_token"):
             raise _location_error(
                 "LOCATION_ORDER_CONFLICT",
-                "地点仍由创建命令收口中，请刷新后重试",
+                "Địa điểm vẫn đang được lệnh tạo giữ chốt, hãy làm mới rồi thử lại",
                 status_code=409,
             )
         return location
@@ -939,7 +939,7 @@ class LocationService:
         if existing is not None and existing["location_id"] != exclude_location_id:
             raise _location_error(
                 "LOCATION_NAME_CONFLICT",
-                "同一父级下已存在规范同名地点",
+                "Đã tồn tại địa điểm chuẩn hóa cùng tên dưới cùng cấp cha",
                 status_code=409,
                 details={"existing_location_id": existing["location_id"]},
             )
@@ -983,7 +983,7 @@ class LocationService:
                     parent.get("status") != "active"
                     or parent.get("location_order_pending_token") is not None
                 ):
-                    raise NotFoundError("父地点当前不可用")
+                    raise NotFoundError("Địa điểm cha hiện không khả dụng")
             for rule_id in rule_ids:
                 rule = await world_rule_repo.get_world_rule(
                     novel_id,
@@ -991,7 +991,7 @@ class LocationService:
                     session=session,
                 )
                 if rule.get("status") != "active":
-                    raise NotFoundError(f"规则 {rule_id} 当前不可用")
+                    raise NotFoundError(f"Quy tắc {rule_id} hiện không khả dụng")
                 rules.append(rule)
             for faction_id in faction_ids:
                 faction = await faction_repo.get_faction(
@@ -1000,12 +1000,12 @@ class LocationService:
                     session=session,
                 )
                 if faction.get("active_status") != "active":
-                    raise NotFoundError(f"势力 {faction_id} 当前不可用")
+                    raise NotFoundError(f"Thế lực {faction_id} hiện không khả dụng")
                 factions.append(faction)
         except (NotFoundError, InvalidIdError) as exc:
             raise _location_error(
                 "LOCATION_REFERENCE_NOT_FOUND",
-                "父地点、规则或势力引用不存在、已删除、不可用或跨小说",
+                "Tham chiếu địa điểm cha, quy tắc hoặc thế lực không tồn tại, đã bị xóa, không khả dụng hoặc thuộc tiểu thuyết khác",
                 status_code=404,
             ) from exc
 
@@ -1067,7 +1067,7 @@ class LocationService:
             if isinstance(exc, DuplicateKeyError):
                 raise _location_error(
                     "LOCATION_REFERENCE_CONFLICT",
-                    "地点依赖在写入期间发生变化，请刷新后重试",
+                    "Phụ thuộc của địa điểm đã thay đổi trong quá trình ghi, hãy làm mới rồi thử lại",
                     status_code=409,
                 ) from exc
             raise
@@ -1098,7 +1098,7 @@ class LocationService:
             if cursor_id == target_location_id or cursor_id in visited:
                 raise _location_error(
                     "LOCATION_HIERARCHY_INVALID",
-                    "地点父级不能自引用或形成环",
+                    "Cấp cha của địa điểm không được tự tham chiếu hoặc tạo vòng lặp",
                     field_errors={"parent_location_id": "父级形成环"},
                 )
             visited.add(cursor_id)
@@ -1114,13 +1114,13 @@ class LocationService:
             except (NotFoundError, InvalidIdError) as exc:
                 raise _location_error(
                     "LOCATION_REFERENCE_NOT_FOUND",
-                    "地点父链包含不存在、已删除或跨小说地点",
+                    "Chuỗi cha của địa điểm chứa địa điểm không tồn tại, đã bị xóa hoặc thuộc tiểu thuyết khác",
                     status_code=404,
                 ) from exc
             if cursor.get("status") != "active":
                 raise _location_error(
                     "LOCATION_REFERENCE_NOT_FOUND",
-                    "地点父链包含已停用地点",
+                    "Chuỗi cha của địa điểm chứa địa điểm đã bị ngưng dùng",
                     status_code=404,
                 )
 
@@ -1311,14 +1311,14 @@ class LocationService:
         except (NotFoundError, InvalidIdError) as exc:
             raise _location_error(
                 "LOCATION_NOT_FOUND",
-                "地点不存在或不属于当前小说",
+                "Địa điểm không tồn tại hoặc không thuộc tiểu thuyết hiện tại",
                 status_code=404,
                 details={"location_id": location_id},
             ) from exc
         if location.get("location_order_pending_token"):
             raise _location_error(
                 "LOCATION_ORDER_CONFLICT",
-                "地点仍由创建命令收口中，请刷新后重试",
+                "Địa điểm vẫn đang được lệnh tạo giữ chốt, hãy làm mới rồi thử lại",
                 status_code=409,
             )
         result = await LocationService._get_delete_impact(
@@ -1502,7 +1502,7 @@ class LocationService:
                     session=session,
                 )
                 if created is None:
-                    raise RuntimeError("地点创建未返回正式写后镜像")
+                    raise RuntimeError("Tạo địa điểm không trả về ảnh bản ghi chính thức sau khi ghi")
                 await LocationService._get_novel(novel_id, session=session)
                 await _assert_sibling_groups(
                     novel_id,
@@ -1576,7 +1576,7 @@ class LocationService:
                         ):
                             raise _location_error(
                                 "LOCATION_COMPENSATION_FAILED",
-                                "地点创建失败，且新地点补偿未完整完成",
+                                "Tạo địa điểm thất bại và bồi thường địa điểm mới chưa hoàn tất đầy đủ",
                                 status_code=503,
                             )
                     await _release_novel_write_lock(
@@ -1624,12 +1624,12 @@ class LocationService:
             if same_name is not None:
                 raise _location_error(
                     "LOCATION_NAME_CONFLICT",
-                    "同一父级下已存在规范同名地点",
+                    "Đã tồn tại địa điểm chuẩn hóa cùng tên dưới cùng cấp cha",
                     status_code=409,
                 ) from exc
             raise _location_error(
                 "LOCATION_ORDER_CONFLICT",
-                "地点自动追加发生并发顺序冲突，请刷新后重试",
+                "Việc tự động thêm địa điểm xảy ra xung đột thứ tự đồng thời, hãy làm mới rồi thử lại",
                 status_code=409,
             ) from exc
 
@@ -1703,7 +1703,7 @@ class LocationService:
                 )
                 raise _location_error(
                     "LOCATION_CHILDREN_CONFLICT",
-                    "存在活动直接子地点时不能停用父地点",
+                    "Không thể vô hiệu địa điểm cha khi còn địa điểm con trực tiếp đang hoạt động",
                     status_code=409,
                     details={"impact": impact},
                 )
@@ -1769,7 +1769,7 @@ class LocationService:
                     )
                     raise _location_error(
                         "LOCATION_CHILDREN_CONFLICT",
-                        "存在活动直接子地点时不能停用父地点",
+                        "Không thể vô hiệu địa điểm cha khi còn địa điểm con trực tiếp đang hoạt động",
                         status_code=409,
                         details={"impact": impact},
                     )
@@ -1938,7 +1938,7 @@ class LocationService:
         except DuplicateKeyError as exc:
             raise _location_error(
                 "LOCATION_NAME_OR_ORDER_CONFLICT",
-                "地点更新与同父规范名或顺序冲突",
+                "Cập nhật địa điểm xung đột tên chuẩn hóa hoặc thứ tự của cùng cha",
                 status_code=409,
             ) from exc
 
@@ -1965,7 +1965,7 @@ class LocationService:
         ):
             raise _location_error(
                 "LOCATION_REORDER_INVALID",
-                "地点重排必须提交 ID 唯一且顺序完整的 1..N 集合",
+                "Sắp xếp lại địa điểm phải gửi tập hợp 1..N với ID duy nhất và thứ tự đầy đủ",
             )
         await LocationService._get_novel(novel_id, session=session)
         if parent_location_id is not None:
@@ -1974,19 +1974,19 @@ class LocationService:
             except (NotFoundError, InvalidIdError) as exc:
                 raise _location_error(
                     "LOCATION_REFERENCE_NOT_FOUND",
-                    "重排父地点不存在、已删除或跨小说",
+                    "Địa điểm cha khi sắp xếp lại không tồn tại, đã bị xóa hoặc khác tiểu thuyết",
                     status_code=404,
                 ) from exc
             if parent.get("status") != "active":
                 raise _location_error(
                     "LOCATION_REFERENCE_NOT_FOUND",
-                    "重排父地点当前不可用",
+                    "Địa điểm cha để sắp xếp lại hiện không khả dụng",
                     status_code=404,
                 )
             if parent.get("location_order_pending_token") is not None:
                 raise _location_error(
                     "LOCATION_REFERENCE_NOT_FOUND",
-                    "重排父地点当前不可用",
+                    "Địa điểm cha để sắp xếp lại hiện không khả dụng",
                     status_code=404,
                 )
         initial = await location_repo.list_siblings(novel_id, parent_location_id, session=session)
@@ -2011,7 +2011,7 @@ class LocationService:
                 except (NotFoundError, InvalidIdError) as exc:
                     raise _location_error(
                         "LOCATION_REFERENCE_NOT_FOUND",
-                        "重排父地点不存在、已删除或跨小说",
+                        "Địa điểm cha khi sắp xếp lại không tồn tại, đã bị xóa hoặc khác tiểu thuyết",
                         status_code=404,
                     ) from exc
                 if (
@@ -2020,7 +2020,7 @@ class LocationService:
                 ):
                     raise _location_error(
                         "LOCATION_REFERENCE_NOT_FOUND",
-                        "重排父地点当前不可用",
+                        "Địa điểm cha để sắp xếp lại hiện không khả dụng",
                         status_code=404,
                     )
             novel_lock = await _acquire_novel_write_lock(
@@ -2052,7 +2052,7 @@ class LocationService:
                     ):
                         raise _location_error(
                             "LOCATION_VERSION_CONFLICT",
-                            f"地点 {item['location_id']} 版本冲突",
+                            f"Địa điểm {item['location_id']} 版本冲突",
                             status_code=409,
                         )
                 for offset, location_id in enumerate(requested_ids):
@@ -2120,7 +2120,7 @@ class LocationService:
         except DuplicateKeyError as exc:
             raise _location_error(
                 "LOCATION_ORDER_CONFLICT",
-                "地点重排发生顺序或并发冲突",
+                "Sắp xếp lại địa điểm gặp xung đột thứ tự hoặc đồng phát",
                 status_code=409,
             ) from exc
 
@@ -2158,7 +2158,7 @@ class LocationService:
             if impact["active_direct_children"] and not detach_children:
                 raise _location_error(
                     "LOCATION_CHILDREN_CONFLICT",
-                    "父地点仍有直接子级；只有明确确认后才能断开子级并删除",
+                    "Địa điểm cha vẫn còn con trực tiếp; chỉ sau khi xác nhận rõ ràng mới được ngắt liên kết con và xóa",
                     status_code=409,
                     details={"impact": impact},
                 )
@@ -2191,7 +2191,7 @@ class LocationService:
                 if root_names & set(child_names) or len(child_names) != len(set(child_names)):
                     raise _location_error(
                         "LOCATION_NAME_CONFLICT",
-                        "断开子级后会与根级地点规范名冲突",
+                        "Sau khi ngắt cấp con sẽ xung đột tên chuẩn hóa với địa điểm cấp gốc",
                         status_code=409,
                     )
 
@@ -2218,7 +2218,7 @@ class LocationService:
                 if impact["active_direct_children"] and not detach_children:
                     raise _location_error(
                         "LOCATION_CHILDREN_CONFLICT",
-                        "父地点仍有直接子级；只有明确确认后才能断开子级并删除",
+                        "Địa điểm cha vẫn còn con trực tiếp; chỉ sau khi xác nhận rõ ràng mới được ngắt liên kết con và xóa",
                         status_code=409,
                         details={"impact": impact},
                     )
@@ -2255,7 +2255,7 @@ class LocationService:
                     ):
                         raise _location_error(
                             "LOCATION_NAME_CONFLICT",
-                            "断开子级后会与根级地点规范名冲突",
+                            "Sau khi ngắt cấp con sẽ xung đột tên chuẩn hóa với địa điểm cấp gốc",
                             status_code=409,
                         )
                 deleted = await _apply_location_change(
@@ -2364,7 +2364,7 @@ class LocationService:
         except DuplicateKeyError as exc:
             raise _location_error(
                 "LOCATION_ORDER_CONFLICT",
-                "地点删除或子级断开发生名称、顺序或并发冲突",
+                "Việc xóa địa điểm hoặc ngắt con xảy ra xung đột tên, thứ tự hoặc đồng thời",
                 status_code=409,
             ) from exc
 
@@ -2504,7 +2504,7 @@ class LocationService:
         except DuplicateKeyError as exc:
             raise _location_error(
                 "LOCATION_RESTORE_CONFLICT",
-                "地点恢复与同父规范名或顺序冲突",
+                "Khôi phục địa điểm xung đột tên chuẩn hóa hoặc thứ tự của cùng cha",
                 status_code=409,
             ) from exc
 
@@ -2552,7 +2552,7 @@ class LocationService:
                         # 待发布物品不是公开事实，只阻断删除而不计入公开影响。
                         raise _location_error(
                             "LOCATION_ITEM_WRITE_CONFLICT",
-                            "物品写入正在使用该地点，请稍后重试",
+                            "Việc ghi vật phẩm đang sử dụng địa điểm này, hãy thử lại sau",
                             status_code=409,
                         )
                     impact = await LocationService._get_delete_impact(
@@ -2563,7 +2563,7 @@ class LocationService:
                     if impact["has_children"] or impact["has_protected_references"]:
                         raise _location_error(
                             "LOCATION_REFERENCE_PROTECTED",
-                            "地点仍有子级或活动正式消费者，不能永久删除",
+                            "Địa điểm vẫn còn cấp con hoặc bên dùng chính thức đang hoạt động, không thể xóa vĩnh viễn",
                             status_code=409,
                             details={"impact": impact},
                         )
@@ -2586,7 +2586,7 @@ class LocationService:
                     if not deleted:
                         raise _location_error(
                             "LOCATION_VERSION_CONFLICT",
-                            "地点永久删除期间已被其他请求修改或新增依赖",
+                            "Địa điểm đã bị yêu cầu khác sửa đổi hoặc thêm phụ thuộc trong lúc xóa vĩnh viễn",
                             status_code=409,
                         )
                     committed = True
@@ -2634,7 +2634,7 @@ class LocationService:
         if request.basis.novel_id != novel_id:
             raise _location_error(
                 "LOCATION_BASIS_CONFLICT",
-                "地点 basis 不属于当前小说",
+                "basis của địa điểm không thuộc tiểu thuyết hiện tại",
                 status_code=409,
             )
         novel_sources = [
@@ -2645,7 +2645,7 @@ class LocationService:
         if len(novel_sources) != 1:
             raise _location_error(
                 "LOCATION_BASIS_CONFLICT",
-                "地点 basis 必须精确包含当前小说来源",
+                "basis của địa điểm phải bao gồm chính xác nguồn của tiểu thuyết hiện tại",
                 status_code=409,
             )
         business_sources = {
@@ -2665,7 +2665,7 @@ class LocationService:
             if request.expected_versions.get(identity) != source.version:
                 raise _location_error(
                     "LOCATION_BASIS_CONFLICT",
-                    "expected_versions 与地点 basis 不一致",
+                    "expected_versions không nhất quán với basis của địa điểm",
                     status_code=409,
                 )
             if session is not None:
@@ -2717,14 +2717,14 @@ class LocationService:
                 else:
                     raise _location_error(
                         "LOCATION_BASIS_SOURCE_INVALID",
-                        f"地点 basis 不支持来源类型 {source.resource_type}",
+                        f"basis của địa điểm không hỗ trợ loại nguồn {source.resource_type}",
                     )
             except (NotFoundError, InvalidIdError):
                 document = None
             if document is None:
                 raise _location_error(
                     "LOCATION_BASIS_SOURCE_NOT_FOUND",
-                    "地点 basis 中的正式来源已不存在、已删除或跨小说",
+                    "Nguồn chính thức trong basis của địa điểm không còn tồn tại, đã bị xóa hoặc thuộc tiểu thuyết khác",
                     status_code=404,
                     details={
                         "resource_type": source.resource_type,
@@ -2735,7 +2735,7 @@ class LocationService:
             if not auto_preparation and int(document.get("version", 0)) != int(source.version):
                 raise _location_error(
                     "LOCATION_BASIS_CONFLICT",
-                    "地点 basis 中的正式来源版本已变化",
+                    "Phiên bản nguồn chính thức trong basis của địa điểm đã thay đổi",
                     status_code=409,
                     details={
                         "resource_type": source.resource_type,
@@ -2753,7 +2753,7 @@ class LocationService:
         ):
             raise _location_error(
                 "LOCATION_BASIS_SOURCE_NOT_FOUND",
-                "单卷地点候选不属于当前小说",
+                "Địa điểm ứng viên của một quyển không thuộc tiểu thuyết hiện tại",
                 status_code=404,
             )
         current_context = await load_volume_location_generation_context(
@@ -2763,7 +2763,7 @@ class LocationService:
         execution = basis.flow_snapshot["execution"]
         original_reads = [*execution["character_fact_reads"], *execution["faction_fact_reads"]]
         if any(read not in original_reads for read in current_context["fact_reads"]):
-            raise _location_error("LOCATION_BASIS_CONFLICT", "地点候选缺少当前人物或势力查询的原依据，请保留候选并重新生成", status_code=409)
+            raise _location_error("LOCATION_BASIS_CONFLICT", "Ứng viên địa điểm thiếu căn cứ truy vấn nhân vật hoặc thế lực hiện tại, hãy giữ ứng viên và sinh lại", status_code=409)
         submitted_identities = {
             (source.resource_type, source.id) for source in basis.source_refs
         }
@@ -2776,14 +2776,14 @@ class LocationService:
             resource_type, resource_id = sorted(missing_identities)[0]
             raise _location_error(
                 "LOCATION_BASIS_SOURCE_NOT_FOUND",
-                "单卷地点生成使用的正式来源已不存在、已删除或不可用",
+                "Nguồn chính thức dùng để sinh địa điểm đơn quyển không còn tồn tại, đã bị xóa hoặc không khả dụng",
                 status_code=404,
                 details={"resource_type": resource_type, "id": resource_id},
             )
         if current_identities - submitted_identities:
             raise _location_error(
                 "LOCATION_BASIS_CONFLICT",
-                "单卷地点生成使用的正式输入集合已变化，请重新生成",
+                "Tập đầu vào chính thức dùng để sinh địa điểm đơn quyển đã thay đổi, hãy sinh lại",
                 status_code=409,
             )
         try:
@@ -2791,7 +2791,7 @@ class LocationService:
                 from backend.services.task_flows.candidate import compute_preparation_fingerprint
                 current_fingerprint = compute_preparation_fingerprint("create_locations_for_volume_by_ai", generation_input, current_context["content_fingerprint"], basis.flow_snapshot)
                 if current_context["content_fingerprint"] != basis.content_fingerprint:
-                    raise ValueError("地点准备内容已变化")
+                    raise ValueError("Nội dung chuẩn bị địa điểm đã thay đổi")
             else:
                 current_fingerprint = compute_volume_locations_input_fingerprint(
                     generation_input,
@@ -2801,13 +2801,13 @@ class LocationService:
         except (KeyError, TypeError, ValueError) as exc:
             raise _location_error(
                 "LOCATION_BASIS_CONFLICT",
-                "单卷地点候选的 Prompt、Schema 或执行配置已变化",
+                "Prompt, Schema hoặc cấu hình thực thi của ứng viên địa điểm đơn quyển đã thay đổi",
                 status_code=409,
             ) from exc
         if basis.input_fingerprint != current_fingerprint:
             raise _location_error(
                 "LOCATION_BASIS_CONFLICT",
-                "单卷地点候选输入已变化，请重新生成",
+                "Đầu vào ứng viên địa điểm theo từng quyển đã thay đổi, hãy sinh lại",
                 status_code=409,
             )
 
@@ -2828,7 +2828,7 @@ class LocationService:
                 except (NotFoundError, InvalidIdError) as exc:
                     raise _location_error(
                         "LOCATION_REFERENCE_NOT_FOUND",
-                        "候选父地点不存在、已删除或不属于当前小说",
+                        "Địa điểm cha của ứng viên không tồn tại, đã bị xóa hoặc không thuộc tiểu thuyết hiện tại",
                         status_code=404,
                     ) from exc
                 if (
@@ -2837,12 +2837,12 @@ class LocationService:
                 ):
                     raise _location_error(
                         "LOCATION_REFERENCE_NOT_FOUND",
-                        "候选父地点当前不可用",
+                        "Địa điểm cha ứng viên hiện không khả dụng",
                         status_code=404,
                     )
                 raise _location_error(
                     "LOCATION_REFERENCE_INVALID",
-                    "候选父地点不在生成输入白名单中",
+                    "Ứng viên địa điểm và địa điểm hiện có của cùng cha xung đột tên chuẩn hóa",
                 )
             for rule_id in set(candidate.applicable_rule_ids) - allowed_rule_ids:
                 try:
@@ -2854,18 +2854,18 @@ class LocationService:
                 except (NotFoundError, InvalidIdError) as exc:
                     raise _location_error(
                         "LOCATION_REFERENCE_NOT_FOUND",
-                        "候选规则不存在、已删除或不属于当前小说",
+                        "Quy tắc ứng viên không tồn tại, đã bị xóa hoặc không thuộc tiểu thuyết hiện tại",
                         status_code=404,
                     ) from exc
                 if rule.get("status") != "active":
                     raise _location_error(
                         "LOCATION_REFERENCE_NOT_FOUND",
-                        "候选规则当前不可用",
+                        "Quy tắc ứng viên hiện không khả dụng",
                         status_code=404,
                     )
                 raise _location_error(
                     "LOCATION_REFERENCE_INVALID",
-                    "候选规则不在生成输入白名单中",
+                    "Quy tắc ứng viên không nằm trong danh sách trắng đầu vào sinh",
                 )
             for faction_id in (
                 set(candidate.associated_faction_ids) - allowed_faction_ids
@@ -2879,18 +2879,18 @@ class LocationService:
                 except (NotFoundError, InvalidIdError) as exc:
                     raise _location_error(
                         "LOCATION_REFERENCE_NOT_FOUND",
-                        "候选势力不存在、已删除或不属于当前小说",
+                        "Thế lực ứng viên không tồn tại, đã bị xóa hoặc không thuộc tiểu thuyết hiện tại",
                         status_code=404,
                     ) from exc
                 if faction.get("active_status") != "active":
                     raise _location_error(
                         "LOCATION_REFERENCE_NOT_FOUND",
-                        "候选势力当前不可用",
+                        "Thế lực ứng viên hiện không khả dụng",
                         status_code=404,
                     )
                 raise _location_error(
                     "LOCATION_REFERENCE_INVALID",
-                    "候选势力没有进入目标卷的正式参与状态",
+                    "Thế lực ứng viên chưa vào trạng thái tham gia chính thức của quyển đích",
                 )
         try:
             validate_volume_location_candidates(
@@ -2935,7 +2935,7 @@ class LocationService:
         if receipt.get("request_hash") != request_hash:
             raise _location_error(
                 "IDEMPOTENCY_KEY_REUSED",
-                "同一 Idempotency-Key 已用于不同的地点批量确认",
+                "Cùng Idempotency-Key đã được dùng cho xác nhận hàng loạt địa điểm khác",
                 status_code=409,
             )
         return receipt
@@ -3001,7 +3001,7 @@ class LocationService:
         except ValidationError as exc:
             raise _location_error(
                 "LOCATION_VALIDATION_FAILED",
-                "地点批量确认字段校验失败",
+                "Xác nhận hàng loạt địa điểm không vượt qua kiểm tra trường",
                 field_errors=_validation_details(exc),
             ) from exc
         canonical_request = request.model_dump(mode="json")
@@ -3049,9 +3049,9 @@ class LocationService:
                 return _receipt_result(replay_in_unit)
             execution = request.basis.flow_snapshot["execution"]
             if "character_fact_reads" not in execution:
-                raise _location_error("CHARACTER_FACT_CONTRACT_REQUIRED", "原地点候选未保存人物事实依据，请保留候选并重新生成", status_code=409)
+                raise _location_error("CHARACTER_FACT_CONTRACT_REQUIRED", "Ứng viên địa điểm gốc chưa lưu căn cứ sự thật nhân vật, hãy giữ ứng viên và sinh lại", status_code=409)
             if execution.get("faction_reading_contract") != "faction_facts_v1" or "faction_fact_reads" not in execution:
-                raise _location_error("FACTION_FACT_CONTRACT_REQUIRED", "原地点候选未保存势力事实依据，请保留候选并重新生成", status_code=409)
+                raise _location_error("FACTION_FACT_CONTRACT_REQUIRED", "Ứng viên địa điểm gốc chưa lưu căn cứ sự thật thế lực, hãy giữ ứng viên và sinh lại", status_code=409)
             from backend.services.novel.writing_context import revalidate_position_fact_reads
             await revalidate_position_fact_reads([
                 *execution["character_fact_reads"], *execution["faction_fact_reads"],
@@ -3105,7 +3105,7 @@ class LocationService:
                 except ValidationError as exc:
                     raise _location_error(
                         "LOCATION_VALIDATION_FAILED",
-                        "地点候选规范化后的字段长度或组合不合法",
+                        "Độ dài hoặc tổ hợp trường sau chuẩn hóa của ứng viên địa điểm không hợp lệ",
                         field_errors=_validation_details(exc),
                     ) from exc
                 row["normalized_name"] = normalize_location_text(row["name"])
@@ -3118,7 +3118,7 @@ class LocationService:
                 if name_key in batch_names:
                     raise _location_error(
                         "LOCATION_NAME_CONFLICT",
-                        "同一父级下的地点候选规范名必须唯一",
+                        "Tên chuẩn hóa của ứng viên địa điểm dưới cùng một cha phải duy nhất",
                         status_code=409,
                     )
                 batch_names.add(name_key)
@@ -3127,7 +3127,7 @@ class LocationService:
                 ) in existing_names:
                     raise _location_error(
                         "LOCATION_NAME_CONFLICT",
-                        "地点候选与同父现有地点规范名冲突",
+                        "Ứng viên cha không nằm trong danh sách trắng đầu vào lúc sinh",
                         status_code=409,
                     )
                 candidate_rows.append(row)
@@ -3217,7 +3217,7 @@ class LocationService:
                     ) in existing_names:
                         raise _location_error(
                             "LOCATION_NAME_CONFLICT",
-                            "地点候选与同父现有地点规范名冲突",
+                            "Ứng viên cha không nằm trong danh sách trắng đầu vào lúc sinh",
                             status_code=409,
                         )
                 dependency_contexts = []
@@ -3351,7 +3351,7 @@ class LocationService:
                         ):
                             raise _location_error(
                                 "LOCATION_REFERENCE_CONFLICT",
-                                "本批候选父级在地点写入期间发生变化",
+                                "Cha của ứng viên trong lô này thay đổi trong quá trình ghi địa điểm",
                                 status_code=409,
                             )
                     if session is None:
@@ -3506,7 +3506,7 @@ class LocationService:
                     if reused_key:
                         raise _location_error(
                             "IDEMPOTENCY_KEY_REUSED",
-                            "同一 Idempotency-Key 已用于不同的地点批量确认",
+                            "Cùng Idempotency-Key đã được dùng cho xác nhận hàng loạt địa điểm khác",
                             status_code=409,
                         )
                 raise
@@ -3555,7 +3555,7 @@ class LocationService:
                 raise
             raise _location_error(
                 "LOCATION_BATCH_CONFLICT",
-                "地点批量确认发生规范名、顺序或并发冲突",
+                "Xác nhận hàng loạt địa điểm xảy ra xung đột tên chuẩn hóa, thứ tự hoặc xử lý đồng thời",
                 status_code=409,
             ) from exc
 

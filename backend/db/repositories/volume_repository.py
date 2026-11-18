@@ -90,7 +90,7 @@ class VolumeRepository(BaseRepository):
         try:
             result = await self.collection.insert_one(prepared, session=session)
         except PyMongoDuplicateKeyError as exc:
-            raise DuplicateKeyError("同一小说下的活动卷序号发生冲突") from exc
+            raise DuplicateKeyError("Xung đột số thứ tự của các quyển đang hoạt động trong cùng tiểu thuyết") from exc
         return {**prepared, "_id": result.inserted_id}
 
     async def get_volumes_by_novel(
@@ -145,7 +145,7 @@ class VolumeRepository(BaseRepository):
             session=session,
         )
         if document is None:
-            raise NotFoundError(f"卷 {volume_id} 不存在")
+            raise NotFoundError(f"Quyển {volume_id} không tồn tại")
         return document
 
     async def update_from_snapshot(
@@ -189,7 +189,7 @@ class VolumeRepository(BaseRepository):
                 session=session,
             )
         except PyMongoDuplicateKeyError as exc:
-            raise DuplicateKeyError("同一小说下的活动卷序号发生冲突") from exc
+            raise DuplicateKeyError("Xung đột số thứ tự của các quyển đang hoạt động trong cùng tiểu thuyết") from exc
 
     async def restore_snapshot(
         self,

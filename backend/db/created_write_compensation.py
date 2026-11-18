@@ -40,7 +40,7 @@ async def delete_created_documents_cas(
         or not isinstance(expected_dependency_guard_revision, int)
         or expected_dependency_guard_revision < 0
     ):
-        raise ValueError("expected_dependency_guard_revision 必须为非负整数或 None")
+        raise ValueError("expected_dependency_guard_revision phải là số nguyên không âm hoặc None")
     for document in documents:
         missing = [
             field
@@ -49,7 +49,7 @@ async def delete_created_documents_cas(
         ]
         if missing:
             raise RuntimeError(
-                "standalone 创建补偿缺少精确身份字段: " + ", ".join(missing)
+                "Việc bù dữ liệu tạo mới standalone thiếu các trường danh tính chính xác: " + ", ".join(missing)
             )
 
         business_id = document[business_key_field]
@@ -99,7 +99,7 @@ async def delete_created_documents_cas(
 
     if incomplete:
         raise RuntimeError(
-            "standalone 创建补偿 CAS 未完成：本批文档已被并发修改，未执行删除；"
+            "Việc bù dữ liệu tạo mới standalone chưa hoàn tất CAS: tài liệu của lô này đã bị sửa đồng thời, chưa thực hiện xóa;"
             + "; ".join(incomplete)
         )
     return deleted_count

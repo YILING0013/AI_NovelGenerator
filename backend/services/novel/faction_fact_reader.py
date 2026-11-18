@@ -27,7 +27,7 @@ def evaluate_faction_facts(
     """
     position = FactReadPositionV1.model_validate(position).model_dump()
     if position["intent"] == "book_start" and ObjectId(position["target_id"]) != faction["novel_id"]:
-        raise DomainApiError("FACTION_FACT_RECORD_INVALID", "势力读取位置不属于当前小说", status_code=409)
+        raise DomainApiError("FACTION_FACT_RECORD_INVALID", "Vị trí đọc của thế lực không thuộc tiểu thuyết hiện tại", status_code=409)
     normalized, identities, source_checks = [], set(), {}
     for payload in records:
         record = FactionFactRecordV1.model_validate(payload).model_dump(exclude_unset=True)
@@ -39,7 +39,7 @@ def evaluate_faction_facts(
         if (ObjectId(record["novel_id"]) != faction["novel_id"]
                 or ObjectId(record["entity_id"]) != faction["_id"]
                 or record["faction_id"] != faction["faction_id"] or identity in identities):
-            raise DomainApiError("FACTION_FACT_RECORD_INVALID", "势力事实的身份或记录编号不一致，请检查记录", status_code=409)
+            raise DomainApiError("FACTION_FACT_RECORD_INVALID", "Danh tính hoặc số bản ghi của sự thật thế lực không nhất quán, hãy kiểm tra bản ghi", status_code=409)
         record["position"]["version"] = 1
         record["position"]["target_id"] = str(ObjectId(record["position"]["target_id"]))
         for name in ("previous", "replaces"):
@@ -55,7 +55,7 @@ def evaluate_faction_facts(
     try:
         fields = evaluate_fact_fields(FACTION_FACT_FIELDS, normalized, position, directories, source_checks)
     except FactPositionConflictError as exc:
-        raise DomainApiError("FACTION_FACT_POSITION_CONFLICT", "同一位置有重复的势力事实，请明确替代原记录", status_code=409) from exc
+        raise DomainApiError("FACTION_FACT_POSITION_CONFLICT", "Cùng một vị trí có nhiều sự thật thế lực trùng lặp, hãy chỉ định rõ bản ghi gốc được thay thế", status_code=409) from exc
     return FactionFactsAtPositionV1.model_validate({
         "entity_id": str(faction["_id"]), "faction_id": faction["faction_id"],
         "name": faction["name"], "version": faction["version"], **fields,

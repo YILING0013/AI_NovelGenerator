@@ -43,7 +43,7 @@ class CharacterVolumePlanFieldsV1(StrictRequestModel):
             校验通过的完整业务字段。
         """
         if len(self.relationship_focus_ids) != len(set(self.relationship_focus_ids)):
-            raise ValueError("relationship_focus_ids 不能重复")
+            raise ValueError("relationship_focus_ids không được trùng lặp")
         return self
 
 
@@ -91,14 +91,14 @@ class CharacterVolumePlanUpdateV1(StrictRequestModel):
         """
         fields = self.model_fields_set - {"expected_version"}
         if not fields:
-            raise ValueError("角色卷状态更新至少需要一个业务字段")
+            raise ValueError("Cập nhật trạng thái quyển của nhân vật cần ít nhất một trường nghiệp vụ")
         for field in fields:
             if getattr(self, field) is None:
-                raise ValueError(f"{field} 不能显式设为 null")
+                raise ValueError(f"{field} không được đặt tường minh thành null")
         if self.relationship_focus_ids is not None and len(
             self.relationship_focus_ids
         ) != len(set(self.relationship_focus_ids)):
-            raise ValueError("relationship_focus_ids 不能重复")
+            raise ValueError("relationship_focus_ids không được trùng lặp")
         return self
 
 
@@ -133,7 +133,7 @@ class CharacterVolumeStateInitializeV1(StrictRequestModel):
             校验通过的初始化请求。
         """
         if len(self.character_ids) != len(set(self.character_ids)):
-            raise ValueError("character_ids 不能重复")
+            raise ValueError("character_ids không được trùng lặp")
         return self
 
 
@@ -172,11 +172,11 @@ class CharacterVolumeStateReadV1(StrictResponseModel):
             生命周期一致的公开状态。
         """
         if len(self.deletion_sources) != len(set(self.deletion_sources)):
-            raise ValueError("deletion_sources 不能重复")
+            raise ValueError("deletion_sources không được trùng lặp")
         if self.is_deleted != bool(self.deletion_sources):
-            raise ValueError("is_deleted 必须与 deletion_sources 一致")
+            raise ValueError("is_deleted phải nhất quán với deletion_sources")
         if self.is_deleted != (self.deleted_at is not None):
-            raise ValueError("deleted_at 必须与删除态一致")
+            raise ValueError("deleted_at phải nhất quán với trạng thái xóa")
         return self
 
 

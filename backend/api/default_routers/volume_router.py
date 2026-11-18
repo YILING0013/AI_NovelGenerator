@@ -84,9 +84,9 @@ class VolumeUpdateRequestV2(StrictRequestModel):
         """
         for field in self.model_fields_set - {"expected_version", "planning", "basis"}:
             if getattr(self, field) is None:
-                raise ValueError(f"{field} 不能显式设为 null")
+                raise ValueError(f"{field} không được đặt tường minh thành null")
         if "basis" in self.model_fields_set and self.basis is None:
-            raise ValueError("basis 不能显式设为 null")
+            raise ValueError("basis không được đặt tường minh bằng null")
         if self.basis is not None:
             required = {
                 "expected_version",
@@ -99,7 +99,7 @@ class VolumeUpdateRequestV2(StrictRequestModel):
                 "basis",
             }
             if self.model_fields_set != required or self.planning is None:
-                raise ValueError("启动包确认必须完整提交业务字段、basis 和 expected_version")
+                raise ValueError("Xác nhận gói khởi động phải gửi đầy đủ các trường nghiệp vụ, basis và expected_version")
             VolumeLaunchConfirmV1.model_validate(
                 self.model_dump(mode="json", exclude_unset=True)
             )
@@ -270,7 +270,7 @@ def _volume_http_exception(exc: Exception) -> HTTPException:
         return api_http_exception(
             status_code=503,
             code="DATABASE_UNAVAILABLE",
-            message="数据库暂时不可用，请稍后重试",
+            message="Cơ sở dữ liệu tạm thời không khả dụng, vui lòng thử lại sau",
         )
     status, code, message, field_errors, details = exception_to_error(exc)
     return api_http_exception(
@@ -468,7 +468,7 @@ async def update_volume(
             if idempotency_key is None:
                 raise DomainApiError(
                     "IDEMPOTENCY_KEY_REQUIRED",
-                    "启动包确认必须提供 Idempotency-Key",
+                    "Xác nhận gói khởi động phải cung cấp Idempotency-Key",
                     status_code=422,
                     field_errors={"Idempotency-Key": "该请求头为必填项"},
                 )

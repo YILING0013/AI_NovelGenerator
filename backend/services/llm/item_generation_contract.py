@@ -97,7 +97,7 @@ def validate_item_candidates(
         for item in candidates
     ]
     if require_generated_count and normalized_input.item_count is not None and len(normalized_candidates) != normalized_input.item_count:
-        raise ValueError(f"模型物品数量必须严格等于 {normalized_input.item_count}")
+        raise ValueError(f"Số vật phẩm của mô hình phải bằng đúng {normalized_input.item_count}")
 
     used_tokens = set(context["existing_item_tokens"])
     allowed_character_ids = set(context["allowed_character_ids"])
@@ -109,28 +109,28 @@ def validate_item_candidates(
             for value in [candidate.name, *candidate.aliases]
         }
         if tokens & used_tokens:
-            raise ValueError("物品候选名称或别名与已有物品或本批候选重复")
+            raise ValueError("Tên hoặc biệt hiệu của ứng viên vật phẩm trùng với vật phẩm đã có hoặc ứng viên trong đợt này")
         used_tokens.update(tokens)
         if (
             candidate.owner_character_id is not None
             and candidate.owner_character_id not in allowed_character_ids
         ):
             raise ValueError(
-                f"{candidate.candidate_ref} 引用了输入白名单外的角色所有者"
+                f"{candidate.candidate_ref} tham chiếu chủ sở hữu là nhân vật ngoài danh sách trắng đầu vào"
             )
         if (
             candidate.controlling_faction_id is not None
             and candidate.controlling_faction_id not in allowed_faction_ids
         ):
             raise ValueError(
-                f"{candidate.candidate_ref} 引用了输入白名单外的控制势力"
+                f"{candidate.candidate_ref} tham chiếu thế lực kiểm soát ngoài danh sách trắng đầu vào"
             )
         if (
             candidate.current_location_id is not None
             and candidate.current_location_id not in allowed_location_ids
         ):
             raise ValueError(
-                f"{candidate.candidate_ref} 引用了输入白名单外的当前地点"
+                f"{candidate.candidate_ref} tham chiếu địa điểm hiện tại ngoài danh sách trắng đầu vào"
             )
 
 

@@ -88,9 +88,9 @@ class FactionFactValuesV1(StrictRequestModel):
             保留实际提交字段的严格值。
         """
         if any(getattr(self, name) is None for name in self.model_fields_set):
-            raise ValueError("势力事实值不能为 null；未知须单独表示")
+            raise ValueError("Giá trị sự kiện thế lực không được là null; trạng thái chưa biết phải được biểu thị riêng")
         if self.resources is not None and len(self.resources) != len(set(self.resources)):
-            raise ValueError("resources 不能重复")
+            raise ValueError("resources không được trùng lặp")
         return self
 
 
@@ -129,9 +129,9 @@ class FactionFactCreateDataV1(StrictResponseModel):
     def validate_candidate(self) -> "FactionFactCreateDataV1":
         """沿旧创建的层级和扩展数据边界检查，不向原候选补字段。"""
         if not unicodedata.normalize("NFKC", self.name).strip():
-            raise ValueError("势力名称不能为空")
+            raise ValueError("Tên thế lực không được để trống")
         if (self.level_type == "core") != (self.volume_id is None):
-            raise ValueError("核心势力无归属卷，卷内或局部势力必须指定归属卷")
+            raise ValueError("Thế lực cốt lõi không có quyển trực thuộc; thế lực trong quyển hoặc cục bộ phải chỉ định quyển trực thuộc")
         _validate_bson_safe_extra(self.extra)
         return self
 
@@ -157,7 +157,7 @@ class FactionFactBeforeV1(StrictResponseModel):
             字段不重叠的原值。
         """
         if self.values.model_fields_set & self.unknown.keys():
-            raise ValueError("同一势力字段不能同时已知和未知")
+            raise ValueError("Cùng một trường của thế lực không thể vừa đã biết vừa chưa biết")
         return self
 
 
@@ -203,45 +203,45 @@ class FactionFactRecordV1(StrictResponseModel):
                 or ObjectId(sources[-1].id) != ObjectId(self.position.target_id)
                 or any(ObjectId(row.parent_id) != ObjectId(sources[index - 1].id)
                        for index, row in enumerate(sources) if index)):
-            raise ValueError("势力事实必须保存从本书到位置锚的完整父链")
+            raise ValueError("Sự kiện thế lực phải lưu đầy đủ chuỗi cha từ cuốn sách đến mỏ neo vị trí")
         fields = self.after.model_fields_set
         if (not fields or fields != self.before.values.model_fields_set | self.before.unknown.keys()
                 or fields != self.previous.keys() or fields != self.validity.keys()
                 or not self.replaces.keys() <= fields or not self.resolves.keys() <= fields):
-            raise ValueError("势力记录前后值、前值依据及有效性的字段集合不一致")
+            raise ValueError("Tập hợp trường gồm giá trị trước/sau, căn cứ giá trị trước và hiệu lực của bản ghi thế lực không nhất quán")
         if (any(self.previous[name] is None for name in self.before.values.model_fields_set)
                 or any(self.previous[name] is not None for name in self.before.unknown)):
-            raise ValueError("已知前值须有来源，未知前值的 previous 必须为 null")
+            raise ValueError("Giá trị trước đã biết phải có nguồn; previous của giá trị trước chưa biết phải là null")
         if self.operation == "create":
             if (self.before_version is not None or self.after_version != 1 or self.before.values.model_fields_set
                     or set(self.before.unknown.values()) != {"nonexistent"} or self.replaces or self.resolves):
-                raise ValueError("新建势力起点必须使用真实版本 1 和不存在的 before")
+                raise ValueError("Điểm khởi tạo thế lực mới phải dùng phiên bản thật bằng 1 và before không tồn tại")
         elif self.before_version is None or self.after_version != self.before_version + 1:
-            raise ValueError("已有势力一次确认只能增加一个真实版本")
+            raise ValueError("Mỗi lần xác nhận với thế lực đã có chỉ được tăng thêm một phiên bản thật")
         if self.operation in {"create", "establish", "correct_initial"} and self.kind != "start":
-            raise ValueError("势力起点命令不能保存成章后变化")
+            raise ValueError("Lệnh điểm khởi tạo thế lực không được lưu thay đổi sau khi chương hoàn thành")
         if self.operation == "change" and self.kind != "change":
-            raise ValueError("势力章后变化命令必须保存变化记录")
+            raise ValueError("Lệnh thay đổi sau chương của thế lực phải lưu bản ghi thay đổi")
         if self.kind == "start" and self.source.kind != "author":
-            raise ValueError("势力人工起点必须使用作者说明")
+            raise ValueError("Điểm khởi tạo thủ công của thế lực phải dùng mô tả của tác giả")
         if self.kind == "change" and (self.source.kind != "chapter" or self.position.intent != "chapter_after"):
-            raise ValueError("势力章后变化必须有章后位置和原文证据")
+            raise ValueError("Thay đổi sau chương của thế lực phải có vị trí sau chương và bằng chứng nguyên văn")
         if self.source.kind == "chapter" and ObjectId(self.source.evidence.chapter_id) != ObjectId(self.position.target_id):
-            raise ValueError("势力变化证据必须来自生效章节")
+            raise ValueError("Bằng chứng thay đổi thế lực phải lấy từ chương đã có hiệu lực")
         if self.operation == "correct_initial" and self.position.intent != "book_start":
-            raise ValueError("势力初始更正只能作用于书初")
+            raise ValueError("Đính chính ban đầu của thế lực chỉ được áp dụng cho thời điểm đầu sách")
         if self.operation == "replace" and not self.replaces:
-            raise ValueError("势力替代必须明确原记录")
+            raise ValueError("Thay thế thế lực phải chỉ rõ bản ghi gốc")
         references = [*self.previous.values(), *self.replaces.values(),
                       *(identity for values in self.resolves.values() for identity in values)]
         if any(ObjectId(identity) == ObjectId(self.history_id) for identity in references if identity is not None):
-            raise ValueError("势力事实不能引用自己作为前值或处置对象")
+            raise ValueError("Sự kiện thế lực không được tự tham chiếu làm giá trị trước hoặc đối tượng xử lý")
         for identities in self.resolves.values():
             if not identities or len(identities) != len({ObjectId(identity) for identity in identities}):
-                raise ValueError("解除势力事实失效须列出不重复的原记录")
+                raise ValueError("Gỡ vô hiệu sự kiện thế lực phải liệt kê các bản ghi gốc không trùng lặp")
         for state in self.validity.values():
             if state.state == "replaced" and ObjectId(state.by_history_id) == ObjectId(self.history_id):
-                raise ValueError("势力事实不能被自己替代")
+                raise ValueError("Sự kiện thế lực không được tự thay thế chính nó")
         return self
 
 
@@ -269,19 +269,19 @@ class FactionFactsAtPositionV1(StrictResponseModel):
         """
         known = self.values.model_fields_set
         if known & self.unknown.keys() or known | self.unknown.keys() != FACTION_FACT_FIELDS:
-            raise ValueError("读取必须明确每个势力字段已知或未知")
+            raise ValueError("Khi đọc phải xác định rõ từng trường của thế lực là đã biết hay chưa biết")
         if (self.origins.keys() != known or self.blockers.keys() != {
                 name for name, reason in self.unknown.items() if reason in {"voided", "needs_review", "unresolved_reference"}
         }):
-            raise ValueError("已知势力值须有来源，待复核不能带可用值")
+            raise ValueError("Giá trị thế lực đã biết phải có nguồn; mục chờ rà soát không được mang giá trị khả dụng")
         if "nonexistent" in self.unknown.values():
-            raise ValueError("现存势力的读取结果不能声明目标不存在")
+            raise ValueError("Kết quả đọc của thế lực đang tồn tại không được tuyên bố mục tiêu không tồn tại")
         claimed = known | {name for name, reason in self.unknown.items() if reason != "unclaimed"}
         if set(self.claimed_fields) != claimed or len(self.claimed_fields) != len(claimed):
-            raise ValueError("势力认领字段不能重复，且须与已知值或未知原因一致")
+            raise ValueError("Trường đăng ký nhận thế lực không được trùng lặp và phải nhất quán với giá trị đã biết hoặc lý do chưa biết")
         for identities in self.blockers.values():
             if not identities or len(identities) != len({ObjectId(identity) for identity in identities}):
-                raise ValueError("势力事实阻断须列出不重复的原记录")
+                raise ValueError("Các chặn của sự kiện thế lực phải liệt kê bản ghi gốc không trùng lặp")
         return self
 
 
@@ -324,9 +324,9 @@ class FactionFactReadV1(StrictResponseModel):
                 or len(self.identities) != len({row.faction_id for row in self.identities})
                 or any(row.faction_id not in self.faction_ids for row in self.identities)
                 or len(self.history) != len({ObjectId(row.history_id) for row in self.history})):
-            raise ValueError("势力读取的选择或实际身份重复、不一致")
+            raise ValueError("Lựa chọn hoặc danh tính thực tế khi đọc thế lực bị trùng lặp, không nhất quán")
         if canonical_request_hash(self.model_dump(exclude={"fingerprint"})) != self.fingerprint:
-            raise ValueError("势力读取摘要与原内容不一致")
+            raise ValueError("Bản tóm tắt khi đọc thế lực không nhất quán với nội dung gốc")
         return self
 
 
@@ -367,7 +367,7 @@ class FactionFactNewTargetV1(StrictResponseModel):
     def require_absence(cls, data):
         """缺项或整数零不能代替已确认不存在。"""
         if isinstance(data, dict) and data.get("entity_exists") is not False:
-            raise ValueError("新建势力必须明确确认身份不存在")
+            raise ValueError("Tạo thế lực mới phải xác nhận rõ danh tính này không tồn tại")
         return data
 
     @model_validator(mode="after")
@@ -375,7 +375,7 @@ class FactionFactNewTargetV1(StrictResponseModel):
         """冻结名称沿用旧势力的 NFKC 名称规则，事实原文不参与。"""
         name = unicodedata.normalize("NFKC", self.candidate.name).strip()
         if self.candidate.name != name or self.normalized_name != name.casefold():
-            raise ValueError("新势力名称与活动唯一键不一致")
+            raise ValueError("Tên thế lực mới không nhất quán với khóa duy nhất đang hoạt động")
         return self
 
 
@@ -443,10 +443,10 @@ class FactionFactPreviewInputV1(RootModel[Annotated[
         if value.operation == "void":
             return self
         if len(value.fields) != len(set(value.fields)):
-            raise ValueError("势力预览字段不能重复")
+            raise ValueError("Trường xem trước thế lực không được trùng lặp")
         if value.operation != "create" and (not value.replaces.keys() <= set(value.fields)
                 or not value.resolves.keys() <= set(value.fields)):
-            raise ValueError("势力处置必须属于所选字段")
+            raise ValueError("Việc xử lý thế lực phải thuộc về trường đã chọn")
         return self
 
 
@@ -558,110 +558,110 @@ class FactionFactBasisV1(StrictResponseModel):
         fields = set(self.fields)
         if (len(fields) != len(self.fields) or fields != self.before.values.model_fields_set | self.before.unknown.keys()
                 or fields != self.previous.keys() or not self.replaces.keys() <= fields or not self.resolves.keys() <= fields):
-            raise ValueError("势力预览字段、前值及处置不一致")
+            raise ValueError("Trường xem trước, giá trị trước và việc xử lý của thế lực không nhất quán")
         if (any(self.previous[name] is None for name in self.before.values.model_fields_set)
                 or any(self.previous[name] is not None for name in self.before.unknown)):
-            raise ValueError("势力已知前值须有来源，未知 previous 必须为空")
+            raise ValueError("Giá trị trước đã biết của thế lực phải có nguồn; previous chưa biết phải để trống")
         required = {name for name, reason in self.before.unknown.items() if reason in {"voided", "needs_review", "unresolved_reference"}}
         if self.blockers.keys() != required or any(not ids or len(ids) != len({ObjectId(i) for i in ids}) for ids in self.blockers.values()):
-            raise ValueError("势力预览须保留具体阻断记录")
+            raise ValueError("Bản xem trước thế lực phải giữ lại các bản ghi chặn cụ thể")
         if (self.operation == "create") != (self.target.kind == "new"):
-            raise ValueError("势力新建与已有目标不能混用")
+            raise ValueError("Không được dùng lẫn mục tiêu thế lực mới tạo và thế lực đã có")
         if self.operation in {"create", "establish", "correct_initial"} and self.kind != "start":
-            raise ValueError("势力起点操作必须使用起点类型")
+            raise ValueError("Thao tác điểm khởi tạo thế lực phải dùng loại khởi tạo")
         if self.operation == "change" and self.kind != "change":
-            raise ValueError("势力变化操作必须使用变化类型")
+            raise ValueError("Thao tác thay đổi thế lực phải dùng loại thay đổi")
         if self.kind == "start" and self.source.kind != "author":
-            raise ValueError("势力起点必须有作者说明")
+            raise ValueError("Điểm khởi tạo thế lực phải có mô tả của tác giả")
         if self.kind == "change" and (self.source.kind != "chapter" or self.position.intent != "chapter_after"):
-            raise ValueError("势力变化必须有章后证据")
+            raise ValueError("Thay đổi thế lực phải có bằng chứng sau chương")
         if self.source.kind == "chapter" and ObjectId(self.source.evidence.chapter_id) != ObjectId(self.position.target_id):
-            raise ValueError("势力引文必须来自生效章节")
+            raise ValueError("Trích dẫn của thế lực phải lấy từ chương đã có hiệu lực")
         if self.operation == "correct_initial" and self.position.intent != "book_start":
-            raise ValueError("势力初始更正只能作用书初")
+            raise ValueError("Đính chính ban đầu của thế lực chỉ được áp dụng cho đầu sách")
         kinds = ["novel"] if self.position.intent == "book_start" else ["novel", "volume"] if self.position.intent == "volume_start" else ["novel", "volume", "arc", "scene", "chapter"]
         if ([r.resource_type for r in self.protected_sources] != kinds
                 or ObjectId(self.protected_sources[0].id) != ObjectId(self.target.novel_id)
                 or ObjectId(self.protected_sources[-1].id) != ObjectId(self.position.target_id)
                 or any(ObjectId(r.parent_id) != ObjectId(self.protected_sources[i - 1].id) for i, r in enumerate(self.protected_sources) if i)):
-            raise ValueError("势力预览必须冻结完整位置父链")
+            raise ValueError("Bản xem trước thế lực phải đóng băng đầy đủ chuỗi cha vị trí")
         targets = {r.history_id: r for r in self.targets}
         requested = set(self.void_targets.values()) | set(self.replaces.values()) | {i for ids in self.resolves.values() for i in ids}
         if targets.keys() != requested or len(targets) != len(self.targets):
-            raise ValueError("势力处置快照必须精确对应所选记录")
+            raise ValueError("Ảnh chụp xử lý thế lực phải tương ứng chính xác với bản ghi đã chọn")
         if self.operation == "void":
             if self.void_targets.keys() != fields or self.replaces or self.resolves:
-                raise ValueError("作废必须逐字段选择原记录")
+                raise ValueError("Hủy bỏ phải chọn bản ghi gốc theo từng trường")
             for name, identity in self.void_targets.items():
                 row = targets[identity]
                 if (name not in row.after.model_fields_set or row.validity[name].state != "active"
                         or row.position != self.position or row.kind != self.kind or row.source != self.source):
-                    raise ValueError("作废目标须为同位置、同来源的原活动字段")
+                    raise ValueError("Mục tiêu hủy bỏ phải là trường đang hoạt động gốc ở cùng vị trí và cùng nguồn")
         elif self.void_targets:
-            raise ValueError("非作废不能携带作废目标")
+            raise ValueError("Thao tác không phải hủy bỏ không được kèm theo mục tiêu hủy bỏ")
         for name, identity in self.replaces.items():
             row = targets[identity]
             if (name not in row.after.model_fields_set or row.validity[name].state != "active"
                     or row.position != self.position or row.kind != self.kind):
-                raise ValueError("替代须明确同位置同类型的原活动字段")
+                raise ValueError("Thay thế phải chỉ rõ trường đang hoạt động gốc cùng vị trí và cùng loại")
         for name, identities in self.resolves.items():
             if (not identities or len(identities) != len({ObjectId(i) for i in identities})
                     or not set(identities) <= set(self.blockers.get(name, []))
                     or any(name not in targets[i].after.model_fields_set for i in identities)):
-                raise ValueError("解除对象须来自该字段明确列出的阻断")
+                raise ValueError("Đối tượng gỡ phải nằm trong các chặn được liệt kê rõ của trường đó")
         if self.operation == "replace" and not self.replaces:
-            raise ValueError("势力替代必须明确原记录")
+            raise ValueError("Thay thế thế lực phải chỉ rõ bản ghi gốc")
         sources = {r.history_id: r for r in self.field_sources}
         expected_sources = {i for i in self.previous.values() if i is not None} | {i for ids in self.blockers.values() for i in ids}
         if sources.keys() != expected_sources or len(sources) != len(self.field_sources):
-            raise ValueError("势力前值及阻断快照不完整")
+            raise ValueError("Ảnh chụp giá trị trước và các chặn của thế lực không đầy đủ")
         for name in fields:
             for identity in ([self.previous[name]] if self.previous[name] is not None else []) + self.blockers.get(name, []):
                 if name not in sources[identity].after.model_fields_set:
-                    raise ValueError("势力前值来源缺少对应字段")
+                    raise ValueError("Nguồn giá trị trước của thế lực thiếu trường tương ứng")
             if self.previous[name] is not None and getattr(self.before.values, name) != getattr(sources[self.previous[name]].after, name):
-                raise ValueError("势力前值与原记录不同")
+                raise ValueError("Giá trị trước của thế lực khác với bản ghi gốc")
         if self.target.kind == "new":
             if (self.before.values.model_fields_set or set(self.before.unknown.values()) != {"nonexistent"}
                     or self.targets or self.field_sources or self.legacy_sources):
-                raise ValueError("新势力不能伪造旧原文或已知前值")
+                raise ValueError("Thế lực mới không được làm giả nguyên văn cũ hoặc giá trị trước đã biết")
         else:
             profile_keys, state_keys = faction_legacy_fields(fields)
             if not self.legacy_sources or self.legacy_sources[0].kind != "profile":
-                raise ValueError("已有势力必须冻结主档旧原文")
+                raise ValueError("Thế lực đã có phải đóng băng nguyên văn cũ trong hồ sơ chính")
             profile = self.legacy_sources[0]
             if (ObjectId(profile.entity_id) != ObjectId(self.target.entity_id) or profile.faction_id != self.target.faction_id
                     or profile.version != self.target.version or not profile.raw.model_fields_set <= profile_keys):
-                raise ValueError("势力主档旧原文的身份、版本或字段不一致")
+                raise ValueError("Danh tính, phiên bản hoặc trường của nguyên văn cũ trong hồ sơ chính thế lực không nhất quán")
             state_ids, volumes = [], {}
             for state in self.legacy_sources[1:]:
                 if (not state_keys or state.kind != "volume_state" or state.faction_id != self.target.faction_id
                         or not state.raw.model_fields_set <= state_keys):
-                    raise ValueError("势力卷旧原文包含无关身份或字段")
+                    raise ValueError("Nguyên văn cũ theo quyển của thế lực chứa danh tính hoặc trường không liên quan")
                 state_ids.append(ObjectId(state.state_id))
                 volume_id = ObjectId(state.volume_id)
                 if volume_id in volumes and volumes[volume_id] != state.volume:
-                    raise ValueError("同卷旧资料快照不能矛盾")
+                    raise ValueError("Ảnh chụp tài liệu cũ trong cùng quyển không được mâu thuẫn")
                 volumes[volume_id] = state.volume
             if state_ids != sorted(set(state_ids)):
-                raise ValueError("势力卷原文须按唯一物理身份排序")
+                raise ValueError("Nguyên văn theo quyển của thế lực phải sắp xếp theo danh tính vật lý duy nhất")
         refs = [(r.entity_type, r.entity_id) for r in self.references]
         observed_refs = [(r.reference.entity_type, r.reference.entity_id) for r in self.reference_reads]
         if len(refs) != len(set(refs)) or len(observed_refs) != len(set(observed_refs)) or set(refs) != set(observed_refs):
-            raise ValueError("势力人工引用须对应唯一实际身份及版本")
+            raise ValueError("Tham chiếu thủ công của thế lực phải tương ứng với danh tính thực tế và phiên bản duy nhất")
         observations, snapshots = {}, {}
         for read in self.reads:
             if read.novel_id != self.target.novel_id:
-                raise ValueError("势力预览读取不能跨书")
+                raise ValueError("Bản đọc xem trước thế lực không được vươn sang cuốn sách khác")
             if self.target.kind == "new":
                 if read.faction_ids or read.identities or read.history:
-                    raise ValueError("新势力预览必须保留空身份读取")
+                    raise ValueError("Bản xem trước thế lực mới phải giữ bản đọc có danh tính trống")
             elif (read.faction_ids != [self.target.faction_id] or [r.model_dump() for r in read.identities] != [{
                     "entity_id": self.target.entity_id, "faction_id": self.target.faction_id, "name": self.target.name, "is_deleted": False}]):
-                raise ValueError("势力预览与原读取身份不一致")
+                raise ValueError("Danh tính trong bản xem trước thế lực không nhất quán với bản đọc gốc")
             for row in read.history:
                 if observations.setdefault(row.history_id, row) != row:
-                    raise ValueError("势力历史观察不能矛盾")
+                    raise ValueError("Các quan sát lịch sử của thế lực không được mâu thuẫn")
         for row in [*self.targets, *self.field_sources]:
             observation = observations.get(row.history_id)
             if (row.novel_id != self.target.novel_id or row.entity_id != self.target.entity_id
@@ -669,9 +669,9 @@ class FactionFactBasisV1(StrictResponseModel):
                     or snapshots.setdefault(row.history_id, row) != row or observation is None
                     or observation.entity_id != row.entity_id or observation.validity != row.validity
                     or observation.immutable_fingerprint != canonical_request_hash(row.model_dump(exclude={"validity"}, exclude_unset=True))):
-                raise ValueError("势力原值和处置快照须精确绑定原读取")
+                raise ValueError("Giá trị gốc và ảnh chụp xử lý của thế lực phải gắn chính xác với bản đọc gốc")
         if canonical_request_hash(self.model_dump(exclude={"fingerprint"}, exclude_unset=True)) != self.fingerprint:
-            raise ValueError("势力预览摘要与原内容不一致")
+            raise ValueError("Tóm tắt bản xem trước thế lực không nhất quán với nội dung gốc")
         return self
 
 
@@ -708,7 +708,7 @@ class FactionFactVoidConfirmV1(StrictResponseModel):
     def require_reason(self) -> "FactionFactVoidConfirmV1":
         """保留作者原说明，但拒绝纯空白理由。"""
         if not self.reason.strip():
-            raise ValueError("请填写作废原因")
+            raise ValueError("Vui lòng nhập lý do hủy bỏ")
         return self
 
 
@@ -723,14 +723,14 @@ class FactionFactConfirmV1(RootModel[Annotated[
         """冻结的动作、版本和字段必须与本次确认一致。"""
         command, basis = self.root, self.root.basis
         if command.operation != basis.operation:
-            raise ValueError("势力确认动作与原预览不同")
+            raise ValueError("Hành động xác nhận thế lực khác với bản xem trước gốc")
         if command.operation != "create" and command.expected_version != basis.target.version:
-            raise ValueError("势力确认版本与原预览不同")
+            raise ValueError("Phiên bản xác nhận thế lực khác với bản xem trước gốc")
         if command.operation == "void":
             if command.targets != basis.void_targets:
-                raise ValueError("势力作废目标与原预览不同")
+                raise ValueError("Mục tiêu hủy bỏ thế lực khác với bản xem trước gốc")
         elif command.after.model_fields_set != set(basis.fields):
-            raise ValueError("势力确认值须精确对应原预览字段")
+            raise ValueError("Giá trị xác nhận thế lực phải tương ứng chính xác với trường trong bản xem trước gốc")
         return self
 
 
@@ -763,20 +763,20 @@ class FactionFactResultV1(StrictResponseModel):
         """一次命令使用一个真实主档版本，作废不制造历史行。"""
         if self.operation == "create":
             if self.before_version is not None or self.after_version != 1:
-                raise ValueError("新势力成功必须使用真实版本一")
+                raise ValueError("Kết quả tạo thế lực mới thành công phải dùng phiên bản thật bằng một")
         elif self.before_version is None or self.after_version != self.before_version + 1:
-            raise ValueError("势力成功结果必须推进一个版本")
+            raise ValueError("Kết quả thành công của thế lực phải tiến thêm đúng một phiên bản")
         if (self.operation == "void") != (self.record is None):
-            raise ValueError("只有势力作废不产生新事实记录")
+            raise ValueError("Chỉ thao tác hủy bỏ thế lực là không tạo bản ghi sự kiện mới")
         if self.record is not None:
             for key in ("operation", "novel_id", "entity_id", "faction_id", "faction_name", "before_version", "after_version", "confirmed_at"):
                 if getattr(self, key) != getattr(self.record, key):
-                    raise ValueError("势力结果与原记录身份、版本或时间不一致")
+                    raise ValueError("Danh tính, phiên bản hoặc thời gian trong kết quả thế lực không nhất quán với bản ghi gốc")
             if any(state.state != "active" for state in self.record.validity.values()):
-                raise ValueError("势力首次成功记录必须保留当时活动状态")
+                raise ValueError("Bản ghi thành công đầu tiên của thế lực phải giữ trạng thái hoạt động của thời điểm đó")
         keys = [(ObjectId(r.history_id), r.field) for r in self.validity_changes]
         if len(keys) != len(set(keys)):
-            raise ValueError("势力字段不能在一次命令里重复处置")
+            raise ValueError("Trường thế lực không được xử lý lặp lại trong cùng một lệnh")
         return self
 
 
@@ -816,27 +816,27 @@ class FactionFactReceiptV1(StrictResponseModel):
                 or self.request.target_id != basis.target.entity_id or result.entity_id != basis.target.entity_id
                 or self.position != basis.position or self.source != basis.source or self.protected_sources != basis.protected_sources
                 or self.created_at != result.confirmed_at):
-            raise ValueError("势力回执的身份、动作、时间或来源与原请求不同")
+            raise ValueError("Danh tính, hành động, thời gian hoặc nguồn trong biên nhận thế lực khác với yêu cầu gốc")
         if canonical_request_hash(self.request.model_dump(exclude_unset=True)) != self.request_hash:
-            raise ValueError("势力回执的原请求摘要不一致")
+            raise ValueError("Tóm tắt yêu cầu gốc trong biên nhận thế lực không nhất quán")
         if basis.target.kind == "existing" and (result.faction_id != basis.target.faction_id
                 or result.faction_name != basis.target.name or result.before_version != basis.target.version):
-            raise ValueError("势力回执必须保留原目标和版本")
+            raise ValueError("Biên nhận thế lực phải giữ nguyên mục tiêu và phiên bản gốc")
         if basis.target.kind == "new" and result.faction_name != basis.target.candidate.name:
-            raise ValueError("新势力结果名称必须来自冻结候选")
+            raise ValueError("Tên trong kết quả thế lực mới phải lấy từ ứng viên đã đóng băng")
         if result.record is not None:
             row = result.record
             if (any(getattr(row, key) != getattr(basis, key) for key in (
                     "kind", "position", "source", "before", "previous", "replaces", "resolves", "protected_sources"))
                     or row.after != command.after):
-                raise ValueError("势力成功记录必须对应原预览和作者确认值")
+                raise ValueError("Bản ghi thành công của thế lực phải tương ứng với bản xem trước gốc và giá trị tác giả đã xác nhận")
             expected = {(identity, name, "replaced", row.history_id) for name, identity in basis.replaces.items()}
         else:
             expected = {(identity, name, "voided", self.idempotency_key_hash) for name, identity in command.targets.items()}
         actual = {(r.history_id, r.field, r.after.state, r.after.by_history_id if r.after.state == "replaced" else r.after.by_receipt_key_hash)
                   for r in result.validity_changes}
         if actual != expected:
-            raise ValueError("势力回执处置结果与原请求不同")
+            raise ValueError("Kết quả xử lý trong biên nhận thế lực khác với yêu cầu gốc")
         return self
 
 
@@ -850,7 +850,7 @@ def parse_faction_fact_record(document: dict) -> dict:
     """
     if ("history_id" in document or any(not isinstance(document.get(key), ObjectId) for key in ("_id", "novel_id", "entity_id"))
             or not isinstance(document.get("confirmed_at"), datetime)):
-        raise ValueError("势力事实必须保留 BSON 身份和确认时间")
+        raise ValueError("Sự kiện thế lực phải giữ danh tính BSON và thời gian xác nhận")
     payload = {key: value for key, value in document.items() if key != "_id"}
     payload.update(history_id=str(document["_id"]), novel_id=str(document["novel_id"]), entity_id=str(document["entity_id"]))
     return FactionFactRecordV1.model_validate(payload).model_dump(exclude_unset=True)
@@ -880,9 +880,9 @@ def validate_faction_fact_receipt(document: dict) -> dict:
     """
     if ("receipt_id" in document or not isinstance(document.get("_id"), ObjectId)
             or not isinstance(document.get("novel_id"), ObjectId) or not isinstance(document.get("created_at"), datetime)):
-        raise ValueError("势力回执必须保存 BSON 身份和时间")
+        raise ValueError("Biên nhận thế lực phải lưu danh tính BSON và thời gian")
     if canonical_request_hash(document.get("request")) != document.get("request_hash"):
-        raise ValueError("势力回执摘要必须对应原请求")
+        raise ValueError("Tóm tắt biên nhận thế lực phải tương ứng với yêu cầu gốc")
     payload = {key: value for key, value in document.items() if key != "_id"}
     payload.update(receipt_id=str(document["_id"]), novel_id=str(document["novel_id"]))
     FactionFactReceiptV1.model_validate(payload)

@@ -37,14 +37,14 @@ def evaluate_character_facts(
         if (record["novel_id"] != str(character["novel_id"])
                 or record["entity_id"] != str(character["_id"])
                 or record["character_id"] != character["character_id"] or identity in identities):
-            raise DomainApiError("CHARACTER_FACT_RECORD_INVALID", "人物事实的身份或记录编号不一致，请检查记录", status_code=409)
+            raise DomainApiError("CHARACTER_FACT_RECORD_INVALID", "Danh tính hoặc mã bản ghi của sự thật nhân vật không nhất quán, hãy kiểm tra bản ghi", status_code=409)
         normalized.append(record)
         identities.add(identity)
 
     try:
         fields = evaluate_fact_fields(CHARACTER_FACT_FIELDS, normalized, position, directories, source_validity)
     except FactPositionConflictError as exc:
-        raise DomainApiError("CHARACTER_FACT_POSITION_CONFLICT", "同一位置有重复的人物事实，请明确替代原记录", status_code=409) from exc
+        raise DomainApiError("CHARACTER_FACT_POSITION_CONFLICT", "Có sự thật nhân vật trùng lặp ở cùng vị trí, hãy thay thế rõ ràng bản ghi gốc", status_code=409) from exc
     result = {
         "entity_id": str(character["_id"]), "character_id": character["character_id"],
         "name": character["name"], "version": character["version"], **fields,

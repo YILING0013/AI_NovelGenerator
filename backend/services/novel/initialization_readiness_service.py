@@ -69,9 +69,9 @@ class InitializationReadinessResponseV1(StrictResponseModel):
             已确认只含固定步骤和白名单 href 的响应。
         """
         if tuple(step.key for step in self.steps) != tuple(STEP_HREFS):
-            raise ValueError("初始化步骤必须按固定七步顺序返回")
+            raise ValueError("Các bước khởi tạo phải được trả về theo thứ tự bảy bước cố định")
         if any(step.href != STEP_HREFS[step.key] for step in self.steps):
-            raise ValueError("初始化步骤 href 必须使用服务端固定映射")
+            raise ValueError("href của bước khởi tạo phải dùng ánh xạ cố định phía máy chủ")
         return self
 
 
@@ -120,7 +120,7 @@ class InitializationReadinessService:
                 if projection is None:
                     raise DomainApiError(
                         "NOVEL_NOT_FOUND",
-                        "小说不存在或已进入回收站",
+                        "Tiểu thuyết không tồn tại hoặc đã vào thùng rác",
                         status_code=404,
                     )
                 return projection
@@ -131,7 +131,7 @@ class InitializationReadinessService:
                 if first is None and second is None:
                     raise DomainApiError(
                         "NOVEL_NOT_FOUND",
-                        "小说不存在或已进入回收站",
+                        "Tiểu thuyết không tồn tại hoặc đã vào thùng rác",
                         status_code=404,
                     )
                 if first is None or second is None:
@@ -140,7 +140,7 @@ class InitializationReadinessService:
                     return second
             raise DomainApiError(
                 "READINESS_SNAPSHOT_UNSTABLE",
-                "初始化事实正在变化，请稍后刷新",
+                "Dữ kiện khởi tạo đang thay đổi, vui lòng làm mới sau",
                 status_code=503,
             )
         except DomainApiError:
@@ -148,13 +148,13 @@ class InitializationReadinessService:
         except (ExecutionTimeout, NetworkTimeout, TimeoutError) as exc:
             raise DomainApiError(
                 "READINESS_TIMEOUT",
-                "初始化状态读取超时，请重试",
+                "Hết thời gian đọc trạng thái khởi tạo, hãy thử lại",
                 status_code=504,
             ) from exc
         except PyMongoError as exc:
             raise DomainApiError(
                 "READINESS_DEPENDENCY_UNAVAILABLE",
-                "初始化状态暂时不可用，请重试",
+                "Trạng thái khởi tạo tạm thời không khả dụng, hãy thử lại",
                 status_code=503,
             ) from exc
 

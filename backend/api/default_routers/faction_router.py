@@ -103,7 +103,7 @@ class FactionUpdateRequestV1(BaseModel):
             首尾空白已清理的非空名称。
         """
         if value is None:
-            raise ValueError("势力名称不能为空")
+            raise ValueError("Tên thế lực không được để trống")
         return normalize_faction_name(value)[0]
 
     @field_validator("extra")
@@ -126,7 +126,7 @@ class FactionUpdateRequestV1(BaseModel):
             至少显式提交一个内容字段的请求。
         """
         if self.model_fields_set == {"expected_version"}:
-            raise ValueError("势力更新至少需要一个可修改字段")
+            raise ValueError("Cập nhật thế lực cần ít nhất một trường có thể sửa")
         return self
 
 
@@ -242,14 +242,14 @@ class FactionResponseV1(BaseModel):
             层级、归属卷和删除审计相互一致的公开主档。
         """
         if self.level_type == "core" and self.volume_id is not None:
-            raise ValueError("core 势力不能设置 volume_id")
+            raise ValueError("Thế lực core không được đặt volume_id")
         if self.level_type in {"volume", "local"} and self.volume_id is None:
-            raise ValueError("volume/local 势力必须设置 volume_id")
+            raise ValueError("Thế lực volume/local phải đặt volume_id")
         has_source = bool(self.deletion_sources)
         if self.is_deleted != has_source:
-            raise ValueError("is_deleted 必须与 deletion_sources 一致")
+            raise ValueError("is_deleted phải nhất quán với deletion_sources")
         if has_source != (self.deleted_at is not None):
-            raise ValueError("deleted_at 必须与 deletion_sources 一致")
+            raise ValueError("deleted_at phải nhất quán với deletion_sources")
         return self
 
 
@@ -302,9 +302,9 @@ class FactionBulkCoreResponseV1(BaseModel):
             or not isinstance(relation_id, str)
             for relation_ref, relation_id in value.items()
         ):
-            raise ValueError("relation_ref_map 必须是字符串到字符串的映射")
+            raise ValueError("relation_ref_map phải là ánh xạ từ chuỗi tới chuỗi")
         if len(value.values()) != len(set(value.values())):
-            raise ValueError("relation_ref_map 中的正式关系 ID 不能重复")
+            raise ValueError("ID quan hệ chính thức trong relation_ref_map không được trùng")
         return value
 
 
@@ -386,7 +386,7 @@ def _translate_domain_error(exc: Exception) -> HTTPException:
             status_code=503,
             detail={
                 "code": "DATABASE_UNAVAILABLE",
-                "message": "势力数据库暂时不可用，请稍后重试",
+                "message": "Cơ sở dữ liệu thế lực tạm thời không khả dụng, hãy thử lại sau",
             },
         )
     if isinstance(exc, ValidationError):
@@ -402,7 +402,7 @@ def _translate_domain_error(exc: Exception) -> HTTPException:
             status_code=422,
             detail={
                 "code": "REQUEST_VALIDATION_FAILED",
-                "message": "请求字段校验失败",
+                "message": "Hợp lệ hoá trường yêu cầu thất bại",
                 "field_errors": field_errors,
             },
         )

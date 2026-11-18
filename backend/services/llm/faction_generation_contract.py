@@ -90,7 +90,7 @@ def _describe_integrity_score(score: int) -> str:
         stance = "整体偏正面，但需要安排相对负面的代价、盲区或内部问题。"
     else:
         stance = "正负面相对均衡，需要同时具备建设性目标和明显问题。"
-    return f"正直度为 {score}/10。{stance} 相对负面特征数量参考 {negative_feature_count} 项。"
+    return f"Độ chính trực là {score}/10。{stance} tham khảo số đặc điểm tiêu cực tương đối {negative_feature_count} mục."
 
 
 def _describe_relation_score(score: int) -> str:
@@ -107,9 +107,9 @@ def _describe_relation_score(score: int) -> str:
     if score == 10:
         return "关系量化为 10/10：应设计为高度互信、稳定伙伴或同盟。"
     if score < 5:
-        return f"关系量化为 {score}/10：关系偏差，越接近 0 越应体现敌意、竞争、背叛风险或旧怨。"
+        return f"Định lượng quan hệ là {score}/10: độ lệch quan hệ, càng gần 0 thì càng nên thể hiện thù địch, cạnh tranh, rủi ro phản bội hoặc oán hận cũ."
     if score > 5:
-        return f"关系量化为 {score}/10：关系偏好，越接近 10 越应体现合作、利益绑定或共同目标。"
+        return f"Định lượng quan hệ là {score}/10: mức ưa trong quan hệ, càng gần 10 thì càng nên thể hiện hợp tác, ràng buộc lợi ích hoặc mục tiêu chung."
     return "关系量化为 5/10：关系中性或摇摆，合作与冲突并存。"
 
 

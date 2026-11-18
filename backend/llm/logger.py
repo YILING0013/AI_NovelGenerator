@@ -106,10 +106,10 @@ class LLMCall:
             if error is not None and not cancelled:
                 # SDK 可能在返回对象前就解析失败；HTTP 钩子已保存该响应。
                 if self.last_response is not None and not self.last_response_printed:
-                    logger.error("[LLM 失败原始响应] payload=\n%s", self.last_response)
+                    logger.error("[LLM phản hồi gốc khi thất bại] payload=\n%s", self.last_response)
                 if self.schema is not None and not self.parse_input_logged:
-                    logger.error("[LLM 目标 Schema] payload=\n%s", format_payload(self.schema.model_json_schema()))
-                log_exception(logger, f"[LLM 异常] provider={self.provider} model={self.model}", error)
+                    logger.error("[LLM Schema đích] payload=\n%s", format_payload(self.schema.model_json_schema()))
+                log_exception(logger, f"[Lỗi LLM] provider={self.provider} model={self.model}", error)
             # 流式正文只在结束时合并输出，避免每个 token 都打印整份 SDK 事件。
             if self.operation == "stream" and (is_backend_debug_enabled() or error is not None):
                 level = logging.ERROR if status == "failed" else logging.WARNING if cancelled else logging.DEBUG
@@ -229,5 +229,5 @@ def log_parse_error(error: Exception, *, content: Any, schema: type[BaseModel], 
     call = _current_call.get(None)
     if call is not None:
         call.parse_input_logged = True
-    logger.error("[LLM 解析输入] %s content=\n%s\nschema=\n%s", message, format_payload(content), format_payload(schema.model_json_schema()))
+    logger.error("[Đầu vào phân tích của LLM] %s content=\n%s\nschema=\n%s", message, format_payload(content), format_payload(schema.model_json_schema()))
     log_exception(logger, message, error)

@@ -83,7 +83,7 @@ class GeminiInteractionsClient(GeminiClient):
     def _check_interaction(self, response: Any, model: str, *, tools: bool = False) -> None:
         """只接受完成的响应，工具对话还允许等待工具结果。"""
         if response.status not in ({"completed", "requires_action"} if tools else {"completed"}):
-            raise LLMResponseError(f"Gemini 请求未完成：{response.status}，请检查输出上限或输入",
+            raise LLMResponseError(f"Yêu cầu Gemini chưa hoàn chỉnh:{response.status}, hãy kiểm tra giới hạn đầu ra hoặc đầu vào",
                                    provider=self.provider_name, model=model)
 
     async def _create_interaction(self, params: dict[str, Any], *, stream: bool) -> Any:
@@ -122,7 +122,7 @@ class GeminiInteractionsClient(GeminiClient):
                     elif delta.type == "thought_summary":
                         step.setdefault("summary", []).append(delta.content.model_dump(mode="json", exclude_none=True))
                     else:
-                        raise LLMResponseError(f"工具探测收到未处理的流式内容：{delta.type}", provider=self.provider_name)
+                        raise LLMResponseError(f"Thăm dò công cụ nhận được nội dung luồng chưa được xử lý:{delta.type}", provider=self.provider_name)
                 elif event.event_type == "step.stop":
                     open_steps.remove(event.index)
                 elif event.event_type == "interaction.completed":
@@ -130,9 +130,9 @@ class GeminiInteractionsClient(GeminiClient):
                 elif event.event_type == "error":
                     raise LLMResponseError(str(event.error), provider=self.provider_name)
                 elif event.event_type == "interaction.status_update" and event.status in {"failed", "incomplete", "cancelled"}:
-                    raise LLMResponseError(f"Gemini 请求未完成：{event.status}", provider=self.provider_name)
+                    raise LLMResponseError(f"Yêu cầu Gemini chưa hoàn chỉnh:{event.status}", provider=self.provider_name)
         if response is None or open_steps:
-            raise LLMConnectionError("Gemini 响应流提前断开，请重试", provider=self.provider_name)
+            raise LLMConnectionError("Luồng phản hồi Gemini bị ngắt sớm, hãy thử lại", provider=self.provider_name)
         for index, raw in arguments.items():
             reject_duplicate_json_keys(raw or "{}")
             steps[index]["arguments"] = json.loads(raw or "{}")
@@ -159,7 +159,7 @@ class GeminiInteractionsClient(GeminiClient):
                     try:
                         content = schema.model_validate_json(content).model_dump_json()
                     except ValidationError as exc:
-                        raise LLMSchemaError("Gemini 返回的 JSON 不符合目标结构", provider=self.provider_name, model=model) from exc
+                        raise LLMSchemaError("JSON Gemini trả về không khớp cấu trúc mục tiêu", provider=self.provider_name, model=model) from exc
                 result = self._finalize_response(LLMResponse(
                     content=content, raw_response=response.model_dump(mode="json"), usage=self._extract_usage(response.usage),
                     model=model, provider=self.provider_name, duration_ms=int((time.perf_counter() - start) * 1000),
@@ -228,9 +228,9 @@ class GeminiInteractionsClient(GeminiClient):
                         elif event.event_type == "error":
                             raise LLMResponseError(str(event.error), provider=self.provider_name, model=model)
                         elif event.event_type == "interaction.status_update" and event.status in {"failed", "incomplete", "cancelled"}:
-                            raise LLMResponseError(f"Gemini 请求未完成：{event.status}", provider=self.provider_name, model=model)
+                            raise LLMResponseError(f"Yêu cầu Gemini chưa hoàn chỉnh:{event.status}", provider=self.provider_name, model=model)
                 if not finished:
-                    raise LLMConnectionError("Gemini 响应流提前断开，请重试", provider=self.provider_name, model=model)
+                    raise LLMConnectionError("Luồng phản hồi Gemini bị ngắt sớm, hãy thử lại", provider=self.provider_name, model=model)
                 if request.json_output_schema is not None:
                     reject_duplicate_json_keys("".join(call.chunks))
                 tail = stream_filter.finish()
@@ -292,7 +292,7 @@ class GeminiInteractionsClient(GeminiClient):
             tools = [LLMToolDefinition(name=probe.tool_name, description=probe.tool_description, parameters=probe.parameters_schema)]
             first = await self.tool_turn(request, tools)
             if not first.calls or any(item.name != probe.tool_name for item in first.calls):
-                raise LLMResponseError("Gemini 未返回指定工具调用", provider=self.provider_name, model=model)
+                raise LLMResponseError("Gemini không trả về lời gọi công cụ được chỉ định", provider=self.provider_name, model=model)
             for item in first.calls:
                 self._validate_probe_arguments(item.arguments, probe.expected_arguments)
             results = [LLMToolResult(id=item.id, name=item.name,

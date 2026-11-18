@@ -31,7 +31,7 @@ class FactionBatchCandidateV1(StrictRequestModel):
     def require_actual_fields(self) -> "FactionBatchCandidateV1":
         """缺项保持未知，不替作者填入默认事实。"""
         if not self.facts.model_fields_set:
-            raise ValueError("请至少填写一项此处的势力资料")
+            raise ValueError("Hãy nhập ít nhất một mục tư liệu thế lực tại đây")
         return self
 
 
@@ -50,18 +50,18 @@ class FactionFactBatchCreateV1(StrictRequestModel):
         refs = [row.candidate_ref for row in self.candidates]
         relations = [row.relation_ref for row in self.relations]
         if len(refs) != len(set(refs)) or len(relations) != len(set(relations)):
-            raise ValueError("势力或关系候选引用不能重复")
+            raise ValueError("Tham chiếu ứng viên của thế lực hoặc quan hệ không được trùng lặp")
         for row in self.relations:
             endpoints = [row.source, row.target]
             if all(endpoint.kind == "existing" for endpoint in endpoints):
-                raise ValueError("本批关系至少需要一个新势力")
+                raise ValueError("Đợt quan hệ này cần ít nhất một thế lực mới")
             if any(endpoint.faction_ref not in refs for endpoint in endpoints if endpoint.kind == "candidate"):
-                raise ValueError("关系引用了未采用的新势力")
+                raise ValueError("Quan hệ tham chiếu thế lực mới chưa được chấp nhận")
         if self.generation is not None and (
             len(self.candidates) > (self.generation.generation_input.faction_count or 6)
             or any(row.profile.level_type != "core" for row in self.candidates)
         ):
-            raise ValueError("核心势力生成不能增加原请求外的候选或改成卷内势力")
+            raise ValueError("Việc tạo thế lực cốt lõi không được thêm ứng viên ngoài yêu cầu gốc hoặc đổi thành thế lực trong quyển")
         return self
 
 

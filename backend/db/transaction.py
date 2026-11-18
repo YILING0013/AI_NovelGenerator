@@ -159,7 +159,7 @@ async def run_mongo_write_unit(
     mode = _get_transaction_mode()
     if mode == "disabled":
         if require_transaction:
-            raise TransactionNotSupportedError("当前操作必须使用事务，但数据库事务已禁用")
+            raise TransactionNotSupportedError("Thao tác hiện tại bắt buộc dùng transaction nhưng transaction cơ sở dữ liệu đã bị tắt")
         return await callback(None)
 
     supports_transactions = await supports_mongo_transactions()
@@ -192,7 +192,7 @@ async def run_mongo_write_unit(
             logger.warning("MongoDB connection failed before commit; retrying operation '%s' once.", operation_name)
         except OperationFailure as exc:
             if require_transaction and _is_transaction_unsupported_error(exc):
-                raise TransactionNotSupportedError("当前操作必须使用事务，但数据库不支持事务") from exc
+                raise TransactionNotSupportedError("Thao tác hiện tại bắt buộc dùng transaction nhưng cơ sở dữ liệu không hỗ trợ transaction") from exc
             # 只有业务回调开始前确认部署不支持事务时才允许降级，避免提交失败后重复写入。
             if mode == "auto" and not callback_started and _is_transaction_unsupported_error(exc):
                 return await _run_without_transaction(callback, operation_name)

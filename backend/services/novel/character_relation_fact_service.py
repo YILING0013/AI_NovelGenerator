@@ -38,14 +38,14 @@ async def _load_character_relation_fact_snapshot(novel_id, relation_ids, positio
     parents = await load_writing_parents(novel_id, "novel", novel_id, session=session)
     novel = parents[0][1]
     if "hard_delete_claim" in novel:
-        raise DomainApiError("CHARACTER_RELATION_FACT_PARENT_BUSY", "小说正在永久删除，请稍后读取", status_code=409)
+        raise DomainApiError("CHARACTER_RELATION_FACT_PARENT_BUSY", "Tiểu thuyết đang bị xóa vĩnh viễn, hãy đọc lại sau", status_code=409)
     directories = {}
     for kind in PARENTS:
         documents = await BaseRepository(COLLECTIONS[kind]).collection.find(
             {"novel_id": novel_key, "is_deleted": False}, {"content": 0}, session=session,
         ).limit(10001).to_list(length=10001)
         if len(documents) > 10000:
-            raise DomainApiError("WRITING_CONTEXT_TOO_LARGE", "目录超过单次读取范围，请先整理目录", status_code=409)
+            raise DomainApiError("WRITING_CONTEXT_TOO_LARGE", "Danh mục vượt quá phạm vi đọc một lần, hãy sắp xếp danh mục trước", status_code=409)
         directories[kind] = {row["_id"]: row for row in documents}
         # 回收父级下的残留子目录不成为活动位置，原历史仍全部核验。
         directories[kind] = {key: row for key, row in directories[kind].items()
@@ -70,11 +70,11 @@ async def _load_character_relation_fact_snapshot(novel_id, relation_ids, positio
         try:
             record = parse_character_relation_fact_record(document)
         except (ValueError, TypeError) as exc:
-            raise DomainApiError("CHARACTER_RELATION_FACT_RECORD_INVALID", "关系确认记录格式不正确，请检查记录", status_code=409) from exc
+            raise DomainApiError("CHARACTER_RELATION_FACT_RECORD_INVALID", "Định dạng bản ghi xác nhận quan hệ không đúng, hãy kiểm tra bản ghi", status_code=409) from exc
         relation = by_id.get(record["relation_id"])
         if (relation is None or ObjectId(record["novel_id"]) != novel_key
                 or ObjectId(record["entity_id"]) != relation["_id"]):
-            raise DomainApiError("CHARACTER_RELATION_FACT_RECORD_INVALID", "关系确认记录的身份或所属小说不一致，请检查记录", status_code=409)
+            raise DomainApiError("CHARACTER_RELATION_FACT_RECORD_INVALID", "Danh tính hoặc tiểu thuyết chủ quản của bản ghi xác nhận quan hệ không nhất quán, hãy kiểm tra bản ghi", status_code=409)
         records.append(record)
 
     sources = {}
@@ -189,7 +189,7 @@ async def read_character_relation_facts(
 
     async def read(current_session):
         if current_session is None or not current_session.in_transaction:
-            raise RuntimeError("关系事实读取必须使用同一读取事务")
+            raise RuntimeError("Việc đọc dữ kiện quan hệ phải dùng cùng transaction đọc")
         result, _ = await _load_character_relation_fact_snapshot(novel_id, selected, position_scope, session=current_session)
         return result
 
@@ -209,14 +209,14 @@ async def revalidate_character_relation_fact_reads(
         无；任何依据变化立即拒绝本次操作。
     """
     if protect and (session is None or not session.in_transaction):
-        raise RuntimeError("关系事实保护必须在调用方事务内执行")
+        raise RuntimeError("Việc bảo vệ dữ kiện quan hệ phải được thực hiện trong transaction của bên gọi")
     if session is None:
         return await run_mongo_write_unit(
             lambda current_session: revalidate_character_relation_fact_reads(reads, session=current_session),
             "revalidate_character_relation_fact_reads", require_transaction=True,
         )
     if not session.in_transaction:
-        raise RuntimeError("关系事实复验必须使用同一读取事务")
+        raise RuntimeError("Tái kiểm tra dữ kiện quan hệ phải dùng cùng transaction đọc")
     for original in reads:
         read = CharacterRelationFactReadV1.model_validate(original).model_dump()
         position = read["position"]
@@ -226,7 +226,7 @@ async def revalidate_character_relation_fact_reads(
             read["novel_id"], read["relation_ids"], scope, session=session,
         )
         if current["reads"][0] != read:
-            raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "关系事实、来源或目录已变化，请保留原稿并重新预览", status_code=409)
+            raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "Dữ kiện quan hệ, nguồn hoặc danh mục đã thay đổi, hãy giữ nguyên bản thảo và xem trước lại", status_code=409)
         if protect:
             await protect_chapter_record_sources(guards, session=session)
 
@@ -246,7 +246,7 @@ async def ensure_character_relation_state_unmanaged(
         无；作废、替代或来源失效都不会撤销曾经的认领。
     """
     if protect and (session is None or not session.in_transaction):
-        raise RuntimeError("关系状态保护必须在调用方事务内执行")
+        raise RuntimeError("Việc bảo vệ trạng thái quan hệ phải được thực hiện trong transaction của bên gọi")
     novel_key = ObjectId(novel_id)
     chain = await load_writing_parents(novel_id, "novel", novel_id, session=session)
     relations = await BaseRepository("character_relations").collection.find({
@@ -263,13 +263,13 @@ async def ensure_character_relation_state_unmanaged(
         try:
             record = parse_character_relation_fact_record(document)
         except (ValueError, TypeError) as exc:
-            raise DomainApiError("CHARACTER_RELATION_FACT_RECORD_INVALID", "关系确认记录格式不正确，请检查记录", status_code=409) from exc
+            raise DomainApiError("CHARACTER_RELATION_FACT_RECORD_INVALID", "Định dạng bản ghi xác nhận quan hệ không đúng, hãy kiểm tra bản ghi", status_code=409) from exc
         relation = by_id.get(record["relation_id"])
         if (relation is None or ObjectId(record["novel_id"]) != novel_key
                 or ObjectId(record["entity_id"]) != relation["_id"]):
-            raise DomainApiError("CHARACTER_RELATION_FACT_RECORD_INVALID", "关系确认记录的身份或所属小说不一致，请检查记录", status_code=409)
+            raise DomainApiError("CHARACTER_RELATION_FACT_RECORD_INVALID", "Danh tính hoặc tiểu thuyết chủ quản của bản ghi xác nhận quan hệ không nhất quán, hãy kiểm tra bản ghi", status_code=409)
     if documents:
-        raise DomainApiError("CHARACTER_RELATION_FACT_MANAGED_FIELDS", "关系状态已有明确剧情位置，请从关系事实中更正", status_code=409)
+        raise DomainApiError("CHARACTER_RELATION_FACT_MANAGED_FIELDS", "Trạng thái quan hệ đã có vị trí cốt truyện rõ ràng, hãy đính chính trong dữ kiện quan hệ", status_code=409)
     if protect:
         await protect_chapter_record_sources({("novels", novel_id): chain[0][1]}, session=session)
 
@@ -288,11 +288,11 @@ async def get_character_relation_fact_history(novel_id: str, history_id: str, *,
         "_id": ObjectId(history_id), "novel_id": ObjectId(novel_id),
     }, session=session)
     if document is None or ("schema_id" not in document and "schema_version" not in document):
-        raise NotFoundError("关系事实记录不存在")
+        raise NotFoundError("Bản ghi dữ kiện quan hệ không tồn tại")
     try:
         return parse_character_relation_fact_record(document)
     except (ValueError, TypeError) as exc:
-        raise DomainApiError("CHARACTER_RELATION_FACT_RECORD_INVALID", "关系确认记录格式不正确，请检查记录", status_code=409) from exc
+        raise DomainApiError("CHARACTER_RELATION_FACT_RECORD_INVALID", "Định dạng bản ghi xác nhận quan hệ không đúng, hãy kiểm tra bản ghi", status_code=409) from exc
 
 
 async def list_character_relation_fact_history(
@@ -310,18 +310,18 @@ async def list_character_relation_fact_history(
         版本倒序的严格记录；作废由记录中的原回执键追溯。
     """
     if type(limit) is not int or not 1 <= limit <= 100:
-        raise ValueError("历史数量须为 1 至 100 的整数")
+        raise ValueError("Số lượng lịch sử phải là số nguyên từ 1 đến 100")
     query = {"novel_id": ObjectId(novel_id), "entity_id": ObjectId(entity_id),
              "$or": [{"schema_id": {"$exists": True}}, {"schema_version": {"$exists": True}}]}
     if before_version is not None:
         if type(before_version) is not int or before_version < 1:
-            raise ValueError("历史分页版本须为正整数")
+            raise ValueError("Phiên bản phân trang lịch sử phải là số nguyên dương")
         query["after_version"] = {"$lt": before_version}
     rows = await BaseRepository("entity_state_history").collection.find(query, session=session).sort("after_version", -1).limit(limit).to_list(length=limit)
     try:
         return [parse_character_relation_fact_record(row) for row in rows]
     except (ValueError, TypeError) as exc:
-        raise DomainApiError("CHARACTER_RELATION_FACT_RECORD_INVALID", "关系确认记录格式不正确，请检查记录", status_code=409) from exc
+        raise DomainApiError("CHARACTER_RELATION_FACT_RECORD_INVALID", "Định dạng bản ghi xác nhận quan hệ không đúng, hãy kiểm tra bản ghi", status_code=409) from exc
 
 
 async def query_character_relation_facts(novel_id: str, data: dict, *, session=None) -> dict:
@@ -341,7 +341,7 @@ async def query_character_relation_facts(novel_id: str, data: dict, *, session=N
 
     async def read(current_session):
         if current_session is None or not current_session.in_transaction:
-            raise RuntimeError("关系事实查询必须使用同一读取事务")
+            raise RuntimeError("Truy vấn dữ kiện quan hệ phải dùng cùng transaction đọc")
         position = (await resolve_latest_character_fact_position(novel_id, session=current_session)
                     if query.position is None else query.position.model_dump())
         scope = {"target_type": position["target_type"], "target_id": str(ObjectId(position["target_id"])),
@@ -371,7 +371,7 @@ async def _build_character_relation_fact_preview(novel_id, fields, *, new_entity
             "is_active": True, "is_deleted": False,
         }, {"_id": 1}, session=session).to_list(length=None)
         if found_id is not None or matches:
-            raise DomainApiError("CHARACTER_RELATION_FACT_CREATE_CONFLICT", "关系身份或同类型关系已存在，请保留原稿并重新预览", status_code=409)
+            raise DomainApiError("CHARACTER_RELATION_FACT_CREATE_CONFLICT", "Danh tính quan hệ hoặc quan hệ cùng loại đã tồn tại, hãy giữ nguyên bản thảo và xem trước lại", status_code=409)
         target = {"kind": "new", "novel_id": novel_id, "entity_id": new_entity_id,
                   "candidate": candidate, "entity_exists": False, "semantic_matches": []}
     else:
@@ -381,11 +381,11 @@ async def _build_character_relation_fact_preview(novel_id, fields, *, new_entity
             "relation_id": supplied["relation_id"], "is_deleted": False,
         }, session=session)
         if existing is None:
-            raise NotFoundError("关系不存在、已回收或不属于当前小说")
+            raise NotFoundError("Quan hệ không tồn tại, đã bị thu hồi hoặc không thuộc tiểu thuyết hiện tại")
         if not existing["is_active"]:
-            raise DomainApiError("CHARACTER_RELATION_FACT_TARGET_UNAVAILABLE", "关系已停用，请先恢复后再确认", status_code=409)
+            raise DomainApiError("CHARACTER_RELATION_FACT_TARGET_UNAVAILABLE", "Quan hệ đã bị vô hiệu hóa, hãy khôi phục rồi mới xác nhận", status_code=409)
         if existing["version"] != supplied["expected_version"]:
-            raise VersionConflictError("关系已变化，请保留原稿并重新预览")
+            raise VersionConflictError("Quan hệ đã thay đổi, hãy giữ nguyên bản thảo và xem trước lại")
         source_id, target_id = existing["source_character_id"], existing["target_character_id"]
         target = {"kind": "existing", "novel_id": novel_id, "entity_id": str(existing["_id"]),
                   "relation_id": existing["relation_id"], "version": existing["version"]}
@@ -395,7 +395,7 @@ async def _build_character_relation_fact_preview(novel_id, fields, *, new_entity
             "novel_id": novel_key, "character_id": identity,
         }, session=session)
         if endpoint is None or endpoint["is_deleted"] or endpoint["status"] != "active":
-            raise DomainApiError("CHARACTER_RELATION_FACT_ENDPOINT_UNAVAILABLE", "关系人物不存在、已回收或已停用，请先处理人物", status_code=409)
+            raise DomainApiError("CHARACTER_RELATION_FACT_ENDPOINT_UNAVAILABLE", "Nhân vật trong quan hệ không tồn tại, đã bị thu hồi hoặc đã bị vô hiệu hóa, hãy xử lý nhân vật trước", status_code=409)
         endpoints[("characters", str(endpoint["_id"]))] = endpoint
         target[f"{side}_character"] = {"entity_id": str(endpoint["_id"]), **{
             name: endpoint[name] for name in ("character_id", "name", "status", "is_deleted", "version")}}
@@ -405,7 +405,7 @@ async def _build_character_relation_fact_preview(novel_id, fields, *, new_entity
     }
     targets = [await get_character_relation_fact_history(novel_id, str(identity), session=session) for identity in sorted(target_ids)]
     if any(ObjectId(row["entity_id"]) != ObjectId(target["entity_id"]) for row in targets):
-        raise DomainApiError("CHARACTER_RELATION_FACT_TARGET_INVALID", "不能处置其他关系的确认记录", status_code=409)
+        raise DomainApiError("CHARACTER_RELATION_FACT_TARGET_INVALID", "Không được xử lý bản ghi xác nhận của quan hệ khác", status_code=409)
     if operation == "void":
         position, source, kind = (deepcopy(targets[0][name]) for name in ("position", "source", "kind"))
         selected = sorted(fields["targets"])
@@ -452,7 +452,7 @@ async def _build_character_relation_fact_preview(novel_id, fields, *, new_entity
     if operation != "void":
         for name, identities in fields.get("resolves", {}).items():
             if not {ObjectId(identity) for identity in identities} <= {ObjectId(identity) for identity in blockers.get(name, [])}:
-                raise DomainApiError("CHARACTER_RELATION_FACT_RESOLUTION_INVALID", "只能明确处置该字段当前列出的阻断记录", status_code=409)
+                raise DomainApiError("CHARACTER_RELATION_FACT_RESOLUTION_INVALID", "Chỉ được xử lý tường minh các bản ghi đang chặn mà field này liệt kê", status_code=409)
         # 同一边界的已有结果必须由作者逐字段选择替代，不能后写者偷偷覆盖。
         rows = await BaseRepository("entity_state_history").collection.find({
             "novel_id": novel_key, "entity_id": ObjectId(target["entity_id"]),
@@ -467,11 +467,11 @@ async def _build_character_relation_fact_preview(novel_id, fields, *, new_entity
                 replaces = fields.get("replaces", {}).get(name)
                 if (row["validity"][name]["state"] == "active"
                         and (replaces is None or ObjectId(replaces) != ObjectId(row["history_id"]))):
-                    raise DomainApiError("CHARACTER_RELATION_FACT_POSITION_CONFLICT", "这个位置已有该字段的确认，请明确替代原记录", status_code=409)
+                    raise DomainApiError("CHARACTER_RELATION_FACT_POSITION_CONFLICT", "Vị trí này đã có bản ghi xác nhận cho field này, hãy thay thế bản ghi gốc một cách tường minh", status_code=409)
         if source["kind"] == "chapter":
             checked = await load_chapter_record_source_in_session(novel_id, source["evidence"], session=session)
             if checked["needs_review"]:
-                raise DomainApiError("CHARACTER_RELATION_FACT_SOURCE_OUTDATED", "来源正文已经变化，请重新选择当前正文证据", status_code=409)
+                raise DomainApiError("CHARACTER_RELATION_FACT_SOURCE_OUTDATED", "Văn bản chính của nguồn đã thay đổi, hãy chọn lại chứng cứ từ văn bản chính hiện tại", status_code=409)
             source["evidence"] = checked["evidence"]
             guards.update(checked["guards"])
 
@@ -484,9 +484,9 @@ async def _build_character_relation_fact_preview(novel_id, fields, *, new_entity
                 query["novel_id"] = novel_key
             document = await BaseRepository(COLLECTIONS[resource]).collection.find_one(query, session=session)
             if document is None:
-                raise DomainApiError("CHARACTER_RELATION_FACT_SOURCE_MISSING", "原确认的位置或父级已永久缺失，请先检查并恢复来源", status_code=409)
+                raise DomainApiError("CHARACTER_RELATION_FACT_SOURCE_MISSING", "Vị trí hoặc cha của bản ghi xác nhận gốc đã khuyết vĩnh viễn, hãy kiểm tra và khôi phục nguồn trước", status_code=409)
             if resource != "novel" and document[f"{PARENTS[resource]}_id"] != ObjectId(reference["parent_id"]):
-                raise DomainApiError("CHARACTER_RELATION_FACT_SOURCE_CHANGED", "原确认来源的父级归属已变化，请检查记录", status_code=409)
+                raise DomainApiError("CHARACTER_RELATION_FACT_SOURCE_CHANGED", "Quy thuộc cha của nguồn xác nhận gốc đã thay đổi, hãy kiểm tra bản ghi", status_code=409)
             guards[(COLLECTIONS[resource], reference["id"])] = document
 
     guards.update(endpoints)
@@ -496,7 +496,7 @@ async def _build_character_relation_fact_preview(novel_id, fields, *, new_entity
             row = await get_character_relation_fact_history(novel_id, observation["history_id"], session=session)
             if any(ObjectId(row[f"{side}_character_entity_id"]) != ObjectId(target[f"{side}_character"]["entity_id"])
                    for side in ("source", "target")):
-                raise DomainApiError("CHARACTER_RELATION_FACT_ENDPOINT_CHANGED", "原关系人物的物理身份已改变，请检查历史", status_code=409)
+                raise DomainApiError("CHARACTER_RELATION_FACT_ENDPOINT_CHANGED", "Danh tính vật lý của nhân vật trong quan hệ gốc đã thay đổi, hãy kiểm tra lịch sử", status_code=409)
 
     basis = {"schema_version": 1, "operation": operation, "kind": kind, "target": target,
              "position": position, "source": source, "fields": selected, "before": before,
@@ -525,7 +525,7 @@ async def preview_character_relation_facts(novel_id: str, data: dict, *, session
 
     async def read(current_session):
         if current_session is None or not current_session.in_transaction:
-            raise RuntimeError("关系事实预览必须使用同一读取事务")
+            raise RuntimeError("Việc xem trước dữ kiện quan hệ phải dùng cùng transaction đọc")
         preview, _ = await _build_character_relation_fact_preview(novel_id, fields, new_entity_id=new_entity_id, session=current_session)
         return preview
 
@@ -555,13 +555,13 @@ async def confirm_character_relation_facts(novel_id: str, data: dict, *, idempot
 
     async def save(current_session):
         if current_session is None or not current_session.in_transaction:
-            raise RuntimeError("关系事实确认必须使用调用方事务")
+            raise RuntimeError("Việc xác nhận dữ kiện quan hệ phải dùng transaction của bên gọi")
         replay = await _replay(novel_id, fingerprint, expected_operation=command["operation"],
                                expected_receipt_schema="character_relation.fact.receipt", session=current_session)
         if replay is not None:
             return replay
         if ObjectId(basis["target"]["novel_id"]) != ObjectId(novel_id):
-            raise DomainApiError("CHARACTER_RELATION_FACT_TARGET_INVALID", "关系预览不属于当前小说", status_code=409)
+            raise DomainApiError("CHARACTER_RELATION_FACT_TARGET_INVALID", "Bản xem trước quan hệ không thuộc tiểu thuyết hiện tại", status_code=409)
         target = basis["target"]
         if command["operation"] == "create":
             preview_input = {"operation": "create", "target": {"candidate": target["candidate"]},
@@ -577,7 +577,7 @@ async def confirm_character_relation_facts(novel_id: str, data: dict, *, idempot
             novel_id, preview_input, new_entity_id=target["entity_id"] if target["kind"] == "new" else None, session=current_session,
         )
         if preview["basis"] != basis:
-            raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "原预览的关系、人物或来源已变化，请保留原稿并重新预览", status_code=409)
+            raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "Quan hệ, nhân vật hoặc nguồn của bản xem trước gốc đã thay đổi, hãy giữ nguyên bản thảo và xem trước lại", status_code=409)
         await revalidate_character_relation_fact_reads(basis["reads"], session=current_session)
         await protect_chapter_record_sources(guards, session=current_session)
         now = get_utc_now()
@@ -608,7 +608,7 @@ async def confirm_character_relation_facts(novel_id: str, data: dict, *, idempot
                 "target_character_id": target["target_character"]["character_id"],
             }, {"$inc": {"version": 1}, "$set": {**mirror, "updated_at": now}}, session=current_session)
             if updated.matched_count != 1:
-                raise VersionConflictError("关系在确认期间已变化，请保留原稿并重新预览")
+                raise VersionConflictError("Quan hệ đã thay đổi trong lúc xác nhận, hãy giữ nguyên bản thảo và xem trước lại")
         identities = {"novel_id": novel_id, "entity_id": target["entity_id"], "relation_id": relation_id}
         for side in ("source", "target"):
             endpoint = target[f"{side}_character"]
@@ -639,7 +639,7 @@ async def confirm_character_relation_facts(novel_id: str, data: dict, *, idempot
                 "schema_id": "character_relation.fact", "schema_version": 1, f"validity.{name}": {"state": "active"},
             }, {"$set": {f"validity.{name}": validity}}, session=current_session)
             if changed.matched_count != 1:
-                raise VersionConflictError("待处置状态已被替代或作废，请保留原稿并重新预览")
+                raise VersionConflictError("Trạng thái chờ xử lý đã bị thay thế hoặc hủy bỏ, hãy giữ nguyên bản thảo và xem trước lại")
             changes.append({"history_id": identity, "field": name, "before": {"state": "active"}, "after": validity})
         result = CharacterRelationFactResultV1.model_validate({
             "schema_version": 1, "operation": command["operation"], **identities,

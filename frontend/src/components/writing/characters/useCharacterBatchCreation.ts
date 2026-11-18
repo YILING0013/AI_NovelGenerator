@@ -44,7 +44,7 @@ async function storeCommand<B, P>(scope: string, next?: BatchCommand<B, P> | nul
         value = next;
       };
       tx.oncomplete = () => resolve(value);
-      tx.onerror = tx.onabort = () => reject(tx.error ?? new Error("另一页已处理这批保存，请重新打开查看最新结果"));
+      tx.onerror = tx.onabort = () => reject(tx.error ?? new Error("Một trang khác đã xử lý lô lưu này, hãy mở lại để xem kết quả mới nhất"));
     });
   } finally { db.close(); }
 }
@@ -86,7 +86,7 @@ function usePersistedBatch<B, P>(novelId: string | undefined, kind: string, path
       if (original.result === undefined) {
         sent = true;
         const result = await apiPost<unknown>(typeof path === "string" ? path : path(original.body), original.body, { headers: { "Idempotency-Key": original.key } });
-        if (!validate(result, original.body)) throw new Error("保存回复不完整，请保留这批内容并重试原请求");
+        if (!validate(result, original.body)) throw new Error("Phản hồi lưu không đầy đủ, hãy giữ nội dung lô này và thử lại yêu cầu gốc");
         const saved = { ...original, result, rejected: false };
         if (isCurrent()) { pending.current = saved; setCommand(saved); }
         original = (await storeCommand(scope, saved, original, "saved"))!;

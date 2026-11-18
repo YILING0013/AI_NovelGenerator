@@ -152,7 +152,7 @@ class WorldRuleGenerationService:
         if require_readiness and (not factions or not protagonists):
             raise GenerationDomainError(
                 "WORLD_RULE_READINESS_REQUIRED",
-                "生成核心世界规则前必须已有活动核心势力和活动主角",
+                "Trước khi tạo quy tắc thế giới cốt lõi phải đã có thế lực cốt lõi hoạt động và nhân vật chính hoạt động",
                 status_code=422,
             )
 
@@ -166,7 +166,7 @@ class WorldRuleGenerationService:
         if len(source_refs) > MAX_CANDIDATE_SOURCE_REFS:
             raise GenerationDomainError(
                 "WORLD_RULE_GENERATION_SOURCE_BUDGET_EXCEEDED",
-                "核心世界规则生成正式来源版本超过 2000 项，禁止静默截断",
+                "Phiên bản nguồn chính thức để tạo quy tắc thế giới cốt lõi vượt quá 2000 mục, cấm cắt ngắn âm thầm",
                 status_code=422,
             )
 
@@ -231,7 +231,7 @@ class WorldRuleGenerationService:
         errors: list[str] = []
         if generation_input.core_rule_count is not None and len(result.core_world_rules) != generation_input.core_rule_count:
             errors.append(
-                f"候选数量必须严格等于 {generation_input.core_rule_count}"
+                f"Số ứng viên phải bằng đúng {generation_input.core_rule_count}"
             )
         normalized_names = [
             normalize_world_rule_name(item.name)[1]
@@ -263,7 +263,7 @@ class WorldRuleGenerationService:
                 invalid_ids = []
             if invalid_ids:
                 errors.append(
-                    f"{item.candidate_ref} 引用了输入白名单外实体: {', '.join(invalid_ids)}"
+                    f"{item.candidate_ref} trích dẫn thực thể ngoài danh sách trắng đầu vào: {', '.join(invalid_ids)}"
                 )
         if errors:
             raise GenerationDomainError(

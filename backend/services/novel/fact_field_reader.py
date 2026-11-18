@@ -116,7 +116,7 @@ def _evaluate_field(
                 "missing", record["position"]["intent"], record["position"]["target_id"],
             )
             if active_key in active_boundaries:
-                raise FactPositionConflictError("同一字段位置存在重复的活动记录")
+                raise FactPositionConflictError("Có bản ghi hoạt động trùng lặp ở cùng vị trí trường")
             active_boundaries.add(active_key)
         if validity == "replaced" and _replacement_is_linked(record, name, by_id):
             continue

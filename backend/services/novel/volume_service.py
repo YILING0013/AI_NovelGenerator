@@ -125,18 +125,18 @@ def _normalize_volume_fields(payload: Mapping[str, Any]) -> dict[str, Any]:
     for name in ("title", "subtitle", "summary", "goal", "theme"):
         if name in fields:
             if not isinstance(fields[name], str):
-                raise _volume_error("VOLUME_FIELD_INVALID", f"{name} 必须是字符串")
+                raise _volume_error("VOLUME_FIELD_INVALID", f"{name} phải là chuỗi")
             fields[name] = fields[name].strip()
     if "title" in fields and not fields["title"]:
-        raise _volume_error("VOLUME_TITLE_REQUIRED", "卷标题不能为空")
+        raise _volume_error("VOLUME_TITLE_REQUIRED", "Tiêu đề quyển không được để trống")
     if "plot" in fields and (not isinstance(fields["plot"], str) or len(fields["plot"]) > 40000):
-        raise _volume_error("VOLUME_PLOT_INVALID", "详细剧情必须是 40000 字以内的文字")
+        raise _volume_error("VOLUME_PLOT_INVALID", "Cốt truyện chi tiết phải là văn bản không quá 40000 chữ")
     if "status" in fields and fields["status"] not in VOLUME_STATUSES:
-        raise _volume_error("VOLUME_STATUS_INVALID", "卷状态不合法")
+        raise _volume_error("VOLUME_STATUS_INVALID", "Trạng thái quyển không hợp lệ")
     if "order_index" in fields:
         order = fields["order_index"]
         if isinstance(order, bool) or not isinstance(order, int) or order < 1:
-            raise _volume_error("VOLUME_ORDER_INVALID", "卷序号必须为 1-based 正整数")
+            raise _volume_error("VOLUME_ORDER_INVALID", "Số thứ tự quyển phải là số nguyên dương 1-based")
     return fields
 
 
@@ -221,7 +221,7 @@ async def _compensate_volume_changes(
         if temporary is None:
             raise _volume_error(
                 "VOLUME_COMPENSATION_FAILED",
-                "卷写入失败，且安全序号补偿未完整完成",
+                "Ghi quyển thất bại và bồi thường số thứ tự an toàn chưa hoàn tất đầy đủ",
                 status_code=503,
             )
         temporary_changes.append((before, temporary))
@@ -237,7 +237,7 @@ async def _compensate_volume_changes(
         if not restored:
             raise _volume_error(
                 "VOLUME_COMPENSATION_FAILED",
-                "卷写入失败，且数据库补偿未完整完成",
+                "Ghi quyển thất bại và bồi thường cơ sở dữ liệu chưa hoàn tất đầy đủ",
                 status_code=503,
             )
 
@@ -277,7 +277,7 @@ async def _restore_novel_snapshot(
     if not restored:
         raise _volume_error(
             "VOLUME_COMPENSATION_FAILED",
-            "卷写入失败，且小说统计补偿未完整完成",
+            "Ghi quyển thất bại và bồi thường thống kê tiểu thuyết chưa hoàn tất đầy đủ",
             status_code=503,
         )
 
@@ -357,7 +357,7 @@ async def _remove_created_volumes(document_ids: Sequence[Any]) -> None:
     if remaining:
         raise _volume_error(
             "VOLUME_COMPENSATION_FAILED",
-            "卷写入失败，且新卷补偿未完整完成",
+            "Ghi quyển thất bại và bồi thường quyển mới chưa hoàn tất đầy đủ",
             status_code=503,
         )
 
@@ -480,7 +480,7 @@ class VolumeService:
         if receipt.get("request_hash") != request_hash:
             raise _volume_error(
                 "IDEMPOTENCY_KEY_REUSED",
-                "同一 Idempotency-Key 已用于不同的卷命令",
+                "Cùng Idempotency-Key đã được dùng cho lệnh quyển khác",
                 status_code=409,
             )
         return receipt
@@ -540,14 +540,14 @@ class VolumeService:
             session=session,
         )
         if bool(volume.get("is_deleted")) is not deleted:
-            raise NotFoundError(f"卷 {volume_id} 不存在于当前生命周期视图")
+            raise NotFoundError(f"Quyển {volume_id} không tồn tại trong quan điểm vòng đời hiện tại")
         if novel_id is not None and str(volume["novel_id"]) != novel_id:
-            raise NotFoundError(f"卷 {volume_id} 不属于小说 {novel_id}")
+            raise NotFoundError(f"Quyển {volume_id} không thuộc tiểu thuyết {novel_id}")
         current = int(volume["version"])
         if current != expected:
             raise _volume_error(
                 "VOLUME_VERSION_CONFLICT",
-                f"卷版本冲突：当前版本为 {current}，请求版本为 {expected}",
+                f"卷版本冲突：当前版本为 {current}, phiên bản yêu cầu là {expected}",
                 status_code=409,
                 details={"expected_version": expected, "actual_version": current},
             )
@@ -569,7 +569,7 @@ class VolumeService:
         payload = _plain_dict(data)
         novel_id = str(payload.pop("novel_id", ""))
         if not novel_id:
-            raise _volume_error("NOVEL_ID_REQUIRED", "novel_id 不能为空")
+            raise _volume_error("NOVEL_ID_REQUIRED", "novel_id không được để trống")
         # 未指定位置时追加到活动卷末尾。
         if payload.get("order_index") is None:
             payload.pop("order_index", None)
@@ -617,7 +617,7 @@ class VolumeService:
             elif order_index != next_order_index:
                 raise _volume_error(
                     "VOLUME_ORDER_INVALID",
-                    "人工创建只能连续追加到当前活动卷末尾",
+                    "Tạo thủ công chỉ được bổ sung liên tục vào cuối các quyển đang hoạt động",
                 )
             attempted_id = ObjectId()
             created: dict[str, Any] | None = None
@@ -699,7 +699,7 @@ class VolumeService:
                 return _receipt_result(replay_after_conflict)["volumes"][0]
             raise _volume_error(
                 "VOLUME_ORDER_CONFLICT",
-                "卷序号已被并发请求占用，请刷新后重试",
+                "Số thứ tự quyển đã bị yêu cầu đồng thời chiếm chỗ, hãy làm mới rồi thử lại",
                 status_code=409,
             ) from exc
         except DomainApiError as exc:
@@ -775,11 +775,11 @@ class VolumeService:
         if "order_index" in payload:
             raise _volume_error(
                 "VOLUME_REORDER_REQUIRED",
-                "V2 卷顺序只能通过完整重排接口修改",
+                "Thứ tự quyển V2 chỉ có thể sửa qua API sắp xếp lại đầy đủ",
             )
         fields = _normalize_volume_fields(payload)
         if not fields:
-            raise _volume_error("VOLUME_UPDATE_EMPTY", "卷更新至少需要一个业务字段")
+            raise _volume_error("VOLUME_UPDATE_EMPTY", "Cập nhật quyển cần ít nhất một trường nghiệp vụ")
         if "plot" in fields:
             from backend.services.novel.plot_service import stamp_manual_plot
             from backend.db.transaction import run_mongo_write_unit
@@ -834,7 +834,7 @@ class VolumeService:
         if generation_input.volume_id != volume_id:
             raise _volume_error(
                 "VOLUME_BASIS_INVALID",
-                "启动包 basis 与 PUT 路径中的目标卷不一致",
+                "basis của gói khởi động không nhất quán với quyển đích trong đường dẫn PUT",
             )
         package = {
             "title": confirmed.title,
@@ -875,13 +875,13 @@ class VolumeService:
                 return _receipt_result(replay_in_unit)["volumes"][0]
             execution = basis.flow_snapshot["execution"]
             if "character_fact_reads" not in execution:
-                raise _volume_error("CHARACTER_FACT_CONTRACT_REQUIRED", "原启动包未保存人物事实依据，请保留候选并重新生成", status_code=409)
+                raise _volume_error("CHARACTER_FACT_CONTRACT_REQUIRED", "Gói khởi động gốc chưa lưu căn cứ sự thật nhân vật, hãy giữ ứng viên và sinh lại", status_code=409)
             if (execution.get("relation_reading_contract") != "character_relation_facts_v1"
                     or "character_relation_fact_reads" not in execution):
-                raise _volume_error("CHARACTER_RELATION_FACT_CONTRACT_REQUIRED", "原启动包未保存关系事实依据，请保留候选并重新生成", status_code=409)
+                raise _volume_error("CHARACTER_RELATION_FACT_CONTRACT_REQUIRED", "Gói khởi động gốc chưa lưu căn cứ sự thật quan hệ, hãy giữ ứng viên và sinh lại", status_code=409)
             from backend.services.novel.writing_context import revalidate_position_fact_reads
             if execution.get("faction_reading_contract") != "faction_facts_v1" or "faction_fact_reads" not in execution:
-                raise _volume_error("FACTION_FACT_CONTRACT_REQUIRED", "原启动包未保存势力事实依据，请保留候选并重新生成", status_code=409)
+                raise _volume_error("FACTION_FACT_CONTRACT_REQUIRED", "Gói khởi động gốc chưa lưu căn cứ sự thật thế lực, hãy giữ ứng viên và sinh lại", status_code=409)
             original_reads = [*execution["character_fact_reads"], *execution["character_relation_fact_reads"],
                               *execution.get("item_fact_reads", []), *execution["faction_fact_reads"]]
             await revalidate_position_fact_reads(original_reads, session=session, protect=True)
@@ -891,7 +891,7 @@ class VolumeService:
                 session=session,
             )
             if any(read not in original_reads for read in context["fact_reads"]):
-                raise _volume_error("VOLUME_BASIS_CONFLICT", "启动包缺少当前人物或关系查询的原依据，请保留候选并重新生成", status_code=409)
+                raise _volume_error("VOLUME_BASIS_CONFLICT", "Gói khởi động thiếu căn cứ truy vấn nhân vật hoặc quan hệ hiện tại, hãy giữ ứng viên và sinh lại", status_code=409)
             current_sources = {
                 (source.resource_type, source.id): int(source.version)
                 for source in context["source_refs"]
@@ -915,20 +915,20 @@ class VolumeService:
                 if resource_type not in allowed_source_types:
                     raise _volume_error(
                         "VOLUME_BASIS_SOURCE_INVALID",
-                        f"启动包 basis 不支持来源类型 {resource_type}",
+                        f"basis của gói khởi động không hỗ trợ loại nguồn {resource_type}",
                     )
                 current_version = current_sources.get(identity)
                 if current_version is None:
                     raise _volume_error(
                         "VOLUME_BASIS_SOURCE_NOT_FOUND",
-                        "启动包依据中的正式资源已不存在或不再可用",
+                        "Tài nguyên chính thức trong căn cứ của gói khởi động không còn tồn tại hoặc không còn khả dụng",
                         status_code=404,
                         details={"resource_type": resource_type, "id": resource_id},
                     )
                 if current_version != submitted_version:
                     raise _volume_error(
                         "VOLUME_BASIS_CONFLICT",
-                        "启动包依据中的正式资源版本已变化",
+                        "Phiên bản tài nguyên chính thức trong căn cứ gói khởi động đã thay đổi",
                         status_code=409,
                         details={
                             "resource_type": resource_type,
@@ -940,7 +940,7 @@ class VolumeService:
             if set(submitted_sources) != set(current_sources):
                 raise _volume_error(
                     "VOLUME_BASIS_CONFLICT",
-                    "启动包正式输入集合已变化，请重新生成",
+                    "Tập đầu vào chính thức của gói khởi động đã thay đổi, hãy sinh lại",
                     status_code=409,
                 )
             try:
@@ -952,13 +952,13 @@ class VolumeService:
             except (KeyError, ValueError) as exc:
                 raise _volume_error(
                     "VOLUME_BASIS_CONFLICT",
-                    "启动包的生成方案或输入已变化，请重新生成",
+                    "Phương án sinh hoặc đầu vào của gói khởi động đã thay đổi, hãy sinh lại",
                     status_code=409,
                 ) from exc
             if basis.input_fingerprint != current_fingerprint:
                 raise _volume_error(
                     "VOLUME_BASIS_CONFLICT",
-                    "启动包 Prompt、Schema、执行配置或生成输入已变化",
+                    "Prompt, Schema, cấu hình thực thi hoặc đầu vào sinh của gói khởi động đã thay đổi",
                     status_code=409,
                 )
 
@@ -972,7 +972,7 @@ class VolumeService:
             if int(target["version"]) != confirmed.expected_version:
                 raise _volume_error(
                     "VOLUME_VERSION_CONFLICT",
-                    "目标卷版本已变化，请刷新后重试",
+                    "Phiên bản quyển đích đã thay đổi, hãy làm mới rồi thử lại",
                     status_code=409,
                 )
             previous = volumes[target_index - 1] if target_index > 0 else None
@@ -988,7 +988,7 @@ class VolumeService:
                 if target_planning is None:
                     raise _volume_error(
                         "VOLUME_BASIS_CONFLICT",
-                        "目标卷预算来源已失效，请重新生成启动包",
+                        "Nguồn ngân sách của quyển đích đã hết hiệu lực, hãy sinh lại gói khởi động",
                         status_code=409,
                     )
                 chapter_count = int(target_planning["target_chapter_count"])
@@ -996,7 +996,7 @@ class VolumeService:
                 if target_planning is None:
                     raise _volume_error(
                         "VOLUME_BASIS_CONFLICT",
-                        "目标卷预算来源已失效，请重新生成启动包",
+                        "Nguồn ngân sách của quyển đích đã hết hiệu lực, hãy sinh lại gói khởi động",
                         status_code=409,
                     )
                 word_count = int(target_planning["target_word_count"])
@@ -1006,7 +1006,7 @@ class VolumeService:
             ):
                 raise _volume_error(
                     "VOLUME_BUDGET_INVALID",
-                    "启动包确认预算必须与生成期锁定预算一致",
+                    "Ngân sách xác nhận của gói khởi động phải bằng ngân sách đã khóa lúc sinh",
                 )
             previous_planning = (
                 previous.get("planning") if previous is not None else None
@@ -1016,7 +1016,7 @@ class VolumeService:
             ) != normalize_volume_text(str(fields["planning"]["start_state"])):
                 raise _volume_error(
                     "VOLUME_STATE_BOUNDARY_INVALID",
-                    "启动包起点必须与当前上一卷终点衔接",
+                    "Điểm khởi đầu của gói khởi động phải nối tiếp điểm kết thúc của quyển trước",
                 )
             impact = await VolumeService.get_delete_impact(
                 volume_id,
@@ -1025,7 +1025,7 @@ class VolumeService:
             if impact["total"] - impact["chapter_records"]:
                 raise _volume_error(
                     "VOLUME_LAUNCH_BLOCKED",
-                    "目标卷已有下级结构，不能静默覆盖启动包",
+                    "Quyển đích đã có cấu trúc cấp dưới, không thể ghi đè gói khởi động ngầm định",
                     status_code=409,
                     details={"impact": impact},
                 )
@@ -1067,7 +1067,7 @@ class VolumeService:
                         resource_type, resource_id = sorted(missing)[0]
                         raise _volume_error(
                             "VOLUME_BASIS_SOURCE_NOT_FOUND",
-                            "启动包依据中的正式资源在确认期间已不存在或不再可用",
+                            "Tài nguyên chính thức trong căn cứ gói khởi động không còn tồn tại hoặc không còn khả dụng trong lúc xác nhận",
                             status_code=404,
                             details={
                                 "resource_type": resource_type,
@@ -1077,7 +1077,7 @@ class VolumeService:
                     if set(after_sources) != set(submitted_sources):
                         raise _volume_error(
                             "VOLUME_BASIS_CONFLICT",
-                            "启动包正式输入集合在确认期间发生变化",
+                            "Tập đầu vào chính thức của gói khởi động thay đổi trong khi xác nhận",
                             status_code=409,
                         )
                     for identity, submitted_version in submitted_sources.items():
@@ -1086,7 +1086,7 @@ class VolumeService:
                         if after_sources[identity] != submitted_version:
                             raise _volume_error(
                                 "VOLUME_BASIS_CONFLICT",
-                                "启动包正式输入版本在确认期间发生变化",
+                                "Phiên bản đầu vào chính thức của gói khởi động thay đổi trong khi xác nhận",
                                 status_code=409,
                                 details={
                                     "resource_type": identity[0],
@@ -1105,7 +1105,7 @@ class VolumeService:
                     ):
                         raise _volume_error(
                             "VOLUME_VERSION_CONFLICT",
-                            "目标卷在启动包确认期间再次发生变化",
+                            "Quyển đích lại thay đổi lần nữa trong khi xác nhận gói khởi động",
                             status_code=409,
                         )
                 receipt_attempted = True
@@ -1171,7 +1171,7 @@ class VolumeService:
                 return _receipt_result(winner)["volumes"][0]
             raise _volume_error(
                 "VOLUME_LAUNCH_CONFLICT",
-                "启动包确认发生并发冲突",
+                "Xác nhận gói khởi đầu gặp xung đột đồng phát",
                 status_code=409,
             ) from exc
         except DomainApiError as exc:
@@ -1204,17 +1204,17 @@ class VolumeService:
         await novel_repo.get_novel_by_id(novel_id, session=session)
         requested = [_plain_dict(item) for item in items]
         if not requested:
-            raise _volume_error("VOLUME_REORDER_EMPTY", "重排必须提交完整活动卷集合")
+            raise _volume_error("VOLUME_REORDER_EMPTY", "Sắp xếp lại phải gửi đầy đủ tập hợp quyển đang hoạt động")
         ids = [str(item.get("volume_id") or "") for item in requested]
         if any(not item for item in ids) or len(ids) != len(set(ids)):
-            raise _volume_error("VOLUME_REORDER_DUPLICATE", "重排卷 ID 不能为空或重复")
+            raise _volume_error("VOLUME_REORDER_DUPLICATE", "ID quyển để sắp xếp lại không được để trống hoặc trùng lặp")
         orders = [item.get("order_index") for item in requested]
         if any(isinstance(value, bool) or not isinstance(value, int) for value in orders):
-            raise _volume_error("VOLUME_ORDER_INVALID", "重排序号必须为整数")
+            raise _volume_error("VOLUME_ORDER_INVALID", "Số thứ tự sắp xếp lại phải là số nguyên")
         if sorted(orders) != list(range(1, len(requested) + 1)):
             raise _volume_error(
                 "VOLUME_REORDER_NOT_CONTIGUOUS",
-                "重排序号必须完整且连续为 1..N",
+                "Số thứ tự sắp xếp lại phải đầy đủ và liên tục 1..N",
             )
 
         current = await volume_repo.get_volumes_by_novel(novel_id, session=session)
@@ -1223,10 +1223,10 @@ class VolumeService:
             for volume_id in ids:
                 volume = await volume_repo.get_volume_by_id(volume_id, session=session)
                 if str(volume["novel_id"]) != novel_id:
-                    raise NotFoundError(f"卷 {volume_id} 不属于小说 {novel_id}")
+                    raise NotFoundError(f"Quyển {volume_id} không thuộc tiểu thuyết {novel_id}")
             raise _volume_error(
                 "VOLUME_REORDER_INCOMPLETE",
-                "重排必须提交当前全部活动卷",
+                "Sắp xếp lại phải gửi toàn bộ quyển đang hoạt động hiện tại",
             )
         by_id = {str(item["_id"]): item for item in current}
         for item in requested:
@@ -1235,7 +1235,7 @@ class VolumeService:
             if actual != item["expected_version"]:
                 raise _volume_error(
                     "VOLUME_VERSION_CONFLICT",
-                    "重排依据的卷版本已变化",
+                    "Phiên bản quyển dùng làm căn cứ sắp xếp lại đã thay đổi",
                     status_code=409,
                     details={
                         "volume_id": item["volume_id"],
@@ -1261,7 +1261,7 @@ class VolumeService:
                 if set(unit_by_id) != set(ids):
                     raise _volume_error(
                         "VOLUME_REORDER_INCOMPLETE",
-                        "重排期间活动卷集合已变化",
+                        "Tập hợp quyển đang hoạt động đã thay đổi trong khi sắp xếp lại",
                         status_code=409,
                     )
                 for item in requested:
@@ -1270,7 +1270,7 @@ class VolumeService:
                     ):
                         raise _volume_error(
                             "VOLUME_VERSION_CONFLICT",
-                            "重排期间卷版本已变化",
+                            "Phiên bản quyển đã thay đổi trong khi sắp xếp lại",
                             status_code=409,
                         )
                 writes: list[tuple[dict[str, Any], dict[str, Any]]] = []
@@ -1326,7 +1326,7 @@ class VolumeService:
                         except Exception as compensation_exc:
                             state_lock_releasable = False
                             raise RuntimeError(
-                                "卷重排失败，且 standalone 补偿未完成"
+                                "Sắp xếp lại quyển thất bại và bù đắp standalone chưa hoàn tất"
                             ) from compensation_exc
                     raise
             finally:
@@ -1475,7 +1475,7 @@ class VolumeService:
                 if blocking_total:
                     raise _volume_error(
                         "VOLUME_DELETE_BLOCKED",
-                        "卷仍有除角色/势力卷状态外的下级或受保护引用，不能删除",
+                        "Quyển vẫn còn đối tượng cấp dưới hoặc tham chiếu được bảo vệ ngoài trạng thái quyển của nhân vật/thế lực, không thể xóa",
                         status_code=409,
                         details={"impact": impact},
                     )
@@ -1552,7 +1552,7 @@ class VolumeService:
                         except Exception as compensation_exc:
                             state_lock_releasable = False
                             raise RuntimeError(
-                                "卷软删除失败，且 standalone 补偿未完成"
+                                "Xóa mềm quyển thất bại và bù đắp standalone chưa hoàn tất"
                             ) from compensation_exc
                     raise
             finally:
@@ -1668,7 +1668,7 @@ class VolumeService:
                         except Exception as compensation_exc:
                             state_lock_releasable = False
                             raise RuntimeError(
-                                "卷恢复失败，且 standalone 补偿未完成"
+                                "Phục hồi quyển thất bại và bù đắp standalone chưa hoàn tất"
                             ) from compensation_exc
                     raise
             finally:
@@ -1687,7 +1687,7 @@ class VolumeService:
         except DuplicateKeyError as exc:
             raise _volume_error(
                 "VOLUME_ORDER_CONFLICT",
-                "卷恢复时末尾序号发生并发冲突，请重试",
+                "Xung đột đồng thời về số thứ tự cuối khi khôi phục quyển, hãy thử lại",
                 status_code=409,
             ) from exc
 
@@ -1731,11 +1731,11 @@ class VolumeService:
                     session=session,
                 )
                 if impact["chapter_records"]:
-                    raise _volume_error("VOLUME_CHAPTER_RECORD_DELETE_BLOCKED", "卷仍是章后确认记录的来源，如需全部清理请删除整部作品", status_code=409, details={"impact": impact})
+                    raise _volume_error("VOLUME_CHAPTER_RECORD_DELETE_BLOCKED", "Quyển vẫn là nguồn của bản ghi xác nhận sau chương; nếu cần dọn sạch hoàn toàn, hãy xóa toàn bộ tác phẩm", status_code=409, details={"impact": impact})
                 if impact["has_blockers"]:
                     raise _volume_error(
                         "VOLUME_HARD_DELETE_BLOCKED",
-                        "回收站卷仍有受保护引用，不能永久删除",
+                        "Quyển trong thùng rác vẫn có tham chiếu được bảo vệ, không thể xóa vĩnh viễn",
                         status_code=409,
                         details={"impact": impact},
                     )
@@ -1783,7 +1783,7 @@ class VolumeService:
                         or faction_deleted.deleted_count
                         != len(faction_receipt_snapshots)
                     ):
-                        raise RuntimeError("卷初始化回执在永久删除期间发生并发变化")
+                        raise RuntimeError("Biên nhận khởi tạo quyển thay đổi đồng thời trong quá trình xóa vĩnh viễn")
                     try:
                         deleted = await volume_repo.hard_delete_volume(
                             snapshot,
@@ -1810,7 +1810,7 @@ class VolumeService:
                     if not deleted:
                         raise _volume_error(
                             "VOLUME_VERSION_CONFLICT",
-                            "卷在永久删除期间已发生变化",
+                            "Quyển đã thay đổi trong quá trình xóa vĩnh viễn",
                             status_code=409,
                         )
                     return {
@@ -1836,7 +1836,7 @@ class VolumeService:
                                         continue
                                     if current is not None:
                                         raise RuntimeError(
-                                            "卷初始化回执补偿失败：同一回执已发生变化"
+                                            "Bồi thường biên nhận khởi tạo quyển thất bại: cùng một biên nhận đã bị thay đổi"
                                         )
                                     try:
                                         await collection.insert_one(
@@ -1852,7 +1852,7 @@ class VolumeService:
                         except Exception as compensation_exc:
                             state_lock_releasable = False
                             raise RuntimeError(
-                                "卷永久删除失败，且 standalone 补偿未完成"
+                                "Xóa vĩnh viễn quyển thất bại và bù đắp standalone chưa hoàn tất"
                             ) from compensation_exc
                     raise
             finally:
@@ -1911,7 +1911,7 @@ class VolumeService:
             or basis.schema_id != VOLUME_SKELETON_SCHEMA_ID
             or basis.schema_version != VOLUME_SKELETON_SCHEMA_VERSION
         ):
-            raise _volume_error("VOLUME_BASIS_INVALID", "卷骨架 basis 与当前工作流不匹配")
+            raise _volume_error("VOLUME_BASIS_INVALID", "basis của khung xương quyển không khớp với luồng công việc hiện tại")
 
         prepared = [
             {**_normalize_volume_fields(item), "candidate_ref": item["candidate_ref"]}
@@ -1919,7 +1919,7 @@ class VolumeService:
         ]
         refs = [str(item["candidate_ref"]) for item in prepared]
         if len(refs) != len(set(refs)):
-            raise _volume_error("VOLUME_CANDIDATE_DUPLICATE", "candidate_ref 不能重复")
+            raise _volume_error("VOLUME_CANDIDATE_DUPLICATE", "candidate_ref không được trùng lặp")
         try:
             validate_volume_skeleton_candidate_set(
                 prepared,
@@ -1936,12 +1936,12 @@ class VolumeService:
             if sorted(orders) != range_orders:
                 raise _volume_error(
                     "VOLUME_ORDER_INVALID",
-                    "候选卷顺序必须与 target_order_range 完全一致",
+                    "Thứ tự quyển của ứng viên phải khớp hoàn toàn với target_order_range",
                 )
         elif mode == "replan":
             raise _volume_error(
                 "VOLUME_ORDER_RANGE_REQUIRED",
-                "replan 必须声明连续 target_order_range",
+                "replan phải khai báo target_order_range liên tục",
             )
 
         async def confirm(session: Any) -> dict[str, Any]:
@@ -1978,7 +1978,7 @@ class VolumeService:
                 for (kind, resource_id), version in submitted_sources.items()
             }
             if ("novel", novel_id) not in submitted_sources:
-                raise _volume_error("VOLUME_BASIS_INVALID", "卷骨架 basis 必须引用当前小说")
+                raise _volume_error("VOLUME_BASIS_INVALID", "basis của khung xương quyển phải tham chiếu tiểu thuyết hiện tại")
             allowed_source_types = {
                 "novel",
                 "volume",
@@ -1994,13 +1994,13 @@ class VolumeService:
                 if resource_type not in allowed_source_types:
                     raise _volume_error(
                         "VOLUME_BASIS_SOURCE_INVALID",
-                        f"卷骨架 basis 不支持来源类型 {resource_type}",
+                        f"basis của khung xương quyển không hỗ trợ loại nguồn {resource_type}",
                     )
                 current_version = current_sources.get(identity)
                 if current_version is None:
                     raise _volume_error(
                         "VOLUME_BASIS_SOURCE_NOT_FOUND",
-                        "卷骨架依据中的正式资源已不存在或不再可用",
+                        "Tài nguyên chính thức trong căn cứ khung xương quyển không còn tồn tại hoặc không còn khả dụng",
                         status_code=404,
                         details={
                             "resource_type": resource_type,
@@ -2010,7 +2010,7 @@ class VolumeService:
                 if current_version != submitted_version:
                     raise _volume_error(
                         "VOLUME_BASIS_CONFLICT",
-                        "卷骨架依据中的正式资源版本已变化",
+                        "Phiên bản tài nguyên chính thức trong căn cứ khung xương quyển đã thay đổi",
                         status_code=409,
                         details={
                             "resource_type": resource_type,
@@ -2027,7 +2027,7 @@ class VolumeService:
             ):
                 raise _volume_error(
                     "VOLUME_BASIS_CONFLICT",
-                    "卷骨架 basis 或 expected_versions 已过期",
+                    "basis hoặc expected_versions của khung quyển đã lỗi thời",
                     status_code=409,
                 )
             try:
@@ -2040,13 +2040,13 @@ class VolumeService:
             except (KeyError, ValueError) as exc:
                 raise _volume_error(
                     "VOLUME_BASIS_CONFLICT",
-                    "卷骨架的生成方案或输入已变化，请重新生成",
+                    "Phương án sinh hoặc đầu vào của khung xương quyển đã thay đổi, hãy sinh lại",
                     status_code=409,
                 ) from exc
             if basis.input_fingerprint != current_fingerprint:
                 raise _volume_error(
                     "VOLUME_BASIS_CONFLICT",
-                    "卷骨架输入指纹已变化",
+                    "Chữ ký đầu vào của khung xương quyển đã thay đổi",
                     status_code=409,
                 )
 
@@ -2058,23 +2058,23 @@ class VolumeService:
                 if active:
                     raise _volume_error(
                         "VOLUME_MODE_CONFLICT",
-                        "create 模式要求当前小说没有活动卷",
+                        "Chế độ create yêu cầu tiểu thuyết hiện tại không có quyển đang hoạt động",
                         status_code=409,
                     )
                 if sorted(orders) != list(range(1, len(prepared) + 1)):
-                    raise _volume_error("VOLUME_ORDER_INVALID", "create 候选必须从 1 连续编号")
+                    raise _volume_error("VOLUME_ORDER_INVALID", "Ứng viên create phải đánh số liên tục từ 1")
             elif mode == "append":
                 required_start = len(active) + 1
                 if sorted(orders) != list(range(required_start, required_start + len(prepared))):
                     raise _volume_error(
                         "VOLUME_ORDER_CONFLICT",
-                        "append 候选必须从当前末尾连续追加",
+                        "Ứng viên append phải được bổ sung liên tục từ vị trí cuối hiện tại",
                         status_code=409,
                     )
                 if active_titles & set(normalized_titles):
                     raise _volume_error(
                         "VOLUME_TITLE_CONFLICT",
-                        "append 候选标题与活动卷冲突",
+                        "Tiêu đề ứng viên append xung đột với quyển đang hoạt động",
                         status_code=409,
                     )
                 previous_planning = active[-1].get("planning") if active else None
@@ -2085,13 +2085,13 @@ class VolumeService:
                 ):
                     raise _volume_error(
                         "VOLUME_STATE_BOUNDARY_INVALID",
-                        "append 首卷起始状态必须与当前末卷结束状态衔接",
+                        "Trạng thái khởi đầu của quyển đầu khi append phải nối tiếp trạng thái kết thúc của quyển cuối hiện tại",
                     )
             else:
                 if any(order not in active_by_order for order in orders):
                     raise _volume_error(
                         "VOLUME_REPLAN_RANGE_CONFLICT",
-                        "replan 目标区间已不再对应活动卷",
+                        "Khoảng đích của replan không còn tương ứng quyển đang hoạt động",
                         status_code=409,
                     )
                 target_by_order = {order: active_by_order[order] for order in orders}
@@ -2105,7 +2105,7 @@ class VolumeService:
                 ):
                     raise _volume_error(
                         "VOLUME_BASIS_CONFLICT",
-                        "replan basis 未携带目标区间卷的精确版本",
+                        "basis của replan không mang phiên bản chính xác của các quyển trong khoảng đích",
                         status_code=409,
                     )
                 non_target_titles = {
@@ -2116,7 +2116,7 @@ class VolumeService:
                 if non_target_titles & set(normalized_titles):
                     raise _volume_error(
                         "VOLUME_TITLE_CONFLICT",
-                        "replan 候选标题与区间外活动卷冲突",
+                        "Tiêu đề ứng viên replan xung đột với quyển đang hoạt động ngoài khoảng",
                         status_code=409,
                     )
                 first_order = min(orders)
@@ -2138,14 +2138,14 @@ class VolumeService:
                 ):
                     raise _volume_error(
                         "VOLUME_STATE_BOUNDARY_INVALID",
-                        "replan 首卷起始状态必须与左侧相邻卷结束状态衔接",
+                        "Trạng thái khởi đầu của quyển đầu tiên khi replan phải nối tiếp trạng thái kết thúc của quyển liền bên trái",
                     )
                 if next_planning is not None and normalize_volume_text(
                     str(ordered_prepared[-1]["planning"]["end_state"])
                 ) != normalize_volume_text(str(next_planning["start_state"])):
                     raise _volume_error(
                         "VOLUME_STATE_BOUNDARY_INVALID",
-                        "replan 末卷结束状态必须与右侧相邻卷起始状态衔接",
+                        "Trạng thái kết thúc của quyển cuối khi replan phải nối tiếp trạng thái khởi đầu của quyển liền bên phải",
                     )
                 for target in target_by_order.values():
                     impact = await VolumeService.get_delete_impact(
@@ -2155,7 +2155,7 @@ class VolumeService:
                     if impact["total"] - impact["chapter_records"]:
                         raise _volume_error(
                             "VOLUME_REPLAN_BLOCKED",
-                            "已有下级的卷不能被静默重规划",
+                            "Quyển đã có mục con không thể được lập kế hoạch lại một cách ngầm định",
                             status_code=409,
                             details={"impact": impact},
                         )
@@ -2241,7 +2241,7 @@ class VolumeService:
                         resource_type, resource_id = sorted(missing)[0]
                         raise _volume_error(
                             "VOLUME_BASIS_SOURCE_NOT_FOUND",
-                            "卷骨架正式输入在确认期间已不存在或不再可用",
+                            "Đầu vào chính thức của khung quyển không còn tồn tại hoặc không còn khả dụng trong lúc xác nhận",
                             status_code=404,
                             details={
                                 "resource_type": resource_type,
@@ -2251,7 +2251,7 @@ class VolumeService:
                     if set(after_sources) != set(expected_after_sources):
                         raise _volume_error(
                             "VOLUME_BASIS_CONFLICT",
-                            "卷骨架正式输入集合在确认期间发生变化",
+                            "Tập đầu vào chính thức của khung xương quyển thay đổi trong khi xác nhận",
                             status_code=409,
                         )
                     if any(
@@ -2260,7 +2260,7 @@ class VolumeService:
                     ):
                         raise _volume_error(
                             "VOLUME_BASIS_CONFLICT",
-                            "卷骨架正式输入版本在确认期间发生变化",
+                            "Phiên bản đầu vào chính thức của khung xương quyển thay đổi trong khi xác nhận",
                             status_code=409,
                         )
                     after_novel = after_context["novel"]
@@ -2276,7 +2276,7 @@ class VolumeService:
                     ):
                         raise _volume_error(
                             "VOLUME_PARENT_CONFLICT",
-                            "小说统计在卷骨架确认期间发生变化",
+                            "Thống kê tiểu thuyết thay đổi trong khi xác nhận khung xương quyển",
                             status_code=409,
                         )
                     after_volumes = {
@@ -2288,7 +2288,7 @@ class VolumeService:
                     ):
                         raise _volume_error(
                             "VOLUME_VERSION_CONFLICT",
-                            "本批卷在骨架确认期间再次发生变化",
+                            "Các quyển trong lô này lại thay đổi trong khi xác nhận khung xương",
                             status_code=409,
                         )
                 receipt_attempted = True
@@ -2348,7 +2348,7 @@ class VolumeService:
                 return _receipt_result(winner)
             raise _volume_error(
                 "VOLUME_BATCH_CONFLICT",
-                "卷骨架确认发生顺序或并发冲突",
+                "Xác nhận khung xương quyển gặp xung đột thứ tự hoặc đồng phát",
                 status_code=409,
             ) from exc
         except DomainApiError as exc:

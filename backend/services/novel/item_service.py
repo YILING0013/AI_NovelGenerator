@@ -128,7 +128,7 @@ def _prepare_item_content(value: Any) -> dict[str, Any]:
     except ValidationError as exc:
         raise _item_error(
             "ITEM_VALIDATION_FAILED",
-            "物品字段校验失败",
+            "Trường vật phẩm không vượt qua kiểm tra",
             field_errors=_validation_details(exc),
         ) from exc
     content = model.model_dump(mode="json")
@@ -154,7 +154,7 @@ def _prepare_item_content(value: Any) -> dict[str, Any]:
     except ValidationError as exc:
         raise _item_error(
             "ITEM_VALIDATION_FAILED",
-            "物品规范化后的字段长度或组合不合法",
+            "Độ dài hoặc tổ hợp trường của vật phẩm sau chuẩn hóa không hợp lệ",
             field_errors=_validation_details(exc),
         ) from exc
     content["normalized_name"] = normalize_item_text(content["name"])
@@ -168,7 +168,7 @@ def _prepare_item_update(value: Any) -> tuple[int, dict[str, Any]]:
     except ValidationError as exc:
         raise _item_error(
             "ITEM_VALIDATION_FAILED",
-            "物品更新字段校验失败",
+            "Các trường cập nhật vật phẩm không vượt qua kiểm tra",
             field_errors=_validation_details(exc),
         ) from exc
     fields = model.model_dump(mode="json", exclude_unset=True)
@@ -225,7 +225,7 @@ async def acquire_item_write_lock(
             ):
                 raise _item_error(
                     "ITEM_WRITE_CONFLICT",
-                    "当前小说正由另一个物品或生命周期命令修改，请刷新后重试",
+                    "Tiểu thuyết hiện đang bị một lệnh vật phẩm hoặc vòng đời khác thay đổi, hãy làm mới rồi thử lại",
                     status_code=409,
                 ) from exc
             raise
@@ -246,10 +246,10 @@ async def acquire_item_write_lock(
         return locked
     current = await novel_repo.collection.find_one({"_id": to_object_id(novel_id)})
     if current is None or current.get("is_deleted") is True:
-        raise _item_error("NOVEL_NOT_FOUND", "小说不存在或已删除", status_code=404)
+        raise _item_error("NOVEL_NOT_FOUND", "Tiểu thuyết không tồn tại hoặc đã bị xóa", status_code=404)
     raise _item_error(
         "ITEM_WRITE_CONFLICT",
-        "当前小说正由另一个物品或生命周期命令修改，请刷新后重试",
+        "Tiểu thuyết hiện đang bị một lệnh vật phẩm hoặc vòng đời khác thay đổi, hãy làm mới rồi thử lại",
         status_code=409,
     )
 
@@ -331,7 +331,7 @@ async def release_item_write_lock(
             return
     raise _item_error(
         "ITEM_WRITE_GUARD_UNAVAILABLE",
-        "物品写入已完成，但小说级内部互斥无法精确释放",
+        "Việc ghi vật phẩm đã hoàn tất nhưng không giải phóng chính xác được mutex nội bộ cấp tiểu thuyết",
         status_code=503,
     ) from release_error
 
@@ -404,7 +404,7 @@ async def _publish_item(
     if published is None:
         raise _item_error(
             "ITEM_WRITE_CONFLICT",
-            "物品发布期间发生并发变化",
+            "Có thay đổi đồng phát trong khi công bố vật phẩm",
             status_code=409,
         )
     return published
@@ -454,7 +454,7 @@ async def _compensate_item_changes(
         if moved is None:
             raise _item_error(
                 "ITEM_COMPENSATION_FAILED",
-                "物品写入失败，且安全顺序补偿未完整完成",
+                "Ghi vật phẩm thất bại và bồi thường thứ tự an toàn chưa hoàn tất đầy đủ",
                 status_code=503,
             )
         temporary.append((before, dict(moved)))
@@ -467,7 +467,7 @@ async def _compensate_item_changes(
         if not restored:
             raise _item_error(
                 "ITEM_COMPENSATION_FAILED",
-                "物品写入失败，且数据库补偿未完整完成",
+                "Ghi vật phẩm thất bại và bồi thường cơ sở dữ liệu chưa hoàn tất đầy đủ",
                 status_code=503,
             )
 
@@ -487,7 +487,7 @@ class ItemService:
         except InvalidIdError as exc:
             raise _item_error(
                 "INVALID_OBJECT_ID",
-                "novel_id 不是有效 ObjectId",
+                "novel_id không phải ObjectId hợp lệ",
                 field_errors={"novel_id": "不是有效 ObjectId"},
             ) from exc
         except NotFoundError as exc:
@@ -507,7 +507,7 @@ class ItemService:
         ):
             raise _item_error(
                 "ITEM_READ_CONFLICT",
-                "物品正在更新，请刷新后重试",
+                "Vật phẩm đang được cập nhật, hãy tải lại rồi thử lại",
                 status_code=409,
             )
         return revision
@@ -531,7 +531,7 @@ class ItemService:
         except (NotFoundError, InvalidIdError) as exc:
             raise _item_error(
                 "ITEM_NOT_FOUND",
-                "物品不存在、已删除或不属于当前小说",
+                "Vật phẩm không tồn tại, đã bị xóa hoặc không thuộc tiểu thuyết hiện tại",
                 status_code=404,
                 details={"item_id": item_id},
             ) from exc
@@ -541,7 +541,7 @@ class ItemService:
             if actual != expected:
                 raise _item_error(
                     "ITEM_VERSION_CONFLICT",
-                    f"物品 {item_id} 版本冲突",
+                    f"Vật phẩm {item_id} 版本冲突",
                     status_code=409,
                     details={"expected_version": expected, "actual_version": actual},
                 )
@@ -564,7 +564,7 @@ class ItemService:
         if existing is not None and existing["item_id"] != exclude_item_id:
             raise _item_error(
                 "ITEM_NAME_CONFLICT",
-                "同一小说下已存在同名活动物品",
+                "Đã tồn tại vật phẩm đang hoạt động cùng tên trong cùng một tiểu thuyết",
                 status_code=409,
                 details={"existing_item_id": existing.get("item_id")},
             )
@@ -590,11 +590,11 @@ class ItemService:
                     session=session,
                 )
                 if character.get("status") != "active":
-                    raise NotFoundError("角色已停用")
+                    raise NotFoundError("Nhân vật đã bị ngưng dùng")
             except (NotFoundError, InvalidIdError) as exc:
                 raise _item_error(
                     "ITEM_REFERENCE_NOT_FOUND",
-                    "物品角色所有者不存在、已删除、已停用或不属于当前小说",
+                    "Chủ sở hữu là nhân vật của vật phẩm không tồn tại, đã bị xóa, đã ngừng kích hoạt hoặc không thuộc tiểu thuyết hiện tại",
                     status_code=404,
                     field_errors={"owner_character_id": "引用不可用"},
                     details={"reference_id": owner_character_id},
@@ -607,11 +607,11 @@ class ItemService:
                     session=session,
                 )
                 if faction.get("active_status") != "active":
-                    raise NotFoundError("势力已停用")
+                    raise NotFoundError("Thế lực đã bị ngưng dùng")
             except (NotFoundError, InvalidIdError) as exc:
                 raise _item_error(
                     "ITEM_REFERENCE_NOT_FOUND",
-                    "物品控制势力不存在、已删除、已停用或不属于当前小说",
+                    "Thế lực kiểm soát vật phẩm không tồn tại, đã bị xóa, đã ngừng kích hoạt hoặc không thuộc tiểu thuyết hiện tại",
                     status_code=404,
                     field_errors={"controlling_faction_id": "引用不可用"},
                     details={"reference_id": controlling_faction_id},
@@ -627,11 +627,11 @@ class ItemService:
                     location.get("status") != "active"
                     or location.get("location_order_pending_token") is not None
                 ):
-                    raise NotFoundError("地点不可用")
+                    raise NotFoundError("Địa điểm không khả dụng")
             except (NotFoundError, InvalidIdError) as exc:
                 raise _item_error(
                     "ITEM_REFERENCE_NOT_FOUND",
-                    "物品当前地点不存在、已删除、已停用或不属于当前小说",
+                    "Địa điểm hiện tại của vật phẩm không tồn tại, đã bị xóa, đã ngừng kích hoạt hoặc không thuộc tiểu thuyết hiện tại",
                     status_code=404,
                     field_errors={"current_location_id": "引用不可用"},
                     details={"reference_id": current_location_id},
@@ -720,7 +720,7 @@ class ItemService:
         if orders != list(range(1, len(items) + 1)):
             raise _item_error(
                 "ITEM_ORDER_CONFLICT",
-                "活动物品顺序不是完整连续的 1..N",
+                "Thứ tự vật phẩm đang hoạt động không phải chuỗi liên tục đầy đủ 1..N",
                 status_code=409,
             )
 
@@ -848,7 +848,7 @@ class ItemService:
         except (NotFoundError, InvalidIdError) as exc:
             raise _item_error(
                 "ITEM_NOT_FOUND",
-                "物品不存在或不属于当前小说",
+                "Vật phẩm không tồn tại hoặc không thuộc tiểu thuyết hiện tại",
                 status_code=404,
             ) from exc
         references = await item_repo.count_protected_references(novel_id, item_id)
@@ -890,7 +890,7 @@ class ItemService:
             if session is None:
                 await ItemService._check_public_read_fence(novel_id, expected_revision=revision)
             return replay
-        raise DomainApiError("ITEM_FACT_REQUIRED", "新物品请先选择明确起点再确认；旧请求没有成功记录，请保留原稿", status_code=409)
+        raise DomainApiError("ITEM_FACT_REQUIRED", "Vật phẩm mới hãy chọn điểm khởi đầu rõ ràng rồi xác nhận; yêu cầu cũ không có bản ghi thành công, hãy giữ bản thảo gốc", status_code=409)
 
     @staticmethod
     async def update_item(novel_id: str, item_id: str, data: ItemUpdateV1 | Mapping[str, Any], *, session: AsyncClientSession | None=None) -> dict[str, Any]:
@@ -982,7 +982,7 @@ class ItemService:
         except DuplicateKeyError as exc:
             raise _item_error(
                 "ITEM_NAME_CONFLICT",
-                "物品更新与活动规范名冲突",
+                "Cập nhật vật phẩm xung đột với tên chuẩn hóa đang hoạt động",
                 status_code=409,
             ) from exc
 
@@ -1003,7 +1003,7 @@ class ItemService:
         """
         expected = validate_expected_version(expected_version)
         if target_status not in NON_TERMINAL_STATUSES | TERMINAL_STATUSES:
-            raise _item_error("ITEM_STATUS_INVALID", "目标物品状态不合法")
+            raise _item_error("ITEM_STATUS_INVALID", "Trạng thái vật phẩm đích không hợp lệ")
 
         async def transition(session: AsyncClientSession | None) -> dict[str, Any]:
             from backend.services.novel.item_fact_service import ensure_item_fields_unmanaged
@@ -1024,12 +1024,12 @@ class ItemService:
                 if current_status in TERMINAL_STATUSES:
                     raise _item_error(
                         "ITEM_STATUS_TERMINAL",
-                        "destroyed/consumed 为终态，不能继续转换",
+                        "destroyed/consumed là trạng thái cuối, không được tiếp tục chuyển đổi",
                     )
                 if current_status == target_status:
                     raise _item_error(
                         "ITEM_STATUS_UNCHANGED",
-                        "目标状态必须与当前状态不同",
+                        "Trạng thái đích phải khác trạng thái hiện tại",
                     )
                 if target_status == "held" and not (
                     current.get("owner_character_id")
@@ -1037,7 +1037,7 @@ class ItemService:
                 ):
                     raise _item_error(
                         "ITEM_HELD_OWNER_REQUIRED",
-                        "转入 held 前必须具有角色所有者或控制势力",
+                        "Trước khi chuyển sang held phải có chủ sở hữu là nhân vật hoặc thế lực kiểm soát",
                         field_errors={"target_status": "缺少持有方"},
                     )
                 fields: dict[str, Any] = {"lifecycle_status": target_status}
@@ -1086,7 +1086,7 @@ class ItemService:
             按新顺序排列且每条版本递增一次的活动物品。
         """
         if not items:
-            raise _item_error("ITEM_VALIDATION_FAILED", "物品重排至少需要一个条目")
+            raise _item_error("ITEM_VALIDATION_FAILED", "Sắp xếp lại vật phẩm cần ít nhất một mục")
         normalized: list[dict[str, int | str]] = []
         seen_ids: set[str] = set()
         seen_orders: set[int] = set()
@@ -1100,13 +1100,13 @@ class ItemService:
             except ValueError as exc:
                 raise _item_error("ITEM_VALIDATION_FAILED", str(exc)) from exc
             if not isinstance(item_id, str) or re.fullmatch(ITEM_ID_PATTERN, item_id) is None:
-                raise _item_error("ITEM_VALIDATION_FAILED", "物品重排包含非法 item_id")
+                raise _item_error("ITEM_VALIDATION_FAILED", "Sắp xếp lại vật phẩm chứa item_id không hợp lệ")
             if isinstance(order_index, bool) or not isinstance(order_index, int) or order_index < 1:
-                raise _item_error("ITEM_VALIDATION_FAILED", "order_index 必须从 1 开始")
+                raise _item_error("ITEM_VALIDATION_FAILED", "order_index phải bắt đầu từ 1")
             if item_id in seen_ids or order_index in seen_orders:
                 raise _item_error(
                     "ITEM_VALIDATION_FAILED",
-                    "重排 item_id 和 order_index 均不能重复",
+                    "item_id và order_index khi sắp xếp lại đều không được trùng",
                 )
             seen_ids.add(item_id)
             seen_orders.add(order_index)
@@ -1120,7 +1120,7 @@ class ItemService:
         if seen_orders != set(range(1, len(normalized) + 1)):
             raise _item_error(
                 "ITEM_ORDER_CONFLICT",
-                "物品顺序必须完整覆盖 1..N",
+                "Thứ tự vật phẩm phải phủ đầy đủ 1..N",
                 status_code=409,
             )
 
@@ -1135,7 +1135,7 @@ class ItemService:
                 if {str(item["item_id"]) for item in active} != seen_ids:
                     raise _item_error(
                         "ITEM_REORDER_INCOMPLETE",
-                        "物品重排必须提交当前完整活动集合",
+                        "Sắp xếp lại vật phẩm phải gửi toàn bộ tập đang hoạt động hiện tại",
                         status_code=409,
                         details={
                             "expected_item_ids": [item["item_id"] for item in active],
@@ -1148,7 +1148,7 @@ class ItemService:
                     if int(current["version"]) != int(entry["expected_version"]):
                         raise _item_error(
                             "ITEM_VERSION_CONFLICT",
-                            f"物品 {entry['item_id']} 版本冲突",
+                            f"Vật phẩm {entry['item_id']} 版本冲突",
                             status_code=409,
                         )
                 staged: dict[str, dict[str, Any]] = {}
@@ -1180,7 +1180,7 @@ class ItemService:
                 ]:
                     raise _item_error(
                         "ITEM_ORDER_CONFLICT",
-                        "物品重排写后集合与请求不一致",
+                        "Tập hợp vật phẩm sau khi ghi sắp xếp lại không khớp với yêu cầu",
                         status_code=409,
                     )
                 committed = True
@@ -1200,7 +1200,7 @@ class ItemService:
         except DuplicateKeyError as exc:
             raise _item_error(
                 "ITEM_ORDER_CONFLICT",
-                "物品重排发生顺序或并发冲突",
+                "Sắp xếp lại vật phẩm gặp xung đột thứ tự hoặc đồng phát",
                 status_code=409,
             ) from exc
 
@@ -1273,7 +1273,7 @@ class ItemService:
         except DuplicateKeyError as exc:
             raise _item_error(
                 "ITEM_ORDER_CONFLICT",
-                "物品删除与活动顺序发生并发冲突",
+                "Xóa vật phẩm xảy ra xung đột đồng thời với thứ tự đang hoạt động",
                 status_code=409,
             ) from exc
 
@@ -1367,7 +1367,7 @@ class ItemService:
         except DuplicateKeyError as exc:
             raise _item_error(
                 "ITEM_RESTORE_CONFLICT",
-                "物品恢复与活动规范名或顺序冲突",
+                "Khôi phục vật phẩm xung đột tên chuẩn hóa hoặc thứ tự đang hoạt động",
                 status_code=409,
             ) from exc
 
@@ -1419,7 +1419,7 @@ class ItemService:
                 if references["total"] > 0:
                     raise _item_error(
                         "ITEM_REFERENCE_PROTECTED",
-                        "物品仍被正式结构或伏笔引用，不能永久删除",
+                        "Vật phẩm vẫn được cấu trúc chính thức hoặc chi tiết phục bút tham chiếu, không thể xóa vĩnh viễn",
                         status_code=409,
                         details={"impact": impact},
                     )
@@ -1439,7 +1439,7 @@ class ItemService:
                 if not deleted:
                     raise _item_error(
                         "ITEM_VERSION_CONFLICT",
-                        "物品永久删除期间已被其他请求修改或新增依赖",
+                        "Vật phẩm đã bị yêu cầu khác sửa đổi hoặc thêm phụ thuộc trong lúc xóa vĩnh viễn",
                         status_code=409,
                     )
                 committed = True
@@ -1476,7 +1476,7 @@ class ItemService:
         if basis.novel_id != novel_id or generation_input.novel_id != novel_id:
             raise _item_error(
                 "ITEM_BASIS_CONFLICT",
-                "物品候选不属于当前小说",
+                "Vật phẩm ứng viên không thuộc tiểu thuyết hiện tại",
                 status_code=409,
             )
         current_context = await load_item_generation_context(
@@ -1496,14 +1496,14 @@ class ItemService:
             resource_type, resource_id = sorted(missing_identities)[0]
             raise _item_error(
                 "CANDIDATE_SOURCE_NOT_FOUND",
-                "物品候选依据中的正式资源已不存在、已删除或不可用",
+                "Tài nguyên chính thức trong căn cứ ứng viên vật phẩm không còn tồn tại, đã bị xóa hoặc không khả dụng",
                 status_code=404,
                 details={"resource_type": resource_type, "id": resource_id},
             )
         if current_identities - submitted_identities:
             raise _item_error(
                 "ITEM_BASIS_CONFLICT",
-                "物品生成使用的资料已经变化，请重新生成",
+                "Tài liệu dùng để sinh vật phẩm đã thay đổi, hãy sinh lại",
                 status_code=409,
             )
         try:
@@ -1515,7 +1515,7 @@ class ItemService:
         except (KeyError, TypeError, ValueError) as exc:
             raise _item_error(
                 "ITEM_BASIS_CONFLICT",
-                "物品候选使用的提示词、Schema 或执行配置已经变化",
+                "Câu lệnh, Schema hoặc cấu hình thực thi mà ứng viên vật phẩm sử dụng đã thay đổi",
                 status_code=409,
             ) from exc
         require_current_candidate_basis(
@@ -1565,7 +1565,7 @@ class ItemService:
         if receipt.get("request_hash") != request_hash:
             raise _item_error(
                 "IDEMPOTENCY_KEY_REUSED",
-                "同一 Idempotency-Key 已用于不同的物品批量确认",
+                "Cùng Idempotency-Key đã được dùng cho xác nhận hàng loạt vật phẩm khác",
                 status_code=409,
             )
         return receipt
@@ -1619,7 +1619,7 @@ class ItemService:
             if session is None and replay.get("novel_write_lock"):
                 await release_item_write_lock(novel_id, replay["novel_write_lock"], session=None)
             return ItemService._confirmation_receipt_result(replay)
-        raise DomainApiError("ITEM_FACT_REQUIRED", "旧批次没有成功记录，请保留原请求；新批次请先确认完整起点", status_code=409)
+        raise DomainApiError("ITEM_FACT_REQUIRED", "Lô cũ không có bản ghi thành công, hãy giữ yêu cầu gốc; lô mới hãy xác nhận điểm khởi đầu đầy đủ trước", status_code=409)
 
 
 __all__ = ["ItemService"]

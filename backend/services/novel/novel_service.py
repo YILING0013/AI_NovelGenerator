@@ -117,7 +117,7 @@ def _plain_dict(value: Any, *, exclude_unset: bool = False) -> dict[str, Any]:
     model_dump = getattr(value, "model_dump", None)
     if callable(model_dump):
         return dict(model_dump(mode="json", exclude_unset=exclude_unset))
-    raise TypeError("小说请求必须是映射或 Pydantic 模型")
+    raise TypeError("Yêu cầu tiểu thuyết phải là mapping hoặc mô hình Pydantic")
 
 
 def _prepare_novel_fields(source: Mapping[str, Any]) -> dict[str, Any]:
@@ -133,11 +133,11 @@ def _prepare_novel_fields(source: Mapping[str, Any]) -> dict[str, Any]:
     if "title" in prepared:
         prepared["title"] = str(prepared["title"]).strip()
         if not prepared["title"]:
-            raise ValueError("小说标题不能为空")
+            raise ValueError("Tiêu đề tiểu thuyết không được để trống")
     if "genre" in prepared:
         prepared["genre"] = str(prepared["genre"]).strip()
         if not prepared["genre"]:
-            raise ValueError("小说类型不能为空")
+            raise ValueError("Thể loại tiểu thuyết không được để trống")
     if "tags" in prepared:
         tags: list[str] = []
         for raw_tag in prepared["tags"]:
@@ -260,13 +260,13 @@ class NovelService:
         ):
             raise DomainApiError(
                 "CANDIDATE_BASIS_INVALID",
-                "AI 新书候选依据与当前工作流不匹配",
+                "Căn cứ ứng viên sách mới AI không khớp với luồng công việc hiện tại",
                 status_code=422,
             )
         if payload.get("expected_versions"):
             raise DomainApiError(
                 "CANDIDATE_VERSIONS_INVALID",
-                "AI 新书确认不能携带尚不存在的正式资源版本",
+                "Xác nhận sách mới AI không được mang phiên bản tài nguyên chính thức chưa tồn tại",
                 status_code=422,
             )
 
@@ -279,13 +279,13 @@ class NovelService:
         except ValueError as exc:
             raise DomainApiError(
                 "CANDIDATE_FINGERPRINT_CONFLICT",
-                "AI 新书候选的生成配置已变化，请重新生成",
+                "Cấu hình sinh của ứng viên sách mới AI đã thay đổi, hãy tạo lại",
                 status_code=409,
             ) from exc
         if basis.input_fingerprint != current_fingerprint:
             raise DomainApiError(
                 "CANDIDATE_FINGERPRINT_CONFLICT",
-                "AI 新书候选输入或当前生成配置已变化，请重新生成",
+                "Đầu vào ứng viên sách mới AI hoặc cấu hình sinh hiện tại đã thay đổi, hãy tạo lại",
                 status_code=409,
             )
 
@@ -328,7 +328,7 @@ class NovelService:
         if fingerprint.key_hash in receipts:
             if receipts[fingerprint.key_hash] != fingerprint.request_hash:
                 raise IdempotencyConflictError(
-                    "同一 Idempotency-Key 已用于不同的小说字段确认请求"
+                    "Cùng một Idempotency-Key đã bị dùng cho yêu cầu xác nhận trường tiểu thuyết khác"
                 )
             # 收据表示该命令已经成功；后续合法编辑不能让原命令再次执行。
             return novel
@@ -337,12 +337,12 @@ class NovelService:
         expected_key = f"novel:{novel_id}"
         if payload["expected_versions"] != {expected_key: current_version}:
             raise VersionConflictError(
-                "expected_versions 必须且只能携带当前小说精确版本"
+                "expected_versions phải và chỉ được mang phiên bản chính xác của tiểu thuyết hiện tại"
             )
         if generation_input.novel_id != novel_id:
             raise DomainApiError(
                 "CANDIDATE_INPUT_INVALID",
-                "字段候选 generation_input 与当前小说不匹配",
+                "generation_input của ứng viên trường không khớp với tiểu thuyết hiện tại",
                 status_code=422,
             )
         if (
@@ -357,13 +357,13 @@ class NovelService:
         ):
             raise DomainApiError(
                 "CANDIDATE_BASIS_INVALID",
-                "字段候选依据与当前小说或工作流不匹配",
+                "Căn cứ của ứng viên trường không khớp với tiểu thuyết hoặc luồng công việc hiện tại",
                 status_code=422,
             )
         if candidate.target_field != generation_input.target_field:
             raise DomainApiError(
                 "CANDIDATE_TARGET_INVALID",
-                "字段候选回显目标与 generation_input 不一致",
+                "Mục tiêu phản hồi kèm theo của ứng viên trường không nhất quán với generation_input",
                 status_code=422,
             )
 
@@ -377,7 +377,7 @@ class NovelService:
             # 合法候选生成后 Provider/model 配置被移除属于候选失效，不是字段请求格式错误。
             raise DomainApiError(
                 "CANDIDATE_FINGERPRINT_CONFLICT",
-                "字段候选的生成配置已变化，请重新生成",
+                "Cấu hình sinh của ứng viên trường đã thay đổi, hãy tạo lại",
                 status_code=409,
             ) from exc
         require_current_candidate_basis(
@@ -408,10 +408,10 @@ class NovelService:
             if fingerprint.key_hash in replay_receipts:
                 if replay_receipts[fingerprint.key_hash] != fingerprint.request_hash:
                     raise IdempotencyConflictError(
-                        "同一 Idempotency-Key 已用于不同的小说字段确认请求"
+                        "Cùng một Idempotency-Key đã bị dùng cho yêu cầu xác nhận trường tiểu thuyết khác"
                     )
                 return replay
-            raise VersionConflictError("小说在字段候选确认期间已发生变化")
+            raise VersionConflictError("Tiểu thuyết đã thay đổi trong quá trình xác nhận ứng viên trường")
         return updated
 
     @staticmethod
@@ -456,13 +456,13 @@ class NovelService:
             session=session,
         )
         if bool(novel.get("is_deleted")) is not deleted:
-            raise NotFoundError(f"小说 {novel_id} 不存在于当前生命周期视图")
+            raise NotFoundError(f"Tiểu thuyết {novel_id} không tồn tại trong dạng xem vòng đời hiện tại")
         if novel.get("hard_delete_claim"):
-            raise VersionConflictError("小说正在执行物理删除，不能再修改生命周期")
+            raise VersionConflictError("Tiểu thuyết đang bị xóa vật lý, không thể sửa vòng đời nữa")
         current = int(novel["version"])
         if current != expected:
             raise VersionConflictError(
-                f"小说版本冲突：当前版本为 {current}，请求版本为 {expected}"
+                f"Xung đột phiên bản tiểu thuyết, phiên bản hiện tại là {current}, phiên bản yêu cầu là {expected}"
             )
         return novel
 
@@ -490,7 +490,7 @@ class NovelService:
         novel = await NovelService._get_versioned_novel(novel_id, expected_version, deleted=False, session=session)
         updated = await _update_novel_fields(novel, fields, session=session)
         if updated is None:
-            raise VersionConflictError("小说在更新期间已发生变化")
+            raise VersionConflictError("Tiểu thuyết đã thay đổi trong quá trình cập nhật")
         return updated
 
     @staticmethod
@@ -513,13 +513,13 @@ class NovelService:
             版本递增一次的写后小说。
         """
         if status not in {"draft", "ongoing", "completed", "archived"}:
-            raise ValueError(f"小说状态不合法: {status}")
+            raise ValueError(f"Trạng thái tiểu thuyết không hợp lệ: {status}")
         await NovelService._get_versioned_novel(novel_id, expected_version, deleted=False, session=session)
         updated = await novel_repo.update_versioned_novel(
             novel_id, expected_version, {"status": status}, is_deleted=False, session=session,
         )
         if updated is None:
-            raise VersionConflictError("小说在状态更新期间已发生变化")
+            raise VersionConflictError("Tiểu thuyết đã thay đổi trong quá trình cập nhật trạng thái")
         return updated
 
     @staticmethod
@@ -545,7 +545,7 @@ class NovelService:
             is_deleted=False, session=session,
         )
         if updated is None:
-            raise VersionConflictError("小说在软删除期间已发生变化")
+            raise VersionConflictError("Tiểu thuyết đã thay đổi trong quá trình xóa mềm")
         return updated
 
     @staticmethod
@@ -571,7 +571,7 @@ class NovelService:
             is_deleted=True, session=session,
         )
         if updated is None:
-            raise VersionConflictError("小说在恢复期间已发生变化")
+            raise VersionConflictError("Tiểu thuyết đã thay đổi trong quá trình khôi phục")
         return updated
 
     @staticmethod
@@ -605,7 +605,7 @@ class NovelService:
                     is_deleted=False,
                 )
                 if updated is None:
-                    raise VersionConflictError("小说在封面更新期间已发生变化")
+                    raise VersionConflictError("Tiểu thuyết đã thay đổi trong quá trình cập nhật ảnh bìa")
             except Exception:
                 if created_file and await novel_repo.count_cover_references(asset.url) == 0:
                     try:
@@ -653,7 +653,7 @@ class NovelService:
                 is_deleted=False,
             )
             if updated is None:
-                raise VersionConflictError("小说在封面清除期间已发生变化")
+                raise VersionConflictError("Tiểu thuyết đã thay đổi trong quá trình gỡ ảnh bìa")
             old_url = snapshot.get("cover_image")
             if (
                 isinstance(old_url, str)
@@ -688,7 +688,7 @@ class NovelService:
             session=session,
         )
         if not changed:
-            raise NotFoundError(f"小说 {novel_id} 不存在或统计增量为空")
+            raise NotFoundError(f"Tiểu thuyết {novel_id} không tồn tại hoặc độ tăng thống kê trống")
 
     @staticmethod
     async def hard_delete_novel(
@@ -722,39 +722,39 @@ class NovelService:
                 session=session,
             )
             if snapshot.get("is_deleted") is not True:
-                raise NotFoundError(f"小说 {novel_id} 不在回收站")
+                raise NotFoundError(f"Tiểu thuyết {novel_id} không nằm trong thùng rác")
             current = int(snapshot["version"])
             if current != expected:
                 raise VersionConflictError(
-                    f"小说版本冲突：当前版本为 {current}，请求版本为 {expected}"
+                    f"Xung đột phiên bản tiểu thuyết, phiên bản hiện tại là {current}, phiên bản yêu cầu là {expected}"
                 )
             obj_id = to_object_id(novel_id)
             novel_query = {"novel_id": obj_id}
             # 先处理伏笔再取得删除占用；已回收伏笔仍然保护原文和计划位置。
             foreshadowings = await BaseRepository("foreshadowings").collection.count_documents(novel_query, session=session)
             if foreshadowings:
-                raise DomainApiError("NOVEL_FORESHADOWING_DELETE_BLOCKED", "作品仍有伏笔，请在已删作品的伏笔列表逐条回收，再到伏笔回收站永久删除", status_code=409, details={"foreshadowings": foreshadowings})
+                raise DomainApiError("NOVEL_FORESHADOWING_DELETE_BLOCKED", "Tác phẩm vẫn còn chi tiết phục bút; hãy thu hồi từng mục trong danh sách phục bút của tác phẩm đã xóa, rồi xóa vĩnh viễn trong thùng rác phục bút", status_code=409, details={"foreshadowings": foreshadowings})
             # 无事务时不能先留删除声明再拒绝；回收站内不可改章，后续声明 CAS 防止并发恢复。
             revisions = BaseRepository("chapter_revisions").collection
             if snapshot.get("hard_delete_claim") == claim_token and "hard_delete_history_count" in snapshot:
                 # 非事务删除可能已删部分历史；重入核对首次批准数量，不改为剩余数量。
                 if expected_revision_count != snapshot["hard_delete_history_count"]:
-                    raise VersionConflictError("请使用原确认的历史数量继续永久删除")
+                    raise VersionConflictError("Hãy dùng đúng số lượng lịch sử đã xác nhận trước đó để tiếp tục xóa vĩnh viễn")
             else:
                 has_history = await revisions.find_one(novel_query, {"_id": 1}, session=session)
                 if has_history and expected_revision_count is None:
-                    raise DomainApiError("NOVEL_HISTORY_DELETE_BLOCKED", "作品有章节历史版本，请先查看删除影响并明确确认", status_code=409)
+                    raise DomainApiError("NOVEL_HISTORY_DELETE_BLOCKED", "Tác phẩm có phiên bản lịch sử của chương; hãy xem ảnh hưởng khi xóa và xác nhận rõ ràng", status_code=409)
                 count = await revisions.count_documents(novel_query, session=session) if has_history else 0
                 if expected_revision_count is not None and expected_revision_count != count:
-                    raise VersionConflictError("作品章节历史数量已变化，请重新查看删除影响")
+                    raise VersionConflictError("Số lượng lịch sử chương của tác phẩm đã thay đổi, hãy xem lại ảnh hưởng khi xóa")
             record_counts = await count_novel_chapter_records(obj_id, session=session)
             if any(record_counts.values()):
                 if session is None or not session.in_transaction:
-                    raise TransactionNotSupportedError("作品含章后记录，必须启用数据库事务才能永久删除")
+                    raise TransactionNotSupportedError("Tác phẩm có bản ghi sau chương, phải bật transaction cơ sở dữ liệu mới được xóa vĩnh viễn")
                 if approved_records is None:
-                    raise DomainApiError("NOVEL_CHAPTER_RECORD_DELETE_BLOCKED", "作品有章后确认记录，请先查看删除影响并明确确认全部数量", status_code=409, details={"chapter_records": record_counts})
+                    raise DomainApiError("NOVEL_CHAPTER_RECORD_DELETE_BLOCKED", "Tác phẩm có bản ghi xác nhận sau chương; hãy xem ảnh hưởng khi xóa và xác nhận rõ toàn bộ số lượng", status_code=409, details={"chapter_records": record_counts})
             if approved_records is not None and approved_records != record_counts:
-                raise VersionConflictError("作品章后记录数量已变化，请重新查看删除影响")
+                raise VersionConflictError("Số lượng bản ghi sau chương của tác phẩm đã thay đổi, hãy xem lại ảnh hưởng khi xóa")
             # 新记录和作废都会改内部护栏；claim 绑定本次读取，封住非事务判空后的竞争。
             claimed = await novel_repo.claim_hard_delete(
                 novel_id,
@@ -765,7 +765,7 @@ class NovelService:
                 **({"expected_revision_count": expected_revision_count} if expected_revision_count is not None else {}),
             )
             if claimed is None:
-                raise VersionConflictError("小说物理删除声明发生并发冲突")
+                raise VersionConflictError("Tuyên bố xóa vật lý tiểu thuyết xảy ra xung đột đồng thời")
 
             volumes_repo = BaseRepository("volumes")
             volumes = await volumes_repo.find_many(
@@ -874,7 +874,7 @@ class NovelService:
                 session=session,
             )
             if not deleted:
-                raise VersionConflictError("小说物理删除结束时声明已失效")
+                raise VersionConflictError("Đến khi kết thúc xóa vật lý, tuyên bố của tiểu thuyết đã hết hiệu lực")
             stats["novel_deleted"] = 1
             cover_url = claimed.get("cover_image")
             return stats, cover_url if isinstance(cover_url, str) else None

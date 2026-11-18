@@ -118,11 +118,11 @@ def _raise_state_http_error(exc: Exception) -> NoReturn:
         raise api_http_exception(
             status_code=503,
             code="DATABASE_UNAVAILABLE",
-            message="角色卷状态数据库暂时不可用，请稍后重试",
+            message="Database trạng thái quyển của nhân vật tạm không khả dụng, vui lòng thử lại sau",
         ) from exc
     status, code, message, field_errors, details = exception_to_error(
         exc,
-        fallback_message="角色卷状态请求处理失败",
+        fallback_message="Xử lý yêu cầu trạng thái quyển của nhân vật thất bại",
     )
     raise api_http_exception(
         status_code=status,

@@ -80,11 +80,11 @@ def _raise_item_http_error(exc: Exception) -> NoReturn:
         raise api_http_exception(
             status_code=503,
             code="DATABASE_UNAVAILABLE",
-            message="物品数据库暂时不可用，请稍后重试",
+            message="Cơ sở dữ liệu vật phẩm tạm thời không khả dụng, vui lòng thử lại sau",
         ) from exc
     status, code, message, field_errors, details = exception_to_error(
         exc,
-        fallback_message="物品请求处理失败",
+        fallback_message="Xử lý yêu cầu vật phẩm thất bại",
     )
     raise api_http_exception(
         status_code=status,

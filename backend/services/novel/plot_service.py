@@ -148,7 +148,7 @@ async def preserve_plots_after_novel_rename(before: dict[str, Any], after: dict[
             )
             if result.matched_count != 1:
                 from backend.db.errors import VersionConflictError
-                raise VersionConflictError("改书名时剧情已被其他操作修改，请重试")
+                raise VersionConflictError("Khi đổi tên sách, cốt truyện đã bị thao tác khác sửa đổi, hãy thử lại")
 
 
 def plot_prompt_context(context: dict[str, Any], target_type: str, target_id: str) -> dict[str, Any]:
@@ -187,16 +187,16 @@ async def load_plot_context(task: str, parameters: dict[str, Any], scope: dict[s
     request = PlotGenerateInputV1.model_validate({key: value for key, value in {**parameters, **scope}.items()
                                                 if key not in {"reading_intent", "reading_version"}})
     if PLOT_TASKS[task] != request.target_type:
-        raise DomainApiError("PLOT_TARGET_INVALID", "剧情任务与当前部分不匹配", status_code=422)
+        raise DomainApiError("PLOT_TARGET_INVALID", "Tác vụ cốt truyện không khớp với phần hiện tại", status_code=422)
     writing_task = "plan_arcs_by_ai" if request.target_type == "volume" else "plan_scenes_by_ai"
     data = await load_writing_context(writing_task, {"user_guidance": request.user_guidance}, {"novel_id": request.novel_id, "target_type": request.target_type, "target_id": request.target_id, "reading_intent": "replan", "reading_version": 1}, session=session, check_ready=False)
     target = data["chain"][-1][1]
     if check_ready and request.target_type == "arc":
         missing = await writing_plot_missing(data["chain"][:-1], session=session)
         if missing:
-            raise DomainApiError("PLOT_PARENT_NOT_READY", "请先确认卷剧情和卷资料", status_code=409, field_errors={item["field"]: item["message"] for item in missing})
+            raise DomainApiError("PLOT_PARENT_NOT_READY", "Hãy xác nhận cốt truyện và tư liệu của quyển trước", status_code=409, field_errors={item["field"]: item["message"] for item in missing})
     if check_ready and target["version"] != request.expected_version:
-        raise DomainApiError("PLOT_VERSION_CONFLICT", "当前部分已修改，请刷新后重新生成剧情", status_code=409)
+        raise DomainApiError("PLOT_VERSION_CONFLICT", "Phần hiện tại đã bị sửa, hãy làm mới rồi tạo lại cốt truyện", status_code=409)
     data["request"] = data["generation_input"] = request
     data["context"]["has_children"] = bool(data["context"]["existing_children"])
     data["context"]["current_plot"] = target.get("plot", "")
@@ -267,7 +267,7 @@ def validate_plot_candidate(task: str, candidate: dict[str, Any], data: dict[str
         for issue in errors:
             field = "candidate." + ".".join(str(part) for part in issue["loc"])
             if issue["type"] == "extra_forbidden":
-                message = f"{'卷' if kind == 'volume' else '篇章'}规划不使用此字段"
+                message = f"{'卷' if kind == 'volume' else '篇章'}lập kế hoạch không dùng trường này"
             elif issue["type"] == "missing":
                 message = "请填写此规划字段"
             elif issue["type"] == "string_type":
@@ -277,7 +277,7 @@ def validate_plot_candidate(task: str, candidate: dict[str, Any], data: dict[str
             else:
                 message = "此规划字段的格式或长度不符合要求"
             field_errors[field] = message
-        raise DomainApiError("PLOT_PLANNING_INVALID", "配套规划格式不正确，请检查规划字段",
+        raise DomainApiError("PLOT_PLANNING_INVALID", "Định dạng kế hoạch đi kèm không đúng, hãy kiểm tra trường kế hoạch",
                              status_code=422 if confirming else 502, field_errors=field_errors) from exc
     original = data["chain"][-1][1].get("planning") or {}
     protected = {"start_state", "end_state", "target_chapter_count", "target_word_count"}
@@ -297,7 +297,7 @@ def validate_plot_candidate(task: str, candidate: dict[str, Any], data: dict[str
             used = sum((sibling.get("planning") or {}).get(field) or minimum for sibling in siblings)
             requested = result["planning"].get(field) or minimum
             if used + requested > budget:
-                raise DomainApiError("PLOT_BUDGET_EXCEEDED", "当前篇章与同卷其他篇章的预算超过卷预算，请调整规划", status_code=422 if confirming else 502, details={"field": field, "budget": budget, "existing": used, "candidate": requested})
+                raise DomainApiError("PLOT_BUDGET_EXCEEDED", "Ngân sách của vòng truyện hiện tại cùng các vòng truyện khác trong quyển vượt ngân sách của quyển, hãy điều chỉnh kế hoạch", status_code=422 if confirming else 502, details={"field": field, "budget": budget, "existing": used, "candidate": requested})
     return result
 
 
@@ -321,9 +321,9 @@ async def confirm_plot(task: str, target_id: str, request: PlotConfirmV1, *, ide
     basis, inputs = request.basis, request.basis.generation_input
     spec = TASKS[task]
     if inputs.target_id != target_id or inputs.target_type != PLOT_TASKS[task] or basis.workflow != task or basis.novel_id != inputs.novel_id or (basis.step, basis.schema_id, basis.schema_version) != (spec.step, spec.schema_id, spec.schema_version):
-        raise DomainApiError("PLOT_CANDIDATE_MISMATCH", "候选不属于当前剧情任务", status_code=409)
+        raise DomainApiError("PLOT_CANDIDATE_MISMATCH", "Ứng viên không thuộc tác vụ cốt truyện hiện tại", status_code=409)
     if request.expected_version != inputs.expected_version:
-        raise DomainApiError("PLOT_VERSION_CONFLICT", "确认版本必须保持生成时的目标版本", status_code=409)
+        raise DomainApiError("PLOT_VERSION_CONFLICT", "Phiên bản xác nhận phải giữ đúng phiên bản đích lúc tạo", status_code=409)
     confirmation = request.model_dump(mode="json")
     # 新增空字段不改变旧命令的摘要，升级前丢失响应的确认仍可按原键重试。
     if confirmation["candidate"]["source_conflicts"] is None:
@@ -339,11 +339,11 @@ async def confirm_plot(task: str, target_id: str, request: PlotConfirmV1, *, ide
         receipt = await receipts.find_one(receipt_query, session=session)
         if receipt:
             if receipt["request_hash"] != fingerprint.request_hash:
-                raise DomainApiError("PLOT_IDEMPOTENCY_CONFLICT", "同一确认键不能用于不同内容", status_code=409)
+                raise DomainApiError("PLOT_IDEMPOTENCY_CONFLICT", "Cùng một khóa xác nhận không được dùng cho nội dung khác nhau", status_code=409)
             return receipt["result"]
         snapshot = basis.flow_snapshot
         if snapshot is None or snapshot["scope"].get("target_id") != target_id:
-            raise DomainApiError("PLOT_CANDIDATE_MISMATCH", "候选缺少原流程和位置", status_code=409)
+            raise DomainApiError("PLOT_CANDIDATE_MISMATCH", "Ứng viên thiếu luồng gốc và vị trí", status_code=409)
         from backend.services.task_flows.store import flow_store
         from backend.services.task_flows.plot_source_conflicts import PLOT_SOURCE_CONFLICTS_CONTRACT
         flow = flow_store().get(snapshot["flow_ref"]["id"], snapshot["flow_ref"]["revision"])
@@ -351,27 +351,27 @@ async def confirm_plot(task: str, target_id: str, request: PlotConfirmV1, *, ide
         has_report = "plot_source_conflicts_v1" in snapshot["execution"]
         has_report_inputs = "plot_source_conflict_inputs" in snapshot["execution"]
         if reports_sources != has_report or reports_sources != has_report_inputs:
-            raise DomainApiError("PLOT_SOURCE_CONFLICT_REPORT_CHANGED", "疑似冲突报告与原流程不一致，请重新生成", status_code=409)
+            raise DomainApiError("PLOT_SOURCE_CONFLICT_REPORT_CHANGED", "Báo cáo nghi ngờ xung đột không khớp với luồng gốc, hãy tạo lại", status_code=409)
         data = await load_plot_context(task, {}, inputs.model_dump(mode="json"), session=session)
         contexts = [data]
         report_context = None
         report_inputs = snapshot["execution"].get("plot_source_conflict_inputs")
         records = snapshot["execution"].get("writing_reads", [])
         if len(records) > 20:
-            raise DomainApiError("PLOT_CANDIDATE_MISMATCH", "候选资料读取次数无效", status_code=409)
+            raise DomainApiError("PLOT_CANDIDATE_MISMATCH", "Số lần đọc tư liệu của ứng viên không hợp lệ", status_code=409)
         for record in records:
             read_scope = record.get("scope", snapshot["scope"])
             if any(read_scope.get(field) != getattr(inputs, field) for field in ("novel_id", "target_type", "target_id", "expected_version")):
-                raise DomainApiError("PLOT_CANDIDATE_MISMATCH", "资料读取位置与当前剧情不一致", status_code=409)
+                raise DomainApiError("PLOT_CANDIDATE_MISMATCH", "Vị trí đọc tư liệu không khớp với cốt truyện hiện tại", status_code=409)
             loaded = await load_plot_context(task, record["parameters"], read_scope, session=session)
             if loaded["context_basis"] != record["basis"]:
-                raise DomainApiError("PLOT_SOURCE_CHANGED", "生成剧情所用资料已变化，请保留草稿并重新生成", status_code=409)
+                raise DomainApiError("PLOT_SOURCE_CHANGED", "Tư liệu dùng để tạo cốt truyện đã thay đổi, hãy giữ bản nháp và tạo lại", status_code=409)
             contexts.append(loaded)
             if report_inputs and report_inputs.get("parameters") == record["parameters"] and report_inputs.get("scope") == read_scope:
                 report_context = loaded
         current_basis = merge_writing_reads([item["context_basis"] for item in contexts])
         if current_basis != basis.context_basis.model_dump(mode="json") or writing_candidate_fingerprint(task, inputs, current_basis, snapshot) != basis.input_fingerprint:
-            raise DomainApiError("PLOT_SOURCE_CHANGED", "生成剧情所用资料或输入已变化", status_code=409)
+            raise DomainApiError("PLOT_SOURCE_CHANGED", "Tư liệu hoặc đầu vào dùng để tạo cốt truyện đã thay đổi", status_code=409)
         agent_reads = snapshot["execution"].get("agent_reads", [])
         if agent_reads:
             from backend.services.task_flows.book_tools import replay_book_reads
@@ -381,11 +381,11 @@ async def confirm_plot(task: str, target_id: str, request: PlotConfirmV1, *, ide
         if report_inputs is not None:
             from backend.services.task_flows.plot_source_conflicts import build_plot_source_conflicts
             if report_context is None:
-                raise DomainApiError("PLOT_SOURCE_CONFLICT_REPORT_CHANGED", "疑似冲突报告缺少原资料，请重新生成", status_code=409)
+                raise DomainApiError("PLOT_SOURCE_CONFLICT_REPORT_CHANGED", "Báo cáo nghi ngờ xung đột thiếu tư liệu gốc, hãy tạo lại", status_code=409)
             related_reads = report_inputs.get("agent_reads", [])
             read_hashes = {canonical_request_hash(read) for read in agent_reads}
             if any(canonical_request_hash(read) not in read_hashes for read in related_reads):
-                raise DomainApiError("PLOT_SOURCE_CONFLICT_REPORT_CHANGED", "疑似冲突报告的读取记录不一致，请重新生成", status_code=409)
+                raise DomainApiError("PLOT_SOURCE_CONFLICT_REPORT_CHANGED", "Bản ghi đọc của báo cáo nghi ngờ xung đột không nhất quán, hãy tạo lại", status_code=409)
             previous_text = []
             if related_reads:
                 from backend.services.task_flows.book_tools import replay_book_reads
@@ -396,20 +396,20 @@ async def confirm_plot(task: str, target_id: str, request: PlotConfirmV1, *, ide
                 plot_prompt_context(report_context["context"], inputs.target_type, target_id), previous_text,
             )).model_dump(mode="json")
             if report != snapshot["execution"].get("plot_source_conflicts_v1"):
-                raise DomainApiError("PLOT_SOURCE_CONFLICT_REPORT_CHANGED", "疑似冲突报告已改变，请保留草稿并重新生成", status_code=422)
+                raise DomainApiError("PLOT_SOURCE_CONFLICT_REPORT_CHANGED", "Báo cáo nghi ngờ xung đột đã thay đổi, hãy giữ bản nháp và tạo lại", status_code=422)
         elif request.candidate.source_conflicts is not None or "plot_source_conflicts_v1" in snapshot["execution"]:
-            raise DomainApiError("PLOT_SOURCE_CONFLICT_REPORT_CHANGED", "此候选没有可核对的原报告，请重新生成", status_code=422)
+            raise DomainApiError("PLOT_SOURCE_CONFLICT_REPORT_CHANGED", "Ứng viên này không có báo cáo gốc để đối chiếu, hãy tạo lại", status_code=422)
         review = request.source_conflict_review
         if review is not None:
             if report is None or review.report.model_dump(mode="json") != report:
-                raise DomainApiError("PLOT_SOURCE_CONFLICT_REPORT_CHANGED", "请使用本次候选的原疑似冲突报告", status_code=422)
+                raise DomainApiError("PLOT_SOURCE_CONFLICT_REPORT_CHANGED", "Hãy dùng báo cáo nghi ngờ xung đột gốc của ứng viên lần này", status_code=422)
             expected_ids = {item["id"] for item in report["items"]}
             decision_ids = [decision.conflict_id for decision in review.decisions]
             if (len(decision_ids) != len(set(decision_ids)) or set(decision_ids) != expected_ids
                     or any(not decision.confirmed for decision in review.decisions)):
-                raise DomainApiError("PLOT_SOURCE_CONFLICT_REVIEW_REQUIRED", "请逐项核对来源并确认当前候选，确认项不能缺少、重复或多出", status_code=422)
+                raise DomainApiError("PLOT_SOURCE_CONFLICT_REVIEW_REQUIRED", "Hãy đối chiếu từng nguồn rồi xác nhận ứng viên hiện tại, mục xác nhận không được thiếu, trùng hay thừa", status_code=422)
         elif report is not None and report["items"]:
-            raise DomainApiError("PLOT_SOURCE_CONFLICT_REVIEW_REQUIRED", "请逐项核对疑似冲突的来源并确认当前候选", status_code=422)
+            raise DomainApiError("PLOT_SOURCE_CONFLICT_REVIEW_REQUIRED", "Hãy đối chiếu từng nguồn nghi ngờ xung đột rồi xác nhận ứng viên hiện tại", status_code=422)
         await protect_writing_sources({"guards": {key: doc for item in contexts for key, doc in item["guards"].items()},
                                        "fact_reads": [read for read in basis.context_basis.model_dump(mode="json")["reads"]
                                                       if read["kind"] in {"character_facts", "character_relation_facts", "item_facts", "faction_facts"}]}, session=session)
@@ -423,12 +423,12 @@ async def confirm_plot(task: str, target_id: str, request: PlotConfirmV1, *, ide
             if confirmed_content["planning"] is None:
                 confirmed_content.pop("planning")
             if canonical_request_hash(confirmed_content) != saved_content_hash:
-                raise DomainApiError("PLOT_SOURCE_CONFLICT_CONTENT_CHANGED", "候选内容已修改，请重新核对来源并确认当前候选", status_code=422)
+                raise DomainApiError("PLOT_SOURCE_CONFLICT_CONTENT_CHANGED", "Nội dung ứng viên đã bị sửa, hãy đối chiếu lại nguồn và xác nhận ứng viên hiện tại", status_code=422)
         _, _, source_hash = await load_plot_sources(inputs.novel_id, inputs.target_type, target_id, session=session, updated_fields=fields)
         fields["plot_source_fingerprint"] = source_hash
         document = await update_versioned_document(BaseRepository(COLLECTIONS[inputs.target_type]).collection, {"_id": ObjectId(target_id), "novel_id": ObjectId(inputs.novel_id)}, inputs.expected_version, fields, is_deleted=False, session=session)
         if document is None:
-            raise DomainApiError("PLOT_VERSION_CONFLICT", "当前部分已修改，请保留剧情并刷新后比较", status_code=409)
+            raise DomainApiError("PLOT_VERSION_CONFLICT", "Phần hiện tại đã bị sửa, hãy giữ cốt truyện, làm mới rồi so sánh", status_code=409)
         if inputs.target_type == "volume":
             from backend.api.default_routers.volume_router import serialize_volume
             public = serialize_volume(document).model_dump(mode="json", by_alias=True)
@@ -467,10 +467,10 @@ async def require_preparation_stage(novel_id: str, volume_id: str, kind: str, *,
     chain, _, fingerprint = await load_plot_sources(novel_id, "volume", volume_id, session=session, allow_write_lock=allow_write_lock)
     volume = chain[-1][1]
     if not volume.get("plot", "").strip() or volume.get("plot_source_fingerprint") != fingerprint:
-        raise DomainApiError("VOLUME_PLOT_REQUIRED", "请先确认当前卷的详细剧情", status_code=409)
+        raise DomainApiError("VOLUME_PLOT_REQUIRED", "Hãy xác nhận cốt truyện chi tiết của quyển hiện tại trước", status_code=409)
     previous = {"factions": None, "characters": "factions", "locations": "characters"}[kind]
     if previous and volume.get("preparation", {}).get(previous) != plot_hash(volume["plot"]):
-        raise DomainApiError("VOLUME_PREPARATION_REQUIRED", "请先确认上一类卷资料", status_code=409)
+        raise DomainApiError("VOLUME_PREPARATION_REQUIRED", "Hãy xác nhận nhóm tư liệu quyển của loại trước đó.", status_code=409)
     return volume
 
 
@@ -496,20 +496,20 @@ async def record_preparation(novel_id: str, volume_id: str, kind: str, *, sessio
     fields = {f"preparation.{kind}": plot_hash(volume["plot"])}
     if location_ids is not None:
         if len(location_ids) != len(set(location_ids)):
-            raise DomainApiError("VOLUME_LOCATION_INVALID", "本卷地点不能重复", status_code=422)
+            raise DomainApiError("VOLUME_LOCATION_INVALID", "Địa điểm trong quyển không được trùng lặp", status_code=422)
         collection = BaseRepository("locations").collection
         queries = []
         for identity in location_ids:
             query = {"novel_id": ObjectId(novel_id), "location_id": identity, "is_deleted": False, "status": "active", "location_order_pending_token": None}
             document = await collection.find_one(query, session=session)
             if document is None:
-                raise DomainApiError("VOLUME_LOCATION_UNAVAILABLE", "本卷地点不存在或已停用", status_code=409)
+                raise DomainApiError("VOLUME_LOCATION_UNAVAILABLE", "Địa điểm trong quyển không tồn tại hoặc đã ngừng kích hoạt", status_code=409)
             queries.append({**query, "_id": document["_id"], "version": document["version"]})
         await touch_dependency_endpoint_guards(collection, queries, session=session)
         fields["location_ids"] = location_ids
     updated = await update_versioned_document(BaseRepository("volumes").collection, {"_id": ObjectId(volume_id), "novel_id": ObjectId(novel_id)}, volume["version"], fields, is_deleted=False, session=session)
     if updated is None:
-        raise DomainApiError("VOLUME_PREPARATION_CHANGED", "当前卷已修改，请刷新后重新确认", status_code=409)
+        raise DomainApiError("VOLUME_PREPARATION_CHANGED", "Quyển hiện tại đã bị sửa, hãy làm mới rồi xác nhận lại", status_code=409)
     return updated
 
 
@@ -531,7 +531,7 @@ async def confirm_preparation(novel_id: str, volume_id: str, kind: str, request:
     from backend.services.novel.writing_context import load_writing_parents
 
     if kind != "locations" and request.location_ids is not None:
-        raise DomainApiError("VOLUME_PREPARATION_INVALID", "只有地点阶段可以修改本卷地点", status_code=422)
+        raise DomainApiError("VOLUME_PREPARATION_INVALID", "Chỉ giai đoạn địa điểm được sửa địa điểm của quyển này", status_code=422)
     fingerprint = build_idempotency_fingerprint(idempotency_key, {"novel_id": novel_id, "volume_id": volume_id, "kind": kind, **request.model_dump(mode="json")})
     receipts = BaseRepository("writing_confirmation_receipts").collection
     query = {"novel_id": ObjectId(novel_id), "operation": f"prepare_{kind}", "idempotency_key_hash": fingerprint.key_hash}
@@ -541,11 +541,11 @@ async def confirm_preparation(novel_id: str, volume_id: str, kind: str, request:
         receipt = await receipts.find_one(query, session=session)
         if receipt:
             if receipt["request_hash"] != fingerprint.request_hash:
-                raise DomainApiError("VOLUME_PREPARATION_CONFLICT", "同一确认键不能用于不同内容", status_code=409)
+                raise DomainApiError("VOLUME_PREPARATION_CONFLICT", "Cùng một khóa xác nhận không được dùng cho nội dung khác nhau", status_code=409)
             return receipt["result"]
         volume = await require_preparation_stage(novel_id, volume_id, kind, session=session)
         if volume["version"] != request.expected_version:
-            raise DomainApiError("VOLUME_VERSION_CONFLICT", "当前卷已修改，请刷新后重新确认", status_code=409)
+            raise DomainApiError("VOLUME_VERSION_CONFLICT", "Quyển hiện tại đã bị sửa, hãy làm mới rồi xác nhận lại", status_code=409)
         updated = await record_preparation(novel_id, volume_id, kind, session=session, location_ids=(request.location_ids if request.location_ids is not None else volume.get("location_ids", [])) if kind == "locations" else None)
         result = serialize_volume(updated).model_dump(mode="json", by_alias=True)
         await receipts.insert_one({**query, "request_hash": fingerprint.request_hash, "result": result, "created_at": get_utc_now()}, session=session)
@@ -575,26 +575,26 @@ async def clear_preparation(novel_id: str, volume_id: str, kind: str, *, expecte
     chain = await load_writing_parents(novel_id, "volume", volume_id, session=session)
     volume = chain[-1][1]
     if volume["version"] != expected_version:
-        raise DomainApiError("VOLUME_VERSION_CONFLICT", "当前卷已修改，请刷新后重新检查", status_code=409)
+        raise DomainApiError("VOLUME_VERSION_CONFLICT", "Quyển hiện tại đã bị sửa, hãy làm mới rồi kiểm tra lại", status_code=409)
     stages = ("factions", "characters", "locations")
     if kind not in stages or (location_ids is not None and kind != "locations"):
-        raise DomainApiError("VOLUME_PREPARATION_INVALID", "准备阶段或地点选择不正确", status_code=422)
+        raise DomainApiError("VOLUME_PREPARATION_INVALID", "Giai đoạn chuẩn bị hoặc lựa chọn địa điểm không đúng", status_code=422)
     preparation = {key: value for key, value in volume.get("preparation", {}).items() if key in stages[:stages.index(kind)]}
     fields = {"preparation": preparation}
     if location_ids is not None:
         if len(location_ids) != len(set(location_ids)):
-            raise DomainApiError("VOLUME_LOCATION_INVALID", "本卷地点不能重复", status_code=422)
+            raise DomainApiError("VOLUME_LOCATION_INVALID", "Địa điểm trong quyển không được trùng lặp", status_code=422)
         collection = BaseRepository("locations").collection
         queries = []
         for identity in location_ids:
             query = {"novel_id": ObjectId(novel_id), "location_id": identity, "is_deleted": False, "status": "active", "location_order_pending_token": None}
             document = await collection.find_one(query, session=session)
             if document is None:
-                raise DomainApiError("VOLUME_LOCATION_UNAVAILABLE", "原地点已不可用，请重新选择", status_code=409)
+                raise DomainApiError("VOLUME_LOCATION_UNAVAILABLE", "Địa điểm gốc không còn khả dụng, hãy chọn lại", status_code=409)
             queries.append({**query, "_id": document["_id"], "version": document["version"]})
         await touch_dependency_endpoint_guards(collection, queries, session=session)
         fields["location_ids"] = location_ids
     updated = await update_versioned_document(BaseRepository("volumes").collection, {"_id": ObjectId(volume_id), "novel_id": ObjectId(novel_id)}, expected_version, fields, is_deleted=False, session=session)
     if updated is None:
-        raise DomainApiError("VOLUME_PREPARATION_CHANGED", "卷资料已变化，请重新检查", status_code=409)
+        raise DomainApiError("VOLUME_PREPARATION_CHANGED", "Tư liệu của quyển đã thay đổi, hãy kiểm tra lại", status_code=409)
     return updated

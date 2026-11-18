@@ -38,7 +38,7 @@ def merge_writing_reads(contexts: list[dict[str, Any]]) -> dict[str, Any]:
                 selection = read["scope"]
             key = canonical_request_hash({"kind": read["kind"], "scope": selection})
             if key in reads and reads[key] != read:
-                raise DomainApiError("WRITING_SOURCE_CHANGED", "生成期间资料已修改，请重新生成", status_code=409)
+                raise DomainApiError("WRITING_SOURCE_CHANGED", "Tư liệu đã bị sửa trong lúc tạo, hãy tạo lại", status_code=409)
             reads[key] = read
     return WritingContextBasisV1.model_validate({"reads": [reads[key] for key in sorted(reads)]}).model_dump(mode="json")
 
@@ -75,9 +75,9 @@ def validate_writing_candidate(task: str, candidate: dict[str, Any], data: dict[
     entries = result[WRITING_TASKS[task][1]]
     count = data["request"].count
     if not entries and count != 0:
-        raise DomainApiError("WRITING_RESULT_COUNT_INVALID", "本次尚需规划内容，候选不能为空", status_code=422 if confirming else 502)
+        raise DomainApiError("WRITING_RESULT_COUNT_INVALID", "Lần này vẫn cần nội dung để lập kế hoạch, ứng viên không được để trống", status_code=422 if confirming else 502)
     if len(entries) > count or (not confirming and len(entries) != count):
-        raise DomainApiError("WRITING_RESULT_COUNT_INVALID", "生成结果数量与本次要求不一致", status_code=422 if confirming else 502)
+        raise DomainApiError("WRITING_RESULT_COUNT_INVALID", "Số lượng kết quả tạo ra không khớp với yêu cầu lần này", status_code=422 if confirming else 502)
     allowed: dict[str, set[str]] = {}
     for entity in data["context"]["selected_entities"]:
         allowed.setdefault(entity["resource_type"], set()).add(entity["id"])
@@ -91,10 +91,10 @@ def validate_writing_candidate(task: str, candidate: dict[str, Any], data: dict[
                 if reference not in allowed.get(kind, set())
             }
             if fields:
-                raise DomainApiError("WRITING_RESULT_REFERENCE_INVALID", "候选引用了本次未读取的资料，请重新选择资料后生成", status_code=422 if confirming else 502,
+                raise DomainApiError("WRITING_RESULT_REFERENCE_INVALID", "Ứng viên tham chiếu tư liệu chưa đọc lần này, hãy chọn lại tư liệu rồi tạo", status_code=422 if confirming else 502,
                                      field_errors=fields)
         if planning.get("pov_character_id") and planning["pov_character_id"] not in allowed.get("character", set()):
-            raise DomainApiError("WRITING_RESULT_REFERENCE_INVALID", "视角人物不在本次资料中", status_code=422 if confirming else 502,
+            raise DomainApiError("WRITING_RESULT_REFERENCE_INVALID", "Nhân vật góc nhìn không có trong tư liệu lần này", status_code=422 if confirming else 502,
                                  field_errors={f"candidate.{WRITING_TASKS[task][1]}.{index}.planning.pov_character_id": "请使用本次已读取的人物"})
     # 比较 DTO 补齐默认值后的整条内容，标出每组重复中的全部候选。
     duplicate_fields = {
@@ -103,7 +103,7 @@ def validate_writing_candidate(task: str, candidate: dict[str, Any], data: dict[
         if any(entry == other for other_index, other in enumerate(entries) if other_index != index)
     }
     if duplicate_fields:
-        raise DomainApiError("WRITING_RESULT_DUPLICATE", "本批存在内容完全相同的候选，请修改或删除重复项", status_code=422 if confirming else 502,
+        raise DomainApiError("WRITING_RESULT_DUPLICATE", "Đợt này có các ứng viên trùng nội dung hoàn toàn, hãy sửa hoặc xóa mục trùng", status_code=422 if confirming else 502,
                              field_errors=duplicate_fields)
     # 只在上下文给出预算时核对，不把未确定预算当作零。
     parent_plan = data["context"]["plan"][-1].get("planning") or {}
@@ -125,7 +125,7 @@ def validate_writing_candidate(task: str, candidate: dict[str, Any], data: dict[
                 f"candidate.{WRITING_TASKS[task][1]}.{index}.planning.{field}": "本批预算合计超过上级剩余额度"
                 for index in range(len(entries))
             })
-            raise DomainApiError("WRITING_RESULT_BUDGET_EXCEEDED", "已有规划与本批候选超过上级预算，请调整候选", status_code=422 if confirming else 502,
+            raise DomainApiError("WRITING_RESULT_BUDGET_EXCEEDED", "Kế hoạch đã có cùng các ứng viên đợt này vượt ngân sách cấp trên, hãy điều chỉnh ứng viên", status_code=422 if confirming else 502,
                                  field_errors=fields, details={"field": field, "budget": budget, "existing": used, "candidate": requested})
         if not (task == "plan_chapters_by_ai" and field == "target_chapter_count"):
             missing = [index + 1 for index, entry in enumerate(entries) if entry["planning"].get(field) is None]
@@ -137,7 +137,7 @@ def validate_writing_candidate(task: str, candidate: dict[str, Any], data: dict[
                     if parent_plan.get(budget_field) is not None and not (task == "plan_chapters_by_ai" and budget_field == "target_chapter_count")
                     for index, entry in enumerate(entries) if entry["planning"].get(budget_field) is None
                 }
-                raise DomainApiError("WRITING_RESULT_BUDGET_MISSING", "上级已有预算，请为每个候选分配对应预算后重新确认", status_code=422 if confirming else 502,
+                raise DomainApiError("WRITING_RESULT_BUDGET_MISSING", "Cấp trên đã có ngân sách, hãy phân bổ ngân sách cho từng ứng viên rồi xác nhận lại", status_code=422 if confirming else 502,
                                      field_errors=fields, details={"field": field, "budget": budget, "candidate_indices": missing})
     return result
 
@@ -167,10 +167,10 @@ async def confirm_writing(task: str, parent_id: str, request: WritingConfirmV1, 
         inputs = basis.generation_input
         spec = TASKS[task]
         if (basis.workflow, basis.step, basis.schema_id, basis.schema_version) != (task, spec.step, spec.schema_id, spec.schema_version) or inputs.target_id != str(ObjectId(parent_id)) or inputs.novel_id != basis.novel_id or inputs.target_type != WRITING_TASKS[task][0]:
-            raise DomainApiError("WRITING_CANDIDATE_MISMATCH", "候选不属于当前确认位置", status_code=409)
+            raise DomainApiError("WRITING_CANDIDATE_MISMATCH", "Ứng viên không thuộc vị trí xác nhận hiện tại", status_code=409)
         expected = inputs.expected_version
         if request.expected_version != expected:
-            raise DomainApiError("WRITING_VERSION_CONFLICT", "确认版本必须保持生成时读取的目标版本", status_code=409)
+            raise DomainApiError("WRITING_VERSION_CONFLICT", "Phiên bản xác nhận phải giữ đúng phiên bản đích đã đọc lúc tạo", status_code=409)
         payload = request.model_dump(mode="json")
         # 旧冻结请求没有读取位置字段；新增默认值不能改变它原来的成功回执键。
         for field in ("reading_intent", "reading_version"):
@@ -187,14 +187,14 @@ async def confirm_writing(task: str, parent_id: str, request: WritingConfirmV1, 
             existing = await receipts.find_one(receipt_query, session=session)
             if existing:
                 if existing["request_hash"] != fingerprint.request_hash:
-                    raise DomainApiError("WRITING_IDEMPOTENCY_CONFLICT", "同一确认键不能用于不同内容", status_code=409)
+                    raise DomainApiError("WRITING_IDEMPOTENCY_CONFLICT", "Cùng một khóa xác nhận không được dùng cho nội dung khác nhau", status_code=409)
                 timing.phase("回调完成至事务与会话退出" if timing.owns_transaction else "回调返回")
                 return existing["result"]
             if inputs.reading_version != 1 or inputs.reading_intent is None:
-                raise DomainApiError("WRITING_READING_CONTRACT_CHANGED", "此候选没有固定读取位置，请保留草稿并重新生成", status_code=409)
+                raise DomainApiError("WRITING_READING_CONTRACT_CHANGED", "Ứng viên này không có vị trí đọc cố định, hãy giữ bản nháp và tạo lại", status_code=409)
             snapshot = basis.flow_snapshot
             if snapshot is None or snapshot.get("scope", {}).get("target_id") != inputs.target_id:
-                raise DomainApiError("WRITING_CANDIDATE_MISMATCH", "候选缺少原图及操作位置", status_code=409)
+                raise DomainApiError("WRITING_CANDIDATE_MISMATCH", "Ứng viên thiếu ảnh gốc và vị trí thao tác", status_code=409)
             timing.phase("来源复查（含Agent保护）")
             data = await load_writing_context(task, {}, inputs.model_dump(mode="json"), session=session, parent_chain=parent_chain)
             contexts = [data]
@@ -202,11 +202,11 @@ async def confirm_writing(task: str, parent_id: str, request: WritingConfirmV1, 
             loaded_contexts = {canonical_request_hash(inputs.model_dump(mode="json")): data}
             records = snapshot["execution"].get("writing_reads", [])
             if len(records) > 20:
-                raise DomainApiError("WRITING_CANDIDATE_MISMATCH", "候选资料读取次数无效", status_code=409)
+                raise DomainApiError("WRITING_CANDIDATE_MISMATCH", "Số lần đọc tư liệu của ứng viên không hợp lệ", status_code=409)
             for record in records:
                 read_scope = record.get("scope", snapshot["scope"])
                 if any(read_scope.get(key) != snapshot["scope"].get(key) for key in ("novel_id", "target_type", "target_id")):
-                    raise DomainApiError("WRITING_CANDIDATE_MISMATCH", "资料读取位置与本次任务不一致", status_code=409)
+                    raise DomainApiError("WRITING_CANDIDATE_MISMATCH", "Vị trí đọc tư liệu không khớp với tác vụ lần này", status_code=409)
                 read_input = WritingGenerateInputV1.model_validate({**record["parameters"], **read_scope})
                 read_key = canonical_request_hash(read_input.model_dump(mode="json"))
                 loaded = loaded_contexts.get(read_key)
@@ -214,17 +214,17 @@ async def confirm_writing(task: str, parent_id: str, request: WritingConfirmV1, 
                     loaded = await load_writing_context(task, record["parameters"], read_scope, session=session, parent_chain=parent_chain)
                     loaded_contexts[read_key] = loaded
                 if loaded["context_basis"] != record["basis"]:
-                    raise DomainApiError("WRITING_SOURCE_CHANGED", "候选使用的资料已变化，请保留草稿并重新生成", status_code=409)
+                    raise DomainApiError("WRITING_SOURCE_CHANGED", "Tư liệu ứng viên dùng đã thay đổi, hãy giữ bản nháp và tạo lại", status_code=409)
                 contexts.append(loaded)
             current_basis = merge_writing_reads([value["context_basis"] for value in contexts])
             if current_basis != basis.context_basis.model_dump(mode="json"):
-                raise DomainApiError("WRITING_SOURCE_CHANGED", "候选使用的规划、前文或查询结果已变化", status_code=409)
+                raise DomainApiError("WRITING_SOURCE_CHANGED", "Kế hoạch, phần trước hoặc kết quả truy vấn mà ứng viên dùng đã thay đổi", status_code=409)
             try:
                 current_fingerprint = writing_candidate_fingerprint(task, inputs, current_basis, snapshot)
             except (ValueError, KeyError) as exc:
-                raise DomainApiError("WRITING_CANDIDATE_MISMATCH", "生成时的方案或输入已不匹配", status_code=409) from exc
+                raise DomainApiError("WRITING_CANDIDATE_MISMATCH", "Phương án hoặc đầu vào lúc tạo không còn khớp", status_code=409) from exc
             if current_fingerprint != basis.input_fingerprint:
-                raise DomainApiError("WRITING_CANDIDATE_MISMATCH", "候选依据与生成输入不一致", status_code=409)
+                raise DomainApiError("WRITING_CANDIDATE_MISMATCH", "Căn cứ của ứng viên không nhất quán với đầu vào tạo", status_code=409)
             agent_reads = snapshot["execution"].get("agent_reads", [])
             protected_agent_guards = {}
             if agent_reads:

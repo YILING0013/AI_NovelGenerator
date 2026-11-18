@@ -30,7 +30,7 @@ class ChapterRepository(BaseRepository):
         """
         chapter = await self.find_one({"_id": to_object_id(chapter_id)}, include_deleted=include_deleted, session=session)
         if chapter is None:
-            raise NotFoundError("章节不存在或已回收")
+            raise NotFoundError("Chương không tồn tại hoặc đã bị thu hồi")
         return chapter
 
     async def list_in_scene(self, scene_id: str, *, deleted: bool = False, session: AsyncClientSession | None = None) -> list[dict[str, Any]]:

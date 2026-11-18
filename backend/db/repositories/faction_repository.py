@@ -22,12 +22,12 @@ def normalize_faction_name(value: str) -> tuple[str, str]:
         NFKC 与首尾空白清理后的显示名，以及 casefold 唯一键。
     """
     if not isinstance(value, str):
-        raise TypeError("势力名称必须是字符串")
+        raise TypeError("Tên thế lực phải là chuỗi")
     display_name = unicodedata.normalize("NFKC", value).strip()
     if not display_name:
-        raise ValueError("势力名称不能为空")
+        raise ValueError("Tên thế lực không được để trống")
     if len(display_name) > 80:
-        raise ValueError("势力名称不能超过 80 个字符")
+        raise ValueError("Tên thế lực không được quá 80 ký tự")
     return display_name, display_name.casefold()
 
 
@@ -126,7 +126,7 @@ class FactionRepository(BaseRepository):
             return await self.insert_one(prepared, session=session)
         except pymongo.errors.DuplicateKeyError as exc:
             raise DuplicateKeyError(
-                "同一小说下势力业务 ID、活动规范名或创建幂等键冲突"
+                "Xung đột ID nghiệp vụ thế lực, tên chuẩn hóa đang hoạt động hoặc khóa idempotent tạo trong cùng tiểu thuyết"
             ) from exc
 
     async def find_by_creation_idempotency(
@@ -425,9 +425,9 @@ class FactionRepository(BaseRepository):
         )
         if current is None or bool(current.get("is_deleted")) is not require_deleted:
             state = "回收站中" if require_deleted else "未删除状态下"
-            raise NotFoundError(f"势力 '{faction_id}' 在{state}不存在")
+            raise NotFoundError(f"Thế lực '{faction_id}' tại{state}không tồn tại")
         raise DuplicateKeyError(
-            f"势力 '{faction_id}' 版本冲突："
+            f"Thế lực '{faction_id}' 版本冲突："
             f"expected={expected_version}, actual={current['version']}"
         )
 
@@ -459,7 +459,7 @@ class FactionRepository(BaseRepository):
             "volume_id",
         }
         if forbidden & update_data.keys():
-            raise ValueError("势力更新不得修改身份、层级或归属卷")
+            raise ValueError("Cập nhật thế lực không được sửa bản chất, cấp bậc hoặc quyển quy thuộc")
         allowed = {
             "name",
             "alias",
@@ -485,7 +485,7 @@ class FactionRepository(BaseRepository):
         }
         unknown = sorted(update_data.keys() - allowed)
         if unknown:
-            raise ValueError("势力更新包含未登记字段: " + ", ".join(unknown))
+            raise ValueError("Cập nhật thế lực chứa các trường chưa được đăng ký: " + ", ".join(unknown))
         fields = dict(update_data)
         if "name" in fields:
             fields["name"], fields["normalized_name"] = normalize_faction_name(
@@ -507,7 +507,7 @@ class FactionRepository(BaseRepository):
                 session=session,
             )
         except pymongo.errors.DuplicateKeyError as exc:
-            raise DuplicateKeyError("势力更新与活动核心规范名约束冲突") from exc
+            raise DuplicateKeyError("Cập nhật thế lực xung đột ràng buộc tên chuẩn hóa cốt lõi đang hoạt động") from exc
         if updated is None:
             await self._raise_cas_miss(
                 novel_id,
@@ -560,7 +560,7 @@ class FactionRepository(BaseRepository):
                 session=session,
             )
         except pymongo.errors.DuplicateKeyError as exc:
-            raise DuplicateKeyError("势力排序顺序与现有约束冲突") from exc
+            raise DuplicateKeyError("Thứ tự sắp xếp thế lực xung đột với ràng buộc hiện có") from exc
         if updated is None:
             current = await self.collection.find_one(
                 {
@@ -576,9 +576,9 @@ class FactionRepository(BaseRepository):
                 or current.get("level_type") != "core"
                 or current.get("active_status") != "active"
             ):
-                raise NotFoundError(f"活动核心势力 '{faction_id}' 不存在于小说 {novel_id}")
+                raise NotFoundError(f"Thế lực nòng cốt đang hoạt động '{faction_id}' không tồn tại trong tiểu thuyết {novel_id}")
             raise DuplicateKeyError(
-                f"势力 '{faction_id}' 版本冲突："
+                f"Thế lực '{faction_id}' 版本冲突："
                 f"expected={expected_version}, actual={current['version']}"
             )
         return updated
@@ -670,7 +670,7 @@ class FactionRepository(BaseRepository):
             )
         sources = list(dict.fromkeys(current.get("deletion_sources") or []))
         if "user" not in sources:
-            raise DuplicateKeyError("势力没有可恢复的 user 删除来源")
+            raise DuplicateKeyError("Thế lực không có nguồn xóa user nào để khôi phục")
         remaining_sources = [source for source in sources if source != "user"]
         try:
             restored = await self.collection.find_one_and_update(
@@ -695,7 +695,7 @@ class FactionRepository(BaseRepository):
                 session=session,
             )
         except pymongo.errors.DuplicateKeyError as exc:
-            raise DuplicateKeyError("势力恢复后与活动作用域规范名约束冲突") from exc
+            raise DuplicateKeyError("Thế lực sau khôi phục xung đột ràng buộc tên chuẩn hóa của phạm vi đang hoạt động") from exc
         if restored is None:
             await self._raise_cas_miss(
                 novel_id,

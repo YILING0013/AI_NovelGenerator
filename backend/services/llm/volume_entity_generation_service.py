@@ -62,11 +62,11 @@ async def load_volume_entity_context(
         novel = await novel_repo.get_novel_by_id(novel_id, session=session)
         volume = await volume_repo.get_volume_by_id(volume_id, session=session)
     except NotFoundError as exc:
-        raise DomainApiError("VOLUME_ENTITY_REFERENCE_UNAVAILABLE", "小说或当前卷不存在，请刷新后重试", status_code=404) from exc
+        raise DomainApiError("VOLUME_ENTITY_REFERENCE_UNAVAILABLE", "Tiểu thuyết hoặc quyển hiện tại không tồn tại, hãy làm mới rồi thử lại", status_code=404) from exc
     if volume["novel_id"] != to_object_id(novel_id):
-        raise DomainApiError("VOLUME_ENTITY_VOLUME_NOT_FOUND", "当前卷不存在或不属于这部小说", status_code=404)
+        raise DomainApiError("VOLUME_ENTITY_VOLUME_NOT_FOUND", "Quyển hiện tại không tồn tại hoặc không thuộc tiểu thuyết này", status_code=404)
     if generation_input.selection_mode != "auto" and volume["version"] != generation_input.volume_expected_version:
-        raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "当前卷已修改，请刷新后重新生成", status_code=409)
+        raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "Quyển hiện tại đã bị sửa, hãy làm mới rồi tạo lại", status_code=409)
     if require_preparation and generation_input.selection_mode == "auto":
         from backend.services.novel.plot_service import require_preparation_stage
         await require_preparation_stage(novel_id, volume_id, kind, session=session)
@@ -81,7 +81,7 @@ async def load_volume_entity_context(
         entities = [item for item in await faction_repo.get_factions_by_novel(novel_id, session=session) if item["active_status"] == "active" and (item["level_type"] == "core" or str(item["volume_id"]) == volume_id)]
     entities_by_id = {item[entity_field]: item for item in entities}
     if set(generation_input.selected_existing_ids) - entities_by_id.keys():
-        raise DomainApiError("VOLUME_ENTITY_REFERENCE_UNAVAILABLE", "所选档案不存在、已停用或不属于当前卷可用范围", status_code=404)
+        raise DomainApiError("VOLUME_ENTITY_REFERENCE_UNAVAILABLE", "Hồ sơ đã chọn không tồn tại, bị vô hiệu hóa hoặc ngoài phạm vi khả dụng của quyển hiện tại", status_code=404)
     states = [item for item in await state_repo.list_by_volume(novel_id, volume_id, session=session) if item[entity_field] in entities_by_id]
     states_by_entity = {item[entity_field]: item for item in states}
     relations = []
@@ -95,7 +95,7 @@ async def load_volume_entity_context(
     sources.extend(("character_relation", item["relation_id"], character_relation_repo, item) for item in relations)
     source_refs = sorted((CandidateSourceRefV1(resource_type=resource, id=identity, version=int(document["version"])) for resource, identity, _, document in sources), key=lambda ref: (ref.resource_type, ref.id))
     if len(source_refs) > MAX_CANDIDATE_SOURCE_REFS:
-        raise DomainApiError("VOLUME_ENTITY_CONTEXT_TOO_LARGE", "当前卷资料超过可读取范围，请减少资料后重试", status_code=422)
+        raise DomainApiError("VOLUME_ENTITY_CONTEXT_TOO_LARGE", "Tư liệu quyển hiện tại vượt phạm vi có thể đọc, hãy giảm tư liệu rồi thử lại", status_code=422)
     position = resolve_writing_position(
         {"target_type": "volume", "target_id": volume_id, "reading_intent": "replan", "reading_version": 1},
         {"volume": {volume["_id"]: volume}},
@@ -111,11 +111,11 @@ async def load_volume_entity_context(
             "reading_intent": "replan", "reading_version": 1,
         }, session=session)
         if facts["position"] != position:
-            raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "卷顺序在读取期间已变化，请重新读取", status_code=409)
+            raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "Thứ tự quyển đã thay đổi trong lúc đọc, hãy đọc lại", status_code=409)
         fact_reads = facts["reads"]
         character_facts = {row["character_id"]: row for row in facts["characters"]}
         if entities_by_id.keys() != character_facts.keys():
-            raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "人物在读取期间已变化，请重新读取", status_code=409)
+            raise DomainApiError("CHARACTER_FACT_CONTEXT_CHANGED", "Nhân vật đã thay đổi trong lúc đọc, hãy đọc lại", status_code=409)
         relation_facts, relation_reads, relation_position = await read_character_relation_context(
             novel_id, sorted(item["relation_id"] for item in relations), {
                 "target_type": "volume", "target_id": volume_id,
@@ -123,7 +123,7 @@ async def load_volume_entity_context(
             }, session=session,
         )
         if relation_position != position:
-            raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "卷顺序在读取期间已变化，请重新读取", status_code=409)
+            raise DomainApiError("CHARACTER_RELATION_FACT_CONTEXT_CHANGED", "Thứ tự quyển đã thay đổi trong lúc đọc, hãy đọc lại", status_code=409)
         fact_reads = [*fact_reads, *relation_reads]
     else:
         from backend.services.novel.faction_fact_service import read_faction_facts
@@ -132,10 +132,10 @@ async def load_volume_entity_context(
             "reading_intent": "replan", "reading_version": 1,
         }, session=session)
         if facts["position"] != position:
-            raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "卷顺序在读取期间已变化，请重新读取", status_code=409)
+            raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "Thứ tự quyển đã thay đổi trong lúc đọc, hãy đọc lại", status_code=409)
         faction_facts = {row["faction_id"]: row for row in facts["factions"]}
         if entities_by_id.keys() != faction_facts.keys():
-            raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "势力在读取期间已变化，请重新读取", status_code=409)
+            raise DomainApiError("FACTION_FACT_CONTEXT_CHANGED", "Thế lực đã thay đổi trong lúc đọc, hãy đọc lại", status_code=409)
         fact_reads = facts["reads"]
     context = {
         "reading_semantics": "position",
@@ -153,7 +153,7 @@ async def load_volume_entity_context(
     }
     prompt_context = json.dumps(sanitize_json_value(context), ensure_ascii=False, sort_keys=True)
     if len(prompt_context) > 200000:
-        raise DomainApiError("VOLUME_ENTITY_CONTEXT_TOO_LARGE", "当前卷资料过长，请减少资料后重试", status_code=422)
+        raise DomainApiError("VOLUME_ENTITY_CONTEXT_TOO_LARGE", "Tư liệu quyển hiện tại quá dài, hãy giảm tư liệu rồi thử lại", status_code=422)
     data = {"generation_input": generation_input, "kind": kind, "sources": sources, "source_refs": source_refs, "entities": entities_by_id, "states": states_by_entity, "relations": {item["relation_id"]: item for item in relations}, "entity_context": prompt_context, "fact_reads": fact_reads}
     if require_preparation and generation_input.selection_mode == "auto":
         from backend.services.novel.plot_service import preparation_content_fingerprint
@@ -191,23 +191,23 @@ def validate_volume_entity_candidates(task: str, candidate: dict[str, Any], data
     entity_field = "character_id" if kind == "characters" else "faction_id"
     inputs = data["generation_input"]
     if not rows and inputs.selection_mode != "auto":
-        raise DomainApiError("VOLUME_ENTITY_RESULT_INVALID", "请至少保留一个候选", status_code=422 if confirming else 502)
+        raise DomainApiError("VOLUME_ENTITY_RESULT_INVALID", "Hãy giữ lại ít nhất một ứng viên", status_code=422 if confirming else 502)
     status = 422 if confirming else 502
     refs, existing_ids, names = set(), set(), set()
     new_count = 0
     for row in rows:
         if row["candidate_ref"] in refs:
-            raise DomainApiError("VOLUME_ENTITY_RESULT_INVALID", "候选标识不能重复", status_code=status)
+            raise DomainApiError("VOLUME_ENTITY_RESULT_INVALID", "Định danh ứng viên không được trùng lặp", status_code=status)
         refs.add(row["candidate_ref"])
         identity = row[entity_field]
         if identity is not None:
             if identity not in inputs.selected_existing_ids or identity in existing_ids:
-                raise DomainApiError("VOLUME_ENTITY_RESULT_INVALID", "候选包含未选择或重复的已有档案", status_code=status)
+                raise DomainApiError("VOLUME_ENTITY_RESULT_INVALID", "Ứng viên chứa hồ sơ đã có chưa được chọn hoặc bị trùng", status_code=status)
             existing_ids.add(identity)
             state = data["states"].get(identity)
             expected = state["version"] if state else None
             if row["state_expected_version"] != expected:
-                raise DomainApiError("VOLUME_ENTITY_STATE_VERSION_CONFLICT", "卷状态版本不一致，请保留候选并重新生成", status_code=409 if confirming else 502)
+                raise DomainApiError("VOLUME_ENTITY_STATE_VERSION_CONFLICT", "Phiên bản trạng thái quyển không khớp, hãy giữ ứng viên và tạo lại", status_code=409 if confirming else 502)
         else:
             new_count += 1
             profile = row["profile"]
@@ -219,19 +219,19 @@ def validate_volume_entity_candidates(task: str, candidate: dict[str, Any], data
                 name = (profile["level_type"], normalize_faction_name(profile["name"])[1])
                 duplicate = any(item.get("level_type") == profile["level_type"] and str(item.get("volume_id")) == inputs.volume_id and normalize_faction_name(item["name"])[1] == name[1] for item in data["entities"].values())
                 if profile["volume_id"] not in (None, inputs.volume_id):
-                    raise DomainApiError("VOLUME_ENTITY_RESULT_INVALID", "新势力必须归属当前卷", status_code=status)
+                    raise DomainApiError("VOLUME_ENTITY_RESULT_INVALID", "Thế lực mới phải thuộc quyển hiện tại", status_code=status)
                 if profile["parent_faction_id"] is not None and profile["parent_faction_id"] not in data["entities"]:
-                    raise DomainApiError("VOLUME_ENTITY_RESULT_INVALID", "父势力必须是本次读取的核心势力或同卷势力", status_code=status)
+                    raise DomainApiError("VOLUME_ENTITY_RESULT_INVALID", "Thế lực cha phải là thế lực lõi hoặc thế lực cùng quyển được đọc lần này", status_code=status)
             if name in names or duplicate:
-                raise DomainApiError("VOLUME_ENTITY_NAME_CONFLICT", "新档案名称重复，请修改或选择已有档案", status_code=409 if confirming else 502)
+                raise DomainApiError("VOLUME_ENTITY_NAME_CONFLICT", "Tên hồ sơ mới bị trùng, hãy sửa hoặc chọn hồ sơ đã có", status_code=409 if confirming else 502)
             names.add(name)
         if kind == "characters":
             for relation_id in row["state"]["relationship_focus_ids"]:
                 relation = data["relations"].get(relation_id)
                 if identity is None or relation is None or identity not in {relation["source_character_id"], relation["target_character_id"]}:
-                    raise DomainApiError("VOLUME_ENTITY_RESULT_INVALID", "关系焦点必须涉及所选已有角色，新角色不能引用尚不存在的关系", status_code=status)
+                    raise DomainApiError("VOLUME_ENTITY_RESULT_INVALID", "Tiêu điểm quan hệ phải liên quan đến nhân vật đã chọn sẵn có; nhân vật mới không được tham chiếu quan hệ chưa tồn tại", status_code=status)
     if new_count > inputs.new_count or (not confirming and (new_count != inputs.new_count or existing_ids != set(inputs.selected_existing_ids))):
-        raise DomainApiError("VOLUME_ENTITY_RESULT_INVALID", "候选数量与本次新建数量或已有档案选择不一致", status_code=status)
+        raise DomainApiError("VOLUME_ENTITY_RESULT_INVALID", "Số lượng ứng viên không khớp với số lượng tạo mới hoặc lựa chọn hồ sơ đã có lần này", status_code=status)
     return result
 
 
@@ -256,7 +256,7 @@ async def confirm_volume_entities(task: str, novel_id: str, volume_id: str, requ
     response_model = VolumeCharactersConfirmedV1 if kind == "characters" else VolumeFactionsConfirmedV1
     inputs = basis.generation_input
     if basis.workflow != task or inputs.novel_id != novel_id or inputs.volume_id != volume_id:
-        raise DomainApiError("VOLUME_ENTITY_SCOPE_MISMATCH", "候选不属于当前小说、卷或任务", status_code=422)
+        raise DomainApiError("VOLUME_ENTITY_SCOPE_MISMATCH", "Ứng viên không thuộc tiểu thuyết, quyển hoặc nhiệm vụ hiện tại", status_code=422)
     explicit_factions = kind == "factions" and plans and basis.flow_snapshot["execution"].get("faction_candidate_contract") == "explicit_faction_values_v1"
     # 新合同把省略与明确空值计入原请求摘要；历史成功仍沿用旧展开摘要回放。
     fingerprint = build_idempotency_fingerprint(idempotency_key, {"operation": task, "novel_id": novel_id, "volume_id": volume_id, **request.model_dump(mode="json", exclude_unset=explicit_factions)})
@@ -267,7 +267,7 @@ async def confirm_volume_entities(task: str, novel_id: str, volume_id: str, requ
         if receipt is None:
             return None
         if receipt["request_hash"] != fingerprint.request_hash:
-            raise DomainApiError("VOLUME_ENTITY_IDEMPOTENCY_CONFLICT", "同一确认键已用于不同内容", status_code=409)
+            raise DomainApiError("VOLUME_ENTITY_IDEMPOTENCY_CONFLICT", "Cùng một khóa xác nhận đã dùng cho nội dung khác", status_code=409)
         if kind != "factions":
             await novel_repo.get_novel_by_id(novel_id, session=session)
             await volume_repo.get_volume_by_id(volume_id, session=session)
@@ -278,7 +278,7 @@ async def confirm_volume_entities(task: str, novel_id: str, volume_id: str, requ
     if original is not None:
         return original
     if kind == "factions" and not plans:
-        raise DomainApiError("FACTION_FACT_REQUIRED", "旧卷势力批次没有成功记录；请保留原请求，新候选需采用明确卷首资料与参与计划", status_code=409)
+        raise DomainApiError("FACTION_FACT_REQUIRED", "Lô thế lực của quyển cũ không có bản ghi thành công; hãy giữ yêu cầu gốc, ứng viên mới cần dùng tư liệu đầu quyển rõ ràng và kế hoạch tham gia", status_code=409)
 
     async def write(session: AsyncClientSession) -> dict[str, Any]:
         """先复查，再复用领域写入，所有状态与回执共享同一事务。"""
@@ -287,31 +287,31 @@ async def confirm_volume_entities(task: str, novel_id: str, volume_id: str, requ
             return original
         execution = basis.flow_snapshot["execution"]
         if kind == "factions" and not explicit_factions:
-            raise DomainApiError("FACTION_CANDIDATE_CONTRACT_REQUIRED", "旧候选无法区分明确事实与默认值，请保留草稿并重新生成", status_code=409)
+            raise DomainApiError("FACTION_CANDIDATE_CONTRACT_REQUIRED", "Ứng viên cũ không phân biệt được dữ kiện rõ ràng với giá trị mặc định, hãy giữ bản nháp và tạo lại", status_code=409)
         if "character_fact_reads" not in execution:
-            raise DomainApiError("CHARACTER_FACT_CONTRACT_REQUIRED", "原候选未保存人物事实依据，请保留候选并重新生成", status_code=409)
+            raise DomainApiError("CHARACTER_FACT_CONTRACT_REQUIRED", "Ứng viên gốc chưa lưu căn cứ dữ kiện nhân vật, hãy giữ ứng viên và tạo lại", status_code=409)
         if execution.get("faction_reading_contract") != "faction_facts_v1" or "faction_fact_reads" not in execution:
-            raise DomainApiError("FACTION_FACT_CONTRACT_REQUIRED", "原候选未保存势力事实依据，请保留候选并重新生成", status_code=409)
+            raise DomainApiError("FACTION_FACT_CONTRACT_REQUIRED", "Ứng viên gốc chưa lưu căn cứ dữ kiện thế lực, hãy giữ ứng viên và tạo lại", status_code=409)
         original_reads = [*execution["character_fact_reads"], *execution.get("item_fact_reads", []), *execution["faction_fact_reads"]]
         if kind == "characters":
             if (execution.get("relation_reading_contract") != "character_relation_facts_v1"
                     or "character_relation_fact_reads" not in execution):
-                raise DomainApiError("CHARACTER_RELATION_FACT_CONTRACT_REQUIRED", "原候选未保存关系事实依据，请保留候选并重新生成", status_code=409)
+                raise DomainApiError("CHARACTER_RELATION_FACT_CONTRACT_REQUIRED", "Ứng viên gốc chưa lưu căn cứ dữ kiện quan hệ, hãy giữ ứng viên và tạo lại", status_code=409)
             original_reads = [*original_reads, *execution["character_relation_fact_reads"]]
         if kind == "characters" and not plans and any(row.character_id is None for row in request.candidates):
-            raise DomainApiError("CHARACTER_FACT_CONTRACT_REQUIRED", "新人物需要明确起点，请先在人物详情确认初始设定", status_code=409)
+            raise DomainApiError("CHARACTER_FACT_CONTRACT_REQUIRED", "Nhân vật mới cần điểm khởi đầu rõ ràng, hãy xác nhận thiết lập ban đầu trong phần chi tiết nhân vật trước", status_code=409)
         from backend.services.novel.writing_context import revalidate_position_fact_reads
         await revalidate_position_fact_reads(original_reads, session=session, protect=True)
         data = await load_volume_entity_context(task, inputs, session=session)
         if any(read not in original_reads for read in data["fact_reads"]):
-            raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "候选缺少当前人物或关系查询的原依据，请保留候选并重新生成", status_code=409)
+            raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "Ứng viên thiếu căn cứ gốc của truy vấn nhân vật hoặc quan hệ hiện tại, hãy giữ ứng viên và tạo lại", status_code=409)
         try:
             current_fingerprint = compute_preparation_fingerprint(task, inputs, data["content_fingerprint"], basis.flow_snapshot) if inputs.selection_mode == "auto" else compute_flow_candidate_fingerprint(task, inputs, data["source_refs"], basis.flow_snapshot)
         except (KeyError, ValueError) as exc:
-            raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "原流程或生成输入已变化，请重新生成", status_code=409) from exc
+            raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "Luồng gốc hoặc đầu vào tạo đã thay đổi, hãy tạo lại", status_code=409) from exc
         changed = data["content_fingerprint"] != basis.content_fingerprint if inputs.selection_mode == "auto" else [ref.model_dump() for ref in data["source_refs"]] != sorted([ref.model_dump() for ref in basis.source_refs], key=lambda ref: (ref["resource_type"], ref["id"]))
         if current_fingerprint != basis.input_fingerprint or changed:
-            raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "生成所用资料已变化，请保留候选并重新生成", status_code=409)
+            raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "Tư liệu dùng để tạo đã thay đổi, hãy giữ ứng viên và tạo lại", status_code=409)
         if basis.flow_snapshot["execution"].get("agent_reads"):
             from backend.services.task_flows.book_tools import replay_book_reads
             await replay_book_reads(basis.flow_snapshot["scope"], basis.flow_snapshot["execution"]["agent_reads"], session=session, protect=True)
@@ -326,7 +326,7 @@ async def confirm_volume_entities(task: str, novel_id: str, volume_id: str, requ
             field = "writing_guard_revision" if resource_type in {"novel", "volume"} else "dependency_guard_revision"
             guarded = await repository.collection.update_one({"_id": document["_id"], "is_deleted": False, **build_snapshot_version_filter(document)}, {"$inc": {field: 1}}, session=session)
             if guarded.matched_count != 1:
-                raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "资料在确认期间已变化，请保留候选并重试", status_code=409)
+                raise DomainApiError("CANDIDATE_SOURCE_CHANGED", "Tư liệu đã thay đổi trong lúc xác nhận, hãy giữ ứng viên và thử lại", status_code=409)
         new_characters = {}
         if plans and kind == "characters":
             from backend.services.novel.character_fact_batch_service import create_character_fact_batch
@@ -421,13 +421,13 @@ async def confirm_volume_entities(task: str, novel_id: str, volume_id: str, requ
     try:
         return await run_mongo_write_unit(write, "confirm_volume_entities", require_transaction=True)
     except TransactionNotSupportedError as exc:
-        raise DomainApiError("VOLUME_ENTITY_TRANSACTION_REQUIRED", "保存档案和卷状态需要数据库事务，请检查数据库配置", status_code=503) from exc
+        raise DomainApiError("VOLUME_ENTITY_TRANSACTION_REQUIRED", "Việc lưu hồ sơ và trạng thái quyển cần giao dịch cơ sở dữ liệu, hãy kiểm tra cấu hình cơ sở dữ liệu", status_code=503) from exc
     except (DuplicateKeyError, OperationFailure) as exc:
         original = await replay()
         if original is not None:
             return original
         if isinstance(exc, DuplicateKeyError) or exc.code == 112:
-            raise DomainApiError("VOLUME_ENTITY_WRITE_CONFLICT", "档案或卷状态已被其他操作修改，请保留候选并重试", status_code=409) from exc
+            raise DomainApiError("VOLUME_ENTITY_WRITE_CONFLICT", "Hồ sơ hoặc trạng thái quyển đã bị thao tác khác chỉnh sửa, hãy giữ ứng viên và thử lại", status_code=409) from exc
         raise
     except NotFoundError as exc:
-        raise DomainApiError("VOLUME_ENTITY_REFERENCE_UNAVAILABLE", "小说、卷或所选档案已不存在，请保留候选并刷新", status_code=404) from exc
+        raise DomainApiError("VOLUME_ENTITY_REFERENCE_UNAVAILABLE", "Tiểu thuyết, quyển hoặc hồ sơ đã chọn không còn tồn tại, hãy giữ ứng viên và làm mới", status_code=404) from exc

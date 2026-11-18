@@ -41,9 +41,9 @@ class LocationRepository(BaseRepository):
         """
         document = ensure_initial_version(data)
         if not document.get("location_id") or not document.get("novel_id"):
-            raise ValueError("地点缺少 location_id 或 novel_id")
+            raise ValueError("Địa điểm thiếu location_id hoặc novel_id")
         if not str(document.get("normalized_name") or "").strip():
-            raise ValueError("地点缺少 normalized_name")
+            raise ValueError("Địa điểm thiếu normalized_name")
         now = document.get("created_at") or get_utc_now()
         document.update(
             {
@@ -64,7 +64,7 @@ class LocationRepository(BaseRepository):
             await self.collection.insert_one(document, session=session)
         except PyMongoDuplicateKeyError as exc:
             raise DuplicateKeyError(
-                "地点 ID、同父规范名、同父顺序或创建幂等键冲突"
+                "Xung đột ID địa điểm, tên chuẩn hóa cùng cha, thứ tự cùng cha hoặc khóa idempotent tạo"
             ) from exc
         return document
 
@@ -220,7 +220,7 @@ class LocationRepository(BaseRepository):
             session=session,
         )
         if location is None:
-            raise NotFoundError(f"地点 {location_id} 不存在于小说 {novel_id}")
+            raise NotFoundError(f"Địa điểm {location_id} không tồn tại trong tiểu thuyết {novel_id}")
         return location
 
     async def get_deleted_location(
@@ -250,7 +250,7 @@ class LocationRepository(BaseRepository):
             session=session,
         )
         if location is None:
-            raise NotFoundError(f"地点 {location_id} 不存在于小说 {novel_id} 的回收站")
+            raise NotFoundError(f"Địa điểm {location_id} không tồn tại trong tiểu thuyết {novel_id} (trong thùng rác)")
         return location
 
     async def list_siblings(
@@ -379,7 +379,7 @@ class LocationRepository(BaseRepository):
                 session=session,
             )
         except PyMongoDuplicateKeyError as exc:
-            raise DuplicateKeyError("地点同父规范名或顺序冲突") from exc
+            raise DuplicateKeyError("Xung đột tên chuẩn hóa hoặc thứ tự dưới cùng cấp cha của địa điểm") from exc
 
     async def restore_snapshot_exact(
         self,
@@ -412,7 +412,7 @@ class LocationRepository(BaseRepository):
         try:
             result = await self.collection.replace_one(query, dict(snapshot), session=session)
         except PyMongoDuplicateKeyError as exc:
-            raise DuplicateKeyError("地点补偿恢复发生唯一键冲突") from exc
+            raise DuplicateKeyError("Khôi phục bù trừ địa điểm gặp xung đột khóa duy nhất") from exc
         return result.matched_count == 1
 
     async def hard_delete_location(

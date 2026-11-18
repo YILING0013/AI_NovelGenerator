@@ -141,7 +141,7 @@ async def check_faction_fields(change: dict, *, session=None, protect=False) -> 
         if operation["resource_type"] != "faction":
             continue
         if operation["action"] == "create":
-            raise DomainApiError("FACTION_FACT_REQUIRED", "新势力请使用明确剧情位置的事实工具或整批生成入口；原稿保留", status_code=409)
+            raise DomainApiError("FACTION_FACT_REQUIRED", "Với thế lực mới, hãy dùng công cụ fact đặt ở vị trí cốt truyện rõ ràng hoặc lối vào tạo nguyên lô; bản thảo được giữ nguyên", status_code=409)
         if operation["action"] == "update":
             fields = {field.split(".")[0] for field in operation.get("fields", {})} & FACTION_FACT_PROFILE_FIELDS
             if fields:
@@ -167,7 +167,7 @@ async def check_relation_fields(change: dict, *, session=None, protect: bool = F
         if value["resource_type"] != "character_relation":
             continue
         if value["action"] == "create":
-            raise DomainApiError("CHARACTER_RELATION_FACT_REQUIRED", "新关系请由作者设置明确起点后确认", status_code=409)
+            raise DomainApiError("CHARACTER_RELATION_FACT_REQUIRED", "Với quan hệ mới, tác giả hãy đặt điểm khởi đầu rõ ràng rồi xác nhận", status_code=409)
         fields = {field.split(".")[0] for field in value.get("fields", {})}
         if value["action"] == "update" and "current_state" in fields:
             identity = value.get("id")
@@ -197,7 +197,7 @@ async def check_item_fields(change: dict, *, session=None, protect: bool = False
         if operation["resource_type"] != "item":
             continue
         if operation["action"] == "create":
-            raise DomainApiError("ITEM_FACT_REQUIRED", "新物品请由作者选择明确起点后确认", status_code=409)
+            raise DomainApiError("ITEM_FACT_REQUIRED", "Với vật phẩm mới, tác giả hãy chọn điểm khởi đầu rõ ràng rồi xác nhận", status_code=409)
         fields = {key.split(".")[0] for key in operation.get("fields", {})}
         if operation["action"] == "status" or operation["action"] == "update" and fields & ITEM_FACT_FIELDS:
             identities.add(operation["id"])
@@ -293,7 +293,7 @@ async def guard_pending_writes(novel_id: str, proposed: dict, *, exclude_id=None
         overlaps = (refs & old_refs or kinds & old_kinds or kinds & {kind for kind, _ in old_refs}
                     or old_kinds & {kind for kind, _ in refs} or structural & old_ancestors or old_structural & ancestors)
         if overlaps:
-            raise DomainApiError("ASSISTANT_SAVE_UNKNOWN", "这个对象的上次保存结果仍待核对，已保留原修改；请先恢复原保存，再处理新要求", status_code=409,
+            raise DomainApiError("ASSISTANT_SAVE_UNKNOWN", "Kết quả lưu lần trước của đối tượng này vẫn chờ đối chiếu, đã giữ nguyên sửa đổi ban đầu; hãy khôi phục phép lưu ban đầu trước, rồi xử lý yêu cầu mới", status_code=409,
                 details={"change_id": str(pending["_id"]), "revision": pending["revision"], "run_id": str(pending["run_id"]), "session_id": str(pending["session_id"]), "next": "用原 change_id 和 revision 调用 apply_changes 或 reconcile_changes，不另建操作。"})
 
 
@@ -370,10 +370,10 @@ async def get_change(novel_id: str, change_id: str, *, session=None) -> dict:
         原修改组文档。
     """
     if not ObjectId.is_valid(change_id):
-        raise DomainApiError("ASSISTANT_CHANGE_NOT_FOUND", "修改组不存在", status_code=404)
+        raise DomainApiError("ASSISTANT_CHANGE_NOT_FOUND", "Nhóm sửa đổi không tồn tại", status_code=404)
     result = await BaseRepository("assistant_changes").collection.find_one({"_id": ObjectId(change_id), "novel_id": ObjectId(novel_id)}, session=session)
     if result is None:
-        raise DomainApiError("ASSISTANT_CHANGE_NOT_FOUND", "修改组不存在或不属于当前小说", status_code=404)
+        raise DomainApiError("ASSISTANT_CHANGE_NOT_FOUND", "Nhóm sửa đổi không tồn tại hoặc không thuộc tiểu thuyết hiện tại", status_code=404)
     return result
 
 
@@ -438,7 +438,7 @@ async def stage_changes(novel_id: str, session_id: str, run_id: str, operations:
         已保存但未执行业务写入的修改组。
     """
     if not 1 <= len(operations) <= 50:
-        raise DomainApiError("ASSISTANT_CHANGE_SIZE", "一组需要包含 1–50 项操作")
+        raise DomainApiError("ASSISTANT_CHANGE_SIZE", "Một nhóm cần chứa từ 1 đến 50 thao tác")
     change_id = ObjectId(canonical_request_hash({"run": run_id, "key": key})[:24])
     collection = BaseRepository("assistant_changes").collection
     existing = await collection.find_one({"_id": change_id, "novel_id": ObjectId(novel_id)})
@@ -463,10 +463,10 @@ async def stage_changes(novel_id: str, session_id: str, run_id: str, operations:
     for operation in operations:
         kind = operation.resource_type
         if kind == "foreshadowing":
-            raise DomainApiError("FORESHADOWING_READ_ONLY", "助手不能暂存伏笔修改，请由作者操作")
+            raise DomainApiError("FORESHADOWING_READ_ONLY", "Trợ lý không thể tạm giữ sửa đổi chi tiết phục bút, hãy để tác giả thao tác")
         if operation.action == "create":
             if not operation.temporary_id or operation.temporary_id in temporary:
-                raise DomainApiError("ASSISTANT_TEMPORARY_ID", "新建资料需要不重复的临时 ID")
+                raise DomainApiError("ASSISTANT_TEMPORARY_ID", "Tạo mới tài liệu cần ID tạm thời không trùng lặp")
             temporary.add(operation.temporary_id)
         references = []
         if operation.id and not operation.id.startswith("new_"):
@@ -476,7 +476,7 @@ async def stage_changes(novel_id: str, session_id: str, run_id: str, operations:
             references.append(ResourceRef(resource_type=parent_kind, id=operation.parent_id))
         if operation.action == "reorder":
             if not isinstance(operation.fields.get("ids"), list):
-                raise DomainApiError("ASSISTANT_REORDER_INVALID", "排序需要提供完整 ID 列表")
+                raise DomainApiError("ASSISTANT_REORDER_INVALID", "Việc sắp xếp cần cung cấp danh sách ID đầy đủ")
             references.extend(ResourceRef(resource_type=kind, id=identity) for identity in operation.fields["ids"] if not identity.startswith("new_"))
         for ref in references:
             document = await get_resource(novel_id, ref, include_deleted=True)
@@ -484,7 +484,7 @@ async def stage_changes(novel_id: str, session_id: str, run_id: str, operations:
             source = {**ref.model_dump(), "version": content["version"], "fingerprint": content_fingerprint(content)}
             prior = source_map.get((ref.resource_type, ref.id))
             if prior and prior["fingerprint"] != source["fingerprint"]:
-                raise DomainApiError("ASSISTANT_SOURCE_CHANGED", "资料已被修改，请重新读取后准备候选", status_code=409)
+                raise DomainApiError("ASSISTANT_SOURCE_CHANGED", "Tài liệu đã bị sửa đổi, hãy đọc lại rồi chuẩn bị ứng viên", status_code=409)
             source_map[(ref.resource_type, ref.id)] = source
             before[f"{ref.resource_type}:{ref.id}"] = content
         original = before.get(f"{kind}:{operation.id}", {})
@@ -498,7 +498,7 @@ async def stage_changes(novel_id: str, session_id: str, run_id: str, operations:
                 "sources": list(source_map.values()), "queries": queries, "before": before, "source_refs": list(source_map.values()),
                 "diffs": diffs, "review": None, "apply_attempt": {"revision": 1, "outcome": "not_sent"}, "created_at": now, "updated_at": now}
     if len(BSON.encode(document)) > 8_000_000:
-        raise DomainApiError("ASSISTANT_CHANGE_SIZE", "本组内容过大，请按独立修改拆分")
+        raise DomainApiError("ASSISTANT_CHANGE_SIZE", "Nội dung nhóm này quá lớn, hãy tách thành các sửa đổi độc lập")
     try:
         await collection.insert_one(document)
     except DuplicateKeyError:
@@ -519,9 +519,9 @@ async def edit_change(novel_id: str, change_id: str, request: ChangeEdit) -> dic
     change = await get_change(novel_id, change_id)
     guard_creation(change)
     if change.get("apply_attempt", {}).get("outcome") == "unknown":
-        raise DomainApiError("ASSISTANT_SAVE_UNKNOWN", "正在核对原保存结果，原请求不能修改", status_code=409)
+        raise DomainApiError("ASSISTANT_SAVE_UNKNOWN", "Đang đối chiếu kết quả lưu ban đầu, không thể sửa yêu cầu gốc", status_code=409)
     if change["kind"] == "facts":
-        raise DomainApiError("ASSISTANT_FACT_EDIT_IN_CHAT", "请在对话里说明要调整的内容，原修改会保留", status_code=409)
+        raise DomainApiError("ASSISTANT_FACT_EDIT_IN_CHAT", "Hãy mô tả nội dung cần điều chỉnh trong hội thoại, sửa đổi gốc sẽ được giữ", status_code=409)
     await check_relation_fields(change)
     await check_item_fields(change)
     await check_character_fields(change)
@@ -531,12 +531,12 @@ async def edit_change(novel_id: str, change_id: str, request: ChangeEdit) -> dic
         await validate_creation(change)
     if change["kind"] == "operations":
         if request.operations is None:
-            raise DomainApiError("ASSISTANT_CHANGE_KIND", "此修改组需要提交操作列表")
+            raise DomainApiError("ASSISTANT_CHANGE_KIND", "Nhóm sửa đổi này cần gửi danh sách thao tác")
         # 编辑内容不能偷换目标或删去依赖；新的业务范围应另建候选。
         old_identity = [(o["action"], o["resource_type"], o.get("id"), o.get("parent_id"), o.get("temporary_id")) for o in change["operations"]]
         new_identity = [(o.action, o.resource_type, o.id, o.parent_id, o.temporary_id) for o in request.operations]
         if old_identity != new_identity:
-            raise DomainApiError("ASSISTANT_CHANGE_SCOPE", "此处只能编辑候选内容；更换目标、增删操作请另建修改组")
+            raise DomainApiError("ASSISTANT_CHANGE_SCOPE", "Nơi này chỉ chỉnh sửa được nội dung ứng viên; muốn đổi mục tiêu hay thêm/bớt thao tác, hãy lập nhóm sửa đổi khác")
         updates = {"operations": [operation.model_dump(mode="json") for operation in request.operations]}
         # 只有人工 PATCH 路由能进入此函数，原候选必须先通过来源检查。
         updates["author_text"] = {"source": "author_candidate_edit", "revision": request.expected_revision + 1,
@@ -555,7 +555,7 @@ async def edit_change(novel_id: str, change_id: str, request: ChangeEdit) -> dic
         updates["diffs"] = diffs
     else:
         if request.candidate is None:
-            raise DomainApiError("ASSISTANT_CHANGE_KIND", "此修改组需要提交原生成任务的候选")
+            raise DomainApiError("ASSISTANT_CHANGE_KIND", "Nhóm sửa đổi này cần gửi ứng viên của tác vụ tạo ban đầu")
         updates = {"candidate": request.candidate}
         updates["author_text"] = {"source": "author_candidate_edit", "revision": request.expected_revision + 1,
                                   "candidate_hash": canonical_request_hash(request.candidate)}
@@ -565,7 +565,7 @@ async def edit_change(novel_id: str, change_id: str, request: ChangeEdit) -> dic
         {"_id": change["_id"], "novel_id": change["novel_id"], "revision": request.expected_revision, "status": {"$in": ["draft", "reviewed"]}},
         {"$set": {**updates, "status": "draft", "review": None, "updated_at": get_utc_now()}, "$unset": {"program_error": ""}, "$inc": {"revision": 1}}, return_document=ReturnDocument.AFTER)
     if result is None:
-        raise DomainApiError("ASSISTANT_CHANGE_CONFLICT", "修改组已保存或已被编辑，请刷新", status_code=409)
+        raise DomainApiError("ASSISTANT_CHANGE_CONFLICT", "Nhóm sửa đổi đã được lưu hoặc đã bị chỉnh sửa, hãy làm mới", status_code=409)
     return result
 
 
@@ -600,10 +600,10 @@ async def check_sources(change: dict, *, session=None, protect: bool = False) ->
         document = await get_resource(novel_id, ref, session=session, include_deleted=True)
         content = public_content(ref.resource_type, document)
         if content_fingerprint(content) != source["fingerprint"]:
-            raise DomainApiError("ASSISTANT_SOURCE_CHANGED", "候选使用的资料已修改，请保留候选并重新准备", status_code=409, details={"source": ref.model_dump()})
+            raise DomainApiError("ASSISTANT_SOURCE_CHANGED", "Tài liệu mà ứng viên sử dụng đã bị sửa, hãy giữ ứng viên và chuẩn bị lại", status_code=409, details={"source": ref.model_dump()})
         # 目标版本严格保持，纯字数变化的参考资料仍可复验其内容。
         if f"{ref.resource_type}:{ref.id}" in change.get("before", {}) and content["version"] != source["version"]:
-            raise DomainApiError("ASSISTANT_VERSION_CHANGED", "候选目标的版本已变化，请重新准备", status_code=409, details={"source": ref.model_dump()})
+            raise DomainApiError("ASSISTANT_VERSION_CHANGED", "Phiên bản mục tiêu của ứng viên đã thay đổi, hãy chuẩn bị lại", status_code=409, details={"source": ref.model_dump()})
         if protect:
             if ref.resource_type == "foreshadowing":
                 from backend.services.novel.foreshadowing_service import protect_foreshadowing_sources
@@ -618,7 +618,7 @@ async def check_sources(change: dict, *, session=None, protect: bool = False) ->
             result = await BaseRepository(RESOURCES[ref.resource_type].collection).collection.update_one(
                 {"_id": document["_id"], "version": document["version"], "is_deleted": document["is_deleted"]}, {"$inc": {"writing_guard_revision": 1}}, session=session)
             if result.matched_count != 1:
-                raise DomainApiError("ASSISTANT_SOURCE_CHANGED", "资料在确认期间变化，请重试", status_code=409)
+                raise DomainApiError("ASSISTANT_SOURCE_CHANGED", "Tài liệu thay đổi trong lúc xác nhận, hãy thử lại", status_code=409)
         materials.append(content)
     if change.get("queries"):
         from .reading import replay_queries
@@ -642,18 +642,18 @@ async def execute_group(change: dict, *, session) -> dict:
         policy = change.get("fact_policy", {})
         run = await BaseRepository("assistant_runs").collection.find_one({"_id": change["run_id"], "novel_id": change["novel_id"]}, session=session)
         if not run or policy.get("version") not in {1, 2} or policy.get("request_hash") != run["request_hash"]:
-            raise DomainApiError("ASSISTANT_FACT_SOURCE_REQUIRED", "这份修改缺少原作者要求，请保留并重新说明", status_code=409)
+            raise DomainApiError("ASSISTANT_FACT_SOURCE_REQUIRED", "Bản sửa đổi này thiếu yêu cầu gốc của tác giả, hãy giữ lại và mô tả lại", status_code=409)
         if policy.get("version") == 2:
             answers = policy["author_answers"]
             if (run.get("answers", [])[:len(answers)] != answers
                     or canonical_request_hash(run["request"]) != run["request_hash"]
                     or policy["author_request"] != "\n".join([run["request"]["message"], *(item["message"] for item in answers)])):
-                raise DomainApiError("ASSISTANT_FACT_SOURCE_REQUIRED", "原问题和回答已不匹配，请保留修改并重新核对", status_code=409)
+                raise DomainApiError("ASSISTANT_FACT_SOURCE_REQUIRED", "Câu hỏi và câu trả lời ban đầu không còn khớp, hãy giữ sửa đổi và đối chiếu lại", status_code=409)
         if policy.get("position_context"):
             from .reading import read_chapter_position
             current_position = await read_chapter_position(novel_id, chapter_id=policy["position_context"]["id"], session=session)
             if current_position != policy["position_context"]:
-                raise DomainApiError("ASSISTANT_FACT_POSITION_CHANGED", "章节名称或顺序已变化，原位置选择已保留，请核对后继续", status_code=409)
+                raise DomainApiError("ASSISTANT_FACT_POSITION_CHANGED", "Tên hoặc thứ tự chương đã thay đổi, lựa chọn vị trí ban đầu đã được giữ, hãy đối chiếu rồi tiếp tục", status_code=409)
         await check_sources(change, session=session, protect=True)
         kind = change["fact_type"]
         service = {"character": character_fact_service, "character_relation": character_relation_fact_service, "item": item_fact_service, "faction": faction_fact_service}[kind]
@@ -719,7 +719,7 @@ async def load_position_review(change: dict) -> tuple[Any, dict]:
                 or execution.get("faction_reading_contract") != "faction_facts_v1"
                 or any(not isinstance(execution.get(field), list) for field in
                        ("character_fact_reads", "character_relation_fact_reads", "faction_fact_reads", "agent_reads"))):
-            raise ValueError("缺少原位置读取合同")
+            raise ValueError("Thiếu hợp đồng đọc vị trí ban đầu")
         flow_fingerprint_inputs(task, inputs, snapshot)
         original_reads = [*execution["character_fact_reads"], *execution["character_relation_fact_reads"],
                           *execution["faction_fact_reads"], *execution.get("item_fact_reads", [])]
@@ -727,12 +727,12 @@ async def load_position_review(change: dict) -> tuple[Any, dict]:
             if (scope.get("reading_version") != 1 or not scope.get("reading_intent")
                     or (task in WRITING_TASKS and (inputs.get("reading_version") != 1 or not inputs.get("reading_intent")))
                     or not isinstance(execution.get("writing_reads"), list) or len(execution["writing_reads"]) > 20):
-                raise ValueError("缺少原写作位置或读取记录")
+                raise ValueError("Thiếu vị trí viết ban đầu hoặc bản ghi đọc")
             original_context = WritingContextBasisV1.model_validate(basis["context_basis"]).model_dump(mode="json")
         elif not inputs.get("volume_id"):
-            raise ValueError("缺少原目标卷")
+            raise ValueError("Thiếu quyển mục tiêu ban đầu")
     except (KeyError, TypeError, ValueError) as exc:
-        raise DomainApiError("ASSISTANT_POSITION_BASIS_REQUIRED", "候选缺少完整的原位置或读取依据，请保留候选并重新生成", status_code=409) from exc
+        raise DomainApiError("ASSISTANT_POSITION_BASIS_REQUIRED", "Ứng viên thiếu vị trí ban đầu hoặc căn cứ đọc đầy đủ, hãy giữ ứng viên và tạo lại", status_code=409) from exc
 
     # 包括空查询和未知种类；不能只取今天仍能识别或命中的那部分依据。
     await revalidate_position_fact_reads(original_reads)
@@ -743,10 +743,10 @@ async def load_position_review(change: dict) -> tuple[Any, dict]:
             read_scope = record.get("scope", scope)
             if (any(read_scope.get(field) != scope.get(field) for field in ("novel_id", "target_type", "target_id", "reading_version", "reading_intent"))
                     or "parameters" not in record or "basis" not in record):
-                raise DomainApiError("ASSISTANT_POSITION_BASIS_REQUIRED", "候选的原资料读取位置不完整或不一致，请保留候选并重新生成", status_code=409)
+                raise DomainApiError("ASSISTANT_POSITION_BASIS_REQUIRED", "Vị trí đọc tài liệu gốc của ứng viên không đầy đủ hoặc không nhất quán, hãy giữ ứng viên và tạo lại", status_code=409)
             reread = await load_task_context(task, record["parameters"], read_scope, {})
             if reread.data["context_basis"] != record["basis"]:
-                raise DomainApiError("ASSISTANT_SOURCE_CHANGED", "候选使用的规划、前文或查询已变化，请保留候选并重新生成", status_code=409)
+                raise DomainApiError("ASSISTANT_SOURCE_CHANGED", "Quy hoạch, đoạn trước hoặc truy vấn mà ứng viên dùng đã thay đổi, hãy giữ ứng viên và tạo lại", status_code=409)
             contexts.append(reread.data["context_basis"])
         current_context = merge_writing_reads(contexts)
         current_reads = [read for read in current_context["reads"] if read["kind"] in {"character_facts", "character_relation_facts", "item_facts", "faction_facts"}]
@@ -759,7 +759,7 @@ async def load_position_review(change: dict) -> tuple[Any, dict]:
         fingerprint = (compute_preparation_fingerprint(task, inputs, loaded.data["content_fingerprint"], snapshot) if automatic else
                        compute_flow_candidate_fingerprint(task, inputs, loaded.data["source_refs"], snapshot))
     if changed or fingerprint != basis["input_fingerprint"] or any(read not in original_reads for read in current_reads):
-        raise DomainApiError("ASSISTANT_SOURCE_CHANGED", "候选使用的原位置或资料已变化，请保留候选并重新生成", status_code=409)
+        raise DomainApiError("ASSISTANT_SOURCE_CHANGED", "Vị trí ban đầu hoặc tài liệu mà ứng viên dùng đã thay đổi, hãy giữ ứng viên và tạo lại", status_code=409)
     read_material = await replay_book_reads(scope, execution["agent_reads"]) if execution["agent_reads"] else {}
     return loaded, read_material
 
@@ -774,7 +774,7 @@ def guard_position_review(change: dict) -> None:
     """
     if (change.get("generation_task") in POSITION_REVIEW_TASKS
             and (change.get("review") or {}).get("position_review_contract") != POSITION_REVIEW_CONTRACT):
-        raise DomainApiError("ASSISTANT_REVIEW_REQUIRED", "此候选需要重新按原位置审核，原候选和确认键保留", status_code=409)
+        raise DomainApiError("ASSISTANT_REVIEW_REQUIRED", "Ứng viên này cần xét duyệt lại theo vị trí ban đầu, ứng viên gốc và khóa xác nhận được giữ lại", status_code=409)
 
 
 async def review_change(novel_id: str, change_id: str, expected_revision: int, settings: dict, *, sources: list[dict] | None = None, queries: list[dict] | None = None) -> dict:
@@ -792,7 +792,7 @@ async def review_change(novel_id: str, change_id: str, expected_revision: int, s
     """
     change = await get_change(novel_id, change_id)
     if change["revision"] != expected_revision or change["status"] == "applied":
-        raise DomainApiError("ASSISTANT_CHANGE_CONFLICT", "修改组版本已变化或已经保存", status_code=409)
+        raise DomainApiError("ASSISTANT_CHANGE_CONFLICT", "Phiên bản nhóm sửa đổi đã thay đổi hoặc đã được lưu", status_code=409)
     guard_creation(change)
     positional = change.get("generation_task") in POSITION_REVIEW_TASKS
     if positional:
@@ -806,7 +806,7 @@ async def review_change(novel_id: str, change_id: str, expected_revision: int, s
             identity = (source["resource_type"], source["id"])
             prior = source_map.get(identity)
             if prior and prior["fingerprint"] != source["fingerprint"]:
-                raise DomainApiError("ASSISTANT_SOURCE_CHANGED", "检查影响期间资料已修改，请重新准备候选", status_code=409)
+                raise DomainApiError("ASSISTANT_SOURCE_CHANGED", "Tài liệu bị sửa trong lúc kiểm tra ảnh hưởng, hãy chuẩn bị lại ứng viên", status_code=409)
             source_map.setdefault(identity, source)
         change["sources"] = list(source_map.values())
         change["source_refs"] = change["sources"]
@@ -926,7 +926,7 @@ async def review_change(novel_id: str, change_id: str, expected_revision: int, s
     allowed = {(source["resource_type"], source["id"]) for source in change.get("source_refs", [])}
     for issue in review.issues:
         if any((source.resource_type, source.id) not in allowed for source in issue.sources):
-            raise DomainApiError("ASSISTANT_REVIEW_SOURCE", "审核引用了未读取的资料，请重新审核", status_code=502)
+            raise DomainApiError("ASSISTANT_REVIEW_SOURCE", "Việc xét duyệt trích dẫn tài liệu chưa được đọc, hãy xét duyệt lại", status_code=502)
     report = {**review.model_dump(mode="json"), "revision": expected_revision, "program_passed": True, "model": model,
               "checked_sources": list(change.get("source_refs", [])), "omitted_fields": omitted,
               "scope_note": "仅检查列出的实际来源；其它内容未检查。"}
@@ -946,7 +946,7 @@ async def review_change(novel_id: str, change_id: str, expected_revision: int, s
         {"_id": change["_id"], "revision": expected_revision, "status": {"$in": ["draft", "reviewed"]}},
         {"$set": {"review": report, "confirmation": confirmation, "status": "reviewed", "sources": change["sources"], "source_refs": change["source_refs"], "queries": change["queries"], "updated_at": get_utc_now()}, "$unset": {"program_error": ""}}, return_document=ReturnDocument.AFTER)
     if updated is None:
-        raise DomainApiError("ASSISTANT_CHANGE_CONFLICT", "审核期间候选已变化，请重新审核", status_code=409)
+        raise DomainApiError("ASSISTANT_CHANGE_CONFLICT", "Ứng viên đã thay đổi trong lúc xét duyệt, hãy xét duyệt lại", status_code=409)
     return updated
 
 
@@ -980,7 +980,7 @@ async def apply_change(novel_id: str, change_id: str, approval: ChangeApproval, 
                 {"_id": ObjectId(novel_id), "owner": lease["owner"], "expires_at": {"$gt": get_utc_now()}},
                 {"$inc": {"save_revision": 1}}, session=session)
             if guard.matched_count != 1:
-                raise DomainApiError("ASSISTANT_LEASE_EXPIRED", "本轮占用已失效，请明确继续后再保存", status_code=409)
+                raise DomainApiError("ASSISTANT_LEASE_EXPIRED", "Lượt chiếm giữ vòng này đã hết hiệu lực, hãy xác nhận rõ việc tiếp tục rồi lưu", status_code=409)
         receipt = await receipts.find_one(query, session=session)
         if receipt:
             return receipt["result"]
@@ -989,35 +989,35 @@ async def apply_change(novel_id: str, change_id: str, approval: ChangeApproval, 
         guard_position_review(change)
         review = change.get("review")
         if change["revision"] != approval.expected_revision or change["status"] != "reviewed" or not review or review["revision"] != change["revision"] or not review["program_passed"]:
-            raise DomainApiError("ASSISTANT_REVIEW_REQUIRED", "请先审核当前版本的候选", status_code=409)
+            raise DomainApiError("ASSISTANT_REVIEW_REQUIRED", "Hãy xét duyệt ứng viên của phiên bản hiện tại trước", status_code=409)
         if not author_confirmed and mode != "auto":
-            raise DomainApiError("ASSISTANT_APPROVAL_REQUIRED", "此轮需要作者审核后保存", status_code=409)
+            raise DomainApiError("ASSISTANT_APPROVAL_REQUIRED", "Lượt này cần tác giả xét duyệt rồi lưu", status_code=409)
         if (change.get("kind") == "facts" or change.get("generation_task") in FACT_GENERATION_CONTRACTS) and not review.get("author_intent_supported"):
             raise DomainApiError("ASSISTANT_FACT_INTENT_REQUIRED", review["summary"], status_code=409)
         lifecycle = any(operation["action"] in {"delete", "restore"} for operation in change.get("operations", []))
         if lifecycle and not (author_confirmed and approval.confirm_lifecycle):
-            raise DomainApiError("ASSISTANT_LIFECYCLE_APPROVAL", "回收或恢复需要作者逐次确认", status_code=409)
+            raise DomainApiError("ASSISTANT_LIFECYCLE_APPROVAL", "Thu hồi hoặc khôi phục cần tác giả xác nhận từng lần", status_code=409)
         conflicts = any(issue["severity"] == "conflict" for issue in review["issues"])
         if conflicts and not (author_confirmed and approval.accept_content_risk):
-            raise DomainApiError("ASSISTANT_CONTENT_CONFLICT", "审核发现内容冲突，请修改候选或明确接受内容风险", status_code=409)
+            raise DomainApiError("ASSISTANT_CONTENT_CONFLICT", "Xét duyệt phát hiện xung đột nội dung, hãy sửa ứng viên hoặc chấp nhận rõ rủi ro nội dung", status_code=409)
         if change.get("confirmation") and not author_confirmed:
             raise DomainApiError("ASSISTANT_SCOPE_APPROVAL", change["confirmation"]["message"], status_code=409)
         confirmation = change.get("confirmation")
         if confirmation and confirmation.get("token") and approval.confirmation_token != confirmation["token"]:
-            raise DomainApiError("ASSISTANT_CONFIRMATION_CHANGED", "请确认当前显示的具体改动，旧确认不能用于新的内容", status_code=409)
+            raise DomainApiError("ASSISTANT_CONFIRMATION_CHANGED", "Hãy xác nhận các thay đổi cụ thể đang hiển thị, xác nhận cũ không được dùng cho nội dung mới", status_code=409)
         result = await execute_group(change, session=session)
         if confirmation and confirmation.get("token") and confirmation_for(change, result, review) != confirmation:
-            raise DomainApiError("ASSISTANT_CONFIRMATION_CHANGED", "实际影响已变化，原修改保留，请重新核对具体对象和改动", status_code=409)
+            raise DomainApiError("ASSISTANT_CONFIRMATION_CHANGED", "Ảnh hưởng thực tế đã thay đổi, sửa đổi gốc được giữ, hãy đối chiếu lại từng đối tượng và thay đổi cụ thể", status_code=409)
         now = get_utc_now()
         public_result = {"schema_version": 1, "change_id": change_id, "revision": change["revision"], "saved_at": now.isoformat(), **result}
         if len(BSON.encode({**change, "result": public_result})) > 14_000_000:
-            raise DomainApiError("ASSISTANT_CHANGE_SIZE", "本组保存记录过大，请拆成较小的独立修改组")
+            raise DomainApiError("ASSISTANT_CHANGE_SIZE", "Bản ghi lưu của nhóm này quá lớn, hãy tách thành các nhóm sửa đổi độc lập nhỏ hơn")
         await receipts.insert_one({**query, "result": public_result, "created_at": now}, session=session)
         updated = await BaseRepository("assistant_changes").collection.update_one(
             {"_id": change["_id"], "revision": change["revision"], "status": "reviewed"},
             {"$set": {"status": "applied", "result": public_result, "apply_attempt": {"revision": change["revision"], "outcome": "committed"}, "approval": {**approval.model_dump(), "author_confirmed": author_confirmed}, "updated_at": now}}, session=session)
         if updated.matched_count != 1:
-            raise DomainApiError("ASSISTANT_CHANGE_CONFLICT", "候选已被其它操作修改", status_code=409)
+            raise DomainApiError("ASSISTANT_CHANGE_CONFLICT", "Ứng viên đã bị thao tác khác chỉnh sửa", status_code=409)
         callback_finished = True
         return public_result
     await BaseRepository("assistant_changes").collection.update_one(
@@ -1053,20 +1053,20 @@ async def prepare_undo(novel_id: str, change_id: str, *, run_id: str, key: str, 
     """
     change = await get_change(novel_id, change_id)
     if change["status"] != "applied":
-        raise DomainApiError("ASSISTANT_UNDO_UNSAVED", "只能撤销已经保存的修改")
+        raise DomainApiError("ASSISTANT_UNDO_UNSAVED", "Chỉ có thể hoàn tác các sửa đổi đã lưu")
     result = change["result"]
     for content in result["resources"]:
         ref = ResourceRef(resource_type=content["resource_type"], id=content["id"])
         current = public_content(ref.resource_type, await get_resource(novel_id, ref, include_deleted=True))
         if current["version"] != content["version"] or content_fingerprint(current) != content_fingerprint(content):
-            raise DomainApiError("ASSISTANT_UNDO_CONFLICT", "保存后资料又发生了变化，请保留内容并手工处理", status_code=409, details={"source": ref.model_dump()})
+            raise DomainApiError("ASSISTANT_UNDO_CONFLICT", "Tài liệu lại thay đổi sau khi lưu, hãy giữ nội dung và xử lý thủ công", status_code=409, details={"source": ref.model_dump()})
     operations = []
     from backend.services.novel.plot_service import plot_hash
     for saved in reversed(result["operations"]):
         original = saved["operation"]
         kind, action = original["resource_type"], original["action"]
         before, after = saved["before"], saved["after"]
-        common = {"resource_type": kind, "reason": f"撤销修改组 {change_id}"}
+        common = {"resource_type": kind, "reason": f"Hoàn tác nhóm sửa đổi {change_id}"}
         if action == "create":
             operations.extend(ChangeOperation(action="delete", id=content["id"], **common) for content in reversed(after))
         elif action in {"delete", "restore"}:
@@ -1120,39 +1120,39 @@ async def stage_fact_change(run: dict, request, *, key: str) -> dict:
     position_context = None
     if position["intent"] == "book_start":
         if position["target_id"] != novel_id:
-            raise DomainApiError("ASSISTANT_FACT_POSITION_REQUIRED", "这项修改从故事的哪个位置生效：书初，还是某一章前后？请先向作者问清楚", status_code=409)
+            raise DomainApiError("ASSISTANT_FACT_POSITION_REQUIRED", "Sửa đổi này có hiệu lực từ vị trí nào của câu chuyện: đầu sách, hay trước/sau một chương? Hãy hỏi rõ tác giả trước", status_code=409)
     elif position["intent"] != "volume_start":
         from .reading import read_chapter_position
         position_context = await read_chapter_position(novel_id, chapter_id=position["target_id"])
     selected = next((answer["selected_position"] for answer in reversed(run.get("answers", [])) if answer.get("selected_position")), None)
     if selected and selected != position:
-        raise DomainApiError("ASSISTANT_FACT_POSITION_REQUIRED", "这项修改的位置与作者选择不一致，请使用原问题中确认的位置", status_code=409)
+        raise DomainApiError("ASSISTANT_FACT_POSITION_REQUIRED", "Vị trí của sửa đổi này không khớp với lựa chọn của tác giả, hãy dùng vị trí đã xác nhận trong câu hỏi ban đầu", status_code=409)
     if position["intent"] == "chapter_after":
         if request.evidence is None:
-            raise DomainApiError("ASSISTANT_FACT_EVIDENCE_REQUIRED", "章后变化需要该章真实历史正文中的依据", status_code=409)
+            raise DomainApiError("ASSISTANT_FACT_EVIDENCE_REQUIRED", "Thay đổi sau chương cần căn cứ trong chính văn lịch sử thật của chương đó", status_code=409)
         from backend.services.novel.chapter_record_contract import ChapterRecordEvidenceV1
         evidence = ChapterRecordEvidenceV1.model_validate(request.evidence).model_dump(mode="json")
         stored_run = await BaseRepository("assistant_runs").collection.find_one({"_id": run["_id"], "novel_id": run["novel_id"]})
         read = next((item for item in stored_run.get("evidence_reads", []) if all(item[field] == evidence[field] for field in ("chapter_id", "revision_id", "version", "content_hash"))
                      and evidence["start"] >= item["start"] and item["quote"][evidence["start"] - item["start"]:evidence["start"] - item["start"] + len(evidence["quote"])] == evidence["quote"]), None)
         if not read or evidence["chapter_id"] != position["target_id"]:
-            raise DomainApiError("ASSISTANT_FACT_EVIDENCE_REQUIRED", "请先读取所选章节的固定历史版本，并使用返回的原文片段", status_code=409)
+            raise DomainApiError("ASSISTANT_FACT_EVIDENCE_REQUIRED", "Hãy đọc trước phiên bản lịch sử cố định của chương đã chọn, rồi dùng các đoạn nguyên văn được trả về", status_code=409)
         source = {"kind": "chapter", "evidence": evidence}
     else:
         if request.evidence is not None or len(author_request) > 2000:
-            raise DomainApiError("ASSISTANT_FACT_SOURCE_REQUIRED", "请作者用不超过 2000 字说明这项修改，保留原要求，不代写说明", status_code=409)
+            raise DomainApiError("ASSISTANT_FACT_SOURCE_REQUIRED", "Hãy để tác giả mô tả sửa đổi này trong không quá 2000 ký tự, giữ nguyên yêu cầu ban đầu, không viết hộ phần mô tả", status_code=409)
         source = {"kind": "author", "note": author_request}
     kind = request.resource_type
     service = {"character": character_fact_service, "character_relation": character_relation_fact_service, "item": item_fact_service, "faction": faction_fact_service}[kind]
     data = {"operation": request.operation, "position": position, "source": source}
     if request.operation == "create":
         if request.id or not request.candidate:
-            raise DomainApiError("ASSISTANT_FACT_TARGET_REQUIRED", "新资料需要完整内容；已有资料不能当作新建")
+            raise DomainApiError("ASSISTANT_FACT_TARGET_REQUIRED", "Tài liệu mới cần nội dung đầy đủ; không được coi tài liệu đã có là bản tạo mới")
         data.update({"candidate": request.candidate} if kind == "item" else {"target": {"candidate": request.candidate}})
         original = {}
     else:
         if not request.id or request.candidate:
-            raise DomainApiError("ASSISTANT_FACT_TARGET_REQUIRED", "请先明确要修改的已有资料")
+            raise DomainApiError("ASSISTANT_FACT_TARGET_REQUIRED", "Hãy xác định rõ tài liệu đã có cần sửa đổi trước")
         original = await get_resource(novel_id, ResourceRef(resource_type=kind, id=request.id))
         data["target"] = {"entity_id": str(original["_id"]), f"{kind}_id" if kind != "character_relation" else "relation_id": request.id, "expected_version": original["version"]}
         data["kind"] = "change" if position["intent"] == "chapter_after" else "start"
@@ -1203,14 +1203,14 @@ async def reconcile_change(novel_id: str, change_id: str, revision: int) -> dict
         return {"saved": True, "result": receipt["result"]}
     change = await get_change(novel_id, change_id)
     if change["revision"] != revision:
-        raise DomainApiError("ASSISTANT_CHANGE_CONFLICT", "原修改已经被编辑，请核对最新修改", status_code=409)
+        raise DomainApiError("ASSISTANT_CHANGE_CONFLICT", "Sửa đổi gốc đã được chỉnh sửa, hãy đối chiếu bản sửa mới nhất", status_code=409)
     attempt = change.get("apply_attempt", {})
     if attempt.get("revision") != revision or attempt.get("outcome") not in {"not_sent", "not_committed"}:
-        raise DomainApiError("ASSISTANT_SAVE_UNKNOWN", "原保存结果仍未确定，只能按原请求核对，不能另建修改", status_code=409)
+        raise DomainApiError("ASSISTANT_SAVE_UNKNOWN", "Kết quả lưu ban đầu vẫn chưa xác định, chỉ được đối chiếu theo yêu cầu gốc, không được tạo sửa đổi khác", status_code=409)
     if change["kind"] == "facts":
         return await reconcile_fact_change(novel_id, change)
     if change["kind"] != "operations" or any(item["action"] != "update" for item in change["operations"]):
-        raise DomainApiError("ASSISTANT_REPREPARE_REQUIRED", "原修改已保留，请重新核对其位置和依据后准备", status_code=409)
+        raise DomainApiError("ASSISTANT_REPREPARE_REQUIRED", "Sửa đổi gốc đã được giữ, hãy đối chiếu lại vị trí và căn cứ rồi chuẩn bị", status_code=409)
     conflicts, sources = [], []
     operations = []
     target_keys = {f"{item['resource_type']}:{item['id']}" for item in change["operations"]}
@@ -1218,7 +1218,7 @@ async def reconcile_change(novel_id: str, change_id: str, revision: int) -> dict
         ref = ResourceRef(resource_type=source["resource_type"], id=source["id"])
         current = public_content(ref.resource_type, await get_resource(novel_id, ref, include_deleted=True))
         if f"{ref.resource_type}:{ref.id}" not in target_keys and content_fingerprint(current) != source["fingerprint"]:
-            raise DomainApiError("ASSISTANT_DEPENDENCY_CHANGED", "相关资料也已变化，需要重新检查影响；原修改保留", status_code=409)
+            raise DomainApiError("ASSISTANT_DEPENDENCY_CHANGED", "Tài liệu liên quan cũng đã thay đổi, cần kiểm tra lại ảnh hưởng; giữ sửa đổi gốc", status_code=409)
         sources.append({**ref.model_dump(), "version": current["version"], "fingerprint": content_fingerprint(current)})
     from .resources import field_value
     for operation in change["operations"]:
@@ -1262,7 +1262,7 @@ async def reconcile_fact_change(novel_id: str, change: dict) -> dict:
     kind, command = change["fact_type"], change["fact_command"]
     request = deepcopy(change.get("fact_preview_request"))
     if not request or command["operation"] == "create":
-        raise DomainApiError("ASSISTANT_REPREPARE_REQUIRED", "原修改已保留，需要核对新建对象或原事实依据", status_code=409)
+        raise DomainApiError("ASSISTANT_REPREPARE_REQUIRED", "Sửa đổi gốc đã được giữ, cần đối chiếu đối tượng tạo mới hoặc căn cứ sự kiện ban đầu", status_code=409)
     basis = command["basis"]
     id_field = {"character": "character_id", "character_relation": "relation_id", "item": "item_id", "faction": "faction_id"}[kind]
     identity = basis["target"][id_field]
@@ -1271,7 +1271,7 @@ async def reconcile_fact_change(novel_id: str, change: dict) -> dict:
     result_field = {"character": "characters", "character_relation": "relations", "item": "items", "faction": "factions"}[kind]
     result = await getattr(service, f"query_{kind}_facts")(novel_id, {query_field: [identity], "position": basis["position"]})
     if not result[result_field]:
-        raise DomainApiError("ASSISTANT_REPREPARE_REQUIRED", "原对象已经不可用，原修改仍保留，请核对对象", status_code=409)
+        raise DomainApiError("ASSISTANT_REPREPARE_REQUIRED", "Đối tượng gốc đã không còn khả dụng, sửa đổi gốc vẫn được giữ, hãy đối chiếu đối tượng", status_code=409)
     current = result[result_field][0]
     old_values, values = basis["before"].get("values") or {}, current.get("values") or {}
     unknown = current.get("unknown") or {}

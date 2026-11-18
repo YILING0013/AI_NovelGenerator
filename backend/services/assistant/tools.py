@@ -218,7 +218,7 @@ async def execute_tool(name: str, arguments: dict, *, run: dict, state: dict, ke
         有界、无凭据的工具结果。
     """
     if name not in TOOL_CONTRACTS:
-        raise DomainApiError("ASSISTANT_TOOL_UNKNOWN", "模型调用了未开放的工具")
+        raise DomainApiError("ASSISTANT_TOOL_UNKNOWN", "Mô hình đã gọi công cụ chưa được mở")
     args = TOOL_CONTRACTS[name][0].model_validate(arguments)
     novel_id, session_id, run_id = str(run["novel_id"]), str(run["session_id"]), str(run["_id"])
     reader = BookReader(novel_id, state["sources"], state["queries"])
@@ -252,7 +252,7 @@ async def execute_tool(name: str, arguments: dict, *, run: dict, state: dict, ke
         revision = await ChapterService.get_revision(chapter_id, args.version)
         quote = revision["content"][args.start:args.start + args.length]
         if not quote:
-            raise DomainApiError("ASSISTANT_EVIDENCE_EMPTY", "这个位置没有正文，请读取该修订的有效正文范围")
+            raise DomainApiError("ASSISTANT_EVIDENCE_EMPTY", "Vị trí này không có nội dung, hãy đọc phạm vi nội dung hợp lệ của bản chỉnh sửa đó")
         evidence = {"chapter_id": chapter_id, "revision_id": str(revision["_id"]), "version": revision["version"],
                     "content_hash": revision["content_hash"], "start": args.start, "quote": quote}
         await BaseRepository("assistant_runs").collection.update_one({"_id": run["_id"]}, {"$addToSet": {"evidence_reads": evidence}})
@@ -293,7 +293,7 @@ async def execute_tool(name: str, arguments: dict, *, run: dict, state: dict, ke
     if name == "get_readiness":
         from backend.services.novel.writing_context import get_writing_readiness
         if args.resource_type not in {"volume", "arc", "scene", "chapter"}:
-            raise DomainApiError("ASSISTANT_READINESS_TARGET", "请选择卷、篇章、场景或章节")
+            raise DomainApiError("ASSISTANT_READINESS_TARGET", "Vui lòng chọn quyển, vòng truyện, cảnh hoặc chương")
         await reader.read(args)
         return await get_writing_readiness(novel_id, args.resource_type, args.id)
     if name == "get_resource_summary":
@@ -305,13 +305,13 @@ async def execute_tool(name: str, arguments: dict, *, run: dict, state: dict, ke
             current = public_content(ref.resource_type, await get_resource(novel_id, ref))
             text = field_value(current, args.field)
             if not isinstance(text, str) or args.end < args.start or args.end > len(text) or text[args.start:args.end] != args.expected_text:
-                raise DomainApiError("ASSISTANT_TEXT_CHANGED", "选区旧文字与当前原文不同，请重新读取", status_code=409)
+                raise DomainApiError("ASSISTANT_TEXT_CHANGED", "Văn bản cũ của vùng chọn khác văn bản gốc hiện tại, hãy đọc lại", status_code=409)
             operations = [ChangeOperation(action="update", resource_type=ref.resource_type, id=ref.id, fields={args.field: text[:args.start] + args.replacement + text[args.end:]}, reason=args.reason)]
         else:
             required = {"stage_status_change": "status", "stage_preparation_confirmation": "preparation"}.get(name, name.removeprefix("stage_"))
             operations = args.operations
             if operations[0].action != required:
-                raise DomainApiError("ASSISTANT_TOOL_OPERATION", "第一项操作与当前工具不一致")
+                raise DomainApiError("ASSISTANT_TOOL_OPERATION", "Hành động đầu tiên không nhất quán với công cụ hiện tại")
         change = await stage_changes(novel_id, session_id, run_id, operations, sources=state["sources"], queries=state["queries"], key=key)
         state["change_ids"] = list(dict.fromkeys([*state["change_ids"], str(change["_id"])]))
         await emit("change", public_change(change))
@@ -323,7 +323,7 @@ async def execute_tool(name: str, arguments: dict, *, run: dict, state: dict, ke
     if name == "run_generation_task":
         for dependency in args.depends_on:
             if (await get_change(novel_id, dependency))["status"] != "applied":
-                raise DomainApiError("ASSISTANT_GENERATION_DEPENDENCY", "请先保存依赖的修改组，再按新资料运行原任务", status_code=409)
+                raise DomainApiError("ASSISTANT_GENERATION_DEPENDENCY", "Hãy lưu nhóm sửa đổi phụ thuộc trước, rồi chạy lại tác vụ gốc theo tài liệu mới", status_code=409)
         change = await run_generation(novel_id, session_id, run_id, task=args.task, inputs=args.inputs, target=args.target, target_field=args.target_field, flow_ref=args.flow_ref, key=key, emit=emit, additional_rounds=run.get("_additional_rounds", 0))
         state["change_ids"] = list(dict.fromkeys([*state["change_ids"], str(change["_id"])]))
         await emit("change", public_change(change))
@@ -412,7 +412,7 @@ async def execute_tool(name: str, arguments: dict, *, run: dict, state: dict, ke
             question["choices"] = [item["label"] for item in position_choices]
         confirmation = next((item for item in changes if str(item["_id"]) == args.confirmation_change_id and item["status"] == "reviewed" and item.get("confirmation")), None)
         if args.confirmation_change_id and confirmation is None:
-            raise DomainApiError("ASSISTANT_CONFIRMATION_CHANGED", "请先完成这份修改的检查，再询问具体改动", status_code=409)
+            raise DomainApiError("ASSISTANT_CONFIRMATION_CHANGED", "Hãy hoàn tất kiểm tra bản sửa đổi này trước, sau đó hỏi về các thay đổi cụ thể", status_code=409)
         if confirmation:
             question = confirmation_question(confirmation, question_id=question["id"])
         await BaseRepository("assistant_runs").collection.update_one({"_id": ObjectId(run_id)}, {"$set": {"pending_question": question}})
@@ -423,4 +423,4 @@ async def execute_tool(name: str, arguments: dict, *, run: dict, state: dict, ke
         state["stop_reason"] = "completed"
         await emit("message", {"content": args.message, "unchecked": args.unchecked})
         return {"finished": True}
-    raise DomainApiError("ASSISTANT_TOOL_UNKNOWN", "工具未实现")
+    raise DomainApiError("ASSISTANT_TOOL_UNKNOWN", "Công cụ chưa được triển khai")

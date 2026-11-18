@@ -121,7 +121,7 @@ class FactionRelationGenerationService:
             except NotFoundError as exc:
                 raise GenerationDomainError(
                     "FACTION_RELATION_ENDPOINT_INVALID",
-                    f"阵营不存在或不属于当前小说: {faction_id}",
+                    f"Phe không tồn tại hoặc không thuộc tiểu thuyết hiện tại: {faction_id}",
                 ) from exc
             if (
                 faction.get("is_deleted") is True
@@ -129,7 +129,7 @@ class FactionRelationGenerationService:
             ):
                 raise GenerationDomainError(
                     "FACTION_RELATION_ENDPOINT_INVALID",
-                    f"阵营 {faction_id} 必须处于 active 状态",
+                    f"Phe {faction_id} phải ở trạng thái active",
                 )
             factions_by_id[faction_id] = faction
 
@@ -146,7 +146,7 @@ class FactionRelationGenerationService:
         if len(relations) > 1000:
             raise GenerationDomainError(
                 "FACTION_RELATION_INPUT_BUDGET_EXCEEDED",
-                "所选阵营的既有活动关系超过工作流预算，禁止静默截断",
+                "Quan hệ hoạt động hiện hữu của thế lực đã chọn vượt ngân sách luồng công tác, cấm cắt ngắn ngầm",
             )
 
         faction_projections = [
@@ -162,7 +162,7 @@ class FactionRelationGenerationService:
             if len(canonical_json(projection)) > 4000:
                 raise GenerationDomainError(
                     "FACTION_RELATION_INPUT_BUDGET_EXCEEDED",
-                    f"阵营或关系摘要第 {index + 1} 项超过 4000 字符",
+                    f"Tóm tắt thế lực hoặc quan hệ thứ {index + 1} vượt quá 4000 ký tự",
                 )
 
         faction_count = len(request.faction_ids)
@@ -182,7 +182,7 @@ class FactionRelationGenerationService:
             if isinstance(value, str) and len(value) > 8000:
                 raise GenerationDomainError(
                     "FACTION_RELATION_INPUT_BUDGET_EXCEEDED",
-                    f"小说字段 {field} 超过 8000 字符",
+                    f"Trường tiểu thuyết {field} vượt quá 8000 ký tự",
                 )
 
         prompt_input = {
@@ -225,7 +225,7 @@ class FactionRelationGenerationService:
         if len(source_refs) > MAX_CANDIDATE_SOURCE_REFS:
             raise GenerationDomainError(
                 "FACTION_RELATION_SOURCE_BUDGET_EXCEEDED",
-                "势力关系生成正式来源版本超过 2000 项，禁止静默截断",
+                "Phiên bản nguồn chính thức khi sinh quan hệ thế lực vượt 2000 mục, cấm cắt ngắn ngầm",
                 status_code=422,
             )
         return {
@@ -264,7 +264,7 @@ class FactionRelationGenerationService:
                 or relation.target_faction_id not in selected_ids
             ):
                 errors.append(
-                    f"{relation.relation_ref}: 关系端点必须来自本次锁定的阵营白名单"
+                    f"{relation.relation_ref}: điểm cuối quan hệ phải đến từ danh sách trắng thế lực đã khóa trong lần này"
                 )
 
         if not errors:
@@ -289,7 +289,7 @@ class FactionRelationGenerationService:
             }
             missing = sorted(selected_ids - covered)
             if missing:
-                errors.append(f"以下阵营未参与任何候选关系: {', '.join(missing)}")
+                errors.append(f"Các phe sau không tham gia bất kỳ quan hệ ứng viên nào: {', '.join(missing)}")
 
         if errors:
             raise GenerationDomainError(
