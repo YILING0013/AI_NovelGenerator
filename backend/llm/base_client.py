@@ -111,7 +111,9 @@ class _ThinkStreamFilter:
                 continue
 
             open_match = _THINK_OPEN_RE.search(self._buffer)
-            close_match = _THINK_CLOSE_RE.search(self._buffer) if self._preserve_json_strings else None
+            # 开始标签可能已随提示词注入，输出里只剩结束标签；此时它是控制标记，
+            # 必须像 _sanitize_text_content 一样删除，不能连其后的正文一起留在缓冲里丢弃。
+            close_match = _THINK_CLOSE_RE.search(self._buffer)
             tag_match = open_match
             if close_match is not None and (open_match is None or close_match.start() < open_match.start()):
                 tag_match = close_match
